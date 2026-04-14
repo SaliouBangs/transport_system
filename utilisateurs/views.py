@@ -25,7 +25,7 @@ def connexion_view(request):
     if request.method == "POST":
         username = (request.POST.get("username") or "").strip()
         password = request.POST.get("password") or ""
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(username=username, password=password)
         if user is not None and user.is_active:
             login(request, user)
             next_url = request.GET.get("next") or get_default_landing_url(user)
