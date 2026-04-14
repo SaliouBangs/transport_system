@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Saisie client</p>
+<h1>Ajouter un client</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field field-full">
+            <label for="{{ form.prospect.id_for_label }}">Prospect</label>
+            {{ form.prospect }}
+            {% if form.prospect.errors %}<p class="field-error">{{ form.prospect.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.nom.id_for_label }}">Nom</label>
+            {{ form.nom }}
+            {% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.telephone.id_for_label }}">Telephone</label>
+            {{ form.telephone }}
+            {% if form.telephone.errors %}<p class="field-error">{{ form.telephone.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.entreprise.id_for_label }}">Entreprise</label>
+            {{ form.entreprise }}
+            {% if form.entreprise.errors %}<p class="field-error">{{ form.entreprise.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.ville.id_for_label }}">Ville</label>
+            {{ form.ville }}
+            {% if form.ville.errors %}<p class="field-error">{{ form.ville.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field field-full">
+            <label for="{{ form.adresse.id_for_label }}">Adresse</label>
+            {{ form.adresse }}
+            {% if form.adresse.errors %}<p class="field-error">{{ form.adresse.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation</label>
+            {{ form.observation }}
+            {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/clients/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const prospectSelect = document.getElementById("id_prospect");
+const clientNomInput = document.getElementById("id_nom");
+const clientTelephoneInput = document.getElementById("id_telephone");
+const clientEntrepriseInput = document.getElementById("id_entreprise");
+const clientVilleInput = document.getElementById("id_ville");
+
+async function syncClientFromProspect() {
+    const prospectId = prospectSelect?.value;
+    if (!prospectId) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/clients/prospect-infos/?prospect_id=${prospectId}`, {
+            credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            return;
+        }
+
+        if (clientNomInput) {
+            clientNomInput.value = data.prospect.nom || "";
+        }
+        if (clientTelephoneInput) {
+            clientTelephoneInput.value = data.prospect.telephone || "";
+        }
+        if (clientEntrepriseInput) {
+            clientEntrepriseInput.value = data.prospect.entreprise || "";
+        }
+        if (clientVilleInput) {
+            clientVilleInput.value = data.prospect.ville || "";
+        }
+    } catch (error) {
+    }
+}
+
+prospectSelect?.addEventListener("change", syncClientFromProspect);
+</script>
+{% endblock %}

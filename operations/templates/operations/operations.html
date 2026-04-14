@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Coeur metier</p>
+<h1>Operations BL</h1>
+</div>
+</div>
+
+<div class="form-shell" style="max-width:100%; margin-bottom:20px;">
+<form method="get" class="app-form">
+    <div class="form-grid">
+        <div class="field">
+            <label for="operations-search-input">Recherche</label>
+            <input type="text" name="q" id="operations-search-input" value="{{ query }}" placeholder="BL, client, camion ou chauffeur">
+        </div>
+        <div class="field">
+            <label for="operations-status-filter">Etat du bon</label>
+            <select name="etat" id="operations-status-filter">
+                <option value="">Tous les etats</option>
+                {% for value, label in etat_options %}
+                <option value="{{ value }}"{% if etat == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="operations-date-start">Periode du</label>
+            <input type="date" name="date_debut" id="operations-date-start" value="{{ date_debut }}">
+        </div>
+        <div class="field">
+            <label for="operations-date-end">Au</label>
+            <input type="date" name="date_fin" id="operations-date-end" value="{{ date_fin }}">
+        </div>
+    </div>
+    <div class="form-actions">
+        <a href="/operations/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter Excel</a>
+        <a href="/operations/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter PDF</a>
+        <a href="/operations/" class="btn-secondary">Reinitialiser</a>
+        <button type="submit" class="btn-secondary">Filtrer pour les rapports</button>
+    </div>
+</form>
+</div>
+
+<table class="table" id="operations-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Etat</th>
+<th>Commande</th>
+<th>Client</th>
+<th>Destination</th>
+<th>Camion</th>
+<th>Chauffeur</th>
+<th>Date BL</th>
+<th>Voyage</th>
+<th>Retour bon</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.get_etat_bon_display }}</td>
+<td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{{ operation.destination }}</td>
+<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+<td>{{ operation.date_bl|default:"-" }}</td>
+<td>{% if operation.jours_voyage != None %}{{ operation.jours_voyage }} j{% else %}-{% endif %}</td>
+<td>{% if operation.jours_retour_bon != None %}{{ operation.jours_retour_bon }} j{% else %}-{% endif %}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="10">Aucune operation ne correspond a ce filtre.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const operationsSearchInput = document.getElementById("operations-search-input");
+const operationsStatusFilter = document.getElementById("operations-status-filter");
+const operationsDateStart = document.getElementById("operations-date-start");
+const operationsDateEnd = document.getElementById("operations-date-end");
+const operationsTableRows = document.querySelectorAll("#operations-table tbody tr");
+
+function filterOperationsTable() {
+    const query = (operationsSearchInput?.value || "").trim().toLowerCase();
+    const status = operationsStatusFilter?.value || "";
+    const startDate = operationsDateStart?.value || "";
+    const endDate = operationsDateEnd?.value || "";
+    operationsTableRows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        const rowStatus = row.children[1]?.textContent.trim().toLowerCase() || "";
+        const rowDate = row.children[7]?.textContent.trim() || "";
+        const matchesQuery = !query || text.includes(query);
+        const matchesStatus = !status || rowStatus === (operationsStatusFilter.options[operationsStatusFilter.selectedIndex]?.text || "").toLowerCase();
+        const matchesStart = !startDate || !rowDate || rowDate === "-" || rowDate >= startDate;
+        const matchesEnd = !endDate || !rowDate || rowDate === "-" || rowDate <= endDate;
+        row.style.display = matchesQuery && matchesStatus && matchesStart && matchesEnd ? "" : "none";
+    });
+}
+
+operationsSearchInput?.addEventListener("input", filterOperationsTable);
+operationsStatusFilter?.addEventListener("change", filterOperationsTable);
+operationsDateStart?.addEventListener("change", filterOperationsTable);
+operationsDateEnd?.addEventListener("change", filterOperationsTable);
+filterOperationsTable();
+</script>
+{% endblock %}

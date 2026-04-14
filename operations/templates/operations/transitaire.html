@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Circuit administratif</p>
+<h1>Page transitaire</h1>
+</div>
+<div class="field-inline">
+<form method="get" class="search-form" id="transitaire-search-form">
+    <input type="text" name="q" id="transitaire-search-input" value="{{ query }}" placeholder="Recherche par BL, client, camion ou chauffeur">
+    <button type="submit" class="btn-secondary">Rechercher</button>
+</form>
+</div>
+</div>
+
+<table class="table" id="transitaire-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Client</th>
+<th>Camion</th>
+<th>Chauffeur</th>
+<th>Etat</th>
+<th>Date declaration</th>
+<th>Date liquidation</th>
+<th>Actions transitaire</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+<td>{{ operation.get_etat_bon_display }}</td>
+<td>{{ operation.date_transmission|default:"-" }}</td>
+<td>{{ operation.date_bons_liquides|default:"-" }}</td>
+<td>
+<div class="table-actions">
+<form method="post" action="/operations/transitaire/{{ operation.id }}/declare/">
+    {% csrf_token %}
+    <button type="submit" class="btn-secondary">Declare</button>
+</form>
+<form method="post" action="/operations/transitaire/{{ operation.id }}/liquide/">
+    {% csrf_token %}
+    <button type="submit" class="btn-secondary">Liquide</button>
+</form>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucune operation trouvee.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const transitaireSearchInput = document.getElementById("transitaire-search-input");
+const transitaireTableRows = document.querySelectorAll("#transitaire-table tbody tr");
+
+function filterTransitaireTable() {
+    const query = (transitaireSearchInput?.value || "").trim().toLowerCase();
+    transitaireTableRows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = !query || text.includes(query) ? "" : "none";
+    });
+}
+
+transitaireSearchInput?.addEventListener("input", filterTransitaireTable);
+filterTransitaireTable();
+</script>
+{% endblock %}

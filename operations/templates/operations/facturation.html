@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Facturation</p>
+<h1>BL livres a facturer</h1>
+</div>
+<form method="get" class="search-form">
+    <input type="text" name="q" value="{{ query }}" placeholder="Recherche par BL, commande ou client">
+    <select name="statut_facture">
+        <option value="">Tous</option>
+        <option value="a_facturer"{% if statut_facture == "a_facturer" %} selected{% endif %}>A facturer</option>
+        <option value="facture"{% if statut_facture == "facture" %} selected{% endif %}>Facture</option>
+    </select>
+    <button type="submit" class="btn-secondary">Filtrer</button>
+</form>
+</div>
+
+<table class="table" id="facturation-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Commande</th>
+<th>Client</th>
+<th>Produit</th>
+<th>Quantite</th>
+<th>Date livre</th>
+<th>Facture</th>
+<th>Montant</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
+<td>{{ operation.quantite|default:"-" }}</td>
+<td>{{ operation.date_bons_livres|default:"-" }}</td>
+<td>{% if operation.numero_facture %}{{ operation.numero_facture }}{% else %}<span class="status-badge status-danger">A facturer</span>{% endif %}</td>
+<td>{{ operation.montant_facture|default:"-" }}</td>
+<td><a href="/operations/facturation/{{ operation.id }}/modifier/" class="btn-edit">Facturer</a></td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="9">Aucun BL livre disponible pour la facturation.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

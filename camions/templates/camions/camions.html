@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Flotte</p>
+<h1>Gestion des camions</h1>
+</div>
+{% if can_manage_logistique_assets %}<a href="/camions/ajouter/" class="btn">Ajouter un camion</a>{% endif %}
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Numero tracteur</th>
+<th>Numero citerne</th>
+<th>Type</th>
+<th>Marque</th>
+<th>Transporteur</th>
+<th>Capacite</th>
+<th>Km actuel</th>
+<th>Prochaine vidange</th>
+<th>Alerte</th>
+<th>Pannes</th>
+<th>Performance</th>
+<th>Etat</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for camion in camions %}
+<tr>
+<td>{{ camion.numero_tracteur }}</td>
+<td>{{ camion.numero_citerne|default:"-" }}</td>
+<td>{{ camion.get_type_camion_display }}</td>
+<td>{{ camion.marque|default:"-" }}</td>
+<td>{% if camion.transporteur %}{{ camion.transporteur.nom }}{% else %}-{% endif %}</td>
+<td>{{ camion.capacite }}</td>
+<td>{{ camion.kilometrage_actuel }}</td>
+<td>{{ camion.kilometrage_alerte_vidange|default:"-" }}</td>
+<td>
+{% if camion.kilometrage_alerte_vidange and camion.kilometrage_actuel >= camion.kilometrage_alerte_vidange %}
+<span class="status-badge status-danger">Vidange due</span>
+{% else %}
+<span class="status-badge status-ok">RAS</span>
+{% endif %}
+</td>
+<td>{{ camion.panne_count }}</td>
+<td>
+{% if camion.performance_variant == "ok" %}
+<span class="status-badge status-ok">{{ camion.performance_percent }}% - {{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "warning" %}
+<span class="status-badge" style="background:#fff2d9; color:#9a6700;">{{ camion.performance_percent }}% - {{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "mid" %}
+<span class="status-badge" style="background:#fde7c7; color:#b45f06;">{{ camion.performance_percent }}% - {{ camion.performance_label }}</span>
+{% else %}
+<span class="status-badge status-danger">{{ camion.performance_percent }}% - {{ camion.performance_label }}</span>
+{% endif %}
+</td>
+<td>{{ camion.get_etat_display }}</td>
+<td>
+<div class="table-actions">
+{% if can_manage_logistique_assets %}
+<a href="/camions/modifier/{{ camion.id }}/" class="btn-edit">Modifier</a>
+<a href="/camions/supprimer/{{ camion.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce camion ?')">Supprimer</a>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="13">Aucun camion enregistre pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

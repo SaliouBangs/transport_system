@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Gestion des chauffeurs</h1>
+
+{% if can_manage_logistique_assets %}
+<a href="/chauffeurs/ajouter/" class="btn">Ajouter un chauffeur</a>
+{% endif %}
+
+<table class="table">
+<thead>
+<tr>
+<th>Nom</th>
+<th>Telephone</th>
+<th>Camion principal</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for chauffeur in chauffeurs %}
+<tr>
+<td>{{ chauffeur.nom }}</td>
+<td>{{ chauffeur.telephone }}</td>
+<td>{% if chauffeur.camion %}{{ chauffeur.camion.numero_tracteur }}{% if chauffeur.camion.numero_citerne %} / {{ chauffeur.camion.numero_citerne }}{% endif %}{% else %}-{% endif %}</td>
+<td>
+<div class="table-actions">
+{% if can_manage_logistique_assets %}
+<a href="/chauffeurs/modifier/{{ chauffeur.id }}/" class="btn-edit">Modifier</a>
+<a href="/chauffeurs/supprimer/{{ chauffeur.id }}/"
+class="btn-delete"
+onclick="return confirm('Supprimer ce chauffeur ?')">
+Supprimer
+</a>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucun chauffeur enregistre pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

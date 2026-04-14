@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Sous-module</p>
+<h1>Suivi GPS</h1>
+</div>
+<div class="field-inline">
+<a href="{{ gps_url }}" target="_blank" rel="noopener noreferrer" class="btn">Ouvrir GPS51</a>
+</div>
+</div>
+
+<div class="cards" style="align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Acces rapide</h3>
+<p style="font-size:1rem; margin-top:14px;">
+Retrouvez ici votre application GPS directement depuis la plateforme. Si l'affichage embarque est bloque par GPS51,
+utilisez le bouton d'ouverture dans un nouvel onglet.
+</p>
+<div class="form-actions" style="justify-content:flex-start; margin-top:18px;">
+<a href="{{ gps_url }}" target="_blank" rel="noopener noreferrer" class="btn">Lancer le monitoring</a>
+</div>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Vue integree</h3>
+<p style="font-size:0.96rem; margin-top:14px;">
+Cette vue essaye d'afficher GPS51 dans votre espace de travail. Si rien ne s'affiche, cela signifie probablement
+que le site externe interdit l'integration embarquee.
+</p>
+</div>
+</div>
+
+<div class="form-shell" style="max-width:100%; margin-top:24px; padding:16px;">
+<iframe
+    src="{{ gps_url }}"
+    title="Suivi GPS51"
+    style="width:100%; height:78vh; border:0; border-radius:18px; background:#f4f8fb;"
+    loading="lazy"
+    referrerpolicy="strict-origin-when-cross-origin">
+</iframe>
+</div>
+
+{% endblock %}

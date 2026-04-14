@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Prospects</h1>
+
+{% if can_add_prospects %}
+<a href="/prospects/ajouter/" class="btn">Ajouter prospect</a>
+{% endif %}
+
+<table class="table">
+<tr>
+<th>Nom</th>
+<th>Entreprise</th>
+<th>TÃ©lÃ©phone</th>
+<th>Ville</th>
+</tr>
+
+{% for prospect in prospects %}
+<tr>
+<td>{{ prospect.nom }}</td>
+<td>{{ prospect.entreprise }}</td>
+<td>{{ prospect.telephone }}</td>
+<td>{{ prospect.ville }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Execution</p>
+<h1>Gestion des livraisons</h1>
+</div>
+<div class="field-inline">
+<a href="/livraisons/export/xls/" class="btn-secondary">Exporter XLS</a>
+<a href="/livraisons/export/pdf/" class="btn-secondary">Exporter PDF</a>
+<a href="/livraisons/ajouter/" class="btn">Ajouter une livraison</a>
+</div>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Commande</th>
+<th>Client</th>
+<th>Affectation</th>
+<th>Date depart</th>
+<th>Date arrivee</th>
+<th>Statut</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for livraison in livraisons %}
+<tr>
+<td>{{ livraison.commande.reference }}</td>
+<td>{{ livraison.commande.client.entreprise }}</td>
+<td>
+{% if livraison.camion %}{{ livraison.camion.immatriculation }}{% else %}-{% endif %}
+ /
+{% if livraison.chauffeur %}{{ livraison.chauffeur.nom }}{% else %}-{% endif %}
+</td>
+<td>{{ livraison.date_depart }}</td>
+<td>{{ livraison.date_arrivee|default:"-" }}</td>
+<td>{{ livraison.get_statut_display }}</td>
+<td>
+<a href="/livraisons/modifier/{{ livraison.id }}/" class="btn-edit">Modifier</a>
+<a href="/livraisons/supprimer/{{ livraison.id }}/"
+class="btn-delete"
+onclick="return confirm('Supprimer cette livraison ?')">
+Supprimer
+</a>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucune livraison enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

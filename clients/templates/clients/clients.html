@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Base clients</p>
+<h1>Clients</h1>
+</div>
+{% if can_add_clients %}<a href="/clients/ajouter/" class="btn">Ajouter un client</a>{% endif %}
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Nom</th>
+<th>Entreprise</th>
+<th>Telephone</th>
+<th>Ville</th>
+<th>Prospect source</th>
+<th>Adresse</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for client in clients %}
+<tr>
+<td>{{ client.nom }}</td>
+<td>{{ client.entreprise }}</td>
+<td>{{ client.telephone }}</td>
+<td>{{ client.ville }}</td>
+<td>{% if client.prospect %}{{ client.prospect.entreprise }}{% else %}-{% endif %}</td>
+<td>{{ client.adresse|default:"-" }}</td>
+<td>
+<div class="table-actions">
+{% if can_edit_clients %}
+<a href="/clients/modifier/{{ client.id }}/" class="btn-edit">Modifier</a>
+<a href="/clients/supprimer/{{ client.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce client ?')">Supprimer</a>
+{% else %}
+<span class="status-badge status-ok">Lecture</span>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucun client enregistre pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

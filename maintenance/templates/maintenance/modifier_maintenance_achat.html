@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Achats pour {{ maintenance.reference }}</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label>Camion</label>
+            <input type="text" value="{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}" readonly>
+        </div>
+        <div class="field">
+            <label>Reference</label>
+            <input type="text" value="{{ maintenance.reference }}" readonly>
+        </div>
+        <div class="field">
+            <label for="{{ form.statut.id_for_label }}">Etat de la fiche</label>
+            {{ form.statut }}
+            {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.prestataire.id_for_label }}">Prestataire</label>
+            {{ form.prestataire }}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation achat</label>
+            {{ form.observation }}
+        </div>
+    </div>
+
+    <div class="box" style="margin-top:16px;">
+        <strong>Cloture</strong>
+        Pour passer la fiche a <em>Terminee</em>, tous les prix des pieces doivent etre saisis.
+        Vous pouvez aussi classer la fiche en <em>Refusee</em> ou <em>Annulee</em>.
+    </div>
+
+    <table class="table" style="margin-top:24px;">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Diagnostic</th>
+                <th>Piece</th>
+                <th>Qte</th>
+                <th>Prix unitaire</th>
+                <th>Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in piece_rows %}
+                {% if row.pieces %}
+                    {% for piece in row.pieces %}
+                    <tr>
+                        <td>{{ row.ligne.type_maintenance.libelle }}</td>
+                        <td>{{ row.ligne.libelle }}</td>
+                        <td>{{ piece.libelle }}</td>
+                        <td>{{ piece.quantite }}</td>
+                        <td>
+                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01">
+                        </td>
+                        <td>{{ piece.montant }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td>{{ row.ligne.type_maintenance.libelle }}</td>
+                    <td>{{ row.ligne.libelle }}</td>
+                    <td><span class="status-badge status-danger">Aucune piece definie</span></td>
+                    <td>{{ row.ligne.quantite }}</td>
+                    <td>
+                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01">
+                    </td>
+                    <td>{{ row.ligne.montant }}</td>
+                </tr>
+                {% endif %}
+            {% empty %}
+            <tr>
+                <td colspan="6">Aucune ligne garage disponible.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="table summary-table" style="margin-top:16px;">
+        <table class="table summary-table" style="margin-top:0;">
+            <tbody>
+                <tr>
+                    <th>Total maintenance</th>
+                    <td><strong>{{ maintenance.total_facture }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <a href="/maintenance/achat/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer les prix</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Exploitation</p>
+<h1>Gestion des commandes</h1>
+</div>
+<div class="field-inline">
+<a href="/commandes/export/xls/" class="btn-secondary">Exporter XLS</a>
+<a href="/commandes/export/pdf/" class="btn-secondary">Exporter PDF</a>
+{% if can_add_commandes %}
+<a href="/commandes/ajouter/" class="btn">Ajouter une commande</a>
+{% endif %}
+</div>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Client</th>
+<th>Produit</th>
+<th>Quantite</th>
+<th>Trajet</th>
+<th>Livraison prevue</th>
+<th>Statut</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for commande in commandes %}
+<tr>
+<td>{{ commande.reference }}</td>
+<td>{{ commande.client.entreprise }}</td>
+<td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
+<td>{% if commande.quantite %}{{ commande.quantite }}{% else %}-{% endif %}</td>
+<td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
+<td>{{ commande.date_livraison_prevue }}</td>
+<td>{{ commande.get_statut_display }}</td>
+<td>
+<div class="table-actions">
+{% if can_edit_commandes %}
+<a href="/commandes/modifier/{{ commande.id }}/" class="btn-edit">Modifier</a>
+<a href="/commandes/supprimer/{{ commande.id }}/"
+class="btn-delete"
+onclick="return confirm('Supprimer cette commande ?')">
+Supprimer
+</a>
+{% else %}
+<span class="status-badge status-ok">Lecture</span>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucune commande enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

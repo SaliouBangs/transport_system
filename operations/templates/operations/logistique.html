@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Logistique</p>
+<h1>{% if scope == "historique" %}Historique des BL affectes{% else %}BL non affectes a traiter{% endif %}</h1>
+</div>
+<div class="field-inline">
+    <form method="get" class="search-form" id="logistique-search-form">
+        {% if scope == "historique" %}<input type="hidden" name="scope" value="historique">{% endif %}
+        <input type="text" name="q" id="logistique-search-input" value="{{ query }}" placeholder="Recherche par BL, client, camion ou chauffeur">
+        <button type="submit" class="btn-secondary">Rechercher</button>
+    </form>
+    {% if scope == "historique" %}
+    <a href="/operations/logistique/" class="btn-secondary">BL non affectes</a>
+    {% else %}
+    <a href="/operations/logistique/?scope=historique" class="btn-secondary">Historique</a>
+    {% endif %}
+</div>
+</div>
+
+<table class="table" id="logistique-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Client</th>
+<th>Camion</th>
+<th>Chauffeur</th>
+<th>Livreur</th>
+<th>Date decharge</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+<td>{{ operation.livreur|default:"-" }}</td>
+<td>{{ operation.date_decharge_chauffeur|default:"-" }}</td>
+<td>
+<div class="table-actions">
+<a href="/operations/logistique/{{ operation.id }}/modifier/" class="btn-edit">{% if scope == "historique" %}Ouvrir{% else %}Affecter{% endif %}</a>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">{% if scope == "historique" %}Aucun BL affecte trouve.{% else %}Aucun BL non affecte disponible.{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const logistiqueSearchInput = document.getElementById("logistique-search-input");
+const logistiqueRows = document.querySelectorAll("#logistique-table tbody tr");
+
+function filterLogistiqueTable() {
+    const query = (logistiqueSearchInput?.value || "").trim().toLowerCase();
+    logistiqueRows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = !query || text.includes(query) ? "" : "none";
+    });
+}
+
+logistiqueSearchInput?.addEventListener("input", filterLogistiqueTable);
+filterLogistiqueTable();
+</script>
+{% endblock %}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Logistique</p>
+<h1>Affectation du BL {{ operation.numero_bl }}</h1>
+</div>
+</div>
+
+<div class="form-shell operation-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid operation-grid">
+        <div class="field">
+            <label for="{{ form.camion.id_for_label }}">Camion</label>
+            {{ form.camion }}
+            {% for error in form.camion.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.chauffeur.id_for_label }}">Chauffeur</label>
+            {{ form.chauffeur }}
+            {% for error in form.chauffeur.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.livreur.id_for_label }}">Livreur</label>
+            {{ form.livreur }}
+            {% for error in form.livreur.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_decharge_chauffeur.id_for_label }}">Date decharge chauffeur</label>
+            {{ form.date_decharge_chauffeur }}
+            {% for error in form.date_decharge_chauffeur.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.heure_decharge_chauffeur.id_for_label }}">Heure decharge chauffeur</label>
+            {{ form.heure_decharge_chauffeur }}
+            {% for error in form.heure_decharge_chauffeur.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation</label>
+            {{ form.observation }}
+            {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <div class="summary-panel">
+        <h2>Infos du camion choisi</h2>
+        <div class="form-alert" id="capacite-warning" hidden>
+            <p class="field-error" id="capacite-warning-text"></p>
+        </div>
+        <div class="form-shell" style="margin-top:16px; max-width:820px; padding:18px 20px;">
+            <table class="table summary-table" style="margin-top:0;">
+                <tbody>
+                    <tr><th>Numero</th><td id="camion-numero-info">-</td></tr>
+                    <tr><th>Capacite</th><td id="camion-capacite-info">-</td></tr>
+                    <tr><th>Etat</th><td><span class="status-badge" id="camion-etat-info">-</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Resume du BL</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Client</th><td>{{ operation.client.entreprise }}</td></tr>
+                <tr><th>Destination</th><td>{{ operation.destination }}</td></tr>
+                <tr><th>Commande</th><td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite</th><td>{{ operation.quantite }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <a href="/operations/logistique/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer l'affectation</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const logistiqueCamionSelect = document.getElementById("id_camion");
+const logistiqueChauffeurSelect = document.getElementById("id_chauffeur");
+const capaciteWarning = document.getElementById("capacite-warning");
+const capaciteWarningText = document.getElementById("capacite-warning-text");
+const camionCapacites = {{ camion_capacites|safe }};
+const operationQuantite = Number("{{ operation.quantite|default:'0' }}".replace(",", "."));
+const camionNumeroInfo = document.getElementById("camion-numero-info");
+const camionCapaciteInfo = document.getElementById("camion-capacite-info");
+const camionEtatInfo = document.getElementById("camion-etat-info");
+
+function formatNombreValeur(value) {
+    const number = Number(value || 0);
+    return number.toLocaleString("fr-FR").replace(/\u202f/g, ".").replace(/\s/g, ".");
+}
+
+function refreshCapaciteWarning() {
+    const camionId = logistiqueCamionSelect?.value;
+    const camionInfos = camionCapacites?.[camionId];
+    if (!camionInfos || !operationQuantite) {
+        if (capaciteWarning) {
+            capaciteWarning.hidden = true;
+        }
+        return;
+    }
+
+    const capacite = Number(camionInfos.capacite || 0);
+    if (operationQuantite > capacite) {
+        capaciteWarningText.textContent = `Attention: la commande est de ${formatNombreValeur(operationQuantite)} alors que le camion ${camionInfos.numero} a une capacite de ${formatNombreValeur(capacite)}. Merci de modifier le camion ou de revoir la commande.`;
+        capaciteWarning.hidden = false;
+        return;
+    }
+
+    capaciteWarning.hidden = true;
+}
+
+function refreshCamionInfos() {
+    const camionId = logistiqueCamionSelect?.value;
+    const camionInfos = camionCapacites?.[camionId];
+
+    if (!camionInfos) {
+        camionNumeroInfo.textContent = "-";
+        camionCapaciteInfo.textContent = "-";
+        camionEtatInfo.textContent = "-";
+        camionEtatInfo.className = "status-badge";
+        return;
+    }
+
+    const numeroComplet = camionInfos.numero_citerne ? `${camionInfos.numero} / ${camionInfos.numero_citerne}` : camionInfos.numero;
+    camionNumeroInfo.textContent = numeroComplet;
+    camionCapaciteInfo.textContent = formatNombreValeur(camionInfos.capacite);
+    camionEtatInfo.textContent = camionInfos.etat_label || camionInfos.etat;
+    camionEtatInfo.className = `status-badge ${camionInfos.etat === "disponible" ? "status-ok" : "status-danger"}`;
+}
+
+async function syncLogistiqueChauffeur() {
+    const camionId = logistiqueCamionSelect?.value;
+    if (!camionId || !logistiqueChauffeurSelect) {
+        refreshCamionInfos();
+        refreshCapaciteWarning();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/operations/chauffeur-par-camion/?camion_id=${camionId}`, {
+            credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (data.success && data.chauffeur) {
+            logistiqueChauffeurSelect.value = String(data.chauffeur.id);
+        }
+    } catch (error) {
+    }
+    refreshCamionInfos();
+    refreshCapaciteWarning();
+}
+
+logistiqueCamionSelect?.addEventListener("change", syncLogistiqueChauffeur);
+logistiqueCamionSelect?.addEventListener("change", refreshCamionInfos);
+logistiqueCamionSelect?.addEventListener("change", refreshCapaciteWarning);
+syncLogistiqueChauffeur();
+refreshCamionInfos();
+refreshCapaciteWarning();
+</script>
+{% endblock %}

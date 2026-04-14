@@ -1,0 +1,74 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django import forms
+from .models import Prospect
+from clients.models import Client
+from utilisateurs.permissions import role_required
+
+
+# FORMULAIRE
+class ProspectForm(forms.ModelForm):
+
+    class Meta:
+        model = Prospect
+        fields = ['nom', 'telephone', 'entreprise', 'ville']
+
+    def clean_entreprise(self):
+        entreprise = (self.cleaned_data.get("entreprise") or "").strip()
+        queryset = Prospect.objects.filter(entreprise__iexact=entreprise)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if entreprise and queryset.exists():
+            raise forms.ValidationError("Cette entreprise existe deja dans les prospects.")
+        return entreprise
+
+
+# LISTE PROSPECTS
+def liste_prospects(request):
+
+    prospects = Prospect.objects.all()
+
+    return render(request, "prospects/prospects.html", {"prospects": prospects})
+
+
+# AJOUTER PROSPECT
+def ajouter_prospect(request):
+
+    if request.method == "POST":
+
+        form = ProspectForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('prospects')
+
+    else:
+        form = ProspectForm()
+
+    return render(request, "prospects/ajouter_prospect.html", {"form": form})
+
+
+# CONVERTIR EN CLIENT
+def convertir_client(request, id):
+
+    prospect = get_object_or_404(Prospect, id=id)
+
+    client, created = Client.objects.get_or_create(
+
+        entreprise=prospect.entreprise,
+
+        defaults={
+            "nom": prospect.nom,
+            "telephone": prospect.telephone,
+            "ville": prospect.ville
+        }
+
+    )
+
+    prospect.delete()
+
+    return redirect('prospects')
+
+
+liste_prospects = role_required("commercial", "directeur")(liste_prospects)
+ajouter_prospect = role_required("commercial", "directeur")(ajouter_prospect)
+convertir_client = role_required("directeur")(convertir_client)

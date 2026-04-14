@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Comptabilite</p>
+<h1>Preparation des factures</h1>
+</div>
+<div class="field-inline">
+<form method="get" class="search-form" id="comptable-search-form">
+    <input type="text" name="q" id="comptable-search-input" value="{{ query }}" placeholder="Recherche par BL, commande ou client">
+    <button type="submit" class="btn-secondary">Rechercher</button>
+</form>
+<a href="/operations/comptable/ajouter/" class="btn">Nouveau BL</a>
+</div>
+</div>
+
+<table class="table" id="comptable-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Commande</th>
+<th>Client</th>
+<th>Produit</th>
+<th>Quantite</th>
+<th>Regime</th>
+<th>Depot</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
+<td>{{ operation.quantite|default:"-" }}</td>
+<td>{% if operation.regime_douanier %}{{ operation.regime_douanier.libelle }}{% else %}-{% endif %}</td>
+<td>{% if operation.depot %}{{ operation.depot.nom }}{% else %}-{% endif %}</td>
+<td>
+<a href="/operations/comptable/{{ operation.id }}/modifier/" class="btn-edit">Ouvrir</a>
+{% if operation.camion %}
+<a href="/operations/comptable/{{ operation.id }}/bon-livraison/" class="btn-secondary">Imprimer BL</a>
+{% else %}
+<span class="status-badge status-danger">Attente logistique</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucun BL disponible pour la comptabilite.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const comptableSearchInput = document.getElementById("comptable-search-input");
+const comptableRows = document.querySelectorAll("#comptable-table tbody tr");
+
+function filterComptableTable() {
+    const query = (comptableSearchInput?.value || "").trim().toLowerCase();
+    comptableRows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = !query || text.includes(query) ? "" : "none";
+    });
+}
+
+comptableSearchInput?.addEventListener("input", filterComptableTable);
+filterComptableTable();
+</script>
+{% endblock %}

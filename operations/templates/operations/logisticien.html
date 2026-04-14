@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Exploitation</p>
+<h1>Chargement et livraison</h1>
+</div>
+<form method="get" class="search-form" id="logisticien-search-form">
+    <input type="text" name="q" id="logisticien-search-input" value="{{ query }}" placeholder="Recherche par BL, client, camion ou chauffeur">
+    <button type="submit" class="btn-secondary">Rechercher</button>
+</form>
+</div>
+
+<table class="table" id="logisticien-table">
+<thead>
+<tr>
+<th>BL</th>
+<th>Client</th>
+<th>Etat</th>
+<th>Date charge</th>
+<th>Date livre</th>
+<th>Retour bon</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{{ operation.get_etat_bon_display }}</td>
+<td>{{ operation.date_bons_charges|default:"-" }}</td>
+<td>{{ operation.date_bons_livres|default:"-" }}</td>
+<td>{{ operation.date_bon_retour|default:"-" }}</td>
+<td><a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-edit">Mettre a jour</a></td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucune operation disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const logisticienSearchInput = document.getElementById("logisticien-search-input");
+const logisticienRows = document.querySelectorAll("#logisticien-table tbody tr");
+
+function filterLogisticienTable() {
+    const query = (logisticienSearchInput?.value || "").trim().toLowerCase();
+    logisticienRows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = !query || text.includes(query) ? "" : "none";
+    });
+}
+
+logisticienSearchInput?.addEventListener("input", filterLogisticienTable);
+filterLogisticienTable();
+</script>
+{% endblock %}

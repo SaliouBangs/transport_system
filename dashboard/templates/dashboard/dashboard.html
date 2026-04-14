@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Pilotage</p>
+<h1>Dashboard logistique</h1>
+</div>
+</div>
+
+<div class="cards">
+<div class="card"><h3>Camions total</h3><p>{{ camions_total }}</p></div>
+<div class="card"><h3>Disponibles</h3><p>{{ camions_disponibles }}</p></div>
+<div class="card"><h3>Au garage</h3><p>{{ camions_maintenance }}</p></div>
+<div class="card"><h3>Bons declares</h3><p>{{ bons_declares }}</p></div>
+<div class="card"><h3>Bons charges</h3><p>{{ bons_charges }}</p></div>
+<div class="card"><h3>Bons livres</h3><p>{{ bons_livres }}</p></div>
+<div class="card"><h3>Bons liquides</h3><p>{{ bons_liquides }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:18px;">
+<div class="card"><h3>Commandes</h3><p>{{ commandes_total }}</p></div>
+<div class="card"><h3>Bons en retard</h3><p>{{ bons_en_retard }}</p></div>
+<div class="card"><h3>Bons non retournes</h3><p>{{ bons_non_retournes }}</p></div>
+<div class="card"><h3>Montant facture</h3><p>{{ montant_facture_total }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Dernieres operations</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>BL</th>
+<th>Etat</th>
+<th>Client</th>
+<th>Produit</th>
+<th>Camion</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in dernieres_operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.get_etat_bon_display }}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
+<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{{ operation.date_creation|date:"Y-m-d" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="6">Aucune operation recente.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>Repartition essence / gasoil</h3>
+<div style="max-width:320px; margin:18px auto 0;">
+<canvas id="carburantChart"></canvas>
+</div>
+<p style="font-size:1rem; margin-top:14px;">Essence: {{ total_essence }} | Gasoil: {{ total_gasoil }}</p>
+</div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Alertes operations</h3>
+<p style="font-size:0.95rem; color:#6d8090;">Retard de livraison au-dela de {{ seuil_retard_jours }} jours ou bon non retourne.</p>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>BL</th>
+<th>Client</th>
+<th>Etat</th>
+<th>Date charge</th>
+<th>Date livre</th>
+</tr>
+</thead>
+<tbody>
+{% for operation in alertes_operations %}
+<tr>
+<td>{{ operation.numero_bl }}</td>
+<td>{{ operation.client.entreprise }}</td>
+<td>{{ operation.get_etat_bon_display }}</td>
+<td>{{ operation.date_bons_charges|default:"-" }}</td>
+<td>{{ operation.date_bons_livres|default:"-" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="5">Aucune alerte pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Top clients</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Client</th>
+<th>Total BL</th>
+<th>Quantite</th>
+</tr>
+</thead>
+<tbody>
+{% for item in top_clients %}
+<tr>
+<td>{{ item.client__entreprise }}</td>
+<td>{{ item.total_bons }}</td>
+<td>{{ item.total_quantite|default:"0" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="3">Aucune statistique client disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="card" style="margin-top:24px; text-align:left;">
+<h3>Camions les plus utilises</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Chauffeur</th>
+<th>Total BL</th>
+</tr>
+</thead>
+<tbody>
+{% for item in camions_plus_utilises %}
+<tr>
+<td>
+{{ item.numero_tracteur }}
+{% if item.numero_citerne %} / {{ item.numero_citerne }}{% endif %}
+</td>
+<td>{{ item.chauffeur__nom|default:"-" }}</td>
+<td>{{ item.total_bons }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="3">Aucune statistique camion disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Performance des camions</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Marque / capacite</th>
+<th>Pannes</th>
+<th>Performance</th>
+<th>Niveau</th>
+</tr>
+</thead>
+<tbody>
+{% for camion in performances_camions %}
+<tr>
+<td>
+{{ camion.numero_tracteur }}
+{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}
+</td>
+<td>
+{{ camion.marque|default:"-" }}{% if camion.capacite %} / {{ camion.capacite }} L{% endif %}
+</td>
+<td>{{ camion.panne_count }}</td>
+<td>{{ camion.performance_percent }}%</td>
+<td>
+{% if camion.performance_variant == "ok" %}
+<span class="status status-ok">{{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "warning" %}
+<span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">{{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "mid" %}
+<span class="status" style="background:rgba(230, 126, 34, 0.16); color:#c65d00;">{{ camion.performance_label }}</span>
+{% else %}
+<span class="status status-danger">{{ camion.performance_label }}</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="5">Aucune donnee de performance disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Croissance des bons inities par jour</h3>
+<div style="width:100%; margin-top:18px;">
+<canvas id="bonsChart"></canvas>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const carburantCtx = document.getElementById("carburantChart");
+new Chart(carburantCtx, {
+    type: "doughnut",
+    data: {
+        labels: ["Essence", "Gasoil"],
+        datasets: [{
+            data: [{{ total_essence|unlocalize }}, {{ total_gasoil|unlocalize }}],
+            backgroundColor: ["#1f9d7a", "#f0a83a"],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: "bottom"
+            }
+        }
+    }
+});
+
+const bonsCtx = document.getElementById("bonsChart");
+new Chart(bonsCtx, {
+    type: "line",
+    data: {
+        labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: "Bons inities",
+            data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: "#3f8fd6",
+            backgroundColor: "rgba(63, 143, 214, 0.16)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: "#123047"
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0
+                }
+            }
+        }
+    }
+});
+</script>
+
+{% endblock %}

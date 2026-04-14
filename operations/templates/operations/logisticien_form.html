@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Exploitation</p>
+<h1>Suivi du BL {{ operation.numero_bl }}</h1>
+</div>
+</div>
+
+<div class="form-shell operation-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="operation-kpis">
+        <p>Ce camion a fait : <strong><span id="jours-voyage-value">{% if operation.jours_voyage != None %}{{ operation.jours_voyage }}{% else %}-{% endif %}</span></strong> jour(s) de voyage</p>
+        <p>Et : <strong><span id="jours-retour-value">{% if operation.jours_retour_bon != None %}{{ operation.jours_retour_bon }}{% else %}-{% endif %}</span></strong> jour(s) pour retourner les bons au bureau.</p>
+    </div>
+
+    <div class="form-grid operation-grid">
+        <div class="field">
+            <label for="{{ form.etat_bon.id_for_label }}">Etat du bon</label>
+            {{ form.etat_bon }}
+            {% for error in form.etat_bon.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_bons_charges.id_for_label }}">Date charge</label>
+            {{ form.date_bons_charges }}
+            {% for error in form.date_bons_charges.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_bons_livres.id_for_label }}">Date livre</label>
+            {{ form.date_bons_livres }}
+            {% for error in form.date_bons_livres.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_bon_retour.id_for_label }}">Date retour bon</label>
+            {{ form.date_bon_retour }}
+            {% for error in form.date_bon_retour.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation</label>
+            {{ form.observation }}
+            {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/operations/logisticien/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Mettre a jour l'etat</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const logisticienDateCharge = document.getElementById("id_date_bons_charges");
+const logisticienDateLivre = document.getElementById("id_date_bons_livres");
+const logisticienDateRetour = document.getElementById("id_date_bon_retour");
+const logisticienJoursVoyage = document.getElementById("jours-voyage-value");
+const logisticienJoursRetour = document.getElementById("jours-retour-value");
+
+function diffInDays(startValue, endValue) {
+    if (!startValue || !endValue) {
+        return null;
+    }
+
+    const start = new Date(`${startValue}T00:00:00`);
+    const end = new Date(`${endValue}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return null;
+    }
+
+    return Math.round((end - start) / 86400000);
+}
+
+function refreshLogisticienKpis() {
+    const voyage = diffInDays(logisticienDateCharge?.value, logisticienDateLivre?.value);
+    const retour = diffInDays(logisticienDateLivre?.value, logisticienDateRetour?.value);
+
+    if (logisticienJoursVoyage) {
+        logisticienJoursVoyage.textContent = voyage === null ? "-" : String(voyage);
+    }
+    if (logisticienJoursRetour) {
+        logisticienJoursRetour.textContent = retour === null ? "-" : String(retour);
+    }
+}
+
+[logisticienDateCharge, logisticienDateLivre, logisticienDateRetour].forEach((input) => {
+    input?.addEventListener("input", refreshLogisticienKpis);
+    input?.addEventListener("change", refreshLogisticienKpis);
+});
+
+refreshLogisticienKpis();
+</script>
+{% endblock %}

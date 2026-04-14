@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Coeur metier</p>
+<h1>Ajouter une operation</h1>
+</div>
+</div>
+
+<div class="form-shell operation-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+    {% include "operations/_operation_form.html" %}
+
+    <div class="form-actions">
+        <a href="/operations/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+<div class="modal" id="produit-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="produit-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un produit</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="produit-modal">x</button>
+        </div>
+
+        <form id="produit-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="modal-produit-nom">Nom du produit</label>
+                {{ produit_form.nom }}
+            </div>
+            <div class="field-error" id="produit-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="produit-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le produit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const etatBonSelect = document.getElementById("id_etat_bon");
+const actionDateFields = document.querySelectorAll(".action-date-field");
+const produitModalForm = document.getElementById("produit-modal-form");
+const produitSelect = document.getElementById("id_produit");
+const produitModalErrors = document.getElementById("produit-modal-errors");
+const produitCsrfInput = produitModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const camionSelect = document.getElementById("id_camion");
+const chauffeurSelect = document.getElementById("id_chauffeur");
+const dateChargesInput = document.getElementById("id_date_bons_charges");
+const dateLivresInput = document.getElementById("id_date_bons_livres");
+const dateRetourInput = document.getElementById("id_date_bon_retour");
+const joursVoyageValue = document.getElementById("jours-voyage-value");
+const joursRetourValue = document.getElementById("jours-retour-value");
+
+function refreshActionFields() {
+    const value = etatBonSelect?.value || "";
+    actionDateFields.forEach((field) => {
+        field.style.display = field.dataset.etats === value ? "flex" : "none";
+    });
+}
+
+etatBonSelect?.addEventListener("change", refreshActionFields);
+refreshActionFields();
+
+async function syncChauffeurFromCamion() {
+    const camionId = camionSelect?.value;
+    if (!camionId || !chauffeurSelect) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/operations/chauffeur-par-camion/?camion_id=${camionId}`, {
+            credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (data.success && data.chauffeur) {
+            chauffeurSelect.value = String(data.chauffeur.id);
+        }
+    } catch (error) {
+    }
+}
+
+camionSelect?.addEventListener("change", syncChauffeurFromCamion);
+syncChauffeurFromCamion();
+
+function diffInDays(startValue, endValue) {
+    if (!startValue || !endValue) {
+        return null;
+    }
+
+    const start = new Date(`${startValue}T00:00:00`);
+    const end = new Date(`${endValue}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return null;
+    }
+
+    return Math.round((end - start) / 86400000);
+}
+
+function refreshOperationKpis() {
+    const voyage = diffInDays(dateChargesInput?.value, dateLivresInput?.value);
+    const retour = diffInDays(dateLivresInput?.value, dateRetourInput?.value);
+
+    if (joursVoyageValue) {
+        joursVoyageValue.textContent = voyage === null ? "-" : String(voyage);
+    }
+    if (joursRetourValue) {
+        joursRetourValue.textContent = retour === null ? "-" : String(retour);
+    }
+}
+
+[dateChargesInput, dateLivresInput, dateRetourInput].forEach((input) => {
+    input?.addEventListener("input", refreshOperationKpis);
+    input?.addEventListener("change", refreshOperationKpis);
+});
+refreshOperationKpis();
+
+produitModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    produitModalErrors.hidden = true;
+    produitModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+
+    try {
+        response = await fetch("/operations/produits/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": produitCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(produitModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le produit pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        produitModalErrors.textContent = messages.join(" ");
+        produitModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.produit.label, data.produit.id, true, true);
+    produitSelect.add(option);
+    produitSelect.value = data.produit.id;
+    produitModalForm.reset();
+    document.getElementById("produit-modal")?.classList.remove("is-open");
+});
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Nouvelle fiche garage</h1>
+</div>
+</div>
+
+{% include "maintenance/_maintenance_form.html" with submit_label="Enregistrer le diagnostic" %}
+
+{% endblock %}
+
+{% block extra_modals %}
+<div class="modal" id="type-maintenance-modal">
+    <div class="modal-backdrop" data-modal-close="type-maintenance-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Maintenance</p>
+                <h2 style="margin:0;">Ajouter un type de maintenance</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="type-maintenance-modal">x</button>
+        </div>
+        <form id="type-maintenance-form" class="app-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="{{ type_form.libelle.id_for_label }}">Libelle</label>
+                {{ type_form.libelle }}
+                <p class="field-error" id="type-maintenance-error" style="display:none;"></p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="type-maintenance-modal">Annuler</button>
+                <button type="submit" class="btn">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% include "maintenance/_garage_form_scripts.html" %}
+{% endblock %}

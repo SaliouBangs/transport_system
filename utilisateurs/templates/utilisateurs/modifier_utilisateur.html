@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Administration</p>
+<h1>Modifier {{ utilisateur.username }}</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="{{ form.username.id_for_label }}">Nom d'utilisateur</label>
+            {{ form.username }}
+            {% if form.username.errors %}<p class="field-error">{{ form.username.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.role.id_for_label }}">Role</label>
+            {{ form.role }}
+            {% if form.role.errors %}<p class="field-error">{{ form.role.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.first_name.id_for_label }}">Prenom</label>
+            {{ form.first_name }}
+        </div>
+        <div class="field">
+            <label for="{{ form.last_name.id_for_label }}">Nom</label>
+            {{ form.last_name }}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+        </div>
+        <div class="field">
+            <label for="{{ form.new_password1.id_for_label }}">Nouveau mot de passe</label>
+            {{ form.new_password1 }}
+            {% if form.new_password1.errors %}<p class="field-error">{{ form.new_password1.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.new_password2.id_for_label }}">Confirmer le nouveau mot de passe</label>
+            {{ form.new_password2 }}
+            {% if form.new_password2.errors %}<p class="field-error">{{ form.new_password2.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.is_active.id_for_label }}">Compte actif</label>
+            <div class="field-inline">{{ form.is_active }}</div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/comptes/utilisateurs/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

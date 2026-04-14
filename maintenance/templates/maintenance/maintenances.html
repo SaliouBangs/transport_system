@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Gestion des maintenances</h1>
+</div>
+{% if can_manage_logistique_assets %}<a href="/maintenance/ajouter/" class="btn">Ajouter une maintenance</a>{% endif %}
+</div>
+
+<div class="cards" style="margin-bottom:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Dernieres maintenances</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Camion</th>
+<th>Types</th>
+<th>Statut</th>
+<th>Total</th>
+<th>Prestataire</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for maintenance in maintenances %}
+<tr>
+<td>{{ maintenance.reference }}</td>
+<td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
+<td>
+{% for ligne in maintenance.lignes.all %}
+<div style="margin-bottom:8px;">
+<strong>{{ ligne.type_maintenance.libelle }}</strong>
+{% if ligne.sous_lignes.all %}
+<div style="margin-top:4px; color:#6d8090; font-size:0.92rem;">
+{% for sous_ligne in ligne.sous_lignes.all %}
+{{ sous_ligne.libelle }} (x{{ sous_ligne.quantite }}){% if not forloop.last %}, {% endif %}
+{% endfor %}
+</div>
+{% endif %}
+</div>
+{% empty %}
+-
+{% endfor %}
+</td>
+<td>{{ maintenance.get_statut_display }}</td>
+<td>{{ maintenance.total_facture }}</td>
+<td>{{ maintenance.prestataire|default:"-" }}</td>
+<td>
+<div class="table-actions">
+{% if can_manage_logistique_assets %}
+<a href="/maintenance/modifier/{{ maintenance.id }}/" class="btn-edit">Modifier</a>
+<a href="/maintenance/supprimer/{{ maintenance.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette maintenance ?')">Supprimer</a>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucune maintenance enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Camions qui depensent le plus</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Nombre de maintenances</th>
+<th>Total depense</th>
+</tr>
+</thead>
+<tbody>
+{% for item in depenses_camions %}
+<tr>
+<td>{{ item.camion__numero_tracteur }}{% if item.camion__numero_citerne %} / {{ item.camion__numero_citerne }}{% endif %}</td>
+<td>{{ item.total_maintenances }}</td>
+<td>{{ item.total_depense|default:"0" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="3">Aucune depense maintenance disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+{% endblock %}

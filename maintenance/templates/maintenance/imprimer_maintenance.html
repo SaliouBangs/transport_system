@@ -1,0 +1,202 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostic {{ maintenance.reference }}</title>
+<style>
+body{
+    font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color:#163042;
+    margin:24px;
+}
+.sheet{
+    max-width:980px;
+    margin:0 auto;
+}
+.header{
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    align-items:flex-start;
+    margin-bottom:24px;
+}
+.brand{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+}
+.brand img{
+    width:96px;
+    height:auto;
+    object-fit:contain;
+}
+.eyebrow{
+    margin:0 0 6px 0;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:0.78rem;
+    font-weight:700;
+    color:#249274;
+}
+h1,h2,h3,p{
+    margin-top:0;
+}
+.meta{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px 18px;
+    margin-bottom:24px;
+}
+.box{
+    border:1px solid #d9e2e8;
+    border-radius:14px;
+    padding:12px 14px;
+    background:#f9fbfd;
+}
+.box strong{
+    display:block;
+    margin-bottom:4px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:12px;
+}
+th{
+    background:#123047;
+    color:white;
+    text-align:left;
+    padding:10px 12px;
+}
+td{
+    border:1px solid #d9e2e8;
+    padding:10px 12px;
+    vertical-align:top;
+}
+.subline{
+    color:#5f7384;
+    font-size:0.93rem;
+    margin-top:4px;
+}
+.actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:18px;
+}
+.print-btn{
+    border:none;
+    background:#249274;
+    color:white;
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
+}
+@media print{
+    .actions{
+        display:none;
+    }
+    body{
+        margin:0;
+    }
+    .sheet{
+        max-width:none;
+    }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="actions">
+        <button type="button" class="print-btn" onclick="window.print()">Imprimer</button>
+    </div>
+
+    <div class="header">
+        <div class="brand">
+            <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
+            <div>
+                <p class="eyebrow">Garage / diagnostic</p>
+                <h1>Fiche diagnostic {{ maintenance.reference }}</h1>
+            </div>
+        </div>
+        <div>
+            <strong>Statut :</strong> {{ maintenance.get_statut_display }}<br>
+            <strong>Date entree :</strong> {{ maintenance.date_debut|date:"Y-m-d H:i" }}<br>
+            <strong>Date sortie :</strong> {% if maintenance.date_fin %}{{ maintenance.date_fin|date:"Y-m-d H:i" }}{% else %}-{% endif %}
+        </div>
+    </div>
+
+    <div class="meta">
+        <div class="box">
+            <strong>Camion</strong>
+            {{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}<br>
+            <span>Capacite: {{ maintenance.camion.capacite }}</span>
+        </div>
+        <div class="box">
+            <strong>Kilometrage</strong>
+            Entree: {{ maintenance.kilometrage_entree|default:"-" }}<br>
+            Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
+        </div>
+        <div class="box">
+            <strong>Chauffeur</strong>
+            {% if chauffeur %}
+            {{ chauffeur.nom }}<br>
+            Telephone: {{ chauffeur.telephone|default:"-" }}
+            {% else %}
+            Non affecte<br>
+            Telephone: -
+            {% endif %}
+        </div>
+        <div class="box">
+            <strong>Prestataire</strong>
+            {{ maintenance.prestataire|default:"-" }}
+        </div>
+        <div class="box">
+            <strong>Prochaine vidange</strong>
+            {% if maintenance.prochaine_vidange_dans_km %}
+            Dans {{ maintenance.prochaine_vidange_dans_km }} km
+            {% else %}
+            -
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="box" style="margin-bottom:24px;">
+        <strong>Observation</strong>
+        {{ maintenance.observation|default:"-" }}
+    </div>
+
+    <h2>Diagnostic detaille</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Diagnostic</th>
+                <th>Pieces liees</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ligne in maintenance.lignes.all %}
+            <tr>
+                <td>{{ ligne.type_maintenance.libelle }}</td>
+                <td>{{ ligne.libelle }}</td>
+                <td>
+                    {% for sous_ligne in ligne.sous_lignes.all %}
+                    <div>{{ sous_ligne.libelle }} (x{{ sous_ligne.quantite }})</div>
+                    {% empty %}
+                    -
+                    {% endfor %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">Aucune ligne de diagnostic.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

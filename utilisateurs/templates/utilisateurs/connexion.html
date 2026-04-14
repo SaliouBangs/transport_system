@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Connexion</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{
+margin:0;
+min-height:100vh;
+display:grid;
+place-items:center;
+font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+background:
+radial-gradient(circle at top left, rgba(79,191,159,0.2), transparent 24%),
+linear-gradient(135deg, #123047 0%, #1d4968 100%);
+}
+.login-shell{
+width:min(460px, calc(100vw - 32px));
+background:rgba(255,255,255,0.98);
+border-radius:24px;
+padding:28px;
+box-shadow:0 24px 48px rgba(8,20,30,0.28);
+}
+.eyebrow{
+margin:0 0 8px 0;
+text-transform:uppercase;
+letter-spacing:0.14em;
+font-size:0.78rem;
+font-weight:700;
+color:#249274;
+}
+h1{
+margin:0 0 10px 0;
+color:#123047;
+}
+p{
+color:#5e7484;
+margin:0 0 20px 0;
+}
+label{
+display:block;
+margin:0 0 8px 0;
+font-weight:700;
+color:#123047;
+}
+input{
+width:100%;
+box-sizing:border-box;
+padding:13px 14px;
+border-radius:14px;
+border:1px solid #d9e2e8;
+margin-bottom:16px;
+}
+button{
+width:100%;
+border:none;
+border-radius:14px;
+padding:13px 16px;
+font-weight:700;
+color:white;
+background:linear-gradient(135deg, #4fbf9f 0%, #249274 100%);
+cursor:pointer;
+}
+.flash{
+margin-bottom:16px;
+padding:12px 14px;
+border-radius:14px;
+background:#fdebea;
+color:#9f2d21;
+border:1px solid #f3c8c2;
+font-weight:600;
+}
+</style>
+</head>
+<body>
+<div class="login-shell">
+<p class="eyebrow">Acces securise</p>
+<h1>Connexion</h1>
+<p>Connectez-vous avec le compte correspondant a votre profil metier.</p>
+{% if messages %}
+    {% for message in messages %}
+    <div class="flash">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    <label for="id_username">Nom d'utilisateur</label>
+    <input type="text" name="username" id="id_username" required autofocus>
+
+    <label for="id_password">Mot de passe</label>
+    <input type="password" name="password" id="id_password" required>
+
+    <button type="submit">Se connecter</button>
+</form>
+</div>
+</body>
+</html>

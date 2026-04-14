@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Comptabilite</p>
+<h1>{{ page_title }}</h1>
+</div>
+</div>
+
+<div class="form-shell operation-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid operation-grid">
+        <div class="field">
+            <label for="{{ form.numero_bl.id_for_label }}">Numero BL</label>
+            {{ form.numero_bl }}
+            {% for error in form.numero_bl.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.commande.id_for_label }}">Bon de commande</label>
+            {{ form.commande }}
+            {% for error in form.commande.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.regime_douanier.id_for_label }}">Regime douanier</label>
+            <div class="field-inline">
+                {{ form.regime_douanier }}
+                <button type="button" class="btn-secondary btn-inline" data-modal-target="regime-modal">Ajouter regime</button>
+            </div>
+            {% for error in form.regime_douanier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.depot.id_for_label }}">Depot</label>
+            <div class="field-inline">
+                {{ form.depot }}
+                <button type="button" class="btn-secondary btn-inline" data-modal-target="depot-modal">Ajouter depot</button>
+            </div>
+            {% for error in form.depot.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.client.id_for_label }}">Client</label>
+            {{ form.client }}
+            {% for error in form.client.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.destination.id_for_label }}">Destination</label>
+            {{ form.destination }}
+            {% for error in form.destination.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.produit.id_for_label }}">Produit</label>
+            <div class="field-inline">
+                {{ form.produit }}
+                <button type="button" class="btn-secondary btn-inline" data-modal-target="produit-modal">Ajouter produit</button>
+            </div>
+            {% for error in form.produit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.quantite.id_for_label }}">Quantite</label>
+            {{ form.quantite }}
+            {% for error in form.quantite.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_bl.id_for_label }}">Date BL</label>
+            {{ form.date_bl }}
+            {% for error in form.date_bl.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation</label>
+            {{ form.observation }}
+            {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <div class="summary-panel">
+        <h2>Resume du BL</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Commande</th><td id="commande-resume">{% if form.instance.commande %}{{ form.instance.commande.reference }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Regime</th><td id="regime-resume">{% if form.instance.regime_douanier %}{{ form.instance.regime_douanier.libelle }} ({{ form.instance.regime_douanier.code_regime }}){% else %}-{% endif %}</td></tr>
+                <tr><th>Depot</th><td id="depot-resume">{% if form.instance.depot %}{{ form.instance.depot.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Client</th><td id="client-resume">{% if form.instance.client %}{{ form.instance.client.entreprise }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Destination</th><td id="destination-resume">{{ form.instance.destination|default:"-" }}</td></tr>
+                <tr><th>Produit</th><td id="produit-resume">{% if form.instance.produit %}{{ form.instance.produit.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite</th><td id="quantite-resume">{{ form.instance.quantite|default:"-" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <a href="/operations/comptable/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">{{ submit_label }}</button>
+    </div>
+</form>
+</div>
+
+<div class="modal" id="produit-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="produit-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un produit</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="produit-modal">x</button>
+        </div>
+        <form id="produit-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="modal-produit-nom-comptable">Nom du produit</label>
+                {{ produit_form.nom }}
+            </div>
+            <div class="field-error" id="produit-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="produit-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le produit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="regime-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="regime-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un regime douanier</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="regime-modal">x</button>
+        </div>
+        <form id="regime-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="modal-regime-libelle">Libelle</label>
+                    {{ regime_form.libelle }}
+                </div>
+                <div class="field">
+                    <label for="modal-regime-code">Code regime</label>
+                    {{ regime_form.code_regime }}
+                </div>
+            </div>
+            <div class="field-error" id="regime-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="regime-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le regime</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="depot-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="depot-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un depot</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="depot-modal">x</button>
+        </div>
+        <form id="depot-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="modal-depot-nom">Nom du depot</label>
+                {{ depot_form.nom }}
+            </div>
+            <div class="field-error" id="depot-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="depot-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le depot</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const commandeSelect = document.getElementById("id_commande");
+const regimeSelect = document.getElementById("id_regime_douanier");
+const depotSelect = document.getElementById("id_depot");
+const clientSelect = document.getElementById("id_client");
+const destinationInput = document.getElementById("id_destination");
+const produitSelect = document.getElementById("id_produit");
+const quantiteInput = document.getElementById("id_quantite");
+const produitModalForm = document.getElementById("produit-modal-form");
+const produitModalErrors = document.getElementById("produit-modal-errors");
+const produitCsrfInput = produitModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const regimeModalForm = document.getElementById("regime-modal-form");
+const regimeModalErrors = document.getElementById("regime-modal-errors");
+const regimeCsrfInput = regimeModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const depotModalForm = document.getElementById("depot-modal-form");
+const depotModalErrors = document.getElementById("depot-modal-errors");
+const depotCsrfInput = depotModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const commandeResume = document.getElementById("commande-resume");
+const regimeResume = document.getElementById("regime-resume");
+const depotResume = document.getElementById("depot-resume");
+const clientResume = document.getElementById("client-resume");
+const destinationResume = document.getElementById("destination-resume");
+const produitResume = document.getElementById("produit-resume");
+const quantiteResume = document.getElementById("quantite-resume");
+
+function selectedText(selectElement) {
+    return selectElement?.options[selectElement.selectedIndex]?.text || "-";
+}
+
+function refreshResume() {
+    if (commandeResume) {
+        commandeResume.textContent = selectedText(commandeSelect);
+    }
+    if (regimeResume) {
+        regimeResume.textContent = selectedText(regimeSelect);
+    }
+    if (depotResume) {
+        depotResume.textContent = selectedText(depotSelect);
+    }
+    if (clientResume) {
+        clientResume.textContent = selectedText(clientSelect);
+    }
+    if (destinationResume) {
+        destinationResume.textContent = destinationInput?.value || "-";
+    }
+    if (produitResume) {
+        produitResume.textContent = selectedText(produitSelect);
+    }
+    if (quantiteResume) {
+        quantiteResume.textContent = quantiteInput?.value || "-";
+    }
+}
+
+async function syncCommandeInfos() {
+    const commandeId = commandeSelect?.value;
+    if (!commandeId) {
+        refreshResume();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/operations/commande-infos/?commande_id=${commandeId}`, {
+            credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            return;
+        }
+
+        if (clientSelect && data.commande.client_id) {
+            clientSelect.value = String(data.commande.client_id);
+        }
+        if (destinationInput) {
+            destinationInput.value = data.commande.destination || "";
+        }
+        if (produitSelect && data.commande.produit_id) {
+            produitSelect.value = String(data.commande.produit_id);
+        }
+        if (quantiteInput) {
+            quantiteInput.value = data.commande.quantite || "";
+        }
+        refreshResume();
+    } catch (error) {
+    }
+}
+
+[commandeSelect, regimeSelect, depotSelect, clientSelect, destinationInput, produitSelect, quantiteInput].forEach((element) => {
+    element?.addEventListener("change", refreshResume);
+    element?.addEventListener("input", refreshResume);
+});
+
+commandeSelect?.addEventListener("change", syncCommandeInfos);
+refreshResume();
+
+produitModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    produitModalErrors.hidden = true;
+    produitModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+
+    try {
+        response = await fetch("/operations/produits/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": produitCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(produitModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le produit pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        produitModalErrors.textContent = messages.join(" ");
+        produitModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.produit.label, data.produit.id, true, true);
+    produitSelect.add(option);
+    produitSelect.value = data.produit.id;
+    produitModalForm.reset();
+    refreshResume();
+    document.getElementById("produit-modal")?.classList.remove("is-open");
+});
+
+regimeModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    regimeModalErrors.hidden = true;
+    regimeModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+
+    try {
+        response = await fetch("/operations/regimes/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": regimeCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(regimeModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le regime pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        regimeModalErrors.textContent = messages.join(" ");
+        regimeModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.regime.label, data.regime.id, true, true);
+    regimeSelect.add(option);
+    regimeSelect.value = data.regime.id;
+    regimeModalForm.reset();
+    refreshResume();
+    document.getElementById("regime-modal")?.classList.remove("is-open");
+});
+
+depotModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    depotModalErrors.hidden = true;
+    depotModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+
+    try {
+        response = await fetch("/operations/depots/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": depotCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(depotModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le depot pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        depotModalErrors.textContent = messages.join(" ");
+        depotModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.depot.label, data.depot.id, true, true);
+    depotSelect.add(option);
+    depotSelect.value = data.depot.id;
+    depotModalForm.reset();
+    refreshResume();
+    document.getElementById("depot-modal")?.classList.remove("is-open");
+});
+</script>
+{% endblock %}

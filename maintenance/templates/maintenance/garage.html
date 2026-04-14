@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Garage et diagnostics</h1>
+</div>
+{% if can_manage_logistique_assets %}<a href="/maintenance/garage/ajouter/" class="btn">Nouvelle fiche garage</a>{% endif %}
+</div>
+
+<div class="cards" style="margin-bottom:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Fiches atelier</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Camion</th>
+<th>Entree / sortie</th>
+<th>Kilometrage</th>
+<th>Diagnostics</th>
+<th>Statut</th>
+<th>Total</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for maintenance in maintenances %}
+<tr{% if maintenance.statut == "en_cours" %} style="background:rgba(217, 92, 79, 0.10);"{% endif %}>
+<td>{{ maintenance.reference }}</td>
+<td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
+<td>
+{{ maintenance.date_debut|date:"Y-m-d H:i" }}<br>
+{% if maintenance.date_fin %}{{ maintenance.date_fin|date:"Y-m-d H:i" }}{% else %}-{% endif %}
+</td>
+<td>
+Entree: {{ maintenance.kilometrage_entree|default:"-" }}<br>
+Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
+</td>
+<td>
+{% for ligne in maintenance.lignes.all %}
+<div style="margin-bottom:8px;">
+<strong>{{ ligne.type_maintenance.libelle }}</strong> : {{ ligne.libelle }}
+{% if ligne.sous_lignes.all %}
+<div style="margin-top:4px; color:#6d8090; font-size:0.92rem;">
+{% for sous_ligne in ligne.sous_lignes.all %}
+{{ sous_ligne.libelle }} (x{{ sous_ligne.quantite }}){% if not forloop.last %}, {% endif %}
+{% endfor %}
+</div>
+{% endif %}
+</div>
+{% empty %}
+-
+{% endfor %}
+</td>
+<td>{{ maintenance.get_statut_display }}</td>
+<td>{{ maintenance.total_facture }}</td>
+<td>
+<div class="table-actions">
+<a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
+<a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Imprimer</a>
+{% if maintenance.statut == "en_cours" %}
+    {% if maintenance.pricing_complete %}
+    <form method="post" action="/maintenance/garage/terminer/{{ maintenance.id }}/">
+        {% csrf_token %}
+        <button type="submit" class="btn-secondary">Terminer</button>
+    </form>
+    {% else %}
+    <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
+    {% endif %}
+{% endif %}
+<a href="/maintenance/supprimer/{{ maintenance.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette maintenance ?')">Supprimer</a>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucune maintenance enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Camions qui depensent le plus</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Nombre de maintenances</th>
+<th>Total depense</th>
+</tr>
+</thead>
+<tbody>
+{% for item in depenses_camions %}
+<tr>
+<td>{{ item.camion__numero_tracteur }}{% if item.camion__numero_citerne %} / {{ item.camion__numero_citerne }}{% endif %}</td>
+<td>{{ item.total_maintenances }}</td>
+<td>{{ item.total_depense|default:"0" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="3">Aucune depense maintenance disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+{% endblock %}

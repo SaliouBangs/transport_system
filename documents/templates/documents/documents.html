@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Conformite flotte</p>
+<h1>Documents camions</h1>
+</div>
+{% if can_manage_logistique_assets %}<a href="/documents/ajouter/" class="btn">Ajouter un document</a>{% endif %}
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Type</th>
+<th>Numero</th>
+<th>Emission</th>
+<th>Expiration</th>
+<th>Alerte</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for document in documents %}
+<tr>
+<td>{{ document.camion.immatriculation }}</td>
+<td>{{ document.get_type_document_display }}</td>
+<td>{{ document.numero_document }}</td>
+<td>{{ document.date_emission }}</td>
+<td>{{ document.date_expiration }}</td>
+<td>
+{% if document.date_expiration < today %}
+<span class="status-badge status-danger">Expire</span>
+{% else %}
+<span class="status-badge status-ok">Valide</span>
+{% endif %}
+</td>
+<td>
+<div class="table-actions">
+{% if can_manage_logistique_assets %}
+<a href="/documents/modifier/{{ document.id }}/" class="btn-edit">Modifier</a>
+<a href="/documents/supprimer/{{ document.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce document ?')">Supprimer</a>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucun document enregistre pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

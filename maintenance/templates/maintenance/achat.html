@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>{% if historique %}Historique des valorisations{% else %}Achats et valorisation{% endif %}</h1>
+</div>
+<div class="table-actions">
+{% if historique %}
+<a href="/maintenance/achat/" class="btn-secondary">Nouveaux diagnostics</a>
+{% else %}
+<a href="/maintenance/achat/?scope=historique" class="btn-secondary">Historique</a>
+{% endif %}
+</div>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Camion</th>
+<th>Kilometrage</th>
+<th>Prestataire</th>
+<th>Lignes</th>
+<th>Total facture</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for maintenance in maintenances %}
+<tr>
+<td>{{ maintenance.reference }}</td>
+<td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
+<td>{{ maintenance.kilometrage_entree|default:"-" }}{% if maintenance.kilometrage_sortie %} / {{ maintenance.kilometrage_sortie }}{% endif %}</td>
+<td>{{ maintenance.prestataire|default:"-" }}</td>
+<td>{{ maintenance.lignes.count }}</td>
+<td>{{ maintenance.total_facture }}</td>
+<td><a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a></td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">{% if historique %}Aucun ancien diagnostic valorise disponible.{% else %}Aucun nouveau diagnostic disponible pour les achats.{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

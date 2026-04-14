@@ -1,0 +1,250 @@
+<div class="form-shell">
+<form method="post" class="app-form" id="maintenance-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if formset.non_form_errors %}
+    <div class="form-alert">
+        {% for error in formset.non_form_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="camion-search-input">Numero du camion</label>
+            {{ form.camion.as_hidden }}
+            <input
+                type="text"
+                id="camion-search-input"
+                list="camions-catalog"
+                placeholder="Rechercher un numero de camion"
+                value="{% if form.camion.value %}{% for camion in camions_catalog %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% endif %}{% endfor %}{% endif %}"
+                autocomplete="off"
+            >
+            <datalist id="camions-catalog">
+                {% for camion in camions_catalog %}
+                <option
+                    value="{{ camion.numero_tracteur }}"
+                    data-id="{{ camion.id }}"
+                    data-tracteur="{{ camion.numero_tracteur }}"
+                    data-citerne="{{ camion.numero_citerne }}"
+                    data-capacite="{{ camion.capacite }}"
+                    data-chauffeur="{{ camion.chauffeur|default:'' }}"
+                ></option>
+                {% endfor %}
+            </datalist>
+            {% if form.camion.errors %}<p class="field-error">{{ form.camion.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field field-full">
+            <div class="box" style="min-height:74px;">
+                <strong>Informations du camion</strong>
+                <div id="camion-info-display" style="margin-top:6px; color:#5f7384;">
+                    Selectionnez un camion pour afficher le chauffeur et la capacite.
+                </div>
+            </div>
+        </div>
+        {% if maintenance %}
+        <div class="field">
+            <label for="{{ form.statut.id_for_label }}">Statut</label>
+            {{ form.statut }}
+            {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
+        </div>
+        {% else %}
+        {{ form.statut.as_hidden }}
+        {% endif %}
+        <div class="field">
+            <label for="{{ form.date_debut.id_for_label }}">Date d'entree base</label>
+            {{ form.date_debut }}
+            {% if form.date_debut.errors %}<p class="field-error">{{ form.date_debut.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_fin.id_for_label }}">Date de sortie</label>
+            {{ form.date_fin }}
+            {% if form.date_fin.errors %}<p class="field-error">{{ form.date_fin.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.kilometrage_entree.id_for_label }}">Kilometrage d'entree</label>
+            {{ form.kilometrage_entree }}
+            {% if form.kilometrage_entree.errors %}<p class="field-error">{{ form.kilometrage_entree.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.kilometrage_sortie.id_for_label }}">Kilometrage de sortie</label>
+            {{ form.kilometrage_sortie }}
+            {% if form.kilometrage_sortie.errors %}<p class="field-error">{{ form.kilometrage_sortie.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.prochaine_vidange_dans_km.id_for_label }}">Prochaine vidange dans (km)</label>
+            {{ form.prochaine_vidange_dans_km }}
+            {% if form.prochaine_vidange_dans_km.errors %}<p class="field-error">{{ form.prochaine_vidange_dans_km.errors.0 }}</p>{% endif %}
+            <p class="field-error" id="next-service-preview" style="color:#6d8090;">
+                Saisir le km d'entree ou de sortie pour calculer la prochaine vidange.
+            </p>
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.prestataire.id_for_label }}">Prestataire</label>
+            {{ form.prestataire }}
+            {% if form.prestataire.errors %}<p class="field-error">{{ form.prestataire.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation generale</label>
+            {{ form.observation }}
+            {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="summary-panel">
+        <div class="page-header" style="margin-bottom:12px;">
+            <div>
+                <p class="eyebrow">Facture maintenance</p>
+                <h2 style="margin:0;">Lignes de maintenance</h2>
+            </div>
+            <div class="table-actions">
+                <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
+                <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>
+            </div>
+        </div>
+
+        {{ formset.management_form }}
+        <table class="table" id="maintenance-lines-table" style="margin-top:0;">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Libelle facture</th>
+                    <th>Pieces liees</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="maintenance-lines-body">
+                {% for ligne_form in formset %}
+                <tr class="maintenance-line-row">
+                    {% for hidden in ligne_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    <td>
+                        {{ ligne_form.type_maintenance }}
+                        {% if ligne_form.type_maintenance.errors %}<p class="field-error">{{ ligne_form.type_maintenance.errors.0 }}</p>{% endif %}
+                    </td>
+                    <td>
+                        {{ ligne_form.libelle }}
+                        {% if ligne_form.libelle.errors %}<p class="field-error">{{ ligne_form.libelle.errors.0 }}</p>{% endif %}
+                    </td>
+                    <td>
+                        <div class="subline-stack">
+                            {% for value in ligne_form.subline_values %}
+                            <div class="subline-item" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                                <input type="hidden" name="subline-{{ ligne_form.prefix }}-ids" value="{{ value.id }}">
+                                <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
+                                <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
+                                <button type="button" class="btn-delete subline-remove-btn">x</button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn-secondary subline-add-btn" style="margin-top:8px;">Ajouter piece</button>
+                    </td>
+                    <td>
+                        {% if ligne_form.instance.pk %}
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            {{ ligne_form.DELETE }} Supprimer
+                        </label>
+                        {% else %}
+                        {{ ligne_form.DELETE.as_hidden }}
+                        <button type="button" class="btn-delete remove-line-btn">Retirer</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+    <div class="form-actions">
+        <a href="/maintenance/garage/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">{{ submit_label }}</button>
+    </div>
+</form>
+</div>
+
+<template id="empty-line-template">
+    <tr class="maintenance-line-row">
+        {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+        <td>{{ formset.empty_form.type_maintenance }}</td>
+        <td>{{ formset.empty_form.libelle }}</td>
+        <td>
+            <div class="subline-stack">
+                {% for value in formset.empty_form.subline_values %}
+                <div class="subline-item" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                    <input type="hidden" name="subline-{{ formset.empty_form.prefix }}-ids" value="{{ value.id }}">
+                    <input type="number" name="subline-{{ formset.empty_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
+                    <input type="text" name="subline-{{ formset.empty_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
+                    <button type="button" class="btn-delete subline-remove-btn">x</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn-secondary subline-add-btn" style="margin-top:8px;">Ajouter piece</button>
+        </td>
+        <td>
+            {{ formset.empty_form.DELETE.as_hidden }}
+            <button type="button" class="btn-delete remove-line-btn">Retirer</button>
+        </td>
+    </tr>
+</template>
+
+<script>
+(function () {
+    const searchInput = document.getElementById("camion-search-input");
+    const hiddenSelect = document.getElementById("{{ form.camion.id_for_label }}");
+    const catalog = document.getElementById("camions-catalog");
+    const infoDisplay = document.getElementById("camion-info-display");
+
+    if (!searchInput || !hiddenSelect || !catalog || !infoDisplay) {
+        return;
+    }
+
+    const options = Array.from(catalog.options);
+
+    function renderCamionInfo(option) {
+        if (!option) {
+            infoDisplay.textContent = "Selectionnez un camion pour afficher le chauffeur et la capacite.";
+            return;
+        }
+
+        const citerne = option.dataset.citerne ? " / " + option.dataset.citerne : "";
+        const chauffeur = option.dataset.chauffeur || "Non affecte";
+        const capacite = option.dataset.capacite ? option.dataset.capacite + " L" : "-";
+
+        infoDisplay.innerHTML =
+            "<strong>Camion :</strong> " + option.dataset.tracteur + citerne +
+            " &nbsp;|&nbsp; <strong>Chauffeur :</strong> " + chauffeur +
+            " &nbsp;|&nbsp; <strong>Capacite :</strong> " + capacite;
+    }
+
+    function syncCamionSelection() {
+        const match = options.find((option) => option.value === searchInput.value.trim());
+        if (!match) {
+            hiddenSelect.value = "";
+            renderCamionInfo(null);
+            return;
+        }
+
+        hiddenSelect.value = match.dataset.id;
+        renderCamionInfo(match);
+    }
+
+    const initialOption = options.find((option) => option.dataset.id === hiddenSelect.value);
+    if (initialOption && !searchInput.value) {
+        searchInput.value = initialOption.value;
+    }
+    renderCamionInfo(initialOption || null);
+
+    searchInput.addEventListener("input", syncCamionSelection);
+    searchInput.addEventListener("change", syncCamionSelection);
+})();
+</script>

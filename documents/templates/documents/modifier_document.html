@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Conformite flotte</p>
+<h1>Modifier un document</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="{{ form.camion.id_for_label }}">Camion</label>
+            {{ form.camion }}
+        </div>
+        <div class="field">
+            <label for="{{ form.type_document.id_for_label }}">Type de document</label>
+            {{ form.type_document }}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.numero_document.id_for_label }}">Numero du document</label>
+            {{ form.numero_document }}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_emission.id_for_label }}">Date d'emission</label>
+            {{ form.date_emission }}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_expiration.id_for_label }}">Date d'expiration</label>
+            {{ form.date_expiration }}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.commentaire.id_for_label }}">Commentaire</label>
+            {{ form.commentaire }}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/documents/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Mettre a jour</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

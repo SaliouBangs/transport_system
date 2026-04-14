@@ -1,0 +1,152 @@
+<script>
+const formPrefix = "{{ formset.prefix }}";
+const linesBody = document.getElementById("maintenance-lines-body");
+const totalFormsInput = document.getElementById(`id_${formPrefix}-TOTAL_FORMS`);
+const addLineBtn = document.getElementById("add-line-btn");
+const emptyLineTemplate = document.getElementById("empty-line-template");
+const kilometrageEntreeInput = document.getElementById("id_kilometrage_entree");
+const kilometrageSortieInput = document.getElementById("id_kilometrage_sortie");
+const prochaineVidangeInput = document.getElementById("id_prochaine_vidange_dans_km");
+const nextServicePreview = document.getElementById("next-service-preview");
+
+function bindRow(row) {
+    const deleteCheckbox = row.querySelector(`input[name$="-DELETE"]`);
+    if (deleteCheckbox) {
+        deleteCheckbox.addEventListener("change", () => {
+            row.style.display = deleteCheckbox.checked ? "none" : "";
+        });
+    }
+
+    const removeBtn = row.querySelector(".remove-line-btn");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            row.remove();
+        });
+    }
+
+    bindSublineEvents(row);
+}
+
+function formatKm(value) {
+    return Number(value || 0).toLocaleString("fr-FR").replace(/\u202f/g, " ");
+}
+
+function updateNextServicePreview() {
+    if (!nextServicePreview) {
+        return;
+    }
+
+    const currentKm = Number(
+        kilometrageSortieInput?.value ||
+        kilometrageEntreeInput?.value ||
+        0
+    );
+    const intervalKm = Number(prochaineVidangeInput?.value || 0);
+
+    if (!currentKm || !intervalKm) {
+        nextServicePreview.textContent = "Saisir le km d'entree ou de sortie pour calculer la prochaine vidange.";
+        return;
+    }
+
+    const nextKm = currentKm + intervalKm;
+    nextServicePreview.textContent = `Prochaine vidange: ${formatKm(currentKm)} + ${formatKm(intervalKm)} = ${formatKm(nextKm)} km`;
+}
+
+function createSublineItem(prefix, value = {}) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "subline-item";
+    wrapper.style.display = "flex";
+    wrapper.style.gap = "8px";
+    wrapper.style.alignItems = "center";
+    wrapper.style.marginBottom = "8px";
+    wrapper.innerHTML = `
+        <input type="hidden" name="subline-${prefix}-ids" value="${value.id || ""}">
+        <input type="number" name="subline-${prefix}-quantites" value="${value.quantite || "1"}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
+        <input type="text" name="subline-${prefix}-labels" value="${value.libelle || ""}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
+        <input type="hidden" name="subline-${prefix}-prixs" value="${value.prix_unitaire || "0"}">
+        <button type="button" class="btn-delete subline-remove-btn">x</button>
+    `;
+    return wrapper;
+}
+
+function bindSublineEvents(row) {
+    row.querySelectorAll(".subline-remove-btn").forEach((button) => {
+        button.onclick = () => {
+            const stack = button.closest(".subline-stack");
+            button.closest(".subline-item")?.remove();
+            if (stack && !stack.children.length) {
+                const prefix = row.querySelector(`input[name$="-id"], select[name$="-type_maintenance"]`)?.name?.split("-").slice(0, 2).join("-");
+                if (prefix) {
+                    stack.appendChild(createSublineItem(prefix));
+                    bindSublineEvents(row);
+                }
+            }
+        };
+    });
+
+    row.querySelectorAll(".subline-add-btn").forEach((button) => {
+        button.onclick = () => {
+            const stack = row.querySelector(".subline-stack");
+            const prefix = row.querySelector(`input[name$="-id"], select[name$="-type_maintenance"]`)?.name?.split("-").slice(0, 2).join("-");
+            if (!stack || !prefix) {
+                return;
+            }
+            stack.appendChild(createSublineItem(prefix));
+            bindSublineEvents(row);
+        };
+    });
+}
+
+addLineBtn?.addEventListener("click", () => {
+    const index = Number(totalFormsInput.value);
+    const templateHtml = emptyLineTemplate.innerHTML.replaceAll("__prefix__", index);
+    linesBody.insertAdjacentHTML("beforeend", templateHtml);
+    totalFormsInput.value = index + 1;
+    const newRow = linesBody.lastElementChild;
+    bindRow(newRow);
+});
+
+linesBody.querySelectorAll(".maintenance-line-row").forEach(bindRow);
+kilometrageEntreeInput?.addEventListener("input", updateNextServicePreview);
+kilometrageSortieInput?.addEventListener("input", updateNextServicePreview);
+prochaineVidangeInput?.addEventListener("input", updateNextServicePreview);
+updateNextServicePreview();
+
+const typeForm = document.getElementById("type-maintenance-form");
+const typeError = document.getElementById("type-maintenance-error");
+
+typeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    typeError.style.display = "none";
+    typeError.textContent = "";
+
+    const response = await fetch("/maintenance/types/ajouter-modal/", {
+        method: "POST",
+        body: new FormData(typeForm),
+        headers: {
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.success) {
+        const message = payload.errors?.libelle?.[0] || payload.errors?.__all__?.[0] || "Impossible d'ajouter ce type.";
+        typeError.textContent = message;
+        typeError.style.display = "block";
+        return;
+    }
+
+    linesBody.querySelectorAll(`select[name$="-type_maintenance"]`).forEach((select) => {
+        const option = new Option(payload.type_maintenance.label, payload.type_maintenance.id, false, false);
+        select.add(option);
+    });
+
+    const lastSelect = linesBody.lastElementChild?.querySelector(`select[name$="-type_maintenance"]`);
+    if (lastSelect) {
+        lastSelect.value = payload.type_maintenance.id;
+    }
+
+    typeForm.reset();
+    document.getElementById("type-maintenance-modal")?.classList.remove("is-open");
+});
+</script>

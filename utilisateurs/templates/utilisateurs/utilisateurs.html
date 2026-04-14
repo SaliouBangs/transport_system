@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Administration</p>
+<h1>Comptes utilisateurs</h1>
+</div>
+<a href="/comptes/utilisateurs/ajouter/" class="btn">Creer un compte</a>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Utilisateur</th>
+<th>Nom complet</th>
+<th>Email</th>
+<th>Role</th>
+<th>Statut</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for item in utilisateurs %}
+<tr>
+<td>{{ item.username }}</td>
+<td>{{ item.nom_complet }}</td>
+<td>{{ item.email }}</td>
+<td>{% if item.is_superuser %}Administrateur{% else %}{{ item.role }}{% endif %}</td>
+<td>
+{% if item.is_active %}
+<span class="status-badge status-ok">Actif</span>
+{% else %}
+<span class="status-badge status-danger">Inactif</span>
+{% endif %}
+</td>
+<td>
+<div class="table-actions">
+<a href="/comptes/utilisateurs/modifier/{{ item.id }}/" class="btn-edit">Modifier</a>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="6">Aucun compte utilisateur enregistre.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

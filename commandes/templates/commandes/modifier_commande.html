@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Exploitation</p>
+<h1>Modifier la commande {{ commande.reference }}</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="{{ form.reference.id_for_label }}">Reference</label>
+            {{ form.reference }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.client.id_for_label }}">Client</label>
+            <input
+                type="text"
+                id="client-search-input"
+                list="clients-list"
+                placeholder="Rechercher un client"
+                value="{% for client in clients %}{% if client.id == commande.client_id %}{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}{% endif %}{% endfor %}">
+            {{ form.client.as_hidden }}
+            <datalist id="clients-list">
+                {% for client in clients %}
+                <option value="{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}" data-id="{{ client.id }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+
+        <div class="field field-full">
+            <label for="{{ form.description.id_for_label }}">Description</label>
+            {{ form.description }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.ville_depart.id_for_label }}">Ville de depart</label>
+            {{ form.ville_depart }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.ville_arrivee.id_for_label }}">Ville d'arrivee</label>
+            {{ form.ville_arrivee }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.date_livraison_prevue.id_for_label }}">Livraison prevue</label>
+            {{ form.date_livraison_prevue }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.statut.id_for_label }}">Statut</label>
+            {{ form.statut }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.produit.id_for_label }}">Produit</label>
+            {{ form.produit }}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.quantite.id_for_label }}">Quantite</label>
+            {{ form.quantite }}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/commandes/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Mettre a jour</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const clientSelect = document.getElementById("id_client");
+const clientSearchInput = document.getElementById("client-search-input");
+const clientOptions = Array.from(document.querySelectorAll("#clients-list option"));
+
+function syncClientSelectionFromSearch() {
+    const match = clientOptions.find((option) => option.value === clientSearchInput?.value);
+    clientSelect.value = match?.dataset.id || "";
+}
+
+clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
+clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
+</script>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Exploitation</p>
+<h1>Ajouter une commande</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label for="{{ form.reference.id_for_label }}">Reference</label>
+            {{ form.reference }}
+            {% if form.reference.errors %}<p class="field-error">{{ form.reference.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.client.id_for_label }}">Client</label>
+            <div class="field-inline">
+                <div style="flex:1;">
+                    <input
+                        type="text"
+                        id="client-search-input"
+                        list="clients-list"
+                        placeholder="Rechercher un client"
+                        value="{% if form.client.value %}{% for client in clients %}{% if client.id|stringformat:'s' == form.client.value|stringformat:'s' %}{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}{% endif %}{% endfor %}{% endif %}">
+                    {{ form.client.as_hidden }}
+                    <datalist id="clients-list">
+                        {% for client in clients %}
+                        <option value="{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}" data-id="{{ client.id }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <button
+                    type="button"
+                    class="btn-secondary btn-inline"
+                    data-modal-target="client-modal">
+                    Nouveau client
+                </button>
+            </div>
+            {% if form.client.errors %}<p class="field-error">{{ form.client.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field field-full">
+            <label for="{{ form.description.id_for_label }}">Description</label>
+            {{ form.description }}
+            {% if form.description.errors %}<p class="field-error">{{ form.description.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.ville_depart.id_for_label }}">Ville de depart</label>
+            {{ form.ville_depart }}
+            {% if form.ville_depart.errors %}<p class="field-error">{{ form.ville_depart.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.ville_arrivee.id_for_label }}">Ville d'arrivee</label>
+            {{ form.ville_arrivee }}
+            {% if form.ville_arrivee.errors %}<p class="field-error">{{ form.ville_arrivee.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.date_livraison_prevue.id_for_label }}">Livraison prevue</label>
+            {{ form.date_livraison_prevue }}
+            {% if form.date_livraison_prevue.errors %}<p class="field-error">{{ form.date_livraison_prevue.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.statut.id_for_label }}">Statut</label>
+            {{ form.statut }}
+            {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.produit.id_for_label }}">Produit</label>
+            {{ form.produit }}
+            {% if form.produit.errors %}<p class="field-error">{{ form.produit.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.quantite.id_for_label }}">Quantite</label>
+            {{ form.quantite }}
+            {% if form.quantite.errors %}<p class="field-error">{{ form.quantite.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/commandes/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+<div class="modal" id="client-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="client-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un client</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="client-modal">x</button>
+        </div>
+
+        <form id="client-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="modal-nom">Nom</label>
+                    <input id="modal-nom" name="nom" type="text" required>
+                </div>
+
+                <div class="field">
+                    <label for="modal-telephone">Telephone</label>
+                    <input id="modal-telephone" name="telephone" type="text" required>
+                </div>
+
+                <div class="field">
+                    <label for="modal-entreprise">Entreprise</label>
+                    <input id="modal-entreprise" name="entreprise" type="text" required>
+                </div>
+
+                <div class="field">
+                    <label for="modal-ville">Ville</label>
+                    <input id="modal-ville" name="ville" type="text" required>
+                </div>
+            </div>
+
+            <div class="field-error" id="client-modal-errors" hidden></div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="client-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le client</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const clientModalForm = document.getElementById("client-modal-form");
+const clientSelect = document.getElementById("id_client");
+const clientSearchInput = document.getElementById("client-search-input");
+const clientOptions = Array.from(document.querySelectorAll("#clients-list option"));
+const clientModalErrors = document.getElementById("client-modal-errors");
+const csrfInput = clientModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+
+function syncClientSelectionFromSearch() {
+    const match = clientOptions.find((option) => option.value === clientSearchInput?.value);
+    clientSelect.value = match?.dataset.id || "";
+}
+
+clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
+clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
+
+clientModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    clientModalErrors.hidden = true;
+    clientModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+
+    try {
+        response = await fetch("/clients/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(clientModalForm),
+            credentials: "same-origin"
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            data = {
+                success: false,
+                errors: { __all__: ["Le serveur a renvoye une reponse inattendue."] }
+            };
+        }
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'envoyer le formulaire client pour le moment."] }
+        };
+    }
+
+    
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        clientModalErrors.textContent = messages.join(" ");
+        clientModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.client.label, data.client.id, true, true);
+    clientSelect.value = data.client.id;
+    const datalistOption = document.createElement("option");
+    datalistOption.value = data.client.label;
+    datalistOption.dataset.id = data.client.id;
+    document.getElementById("clients-list")?.appendChild(datalistOption);
+    clientOptions.push(datalistOption);
+    clientSearchInput.value = data.client.label;
+    clientModalForm.reset();
+    document.getElementById("client-modal")?.classList.remove("is-open");
+});
+</script>
+{% endblock %}
