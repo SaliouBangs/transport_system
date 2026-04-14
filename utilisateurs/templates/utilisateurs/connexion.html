@@ -82,6 +82,11 @@ font-weight:600;
     <div class="flash">{{ message }}</div>
     {% endfor %}
 {% endif %}
+{% if debug_login.username %}
+    <div class="flash" style="background:#eef7ff; color:#184d77; border-color:#c9ddf0;">
+        Diagnostic: username='{{ debug_login.username }}' | longueur mot de passe={{ debug_login.password_length }}
+    </div>
+{% endif %}
 <form method="post">
     {% csrf_token %}
     <label for="id_username">Nom d'utilisateur</label>

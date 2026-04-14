@@ -22,9 +22,14 @@ def connexion_view(request):
     if request.user.is_authenticated:
         return redirect(get_default_landing_url(request.user))
 
+    debug_login = {}
     if request.method == "POST":
         username = (request.POST.get("username") or "").strip()
         password = request.POST.get("password") or ""
+        debug_login = {
+            "username": username,
+            "password_length": len(password),
+        }
         user = authenticate(username=username, password=password)
         if user is not None and user.is_active:
             login(request, user)
@@ -32,7 +37,7 @@ def connexion_view(request):
             return redirect(next_url)
         messages.error(request, "Nom d'utilisateur ou mot de passe invalide.")
 
-    return render(request, "utilisateurs/connexion.html")
+    return render(request, "utilisateurs/connexion.html", {"debug_login": debug_login})
 
 
 def deconnexion_view(request):
