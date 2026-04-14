@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python313", "gcc"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["bash build.sh"]
+
+[start]
+cmd = "python manage.py migrate && gunicorn transport_system.wsgi --log-file -"
