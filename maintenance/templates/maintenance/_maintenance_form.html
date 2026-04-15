@@ -114,7 +114,7 @@
                 <p class="eyebrow">Facture maintenance</p>
                 <h2 style="margin:0;">Lignes de maintenance</h2>
             </div>
-            {% if not read_only %}
+            {% if not read_only and allow_structure_changes|default:True %}
             <div class="table-actions">
                 <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
                 <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>
@@ -151,25 +151,34 @@
                                 <input type="hidden" name="subline-{{ ligne_form.prefix }}-ids" value="{{ value.id }}">
                                 <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;" {% if read_only %}readonly{% endif %}>
                                 <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;" {% if read_only %}readonly{% endif %}>
-                                {% if not read_only %}
+                                {% if not read_only and allow_structure_changes|default:True %}
                                 <button type="button" class="btn-delete subline-remove-btn">x</button>
                                 {% endif %}
                             </div>
                             {% endfor %}
                         </div>
-                        {% if not read_only %}
+                        {% if not read_only and allow_structure_changes|default:True %}
                         <button type="button" class="btn-secondary subline-add-btn" style="margin-top:8px;">Ajouter piece</button>
                         {% endif %}
                     </td>
                     <td>
                         {% if not read_only %}
                         {% if ligne_form.instance.pk %}
+                        {% if is_admin_maintenance %}
                         <label style="display:flex; align-items:center; gap:8px;">
                             {{ ligne_form.DELETE }} Supprimer
                         </label>
                         {% else %}
                         {{ ligne_form.DELETE.as_hidden }}
+                        <span class="status-badge status-ok">Modification autorisee</span>
+                        {% endif %}
+                        {% else %}
+                        {{ ligne_form.DELETE.as_hidden }}
+                        {% if allow_structure_changes|default:True %}
                         <button type="button" class="btn-delete remove-line-btn">Retirer</button>
+                        {% else %}
+                        <span class="status-badge status-ok">Modification autorisee</span>
+                        {% endif %}
                         {% endif %}
                         {% else %}
                         <span class="status-badge status-ok">Lecture</span>
@@ -191,7 +200,7 @@
 </form>
 </div>
 
-{% if not read_only %}
+{% if not read_only and allow_structure_changes|default:True %}
 <template id="empty-line-template">
     <tr class="maintenance-line-row">
         {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}

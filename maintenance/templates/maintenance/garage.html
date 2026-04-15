@@ -81,7 +81,11 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 {% if maintenance.validation_logistique_at %}<div><span class="status-badge status-ok">Logistique</span></div>{% endif %}
 {% if maintenance.validation_dga_at %}<div><span class="status-badge status-ok">DGA</span></div>{% endif %}
 {% if maintenance.validation_dg_at %}<div><span class="status-badge status-ok">DG</span></div>{% endif %}
-{% if not maintenance.validation_logistique_at and not maintenance.validation_dga_at and not maintenance.validation_dg_at %}-{% endif %}
+<div style="margin-top:6px;">
+    <span class="status-badge {% if maintenance.validation_status_variant == 'ok' %}status-ok{% else %}status-danger{% endif %}">
+        {{ maintenance.validation_status_label }}
+    </span>
+</div>
 </td>
 <td>{{ maintenance.total_facture }}</td>
 <td>

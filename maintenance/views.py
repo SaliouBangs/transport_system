@@ -215,7 +215,7 @@ def _attach_subline_values(formset, request=None):
     ]
 
 
-def _save_subline_items(request, formset):
+def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
     for ligne_form in formset.forms:
         if not hasattr(ligne_form, "cleaned_data"):
             continue
@@ -247,7 +247,7 @@ def _save_subline_items(request, formset):
                 subline.quantite = quantity_raw or "1"
                 subline.save()
                 kept_ids.append(subline.id)
-            else:
+            elif allow_create:
                 subline = MaintenanceSousLigne.objects.create(
                     maintenance_ligne=ligne,
                     libelle=label,
@@ -255,7 +255,8 @@ def _save_subline_items(request, formset):
                 )
                 kept_ids.append(subline.id)
 
-        ligne.sous_lignes.exclude(id__in=kept_ids).delete()
+        if allow_delete:
+            ligne.sous_lignes.exclude(id__in=kept_ids).delete()
 
 
 def _attach_achat_piece_rows(maintenance):
@@ -324,6 +325,18 @@ def garage_maintenances(request):
             and maintenance.is_validated_by_dga()
             and not maintenance.is_validated_by_dg()
         )
+        if not maintenance.is_validated_by_logistique():
+            maintenance.validation_status_label = "En attente validation logistique"
+            maintenance.validation_status_variant = "warning"
+        elif not maintenance.is_validated_by_dga():
+            maintenance.validation_status_label = "En attente validation DGA"
+            maintenance.validation_status_variant = "warning"
+        elif not maintenance.is_validated_by_dg():
+            maintenance.validation_status_label = "En attente validation DG"
+            maintenance.validation_status_variant = "warning"
+        else:
+            maintenance.validation_status_label = "Validation complete"
+            maintenance.validation_status_variant = "ok"
     depenses_camions = (
         Maintenance.objects.values("camion__numero_tracteur", "camion__numero_citerne")
         .annotate(total_depense=Sum("total_facture"), total_maintenances=Count("id"))
@@ -447,17 +460,26 @@ def modifier_maintenance_garage(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
     is_admin = is_admin_user(request.user)
     if request.method == "POST":
-        if not is_admin:
-            messages.error(request, "Seul l'administrateur peut modifier un diagnostic existant.")
-            return redirect("garage_maintenances")
         form = MaintenanceGarageForm(request.POST, instance=maintenance)
         formset = MaintenanceGarageLigneFormSet(request.POST, instance=maintenance)
         if form.is_valid() and formset.is_valid():
+            if not is_admin and any(
+                form.cleaned_data.get("DELETE")
+                for form in formset.forms
+                if hasattr(form, "cleaned_data")
+            ):
+                messages.error(request, "Seul l'administrateur peut supprimer une ligne de panne.")
+                return redirect("modifier_maintenance_garage", id=maintenance.id)
             with transaction.atomic():
                 maintenance = form.save()
                 formset.instance = maintenance
                 formset.save()
-                _save_subline_items(request, formset)
+                _save_subline_items(
+                    request,
+                    formset,
+                    allow_create=is_admin,
+                    allow_delete=is_admin,
+                )
                 maintenance.refresh_total_facture()
                 maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
                 journaliser_action(
@@ -481,7 +503,8 @@ def modifier_maintenance_garage(request, id):
         form,
         formset,
         maintenance=maintenance,
-        read_only=not is_admin,
+        read_only=False,
+        allow_structure_changes=is_admin,
         submit_label="Mettre a jour le diagnostic",
     )
 
