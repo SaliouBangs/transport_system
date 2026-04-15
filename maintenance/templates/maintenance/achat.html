@@ -58,7 +58,7 @@
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
 <td>{{ maintenance.date_paiement|default:"-" }}</td>
-<td>{% if is_admin_maintenance %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
+<td>{% if can_edit_achat %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
 </tr>
 {% empty %}
 <tr>

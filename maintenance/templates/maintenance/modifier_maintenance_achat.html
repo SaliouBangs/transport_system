@@ -28,7 +28,7 @@
             <label for="{{ form.fournisseur.id_for_label }}">Fournisseur</label>
             <div class="field-inline">
                 {{ form.fournisseur }}
-                {% if not read_only %}
+                {% if can_edit_achat %}
                 <button type="button" class="btn-secondary btn-inline" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
                 {% endif %}
             </div>
@@ -39,7 +39,11 @@
         </div>
         <div class="field">
             <label for="{{ form.statut.id_for_label }}">Etat de la fiche</label>
+            {% if can_edit_achat and not is_admin_maintenance %}
+            <input type="text" value="{{ maintenance.get_statut_display }}" readonly>
+            {% else %}
             {{ form.statut }}
+            {% endif %}
             {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
         </div>
         <div class="field">
@@ -83,7 +87,7 @@
                         <td>{{ piece.libelle }}</td>
                         <td>{{ piece.quantite }}</td>
                         <td>
-                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01" {% if not is_admin_maintenance %}readonly{% endif %}>
+                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01" {% if not can_edit_achat %}readonly{% endif %}>
                         </td>
                         <td>{{ piece.montant }}</td>
                     </tr>
@@ -95,7 +99,7 @@
                     <td><span class="status-badge status-danger">Aucune piece definie</span></td>
                     <td>{{ row.ligne.quantite }}</td>
                     <td>
-                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01" {% if not is_admin_maintenance %}readonly{% endif %}>
+                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01" {% if not can_edit_achat %}readonly{% endif %}>
                     </td>
                     <td>{{ row.ligne.montant }}</td>
                 </tr>
@@ -121,14 +125,14 @@
 
     <div class="form-actions">
         <a href="/maintenance/achat/" class="btn-secondary">Retour</a>
-        {% if is_admin_maintenance %}
+        {% if can_edit_achat %}
         <button type="submit" class="btn">Enregistrer les prix</button>
         {% endif %}
     </div>
 </form>
 </div>
 
-{% if not read_only %}
+{% if can_edit_achat %}
 <div class="modal" id="fournisseur-modal" aria-hidden="true">
     <div class="modal-backdrop" data-modal-close="fournisseur-modal"></div>
     <div class="modal-dialog">
@@ -173,7 +177,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-{% if not read_only %}
+{% if can_edit_achat %}
 <script>
 const fournisseurModalForm = document.getElementById("fournisseur-modal-form");
 const fournisseurSelect = document.getElementById("id_fournisseur");

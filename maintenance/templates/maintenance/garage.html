@@ -97,12 +97,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 {% endif %}
 <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Imprimer</a>
 {% if maintenance.statut == "en_cours" %}
-    {% if maintenance.pricing_complete %}
-    <form method="post" action="/maintenance/garage/terminer/{{ maintenance.id }}/">
-        {% csrf_token %}
-        <button type="submit" class="btn-secondary">Terminer</button>
-    </form>
-    {% else %}
+    {% if not maintenance.pricing_complete %}
     <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
     {% endif %}
 {% endif %}
@@ -117,11 +112,19 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DGA</button>
 </form>
+<form method="post" action="/maintenance/garage/rejeter-dga/{{ maintenance.id }}/">
+{% csrf_token %}
+<button type="submit" class="btn-delete">Rejeter DGA</button>
+</form>
 {% endif %}
 {% if maintenance.can_validate_dg %}
 <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DG</button>
+</form>
+<form method="post" action="/maintenance/garage/rejeter-dg/{{ maintenance.id }}/">
+{% csrf_token %}
+<button type="submit" class="btn-delete">Rejeter DG</button>
 </form>
 {% endif %}
 {% if is_admin_maintenance %}
