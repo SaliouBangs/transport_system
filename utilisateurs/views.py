@@ -53,6 +53,16 @@ def connexion_demo_view(request):
     return redirect(get_default_landing_url(demo_user))
 
 
+def force_demo_view(request):
+    demo_user = User.objects.filter(username__iexact="admin1", is_active=True).first()
+    if not demo_user:
+        messages.error(request, "Le compte admin1 est introuvable en production.")
+        return redirect("connexion")
+
+    login(request, demo_user, backend="django.contrib.auth.backends.ModelBackend")
+    return redirect("/dashboard/")
+
+
 def deconnexion_view(request):
     logout(request)
     return redirect("connexion")
