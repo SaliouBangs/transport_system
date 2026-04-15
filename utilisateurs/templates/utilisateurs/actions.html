@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Administration</p>
+<h1>Historique des actions</h1>
+</div>
+<a href="/comptes/parametres/" class="btn-secondary">Retour aux parametres</a>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Utilisateur</th>
+<th>Module</th>
+<th>Action</th>
+<th>Cible</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+{% for item in actions %}
+<tr>
+<td>{{ item.created_at|date:"d/m/Y H:i" }}</td>
+<td>{% if item.utilisateur %}{{ item.utilisateur.username }}{% else %}Systeme{% endif %}</td>
+<td>{{ item.module }}</td>
+<td>{{ item.action }}</td>
+<td>{{ item.cible|default:"-" }}</td>
+<td>{{ item.description|default:"-" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="6">Aucune action enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

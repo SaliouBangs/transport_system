@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Administration</p>
+<h1>Parametres</h1>
+</div>
+</div>
+
+<div class="cards">
+    <div class="card" style="text-align:left;">
+        <h3>Utilisateurs</h3>
+        <p style="font-size:1rem; margin:14px 0 18px 0; font-weight:500;">Gerer les comptes, les roles metiers et les acces administrateur.</p>
+        <a href="/comptes/utilisateurs/" class="btn">Ouvrir</a>
+    </div>
+    <div class="card" style="text-align:left;">
+        <h3>Actions</h3>
+        <p style="font-size:1rem; margin:14px 0 18px 0; font-weight:500;">Consulter l'historique des actions faites par les utilisateurs dans l'application.</p>
+        <a href="/comptes/actions/" class="btn">Voir l'historique</a>
+    </div>
+</div>
+
+{% endblock %}

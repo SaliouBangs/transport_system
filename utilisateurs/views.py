@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import UtilisateurCreationForm, UtilisateurModificationForm
+from .models import HistoriqueAction, journaliser_action
 from .permissions import (
     ensure_role_groups,
     get_default_landing_url,
@@ -48,9 +49,26 @@ def acces_technique_view(request):
     return redirect("/dashboard/")
 
 
+def parametres_view(request):
+    if not is_admin_or_directeur(request.user):
+        messages.error(request, "Seuls l'administrateur et le directeur peuvent acceder aux parametres.")
+        return redirect(get_default_landing_url(request.user))
+
+    return render(request, "utilisateurs/parametres.html")
+
+
 def deconnexion_view(request):
     logout(request)
     return redirect("connexion")
+
+
+def historique_actions_view(request):
+    if not is_admin_or_directeur(request.user):
+        messages.error(request, "Seuls l'administrateur et le directeur peuvent consulter l'historique.")
+        return redirect(get_default_landing_url(request.user))
+
+    actions = HistoriqueAction.objects.select_related("utilisateur")
+    return render(request, "utilisateurs/actions.html", {"actions": actions})
 
 
 def liste_utilisateurs(request):
@@ -87,7 +105,14 @@ def ajouter_utilisateur(request):
     if request.method == "POST":
         form = UtilisateurCreationForm(request.POST)
         if form.is_valid():
-            form.save()
+            utilisateur = form.save()
+            journaliser_action(
+                request.user,
+                "Parametres",
+                "Creation d'utilisateur",
+                utilisateur.username,
+                f"{request.user.username} a cree le compte {utilisateur.username}.",
+            )
             messages.success(request, "Le compte utilisateur a ete cree.")
             return redirect("utilisateurs")
     else:
@@ -105,7 +130,14 @@ def modifier_utilisateur(request, id):
     if request.method == "POST":
         form = UtilisateurModificationForm(request.POST, instance=utilisateur)
         if form.is_valid():
-            form.save()
+            utilisateur = form.save()
+            journaliser_action(
+                request.user,
+                "Parametres",
+                "Modification d'utilisateur",
+                utilisateur.username,
+                f"{request.user.username} a modifie le compte {utilisateur.username}.",
+            )
             messages.success(request, "Le compte utilisateur a ete mis a jour.")
             return redirect("utilisateurs")
     else:

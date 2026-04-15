@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 from .forms import DocumentForm
@@ -20,7 +21,15 @@ def ajouter_document(request):
     if request.method == "POST":
         form = DocumentForm(request.POST)
         if form.is_valid():
-            form.save()
+            document = form.save()
+            document_label = f"{document.type_document} - {document.camion}"
+            journaliser_action(
+                request.user,
+                "Documents",
+                "Ajout de document",
+                document_label,
+                f"{request.user.username} a ajoute le document {document_label}.",
+            )
             return redirect("documents")
     else:
         form = DocumentForm()
@@ -33,7 +42,15 @@ def modifier_document(request, id):
     if request.method == "POST":
         form = DocumentForm(request.POST, instance=document)
         if form.is_valid():
-            form.save()
+            document = form.save()
+            document_label = f"{document.type_document} - {document.camion}"
+            journaliser_action(
+                request.user,
+                "Documents",
+                "Modification de document",
+                document_label,
+                f"{request.user.username} a modifie le document {document_label}.",
+            )
             return redirect("documents")
     else:
         form = DocumentForm(instance=document)
@@ -47,11 +64,19 @@ def modifier_document(request, id):
 
 def supprimer_document(request, id):
     document = get_object_or_404(Document, id=id)
+    document_label = f"{document.type_document} - {document.camion}"
     document.delete()
+    journaliser_action(
+        request.user,
+        "Documents",
+        "Suppression de document",
+        document_label,
+        f"{request.user.username} a supprime le document {document_label}.",
+    )
     return redirect("documents")
 
 
-liste_documents = role_required("logistique", "directeur")(liste_documents)
-ajouter_document = role_required("logistique", "directeur")(ajouter_document)
-modifier_document = role_required("logistique", "directeur")(modifier_document)
-supprimer_document = role_required("logistique", "directeur")(supprimer_document)
+liste_documents = role_required("logistique", "maintenancier", "directeur")(liste_documents)
+ajouter_document = role_required("logistique", "maintenancier", "directeur")(ajouter_document)
+modifier_document = role_required("logistique", "maintenancier", "directeur")(modifier_document)
+supprimer_document = role_required("logistique", "maintenancier", "directeur")(supprimer_document)

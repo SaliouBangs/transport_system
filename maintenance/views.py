@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from chauffeurs.models import Chauffeur
 from camions.models import Camion
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 from .forms import (
@@ -232,6 +233,14 @@ def ajouter_maintenance_garage(request):
                 formset.save()
                 _save_subline_items(request, formset)
                 maintenance.refresh_total_facture()
+                maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
+                journaliser_action(
+                    request.user,
+                    "Maintenance",
+                    "Creation de diagnostic",
+                    maintenance_label,
+                    f"{request.user.username} a cree le diagnostic {maintenance_label} pour le camion {maintenance.camion}.",
+                )
             return redirect("garage_maintenances")
     else:
         form = MaintenanceGarageForm(initial={"statut": "en_cours"})
@@ -257,6 +266,14 @@ def modifier_maintenance_garage(request, id):
                 formset.save()
                 _save_subline_items(request, formset)
                 maintenance.refresh_total_facture()
+                maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
+                journaliser_action(
+                    request.user,
+                    "Maintenance",
+                    "Modification de diagnostic",
+                    maintenance_label,
+                    f"{request.user.username} a modifie le diagnostic {maintenance_label}.",
+                )
             return redirect("garage_maintenances")
     else:
         form = MaintenanceGarageForm(instance=maintenance)
@@ -284,6 +301,14 @@ def modifier_maintenance_achat(request, id):
                     messages.error(request, "Impossible de terminer sans avoir saisi tous les prix des pieces.")
                 else:
                     maintenance.save()
+                    maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
+                    journaliser_action(
+                        request.user,
+                        "Maintenance",
+                        "Valorisation de diagnostic",
+                        maintenance_label,
+                        f"{request.user.username} a mis a jour l'achat et les prix du diagnostic {maintenance_label}.",
+                    )
                     return redirect("achat_maintenances")
     else:
         form = MaintenanceAchatForm(instance=maintenance)
@@ -308,6 +333,14 @@ def terminer_maintenance(request, id):
     if not maintenance.date_fin:
         maintenance.date_fin = timezone.now()
     maintenance.save()
+    maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Fin de diagnostic",
+        maintenance_label,
+        f"{request.user.username} a termine le diagnostic {maintenance_label}.",
+    )
     return redirect("garage_maintenances")
 
 
@@ -333,6 +366,7 @@ def imprimer_maintenance(request, id):
 def supprimer_maintenance(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
     camion = maintenance.camion
+    maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
     maintenance.delete()
 
     maintenance_active = camion.maintenances.filter(statut="en_cours").exists()
@@ -340,6 +374,13 @@ def supprimer_maintenance(request, id):
         camion.etat = "disponible"
         camion.save(update_fields=["etat"])
 
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Suppression de diagnostic",
+        maintenance_label,
+        f"{request.user.username} a supprime le diagnostic {maintenance_label}.",
+    )
     return redirect("garage_maintenances")
 
 
@@ -370,13 +411,13 @@ def ajouter_type_maintenance_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
-liste_maintenances = role_required("logistique", "directeur")(garage_maintenances)
-garage_maintenances = role_required("logistique", "directeur")(garage_maintenances)
-achat_maintenances = role_required("logistique", "directeur")(achat_maintenances)
-ajouter_maintenance_garage = role_required("logistique", "directeur")(ajouter_maintenance_garage)
-modifier_maintenance_garage = role_required("logistique", "directeur")(modifier_maintenance_garage)
-modifier_maintenance_achat = role_required("logistique", "directeur")(modifier_maintenance_achat)
-terminer_maintenance = role_required("logistique", "directeur")(terminer_maintenance)
-imprimer_maintenance = role_required("logistique", "directeur")(imprimer_maintenance)
-supprimer_maintenance = role_required("logistique", "directeur")(supprimer_maintenance)
-ajouter_type_maintenance_modal = role_required("logistique", "directeur")(ajouter_type_maintenance_modal)
+liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
+garage_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
+achat_maintenances = role_required("logistique", "maintenancier", "directeur")(achat_maintenances)
+ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
+modifier_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(modifier_maintenance_garage)
+modifier_maintenance_achat = role_required("logistique", "maintenancier", "directeur")(modifier_maintenance_achat)
+terminer_maintenance = role_required("logistique", "maintenancier", "directeur")(terminer_maintenance)
+imprimer_maintenance = role_required("logistique", "maintenancier", "directeur")(imprimer_maintenance)
+supprimer_maintenance = role_required("logistique", "maintenancier", "directeur")(supprimer_maintenance)
+ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)

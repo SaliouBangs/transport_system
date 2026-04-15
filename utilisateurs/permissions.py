@@ -11,6 +11,7 @@ from .constants import (
     ROLE_DIRECTEUR,
     ROLE_LABELS,
     ROLE_LOGISTIQUE,
+    ROLE_MAINTENANCIER,
     ROLE_TRANSITAIRE,
 )
 
@@ -99,6 +100,7 @@ def build_user_permissions(user):
         "is_admin_user": is_admin_user(user),
         "is_admin_or_directeur": is_boss,
         "can_manage_users": is_boss,
+        "can_access_settings": is_boss,
         "can_access_dashboard": bool(getattr(user, "is_authenticated", False)),
         "can_access_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
         "can_add_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
@@ -115,5 +117,10 @@ def build_user_permissions(user):
         "can_access_operations_logistique": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
         "can_access_operations_logisticien": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
         "can_access_operations_transitaire": user_has_role(user, ROLE_TRANSITAIRE, ROLE_DIRECTEUR),
-        "can_manage_logistique_assets": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
+        "can_manage_logistique_assets": user_has_role(
+            user,
+            ROLE_LOGISTIQUE,
+            ROLE_MAINTENANCIER,
+            ROLE_DIRECTEUR,
+        ),
     }

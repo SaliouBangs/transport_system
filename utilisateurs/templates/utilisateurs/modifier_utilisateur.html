@@ -50,6 +50,10 @@
             <label for="{{ form.is_active.id_for_label }}">Compte actif</label>
             <div class="field-inline">{{ form.is_active }}</div>
         </div>
+        <div class="field field-full">
+            <label for="{{ form.is_superuser.id_for_label }}">Administrateur</label>
+            <div class="field-inline">{{ form.is_superuser }}</div>
+        </div>
     </div>
 
     <div class="form-actions">

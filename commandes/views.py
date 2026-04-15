@@ -3,6 +3,7 @@ from io import BytesIO
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from clients.models import Client
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 from .forms import CommandeForm
@@ -18,7 +19,14 @@ def ajouter_commande(request):
     if request.method == "POST":
         form = CommandeForm(request.POST)
         if form.is_valid():
-            form.save()
+            commande = form.save()
+            journaliser_action(
+                request.user,
+                "Commandes",
+                "Ajout de commande",
+                commande.reference,
+                f"{request.user.username} a ajoute la commande {commande.reference}.",
+            )
             return redirect("commandes")
     else:
         form = CommandeForm()
@@ -35,7 +43,14 @@ def modifier_commande(request, id):
     if request.method == "POST":
         form = CommandeForm(request.POST, instance=commande)
         if form.is_valid():
-            form.save()
+            commande = form.save()
+            journaliser_action(
+                request.user,
+                "Commandes",
+                "Modification de commande",
+                commande.reference,
+                f"{request.user.username} a modifie la commande {commande.reference}.",
+            )
             return redirect("commandes")
     else:
         form = CommandeForm(instance=commande)
@@ -53,7 +68,15 @@ def modifier_commande(request, id):
 
 def supprimer_commande(request, id):
     commande = get_object_or_404(Commande, id=id)
+    commande_label = commande.reference
     commande.delete()
+    journaliser_action(
+        request.user,
+        "Commandes",
+        "Suppression de commande",
+        commande_label,
+        f"{request.user.username} a supprime la commande {commande_label}.",
+    )
     return redirect("commandes")
 
 

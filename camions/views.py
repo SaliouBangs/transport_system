@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 from .forms import CamionForm, TransporteurForm
@@ -41,7 +42,15 @@ def ajouter_camion(request):
     if request.method == "POST":
         form = CamionForm(request.POST)
         if form.is_valid():
-            form.save()
+            camion = form.save()
+            camion_label = camion.numero_tracteur or camion.numero_citerne or f"Camion #{camion.id}"
+            journaliser_action(
+                request.user,
+                "Camions",
+                "Ajout de camion",
+                camion_label,
+                f"{request.user.username} a ajoute le camion {camion_label}.",
+            )
             return redirect("camions")
     else:
         form = CamionForm()
@@ -58,7 +67,15 @@ def modifier_camion(request, id):
     if request.method == "POST":
         form = CamionForm(request.POST, instance=camion)
         if form.is_valid():
-            form.save()
+            camion = form.save()
+            camion_label = camion.numero_tracteur or camion.numero_citerne or f"Camion #{camion.id}"
+            journaliser_action(
+                request.user,
+                "Camions",
+                "Modification de camion",
+                camion_label,
+                f"{request.user.username} a modifie le camion {camion_label}.",
+            )
             return redirect("camions")
     else:
         form = CamionForm(instance=camion)
@@ -72,7 +89,15 @@ def modifier_camion(request, id):
 
 def supprimer_camion(request, id):
     camion = get_object_or_404(Camion, id=id)
+    camion_label = camion.numero_tracteur or camion.numero_citerne or f"Camion #{camion.id}"
     camion.delete()
+    journaliser_action(
+        request.user,
+        "Camions",
+        "Suppression de camion",
+        camion_label,
+        f"{request.user.username} a supprime le camion {camion_label}.",
+    )
     return redirect("camions")
 
 
@@ -103,8 +128,8 @@ def ajouter_transporteur_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
-liste_camions = role_required("logistique", "directeur")(liste_camions)
-ajouter_camion = role_required("logistique", "directeur")(ajouter_camion)
-modifier_camion = role_required("logistique", "directeur")(modifier_camion)
-supprimer_camion = role_required("logistique", "directeur")(supprimer_camion)
-ajouter_transporteur_modal = role_required("logistique", "directeur")(ajouter_transporteur_modal)
+liste_camions = role_required("logistique", "maintenancier", "directeur")(liste_camions)
+ajouter_camion = role_required("logistique", "maintenancier", "directeur")(ajouter_camion)
+modifier_camion = role_required("logistique", "maintenancier", "directeur")(modifier_camion)
+supprimer_camion = role_required("logistique", "maintenancier", "directeur")(supprimer_camion)
+ajouter_transporteur_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_transporteur_modal)

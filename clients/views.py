@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 from .forms import ClientForm
@@ -15,7 +16,14 @@ def ajouter_client(request):
     if request.method == "POST":
         form = ClientForm(request.POST)
         if form.is_valid():
-            form.save()
+            client = form.save()
+            journaliser_action(
+                request.user,
+                "Clients",
+                "Ajout de client",
+                client.entreprise,
+                f"{request.user.username} a ajoute le client {client.entreprise}.",
+            )
             return redirect("clients")
     else:
         form = ClientForm()
@@ -28,7 +36,14 @@ def modifier_client(request, id):
     if request.method == "POST":
         form = ClientForm(request.POST, instance=client)
         if form.is_valid():
-            form.save()
+            client = form.save()
+            journaliser_action(
+                request.user,
+                "Clients",
+                "Modification de client",
+                client.entreprise,
+                f"{request.user.username} a modifie le client {client.entreprise}.",
+            )
             return redirect("clients")
     else:
         form = ClientForm(instance=client)
@@ -42,7 +57,15 @@ def modifier_client(request, id):
 
 def supprimer_client(request, id):
     client = get_object_or_404(Client, id=id)
+    client_label = client.entreprise
     client.delete()
+    journaliser_action(
+        request.user,
+        "Clients",
+        "Suppression de client",
+        client_label,
+        f"{request.user.username} a supprime le client {client_label}.",
+    )
     return redirect("clients")
 
 
@@ -86,6 +109,13 @@ def ajouter_client_modal(request):
     form = ClientForm(request.POST)
     if form.is_valid():
         client = form.save()
+        journaliser_action(
+            request.user,
+            "Clients",
+            "Ajout de client",
+            client.entreprise,
+            f"{request.user.username} a ajoute le client {client.entreprise} depuis une fenetre modale.",
+        )
         return JsonResponse(
             {
                 "success": True,

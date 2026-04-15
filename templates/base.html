@@ -825,7 +825,7 @@ min-width:0;
 {% if can_manage_logistique_assets %}<a href="/chauffeurs/" class="{% if request.path|slice:':12' == '/chauffeurs/' %}active{% endif %}">Chauffeurs</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/maintenance/" class="{% if request.path|slice:':13' == '/maintenance/' %}active{% endif %}">Maintenance</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/documents/" class="{% if request.path|slice:':11' == '/documents/' %}active{% endif %}">Documents</a>{% endif %}
-{% if can_manage_users %}<a href="/comptes/utilisateurs/" class="{% if request.path|slice:':22' == '/comptes/utilisateurs/' %}active{% endif %}">Utilisateurs</a>{% endif %}
+{% if can_access_settings %}<a href="/comptes/parametres/" class="{% if request.path|slice:':12' == '/comptes/' %}active{% endif %}">Parametres</a>{% endif %}
 
 </div>
 

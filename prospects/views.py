@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django import forms
 from .models import Prospect
 from clients.models import Client
+from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import role_required
 
 
@@ -38,7 +39,14 @@ def ajouter_prospect(request):
         form = ProspectForm(request.POST)
 
         if form.is_valid():
-            form.save()
+            prospect = form.save()
+            journaliser_action(
+                request.user,
+                "Prospects",
+                "Ajout de prospect",
+                prospect.entreprise,
+                f"{request.user.username} a ajoute le prospect {prospect.entreprise}.",
+            )
             return redirect('prospects')
 
     else:
@@ -51,6 +59,7 @@ def ajouter_prospect(request):
 def convertir_client(request, id):
 
     prospect = get_object_or_404(Prospect, id=id)
+    prospect_label = prospect.entreprise
 
     client, created = Client.objects.get_or_create(
 
@@ -65,6 +74,13 @@ def convertir_client(request, id):
     )
 
     prospect.delete()
+    journaliser_action(
+        request.user,
+        "Prospects",
+        "Conversion en client",
+        prospect_label,
+        f"{request.user.username} a converti le prospect {prospect_label} en client.",
+    )
 
     return redirect('prospects')
 

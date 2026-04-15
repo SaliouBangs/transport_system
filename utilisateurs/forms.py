@@ -7,6 +7,7 @@ from .permissions import assign_role, ensure_role_groups, get_user_role
 
 class UtilisateurCreationForm(forms.ModelForm):
     role = forms.ChoiceField(choices=ROLE_CHOICES)
+    is_superuser = forms.BooleanField(label="Administrateur", required=False)
     password1 = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
     password2 = forms.CharField(label="Confirmation du mot de passe", widget=forms.PasswordInput)
 
@@ -34,6 +35,8 @@ class UtilisateurCreationForm(forms.ModelForm):
         user = super().save(commit=False)
         user.username = (self.cleaned_data["username"] or "").strip()
         user.email = (self.cleaned_data.get("email") or "").strip()
+        user.is_staff = self.cleaned_data.get("is_superuser", False)
+        user.is_superuser = self.cleaned_data.get("is_superuser", False)
         user.set_password(self.cleaned_data["password1"])
         if commit:
             user.save()
@@ -43,6 +46,7 @@ class UtilisateurCreationForm(forms.ModelForm):
 
 class UtilisateurModificationForm(forms.ModelForm):
     role = forms.ChoiceField(choices=ROLE_CHOICES)
+    is_superuser = forms.BooleanField(label="Administrateur", required=False)
     new_password1 = forms.CharField(label="Nouveau mot de passe", widget=forms.PasswordInput, required=False)
     new_password2 = forms.CharField(label="Confirmation du nouveau mot de passe", widget=forms.PasswordInput, required=False)
 
@@ -55,6 +59,7 @@ class UtilisateurModificationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields["role"].initial = get_user_role(self.instance)
+            self.fields["is_superuser"].initial = self.instance.is_superuser
 
     def clean_username(self):
         username = (self.cleaned_data.get("username") or "").strip()
@@ -78,6 +83,8 @@ class UtilisateurModificationForm(forms.ModelForm):
         user = super().save(commit=False)
         user.username = (self.cleaned_data["username"] or "").strip()
         user.email = (self.cleaned_data.get("email") or "").strip()
+        user.is_staff = self.cleaned_data.get("is_superuser", False)
+        user.is_superuser = self.cleaned_data.get("is_superuser", False)
         if self.cleaned_data.get("new_password1"):
             user.set_password(self.cleaned_data["new_password1"])
         if commit:
