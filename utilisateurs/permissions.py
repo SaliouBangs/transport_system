@@ -103,7 +103,7 @@ def build_user_permissions(user):
         "can_manage_users": is_boss,
         "can_access_settings": is_boss,
         "can_access_dashboard": bool(getattr(user, "is_authenticated", False)),
-        "can_access_gps": bool(getattr(user, "is_authenticated", False)) and get_user_role(user) != ROLE_MAINTENANCIER,
+        "can_access_gps": bool(getattr(user, "is_authenticated", False)) and get_user_role(user) not in (ROLE_MAINTENANCIER, ROLE_DGA),
         "can_access_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
         "can_add_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
         "can_convert_prospects": is_boss,
@@ -130,6 +130,7 @@ def build_user_permissions(user):
             user,
             ROLE_LOGISTIQUE,
             ROLE_MAINTENANCIER,
+            ROLE_DGA,
             ROLE_DIRECTEUR,
         ),
     }

@@ -17,7 +17,7 @@ def dashboard(request):
     seuil_retard = today - timedelta(days=3)
     panne_threshold = 3
     user_role = get_user_role(request.user)
-    is_maintenancier = user_role == "maintenancier"
+    is_maintenancier = user_role in {"maintenancier", "dga"}
 
     camions_total = Camion.objects.count()
     camions_disponibles = Camion.objects.filter(etat="disponible").count()
@@ -183,6 +183,7 @@ dashboard = role_required(
     "comptable",
     "logistique",
     "maintenancier",
+    "dga",
     "directeur",
     "transitaire",
 )(dashboard)

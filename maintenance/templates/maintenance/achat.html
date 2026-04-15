@@ -20,12 +20,12 @@
 </div>
 </div>
 
-<form method="get" class="search-form" style="margin-bottom:18px;">
+<form method="get" class="search-form" id="achat-search-form" style="margin-bottom:18px;">
 {% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
-<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference">
-<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;">
-<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;">
-<select name="statut" style="min-width:190px; height:52px;">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search>
+<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
+<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
+<select name="statut" style="min-width:190px; height:52px;" data-live-change>
     <option value="">Tous les statuts</option>
     {% for value, label in statut_choices %}
     <option value="{{ value }}" {% if filter_values.statut == value %}selected{% endif %}>{{ label }}</option>
@@ -68,4 +68,26 @@
 </tbody>
 </table>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const form = document.getElementById("achat-search-form");
+    const liveInput = form?.querySelector("[data-live-search]");
+    if (!form || !liveInput) {
+        return;
+    }
+
+    let timeoutId = null;
+    liveInput.addEventListener("input", () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => form.requestSubmit(), 300);
+    });
+
+    form.querySelectorAll("[data-live-change]").forEach((field) => {
+        field.addEventListener("change", () => form.requestSubmit());
+    });
+})();
+</script>
 {% endblock %}
