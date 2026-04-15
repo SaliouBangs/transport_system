@@ -559,7 +559,10 @@ def modifier_maintenance_achat(request, id):
         if not can_edit_achat:
             messages.error(request, "Seuls la logistique et l'administrateur peuvent modifier les achats avant decision finale.")
             return redirect("achat_maintenances")
-        form = MaintenanceAchatForm(request.POST, instance=maintenance)
+        post_data = request.POST.copy()
+        if not is_admin:
+            post_data["statut"] = maintenance.statut
+        form = MaintenanceAchatForm(post_data, instance=maintenance)
         if form.is_valid():
             with transaction.atomic():
                 maintenance = form.save(commit=False)

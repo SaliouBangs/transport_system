@@ -22,7 +22,7 @@
 
 <form method="get" class="search-form" id="achat-search-form" style="margin-bottom:18px;">
 {% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
-<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search>
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search autocomplete="off" spellcheck="false">
 <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
 <select name="statut" style="min-width:190px; height:52px;" data-live-change>
@@ -80,9 +80,29 @@
     }
 
     let timeoutId = null;
+    let isComposing = false;
+    const submitSearch = () => {
+        const value = liveInput.value.trim();
+        if (isComposing) {
+            return;
+        }
+        if (value.length !== 0 && value.length < 2) {
+            return;
+        }
+        form.requestSubmit();
+    };
+
+    liveInput.addEventListener("compositionstart", () => {
+        isComposing = true;
+    });
+    liveInput.addEventListener("compositionend", () => {
+        isComposing = false;
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(submitSearch, 450);
+    });
     liveInput.addEventListener("input", () => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => form.requestSubmit(), 300);
+        timeoutId = setTimeout(submitSearch, 700);
     });
 
     form.querySelectorAll("[data-live-change]").forEach((field) => {
