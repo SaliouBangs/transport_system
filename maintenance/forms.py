@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Maintenance, MaintenanceLigne, TypeMaintenance
+from .models import Fournisseur, Maintenance, MaintenanceLigne, TypeMaintenance
 
 
 class MaintenanceForm(forms.ModelForm):
@@ -14,6 +14,10 @@ class MaintenanceForm(forms.ModelForm):
         input_formats=["%Y-%m-%dT%H:%M"],
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
     )
+    date_paiement = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
 
     class Meta:
         model = Maintenance
@@ -21,6 +25,7 @@ class MaintenanceForm(forms.ModelForm):
             "camion",
             "date_debut",
             "date_fin",
+            "date_paiement",
             "kilometrage_entree",
             "kilometrage_sortie",
             "prochaine_vidange_dans_km",
@@ -35,13 +40,27 @@ class MaintenanceGarageForm(MaintenanceForm):
 
 
 class MaintenanceAchatForm(forms.ModelForm):
+    date_paiement = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+
     class Meta:
         model = Maintenance
         fields = [
+            "fournisseur",
+            "numero_facture",
+            "date_paiement",
             "prestataire",
             "observation",
             "statut",
         ]
+
+
+class FournisseurForm(forms.ModelForm):
+    class Meta:
+        model = Fournisseur
+        fields = ["nom_fournisseur", "entreprise", "domaine_activite", "numero_telephone"]
 
 
 class TypeMaintenanceForm(forms.ModelForm):

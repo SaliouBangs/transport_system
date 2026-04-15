@@ -10,6 +10,8 @@
 <h1>{% if historique %}Historique des valorisations{% else %}Achats et valorisation{% endif %}</h1>
 </div>
 <div class="table-actions">
+<a href="/maintenance/achat/export/xls/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
+<a href="/maintenance/achat/export/pdf/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
 {% if historique %}
 <a href="/maintenance/achat/" class="btn-secondary">Nouveaux diagnostics</a>
 {% else %}
@@ -18,15 +20,31 @@
 </div>
 </div>
 
+<form method="get" class="search-form" style="margin-bottom:18px;">
+{% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference">
+<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;">
+<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;">
+<select name="statut" style="min-width:190px; height:52px;">
+    <option value="">Tous les statuts</option>
+    {% for value, label in statut_choices %}
+    <option value="{{ value }}" {% if filter_values.statut == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>
+<button type="submit" class="btn">Rechercher</button>
+<a href="{% if historique %}/maintenance/achat/?scope=historique{% else %}/maintenance/achat/{% endif %}" class="btn-secondary">Reinitialiser</a>
+</form>
+
 <table class="table">
 <thead>
 <tr>
 <th>Reference</th>
 <th>Camion</th>
 <th>Kilometrage</th>
-<th>Prestataire</th>
+<th>Fournisseur / facture</th>
 <th>Lignes</th>
 <th>Total facture</th>
+<th>Paiement</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -36,14 +54,15 @@
 <td>{{ maintenance.reference }}</td>
 <td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
 <td>{{ maintenance.kilometrage_entree|default:"-" }}{% if maintenance.kilometrage_sortie %} / {{ maintenance.kilometrage_sortie }}{% endif %}</td>
-<td>{{ maintenance.prestataire|default:"-" }}</td>
+<td>{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:"-" }}{% endif %}{% if maintenance.numero_facture %}<br>{{ maintenance.numero_facture }}{% endif %}</td>
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
-<td><a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a></td>
+<td>{{ maintenance.date_paiement|default:"-" }}</td>
+<td>{% if is_admin_maintenance %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="7">{% if historique %}Aucun ancien diagnostic valorise disponible.{% else %}Aucun nouveau diagnostic disponible pour les achats.{% endif %}</td>
+<td colspan="8">{% if historique %}Aucun ancien diagnostic valorise disponible.{% else %}Aucun nouveau diagnostic disponible pour les achats.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

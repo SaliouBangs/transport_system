@@ -8,6 +8,7 @@ from .constants import (
     ROLE_CHOICES,
     ROLE_COMMERCIAL,
     ROLE_COMPTABLE,
+    ROLE_DGA,
     ROLE_DIRECTEUR,
     ROLE_LABELS,
     ROLE_LOGISTIQUE,
@@ -118,6 +119,13 @@ def build_user_permissions(user):
         "can_access_operations_logistique": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
         "can_access_operations_logisticien": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
         "can_access_operations_transitaire": user_has_role(user, ROLE_TRANSITAIRE, ROLE_DIRECTEUR),
+        "can_access_maintenance": user_has_role(
+            user,
+            ROLE_LOGISTIQUE,
+            ROLE_MAINTENANCIER,
+            ROLE_DGA,
+            ROLE_DIRECTEUR,
+        ),
         "can_manage_logistique_assets": user_has_role(
             user,
             ROLE_LOGISTIQUE,

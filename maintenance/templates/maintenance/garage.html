@@ -9,8 +9,26 @@
 <p class="eyebrow">Entretien flotte</p>
 <h1>Garage et diagnostics</h1>
 </div>
+<div class="table-actions">
 {% if can_manage_logistique_assets %}<a href="/maintenance/garage/ajouter/" class="btn">Nouvelle fiche garage</a>{% endif %}
+<a href="/maintenance/garage/export/xls/?q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
+<a href="/maintenance/garage/export/pdf/?q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
 </div>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference">
+<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;">
+<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;">
+<select name="statut" style="min-width:190px; height:52px;">
+    <option value="">Tous les statuts</option>
+    {% for value, label in statut_choices %}
+    <option value="{{ value }}" {% if filter_values.statut == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/garage/" class="btn-secondary">Reinitialiser</a>
+</form>
 
 <div class="cards" style="margin-bottom:24px; align-items:start;">
 <div class="card" style="text-align:left;">
@@ -24,6 +42,7 @@
 <th>Kilometrage</th>
 <th>Diagnostics</th>
 <th>Statut</th>
+<th>Validations</th>
 <th>Total</th>
 <th>Actions</th>
 </tr>
@@ -58,10 +77,20 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 {% endfor %}
 </td>
 <td>{{ maintenance.get_statut_display }}</td>
+<td>
+{% if maintenance.validation_logistique_at %}<div><span class="status-badge status-ok">Logistique</span></div>{% endif %}
+{% if maintenance.validation_dga_at %}<div><span class="status-badge status-ok">DGA</span></div>{% endif %}
+{% if maintenance.validation_dg_at %}<div><span class="status-badge status-ok">DG</span></div>{% endif %}
+{% if not maintenance.validation_logistique_at and not maintenance.validation_dga_at and not maintenance.validation_dg_at %}-{% endif %}
+</td>
 <td>{{ maintenance.total_facture }}</td>
 <td>
 <div class="table-actions">
+{% if is_admin_maintenance %}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
+{% else %}
+<a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>
+{% endif %}
 <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Imprimer</a>
 {% if maintenance.statut == "en_cours" %}
     {% if maintenance.pricing_complete %}
@@ -73,13 +102,33 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
     <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
     {% endif %}
 {% endif %}
+{% if maintenance.can_validate_logistique %}
+<form method="post" action="/maintenance/garage/valider-logistique/{{ maintenance.id }}/">
+{% csrf_token %}
+<button type="submit" class="btn-secondary">Valider logistique</button>
+</form>
+{% endif %}
+{% if maintenance.can_validate_dga %}
+<form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">
+{% csrf_token %}
+<button type="submit" class="btn-secondary">Valider DGA</button>
+</form>
+{% endif %}
+{% if maintenance.can_validate_dg %}
+<form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
+{% csrf_token %}
+<button type="submit" class="btn-secondary">Valider DG</button>
+</form>
+{% endif %}
+{% if is_admin_maintenance %}
 <a href="/maintenance/supprimer/{{ maintenance.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette maintenance ?')">Supprimer</a>
+{% endif %}
 </div>
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucune maintenance enregistree pour le moment.</td>
+<td colspan="9">Aucune maintenance enregistree pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>

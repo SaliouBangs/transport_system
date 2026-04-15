@@ -2,6 +2,7 @@ ROLE_COMMERCIAL = "commercial"
 ROLE_COMPTABLE = "comptable"
 ROLE_LOGISTIQUE = "logistique"
 ROLE_MAINTENANCIER = "maintenancier"
+ROLE_DGA = "dga"
 ROLE_DIRECTEUR = "directeur"
 ROLE_TRANSITAIRE = "transitaire"
 
@@ -10,6 +11,7 @@ ROLE_CHOICES = [
     (ROLE_COMPTABLE, "Comptable"),
     (ROLE_LOGISTIQUE, "Logistique"),
     (ROLE_MAINTENANCIER, "Maintenancier"),
+    (ROLE_DGA, "DGA"),
     (ROLE_DIRECTEUR, "Directeur"),
     (ROLE_TRANSITAIRE, "Transitaire"),
 ]

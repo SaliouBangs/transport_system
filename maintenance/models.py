@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models import Sum
 
 from camions.models import Camion
+from django.contrib.auth.models import User
 
 
 class TypeMaintenance(models.Model):
@@ -15,6 +16,19 @@ class TypeMaintenance(models.Model):
 
     def __str__(self):
         return self.libelle
+
+
+class Fournisseur(models.Model):
+    nom_fournisseur = models.CharField(max_length=150)
+    entreprise = models.CharField(max_length=150)
+    domaine_activite = models.CharField(max_length=150, blank=True)
+    numero_telephone = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        ordering = ["nom_fournisseur", "entreprise"]
+
+    def __str__(self):
+        return f"{self.nom_fournisseur} - {self.entreprise}"
 
 
 class Maintenance(models.Model):
@@ -34,12 +48,45 @@ class Maintenance(models.Model):
     observation = models.TextField(blank=True)
     date_debut = models.DateTimeField()
     date_fin = models.DateTimeField(null=True, blank=True)
+    date_paiement = models.DateField(null=True, blank=True)
     kilometrage_entree = models.PositiveIntegerField(null=True, blank=True)
     kilometrage_sortie = models.PositiveIntegerField(null=True, blank=True)
     prochaine_vidange_dans_km = models.PositiveIntegerField(null=True, blank=True)
     total_facture = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default="en_cours")
     prestataire = models.CharField(max_length=150, blank=True)
+    fournisseur = models.ForeignKey(
+        Fournisseur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenances",
+    )
+    numero_facture = models.CharField(max_length=80, blank=True)
+    validation_logistique_at = models.DateTimeField(null=True, blank=True)
+    validation_logistique_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_logistique_validations",
+    )
+    validation_dga_at = models.DateTimeField(null=True, blank=True)
+    validation_dga_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_dga_validations",
+    )
+    validation_dg_at = models.DateTimeField(null=True, blank=True)
+    validation_dg_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_dg_validations",
+    )
     date_creation = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -118,6 +165,15 @@ class Maintenance(models.Model):
             elif (ligne.prix_unitaire or Decimal("0")) <= 0:
                 return False
         return True
+
+    def is_validated_by_logistique(self):
+        return self.validation_logistique_at is not None
+
+    def is_validated_by_dga(self):
+        return self.validation_dga_at is not None
+
+    def is_validated_by_dg(self):
+        return self.validation_dg_at is not None
 
     def save(self, *args, **kwargs):
         self.full_clean()

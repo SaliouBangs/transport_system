@@ -9,10 +9,14 @@ class TransporteurForm(forms.ModelForm):
         fields = ["nom"]
 
 class CamionForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["code_camion"].required = True
 
     class Meta:
         model = Camion
         fields = [
+            "code_camion",
             "numero_tracteur",
             "numero_citerne",
             "type_camion",

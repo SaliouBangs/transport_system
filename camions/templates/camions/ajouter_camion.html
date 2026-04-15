@@ -15,6 +15,12 @@
 
 <div class="form-grid">
 <div class="field">
+<label for="{{ form.code_camion.id_for_label }}">Code camion</label>
+{{ form.code_camion }}
+{% if form.code_camion.errors %}<p class="field-error">{{ form.code_camion.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
 <label for="{{ form.numero_tracteur.id_for_label }}">Numero tracteur</label>
 {{ form.numero_tracteur }}
 {% if form.numero_tracteur.errors %}<p class="field-error">{{ form.numero_tracteur.errors.0 }}</p>{% endif %}

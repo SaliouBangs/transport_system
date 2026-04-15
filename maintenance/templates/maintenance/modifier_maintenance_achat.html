@@ -25,9 +25,26 @@
             <input type="text" value="{{ maintenance.reference }}" readonly>
         </div>
         <div class="field">
+            <label for="{{ form.fournisseur.id_for_label }}">Fournisseur</label>
+            <div class="field-inline">
+                {{ form.fournisseur }}
+                {% if not read_only %}
+                <button type="button" class="btn-secondary btn-inline" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="field">
+            <label for="{{ form.numero_facture.id_for_label }}">Numero de facture</label>
+            {{ form.numero_facture }}
+        </div>
+        <div class="field">
             <label for="{{ form.statut.id_for_label }}">Etat de la fiche</label>
             {{ form.statut }}
             {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
+            {{ form.date_paiement }}
         </div>
         <div class="field field-full">
             <label for="{{ form.prestataire.id_for_label }}">Prestataire</label>
@@ -66,7 +83,7 @@
                         <td>{{ piece.libelle }}</td>
                         <td>{{ piece.quantite }}</td>
                         <td>
-                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01">
+                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01" {% if not is_admin_maintenance %}readonly{% endif %}>
                         </td>
                         <td>{{ piece.montant }}</td>
                     </tr>
@@ -78,7 +95,7 @@
                     <td><span class="status-badge status-danger">Aucune piece definie</span></td>
                     <td>{{ row.ligne.quantite }}</td>
                     <td>
-                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01">
+                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01" {% if not is_admin_maintenance %}readonly{% endif %}>
                     </td>
                     <td>{{ row.ligne.montant }}</td>
                 </tr>
@@ -104,9 +121,106 @@
 
     <div class="form-actions">
         <a href="/maintenance/achat/" class="btn-secondary">Retour</a>
+        {% if is_admin_maintenance %}
         <button type="submit" class="btn">Enregistrer les prix</button>
+        {% endif %}
     </div>
 </form>
 </div>
 
+{% if not read_only %}
+<div class="modal" id="fournisseur-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="fournisseur-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un fournisseur</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="fournisseur-modal">x</button>
+        </div>
+
+        <form id="fournisseur-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="id_nom_fournisseur">Nom fournisseur</label>
+                    {{ fournisseur_form.nom_fournisseur }}
+                </div>
+                <div class="field">
+                    <label for="id_entreprise">Entreprise</label>
+                    {{ fournisseur_form.entreprise }}
+                </div>
+                <div class="field">
+                    <label for="id_domaine_activite">Domaine d'activite</label>
+                    {{ fournisseur_form.domaine_activite }}
+                </div>
+                <div class="field">
+                    <label for="id_numero_telephone">Numero de telephone</label>
+                    {{ fournisseur_form.numero_telephone }}
+                </div>
+            </div>
+            <div class="field-error" id="fournisseur-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="fournisseur-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le fournisseur</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not read_only %}
+<script>
+const fournisseurModalForm = document.getElementById("fournisseur-modal-form");
+const fournisseurSelect = document.getElementById("id_fournisseur");
+const fournisseurModalErrors = document.getElementById("fournisseur-modal-errors");
+const fournisseurCsrfInput = fournisseurModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+
+fournisseurModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    fournisseurModalErrors.hidden = true;
+    fournisseurModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+    try {
+        response = await fetch("/maintenance/fournisseurs/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": fournisseurCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(fournisseurModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le fournisseur pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        fournisseurModalErrors.textContent = messages.join(" ");
+        fournisseurModalErrors.hidden = false;
+        return;
+    }
+
+    const option = new Option(data.fournisseur.label, data.fournisseur.id, true, true);
+    fournisseurSelect.add(option);
+    fournisseurSelect.value = data.fournisseur.id;
+    fournisseurModalForm.reset();
+    document.getElementById("fournisseur-modal")?.classList.remove("is-open");
+});
+</script>
+{% endif %}
 {% endblock %}

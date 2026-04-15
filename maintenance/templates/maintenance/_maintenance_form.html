@@ -26,15 +26,17 @@
                 type="text"
                 id="camion-search-input"
                 list="camions-catalog"
-                placeholder="Rechercher un numero de camion"
+                placeholder="Rechercher camion, citerne ou code interne"
                 value="{% if form.camion.value %}{% for camion in camions_catalog %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% endif %}{% endfor %}{% endif %}"
                 autocomplete="off"
+                {% if read_only %}readonly{% endif %}
             >
             <datalist id="camions-catalog">
                 {% for camion in camions_catalog %}
                 <option
                     value="{{ camion.numero_tracteur }}"
                     data-id="{{ camion.id }}"
+                    data-code="{{ camion.code_camion }}"
                     data-tracteur="{{ camion.numero_tracteur }}"
                     data-citerne="{{ camion.numero_citerne }}"
                     data-capacite="{{ camion.capacite }}"
@@ -48,7 +50,7 @@
             <div class="box" style="min-height:74px;">
                 <strong>Informations du camion</strong>
                 <div id="camion-info-display" style="margin-top:6px; color:#5f7384;">
-                    Selectionnez un camion pour afficher le chauffeur et la capacite.
+                    Selectionnez un camion pour afficher le chauffeur, le code interne et la capacite.
                 </div>
             </div>
         </div>
@@ -70,6 +72,11 @@
             <label for="{{ form.date_fin.id_for_label }}">Date de sortie</label>
             {{ form.date_fin }}
             {% if form.date_fin.errors %}<p class="field-error">{{ form.date_fin.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
+            {{ form.date_paiement }}
+            {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
         </div>
         <div class="field">
             <label for="{{ form.kilometrage_entree.id_for_label }}">Kilometrage d'entree</label>
@@ -107,10 +114,12 @@
                 <p class="eyebrow">Facture maintenance</p>
                 <h2 style="margin:0;">Lignes de maintenance</h2>
             </div>
+            {% if not read_only %}
             <div class="table-actions">
                 <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
                 <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>
             </div>
+            {% endif %}
         </div>
 
         {{ formset.management_form }}
@@ -140,15 +149,20 @@
                             {% for value in ligne_form.subline_values %}
                             <div class="subline-item" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
                                 <input type="hidden" name="subline-{{ ligne_form.prefix }}-ids" value="{{ value.id }}">
-                                <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
-                                <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
+                                <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;" {% if read_only %}readonly{% endif %}>
+                                <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;" {% if read_only %}readonly{% endif %}>
+                                {% if not read_only %}
                                 <button type="button" class="btn-delete subline-remove-btn">x</button>
+                                {% endif %}
                             </div>
                             {% endfor %}
                         </div>
+                        {% if not read_only %}
                         <button type="button" class="btn-secondary subline-add-btn" style="margin-top:8px;">Ajouter piece</button>
+                        {% endif %}
                     </td>
                     <td>
+                        {% if not read_only %}
                         {% if ligne_form.instance.pk %}
                         <label style="display:flex; align-items:center; gap:8px;">
                             {{ ligne_form.DELETE }} Supprimer
@@ -156,6 +170,9 @@
                         {% else %}
                         {{ ligne_form.DELETE.as_hidden }}
                         <button type="button" class="btn-delete remove-line-btn">Retirer</button>
+                        {% endif %}
+                        {% else %}
+                        <span class="status-badge status-ok">Lecture</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -167,11 +184,14 @@
 
     <div class="form-actions">
         <a href="/maintenance/garage/" class="btn-secondary">Retour</a>
+        {% if not read_only %}
         <button type="submit" class="btn">{{ submit_label }}</button>
+        {% endif %}
     </div>
 </form>
 </div>
 
+{% if not read_only %}
 <template id="empty-line-template">
     <tr class="maintenance-line-row">
         {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
@@ -196,6 +216,7 @@
         </td>
     </tr>
 </template>
+{% endif %}
 
 <script>
 (function () {
@@ -217,11 +238,13 @@
         }
 
         const citerne = option.dataset.citerne ? " / " + option.dataset.citerne : "";
+        const code = option.dataset.code || "-";
         const chauffeur = option.dataset.chauffeur || "Non affecte";
         const capacite = option.dataset.capacite ? option.dataset.capacite + " L" : "-";
 
         infoDisplay.innerHTML =
             "<strong>Camion :</strong> " + option.dataset.tracteur + citerne +
+            " &nbsp;|&nbsp; <strong>Code :</strong> " + code +
             " &nbsp;|&nbsp; <strong>Chauffeur :</strong> " + chauffeur +
             " &nbsp;|&nbsp; <strong>Capacite :</strong> " + capacite;
     }

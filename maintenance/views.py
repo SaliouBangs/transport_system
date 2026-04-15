@@ -1,29 +1,179 @@
+from io import BytesIO
+
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from chauffeurs.models import Chauffeur
 from camions.models import Camion
 from utilisateurs.models import journaliser_action
-from utilisateurs.permissions import role_required
+from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 
 from .forms import (
+    FournisseurForm,
     MaintenanceAchatForm,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
     TypeMaintenanceForm,
 )
-from .models import Maintenance, MaintenanceSousLigne
+from .models import Fournisseur, Maintenance, MaintenanceSousLigne
 
 
 def _maintenance_queryset():
-    return Maintenance.objects.select_related("camion").prefetch_related(
+    return Maintenance.objects.select_related("camion", "fournisseur").prefetch_related(
         "lignes__type_maintenance",
         "lignes__sous_lignes",
     )
+
+
+def _apply_maintenance_filters(request, queryset):
+    q = (request.GET.get("q") or "").strip()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+    statut = (request.GET.get("statut") or "").strip()
+
+    if q:
+        queryset = queryset.filter(
+            Q(reference__icontains=q)
+            | Q(camion__code_camion__icontains=q)
+            | Q(camion__numero_tracteur__icontains=q)
+            | Q(camion__numero_citerne__icontains=q)
+            | Q(camion__chauffeur__nom__icontains=q)
+        ).distinct()
+
+    if date_from:
+        queryset = queryset.filter(date_debut__date__gte=date_from)
+
+    if date_to:
+        queryset = queryset.filter(date_debut__date__lte=date_to)
+
+    if statut:
+        queryset = queryset.filter(statut=statut)
+
+    return queryset, {
+        "q": q,
+        "date_from": date_from,
+        "date_to": date_to,
+        "statut": statut,
+    }
+
+
+def _maintenance_export_rows(queryset):
+    rows = []
+    for maintenance in queryset:
+        rows.append(
+            [
+                maintenance.reference,
+                maintenance.camion.code_camion,
+                maintenance.camion.numero_tracteur,
+                maintenance.camion.numero_citerne or "",
+                (
+                    Chauffeur.objects.filter(camion=maintenance.camion)
+                    .values_list("nom", flat=True)
+                    .first()
+                    or ""
+                ),
+                maintenance.get_statut_display(),
+                maintenance.date_debut.strftime("%Y-%m-%d %H:%M"),
+                maintenance.date_fin.strftime("%Y-%m-%d %H:%M") if maintenance.date_fin else "",
+                str(maintenance.total_facture),
+                maintenance.numero_facture or "",
+                maintenance.date_paiement.strftime("%Y-%m-%d") if maintenance.date_paiement else "",
+            ]
+        )
+    return rows
+
+
+def _export_maintenance_xls(queryset, filename):
+    try:
+        from openpyxl import Workbook
+    except ImportError:
+        return HttpResponse(
+            "Le module openpyxl n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Maintenance"
+    sheet.append(
+        [
+            "Reference",
+            "Code camion",
+            "Tracteur",
+            "Citerne",
+            "Chauffeur",
+            "Statut",
+            "Date entree",
+            "Date sortie",
+            "Montant",
+            "Numero facture",
+            "Date paiement",
+        ]
+    )
+    for row in _maintenance_export_rows(queryset):
+        sheet.append(row)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def _export_maintenance_pdf(queryset, filename):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+    except ImportError:
+        return HttpResponse(
+            "Le module reportlab n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    data = [[
+        "Reference",
+        "Code camion",
+        "Tracteur",
+        "Citerne",
+        "Chauffeur",
+        "Statut",
+        "Entree",
+        "Sortie",
+        "Montant",
+        "Facture",
+        "Paiement",
+    ]]
+    data.extend(_maintenance_export_rows(queryset))
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d9e2e8")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f8fb")]),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("PADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    doc.build([table])
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+    response.write(buffer.getvalue())
+    return response
 
 
 def _attach_subline_values(formset, request=None):
@@ -144,6 +294,7 @@ def _garage_camions_catalog():
     return [
         {
             "id": camion.id,
+            "code_camion": camion.code_camion,
             "numero_tracteur": camion.numero_tracteur,
             "numero_citerne": camion.numero_citerne,
             "capacite": camion.capacite,
@@ -154,9 +305,25 @@ def _garage_camions_catalog():
 
 
 def garage_maintenances(request):
-    maintenances = list(_maintenance_queryset())
+    maintenances_qs, filter_values = _apply_maintenance_filters(request, _maintenance_queryset())
+    maintenances = list(maintenances_qs)
+    user_role = get_user_role(request.user)
+    is_admin = is_admin_user(request.user)
     for maintenance in maintenances:
         maintenance.pricing_complete = maintenance.is_pricing_complete()
+        maintenance.can_validate_logistique = (
+            user_role == "logistique" and not maintenance.is_validated_by_logistique()
+        )
+        maintenance.can_validate_dga = (
+            user_role == "dga"
+            and maintenance.is_validated_by_logistique()
+            and not maintenance.is_validated_by_dga()
+        )
+        maintenance.can_validate_dg = (
+            user_role == "directeur"
+            and maintenance.is_validated_by_dga()
+            and not maintenance.is_validated_by_dg()
+        )
     depenses_camions = (
         Maintenance.objects.values("camion__numero_tracteur", "camion__numero_citerne")
         .annotate(total_depense=Sum("total_facture"), total_maintenances=Count("id"))
@@ -168,6 +335,9 @@ def garage_maintenances(request):
         {
             "maintenances": maintenances,
             "depenses_camions": depenses_camions,
+            "filter_values": filter_values,
+            "statut_choices": Maintenance.STATUT_CHOICES,
+            "is_admin_maintenance": is_admin,
             **_maintenance_tabs_context("garage"),
         },
     )
@@ -180,12 +350,16 @@ def achat_maintenances(request):
         maintenances = maintenances.exclude(statut="en_cours")
     else:
         maintenances = maintenances.filter(statut="en_cours")
+    maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
     return render(
         request,
         "maintenance/achat.html",
         {
             "maintenances": maintenances,
             "historique": historique,
+            "filter_values": filter_values,
+            "statut_choices": Maintenance.STATUT_CHOICES,
+            "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("achat"),
         },
     )
@@ -201,6 +375,7 @@ def _render_garage_form(request, template_name, form, formset, **context):
             "formset": formset,
             "type_form": TypeMaintenanceForm(),
             "camions_catalog": _garage_camions_catalog(),
+            "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("garage"),
             **context,
         },
@@ -213,11 +388,24 @@ def _render_achat_form(request, template_name, form, **context):
         template_name,
         {
             "form": form,
+            "fournisseur_form": FournisseurForm(),
             "piece_rows": _attach_achat_piece_rows(context["maintenance"]),
+            "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("achat"),
             **context,
         },
     )
+
+
+def _set_form_read_only(form):
+    for field in form.fields.values():
+        field.disabled = True
+
+
+def _set_formset_read_only(formset):
+    for form in formset.forms:
+        for field in form.fields.values():
+            field.disabled = True
 
 
 def ajouter_maintenance_garage(request):
@@ -251,12 +439,17 @@ def ajouter_maintenance_garage(request):
         "maintenance/ajouter_maintenance_garage.html",
         form,
         formset,
+        submit_label="Enregistrer le diagnostic",
     )
 
 
 def modifier_maintenance_garage(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
+    is_admin = is_admin_user(request.user)
     if request.method == "POST":
+        if not is_admin:
+            messages.error(request, "Seul l'administrateur peut modifier un diagnostic existant.")
+            return redirect("garage_maintenances")
         form = MaintenanceGarageForm(request.POST, instance=maintenance)
         formset = MaintenanceGarageLigneFormSet(request.POST, instance=maintenance)
         if form.is_valid() and formset.is_valid():
@@ -278,6 +471,9 @@ def modifier_maintenance_garage(request, id):
     else:
         form = MaintenanceGarageForm(instance=maintenance)
         formset = MaintenanceGarageLigneFormSet(instance=maintenance)
+        if not is_admin:
+            _set_form_read_only(form)
+            _set_formset_read_only(formset)
 
     return _render_garage_form(
         request,
@@ -285,12 +481,18 @@ def modifier_maintenance_garage(request, id):
         form,
         formset,
         maintenance=maintenance,
+        read_only=not is_admin,
+        submit_label="Mettre a jour le diagnostic",
     )
 
 
 def modifier_maintenance_achat(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
+    is_admin = is_admin_user(request.user)
     if request.method == "POST":
+        if not is_admin:
+            messages.error(request, "Seul l'administrateur peut modifier les achats et valorisations.")
+            return redirect("achat_maintenances")
         form = MaintenanceAchatForm(request.POST, instance=maintenance)
         if form.is_valid():
             with transaction.atomic():
@@ -312,12 +514,15 @@ def modifier_maintenance_achat(request, id):
                     return redirect("achat_maintenances")
     else:
         form = MaintenanceAchatForm(instance=maintenance)
+        if not is_admin:
+            _set_form_read_only(form)
 
     return _render_achat_form(
         request,
         "maintenance/modifier_maintenance_achat.html",
         form,
         maintenance=maintenance,
+        read_only=not is_admin,
     )
 
 
@@ -344,6 +549,87 @@ def terminer_maintenance(request, id):
     return redirect("garage_maintenances")
 
 
+def valider_maintenance_logistique(request, id):
+    if request.method != "POST":
+        return redirect("garage_maintenances")
+
+    maintenance = get_object_or_404(Maintenance, id=id)
+    if get_user_role(request.user) != "logistique":
+        messages.error(request, "Seul le role Logistique peut faire cette validation.")
+        return redirect("garage_maintenances")
+    if maintenance.is_validated_by_logistique():
+        messages.info(request, "Cette fiche est deja validee par la logistique.")
+        return redirect("garage_maintenances")
+
+    maintenance.validation_logistique_at = timezone.now()
+    maintenance.validation_logistique_by = request.user
+    maintenance.save(update_fields=["validation_logistique_at", "validation_logistique_by"])
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Validation logistique",
+        maintenance.reference,
+        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau logistique.",
+    )
+    return redirect("garage_maintenances")
+
+
+def valider_maintenance_dga(request, id):
+    if request.method != "POST":
+        return redirect("garage_maintenances")
+
+    maintenance = get_object_or_404(Maintenance, id=id)
+    if get_user_role(request.user) != "dga":
+        messages.error(request, "Seul le role DGA peut faire cette validation.")
+        return redirect("garage_maintenances")
+    if not maintenance.is_validated_by_logistique():
+        messages.error(request, "La validation logistique est requise avant le DGA.")
+        return redirect("garage_maintenances")
+    if maintenance.is_validated_by_dga():
+        messages.info(request, "Cette fiche est deja validee par le DGA.")
+        return redirect("garage_maintenances")
+
+    maintenance.validation_dga_at = timezone.now()
+    maintenance.validation_dga_by = request.user
+    maintenance.save(update_fields=["validation_dga_at", "validation_dga_by"])
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Validation DGA",
+        maintenance.reference,
+        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau DGA.",
+    )
+    return redirect("garage_maintenances")
+
+
+def valider_maintenance_dg(request, id):
+    if request.method != "POST":
+        return redirect("garage_maintenances")
+
+    maintenance = get_object_or_404(Maintenance, id=id)
+    if get_user_role(request.user) != "directeur":
+        messages.error(request, "Seul le role DG peut faire cette validation.")
+        return redirect("garage_maintenances")
+    if not maintenance.is_validated_by_dga():
+        messages.error(request, "La validation DGA est requise avant le DG.")
+        return redirect("garage_maintenances")
+    if maintenance.is_validated_by_dg():
+        messages.info(request, "Cette fiche est deja validee par le DG.")
+        return redirect("garage_maintenances")
+
+    maintenance.validation_dg_at = timezone.now()
+    maintenance.validation_dg_by = request.user
+    maintenance.save(update_fields=["validation_dg_at", "validation_dg_by"])
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Validation DG",
+        maintenance.reference,
+        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau DG.",
+    )
+    return redirect("garage_maintenances")
+
+
 def imprimer_maintenance(request, id):
     maintenance = get_object_or_404(
         Maintenance.objects.select_related("camion").prefetch_related(
@@ -364,6 +650,9 @@ def imprimer_maintenance(request, id):
 
 
 def supprimer_maintenance(request, id):
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut supprimer une fiche maintenance.")
+        return redirect("garage_maintenances")
     maintenance = get_object_or_404(Maintenance, id=id)
     camion = maintenance.camion
     maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
@@ -411,13 +700,74 @@ def ajouter_type_maintenance_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def ajouter_fournisseur_modal(request):
+    if request.method != "POST":
+        return JsonResponse(
+            {"success": False, "errors": {"__all__": ["Requete invalide."]}},
+            status=405,
+        )
+
+    form = FournisseurForm(request.POST)
+    if form.is_valid():
+        fournisseur = form.save()
+        return JsonResponse(
+            {
+                "success": True,
+                "fournisseur": {
+                    "id": fournisseur.id,
+                    "label": str(fournisseur),
+                },
+            }
+        )
+
+    errors = {
+        field: [item["message"] for item in messages]
+        for field, messages in form.errors.get_json_data().items()
+    }
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
+def export_garage_xls(request):
+    queryset, _ = _apply_maintenance_filters(request, _maintenance_queryset())
+    return _export_maintenance_xls(queryset, "maintenance_garage")
+
+
+def export_garage_pdf(request):
+    queryset, _ = _apply_maintenance_filters(request, _maintenance_queryset())
+    return _export_maintenance_pdf(queryset, "maintenance_garage")
+
+
+def export_achat_xls(request):
+    historique = request.GET.get("scope") == "historique"
+    queryset = _maintenance_queryset()
+    queryset = queryset.exclude(statut="en_cours") if historique else queryset.filter(statut="en_cours")
+    queryset, _ = _apply_maintenance_filters(request, queryset)
+    return _export_maintenance_xls(queryset, "maintenance_achat")
+
+
+def export_achat_pdf(request):
+    historique = request.GET.get("scope") == "historique"
+    queryset = _maintenance_queryset()
+    queryset = queryset.exclude(statut="en_cours") if historique else queryset.filter(statut="en_cours")
+    queryset, _ = _apply_maintenance_filters(request, queryset)
+    return _export_maintenance_pdf(queryset, "maintenance_achat")
+
+
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
-garage_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
-achat_maintenances = role_required("logistique", "maintenancier", "directeur")(achat_maintenances)
+garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(garage_maintenances)
+achat_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(achat_maintenances)
 ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
-modifier_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(modifier_maintenance_garage)
-modifier_maintenance_achat = role_required("logistique", "maintenancier", "directeur")(modifier_maintenance_achat)
+modifier_maintenance_garage = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_garage)
+modifier_maintenance_achat = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_achat)
 terminer_maintenance = role_required("logistique", "maintenancier", "directeur")(terminer_maintenance)
-imprimer_maintenance = role_required("logistique", "maintenancier", "directeur")(imprimer_maintenance)
-supprimer_maintenance = role_required("logistique", "maintenancier", "directeur")(supprimer_maintenance)
+valider_maintenance_logistique = role_required("logistique")(valider_maintenance_logistique)
+valider_maintenance_dga = role_required("dga")(valider_maintenance_dga)
+valider_maintenance_dg = role_required("directeur")(valider_maintenance_dg)
+imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(imprimer_maintenance)
+supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
+ajouter_fournisseur_modal = role_required("directeur")(ajouter_fournisseur_modal)
+export_garage_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_xls)
+export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
+export_achat_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_achat_xls)
+export_achat_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_achat_pdf)

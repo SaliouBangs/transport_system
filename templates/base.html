@@ -823,7 +823,7 @@ min-width:0;
 {% if can_access_operations_transitaire %}<a href="/operations/transitaire/" class="{% if request.path|slice:':24' == '/operations/transitaire/' %}active{% endif %}">Transitaire</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/camions/" class="{% if request.path|slice:':9' == '/camions/' %}active{% endif %}">Camions</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/chauffeurs/" class="{% if request.path|slice:':12' == '/chauffeurs/' %}active{% endif %}">Chauffeurs</a>{% endif %}
-{% if can_manage_logistique_assets %}<a href="/maintenance/" class="{% if request.path|slice:':13' == '/maintenance/' %}active{% endif %}">Maintenance</a>{% endif %}
+{% if can_access_maintenance %}<a href="/maintenance/" class="{% if request.path|slice:':13' == '/maintenance/' %}active{% endif %}">Maintenance</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/documents/" class="{% if request.path|slice:':11' == '/documents/' %}active{% endif %}">Documents</a>{% endif %}
 {% if can_access_settings %}<a href="/comptes/parametres/" class="{% if request.path|slice:':12' == '/comptes/' %}active{% endif %}">Parametres</a>{% endif %}
 

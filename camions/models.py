@@ -23,6 +23,7 @@ class Camion(models.Model):
         ("au_garage", "Au garage"),
     ]
 
+    code_camion = models.CharField(max_length=30, unique=True, null=True, blank=True)
     numero_tracteur = models.CharField(max_length=50, unique=True)
     numero_citerne = models.CharField(max_length=50, blank=True)
     type_camion = models.CharField(max_length=30, choices=TYPE_CHOICES, default="tracteur_citerne")
@@ -51,4 +52,6 @@ class Camion(models.Model):
     etat = models.CharField(max_length=20, choices=ETAT_CHOICES, default="disponible")
 
     def __str__(self):
+        if self.code_camion:
+            return f"{self.code_camion} - {self.numero_tracteur}"
         return self.numero_tracteur
