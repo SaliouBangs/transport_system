@@ -22,14 +22,9 @@ def connexion_view(request):
     if request.user.is_authenticated:
         return redirect(get_default_landing_url(request.user))
 
-    debug_login = {}
     if request.method == "POST":
         username = (request.POST.get("username") or "").strip()
         password = request.POST.get("password") or ""
-        debug_login = {
-            "username": username,
-            "password_length": len(password),
-        }
         user = authenticate(username=username, password=password)
         if user is not None and user.is_active:
             login(request, user)
@@ -37,40 +32,7 @@ def connexion_view(request):
             return redirect(next_url)
         messages.error(request, "Nom d'utilisateur ou mot de passe invalide.")
 
-    return render(request, "utilisateurs/connexion.html", {"debug_login": debug_login})
-
-
-def connexion_demo_view(request):
-    demo_user = (
-        User.objects.filter(username__iexact="admin1", is_active=True).first()
-        or User.objects.filter(is_superuser=True, is_active=True).order_by("id").first()
-    )
-    if not demo_user:
-        messages.error(request, "Aucun compte demo n'est disponible pour le moment.")
-        return redirect("connexion")
-
-    login(request, demo_user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect(get_default_landing_url(demo_user))
-
-
-def force_demo_view(request):
-    demo_user = (
-        User.objects.filter(username__iexact="admin1", is_active=True).first()
-        or User.objects.filter(username__iexact="demo_temp").first()
-    )
-    if not demo_user:
-        demo_user = User.objects.create_user(
-            username="demo_temp",
-            email="demo@example.com",
-            password="demo123",
-        )
-        demo_user.is_active = True
-        demo_user.is_staff = True
-        demo_user.is_superuser = True
-        demo_user.save()
-
-    login(request, demo_user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("/dashboard/")
+    return render(request, "utilisateurs/connexion.html")
 
 
 def deconnexion_view(request):
