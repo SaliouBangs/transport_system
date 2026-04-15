@@ -178,4 +178,12 @@ def gps_monitor(request):
     )
 
 
+dashboard = role_required(
+    "commercial",
+    "comptable",
+    "logistique",
+    "maintenancier",
+    "directeur",
+    "transitaire",
+)(dashboard)
 gps_monitor = role_required("commercial", "comptable", "logistique", "directeur", "transitaire")(gps_monitor)
