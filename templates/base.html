@@ -811,7 +811,7 @@ min-width:0;
 <h2>MSTrans</h2>
 
 {% if can_access_dashboard %}<a href="/dashboard/" class="{% if request.path|slice:':11' == '/dashboard/' %}active{% endif %}">Dashboard</a>{% endif %}
-{% if can_access_dashboard %}<a href="/dashboard/gps/" class="{% if request.path|slice:':14' == '/dashboard/gps/' %}active{% endif %}">Suivi GPS</a>{% endif %}
+{% if can_access_gps %}<a href="/dashboard/gps/" class="{% if request.path|slice:':14' == '/dashboard/gps/' %}active{% endif %}">Suivi GPS</a>{% endif %}
 {% if can_access_prospects %}<a href="/prospects/" class="{% if request.path|slice:':10' == '/prospects/' %}active{% endif %}">Prospects</a>{% endif %}
 {% if can_access_clients %}<a href="/clients/" class="{% if request.path|slice:':9' == '/clients/' %}active{% endif %}">Clients</a>{% endif %}
 {% if can_access_commandes %}<a href="/commandes/" class="{% if request.path|slice:':11' == '/commandes/' %}active{% endif %}">Commandes</a>{% endif %}

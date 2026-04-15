@@ -1,24 +1,40 @@
 from datetime import timedelta
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.shortcuts import render
 from django.utils import timezone
 
 from camions.models import Camion
 from commandes.models import Commande
+from maintenance.models import Maintenance
 from operations.models import Operation
+from utilisateurs.permissions import get_user_role, role_required
 
 
 def dashboard(request):
     today = timezone.localdate()
     seuil_retard = today - timedelta(days=3)
     panne_threshold = 3
+    user_role = get_user_role(request.user)
+    is_maintenancier = user_role == "maintenancier"
 
     camions_total = Camion.objects.count()
     camions_disponibles = Camion.objects.filter(etat="disponible").count()
     camions_mission = Camion.objects.filter(etat="mission").count()
     camions_maintenance = Camion.objects.filter(etat="au_garage").count()
+    camions_vidange_due = Camion.objects.filter(
+        kilometrage_alerte_vidange__isnull=False,
+        kilometrage_actuel__gte=F("kilometrage_alerte_vidange"),
+    ).count()
+    maintenances_total = Maintenance.objects.count()
+    maintenances_en_cours = Maintenance.objects.filter(statut="en_cours").count()
+    maintenances_terminees = Maintenance.objects.filter(statut="terminee").count()
+    maintenances_refusees = Maintenance.objects.filter(statut="refusee").count()
+    maintenances_annulees = Maintenance.objects.filter(statut="annulee").count()
+    montant_maintenance_total = float(
+        Maintenance.objects.aggregate(total=Sum("total_facture"))["total"] or 0
+    )
     commandes_total = Commande.objects.count()
     operations_total = Operation.objects.count()
 
@@ -102,11 +118,31 @@ def dashboard(request):
             camion.performance_label = "Mauvais"
             camion.performance_variant = "danger"
 
+    dernieres_maintenances = Maintenance.objects.select_related("camion").order_by("-date_creation")[:8]
+    alertes_maintenance = Maintenance.objects.select_related("camion").filter(
+        Q(statut="en_cours")
+        | Q(
+            camion__kilometrage_alerte_vidange__isnull=False,
+            camion__kilometrage_actuel__gte=F("camion__kilometrage_alerte_vidange"),
+        )
+    ).order_by("-date_creation")[:8]
+
     context = {
+        "user_role": user_role,
+        "is_maintenancier": is_maintenancier,
         "camions_total": camions_total,
         "camions_disponibles": camions_disponibles,
         "camions_mission": camions_mission,
         "camions_maintenance": camions_maintenance,
+        "camions_vidange_due": camions_vidange_due,
+        "maintenances_total": maintenances_total,
+        "maintenances_en_cours": maintenances_en_cours,
+        "maintenances_terminees": maintenances_terminees,
+        "maintenances_refusees": maintenances_refusees,
+        "maintenances_annulees": maintenances_annulees,
+        "montant_maintenance_total": montant_maintenance_total,
+        "dernieres_maintenances": dernieres_maintenances,
+        "alertes_maintenance": alertes_maintenance,
         "commandes_total": commandes_total,
         "operations_total": operations_total,
         "bons_inities": bons_inities,
@@ -140,3 +176,6 @@ def gps_monitor(request):
             "gps_url": "https://www.gps51.com/#/monitorPage",
         },
     )
+
+
+gps_monitor = role_required("commercial", "comptable", "logistique", "directeur", "transitaire")(gps_monitor)

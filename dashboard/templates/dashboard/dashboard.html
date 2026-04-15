@@ -6,10 +6,132 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Pilotage</p>
-<h1>Dashboard logistique</h1>
+<h1>{% if is_maintenancier %}Dashboard maintenance{% else %}Dashboard logistique{% endif %}</h1>
 </div>
 </div>
 
+{% if is_maintenancier %}
+<div class="cards">
+<div class="card"><h3>Camions total</h3><p>{{ camions_total }}</p></div>
+<div class="card"><h3>Disponibles</h3><p>{{ camions_disponibles }}</p></div>
+<div class="card"><h3>Au garage</h3><p>{{ camions_maintenance }}</p></div>
+<div class="card"><h3>Vidanges dues</h3><p>{{ camions_vidange_due }}</p></div>
+<div class="card"><h3>Diagnostics</h3><p>{{ maintenances_total }}</p></div>
+<div class="card"><h3>En cours</h3><p>{{ maintenances_en_cours }}</p></div>
+<div class="card"><h3>Terminees</h3><p>{{ maintenances_terminees }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:18px;">
+<div class="card"><h3>Refusees</h3><p>{{ maintenances_refusees }}</p></div>
+<div class="card"><h3>Annulees</h3><p>{{ maintenances_annulees }}</p></div>
+<div class="card"><h3>Cout maintenance</h3><p>{{ montant_maintenance_total }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Dernieres maintenances</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Camion</th>
+<th>Statut</th>
+<th>Debut</th>
+</tr>
+</thead>
+<tbody>
+{% for maintenance in dernieres_maintenances %}
+<tr>
+<td>{{ maintenance.reference }}</td>
+<td>{{ maintenance.camion.numero_tracteur }}</td>
+<td>{{ maintenance.get_statut_display }}</td>
+<td>{{ maintenance.date_debut|date:"d/m/Y H:i" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucune maintenance recente.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Alertes maintenance</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Reference</th>
+<th>Camion</th>
+<th>Statut</th>
+<th>Observation</th>
+</tr>
+</thead>
+<tbody>
+{% for maintenance in alertes_maintenance %}
+<tr>
+<td>{{ maintenance.reference }}</td>
+<td>{{ maintenance.camion.numero_tracteur }}</td>
+<td>{{ maintenance.get_statut_display }}</td>
+<td>{{ maintenance.observation|default:"-"|truncatechars:60 }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucune alerte maintenance pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Performance des camions</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Marque / capacite</th>
+<th>Pannes</th>
+<th>Performance</th>
+<th>Niveau</th>
+</tr>
+</thead>
+<tbody>
+{% for camion in performances_camions %}
+<tr>
+<td>
+{{ camion.numero_tracteur }}
+{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}
+</td>
+<td>
+{{ camion.marque|default:"-" }}{% if camion.capacite %} / {{ camion.capacite }} L{% endif %}
+</td>
+<td>{{ camion.panne_count }}</td>
+<td>{{ camion.performance_percent }}%</td>
+<td>
+{% if camion.performance_variant == "ok" %}
+<span class="status status-ok">{{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "warning" %}
+<span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">{{ camion.performance_label }}</span>
+{% elif camion.performance_variant == "mid" %}
+<span class="status" style="background:rgba(230, 126, 34, 0.16); color:#c65d00;">{{ camion.performance_label }}</span>
+{% else %}
+<span class="status status-danger">{{ camion.performance_label }}</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="5">Aucune donnee de performance disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+{% else %}
 <div class="cards">
 <div class="card"><h3>Camions total</h3><p>{{ camions_total }}</p></div>
 <div class="card"><h3>Disponibles</h3><p>{{ camions_disponibles }}</p></div>
@@ -210,9 +332,11 @@
 </div>
 </div>
 </div>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+{% if not is_maintenancier %}
 const carburantCtx = document.getElementById("carburantChart");
 new Chart(carburantCtx, {
     type: "doughnut",
@@ -233,7 +357,9 @@ new Chart(carburantCtx, {
         }
     }
 });
+{% endif %}
 
+{% if not is_maintenancier %}
 const bonsCtx = document.getElementById("bonsChart");
 new Chart(bonsCtx, {
     type: "line",
@@ -267,6 +393,7 @@ new Chart(bonsCtx, {
         }
     }
 });
+{% endif %}
 </script>
 
 {% endblock %}

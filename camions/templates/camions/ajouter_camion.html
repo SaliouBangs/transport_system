@@ -39,6 +39,66 @@
 </div>
 
 <div class="field">
+<label for="{{ form.modele.id_for_label }}">Modele</label>
+{{ form.modele }}
+{% if form.modele.errors %}<p class="field-error">{{ form.modele.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.annee.id_for_label }}">Annee</label>
+{{ form.annee }}
+{% if form.annee.errors %}<p class="field-error">{{ form.annee.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.carburant.id_for_label }}">Carburant</label>
+{{ form.carburant }}
+{% if form.carburant.errors %}<p class="field-error">{{ form.carburant.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.chassis.id_for_label }}">Chassis</label>
+{{ form.chassis }}
+{% if form.chassis.errors %}<p class="field-error">{{ form.chassis.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.imsi.id_for_label }}">IMSI</label>
+{{ form.imsi }}
+{% if form.imsi.errors %}<p class="field-error">{{ form.imsi.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.numero_sim.id_for_label }}">Num SIM</label>
+{{ form.numero_sim }}
+{% if form.numero_sim.errors %}<p class="field-error">{{ form.numero_sim.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.longueur.id_for_label }}">Longueur</label>
+{{ form.longueur }}
+{% if form.longueur.errors %}<p class="field-error">{{ form.longueur.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.largeur.id_for_label }}">Largeur</label>
+{{ form.largeur }}
+{% if form.largeur.errors %}<p class="field-error">{{ form.largeur.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.hauteur.id_for_label }}">Hauteur</label>
+{{ form.hauteur }}
+{% if form.hauteur.errors %}<p class="field-error">{{ form.hauteur.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.numero_balise.id_for_label }}">Num balise</label>
+{{ form.numero_balise }}
+{% if form.numero_balise.errors %}<p class="field-error">{{ form.numero_balise.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
 <label for="{{ form.transporteur.id_for_label }}">Transporteur</label>
 <div class="field-inline">
 {{ form.transporteur }}

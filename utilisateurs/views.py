@@ -14,9 +14,7 @@ from .permissions import (
 
 
 def home_redirect(request):
-    if not request.user.is_authenticated:
-        return redirect("connexion")
-    return redirect(get_default_landing_url(request.user))
+    return redirect("connexion")
 
 
 def connexion_view(request):
