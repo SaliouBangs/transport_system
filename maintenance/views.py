@@ -428,7 +428,7 @@ def fournisseurs_maintenance(request):
             "query": query,
             "form": form,
             "is_admin_maintenance": is_admin_user(request.user),
-            **_maintenance_tabs_context("achat"),
+            **_maintenance_tabs_context("fournisseurs"),
         },
     )
 
@@ -459,7 +459,7 @@ def ajouter_fournisseur(request):
             "query": "",
             "form": form,
             "is_admin_maintenance": is_admin_user(request.user),
-            **_maintenance_tabs_context("achat"),
+            **_maintenance_tabs_context("fournisseurs"),
         },
         status=400,
     )
@@ -490,7 +490,7 @@ def modifier_fournisseur(request, id):
             "form": form,
             "fournisseur": fournisseur,
             "is_admin_maintenance": is_admin_user(request.user),
-            **_maintenance_tabs_context("achat"),
+            **_maintenance_tabs_context("fournisseurs"),
         },
         status=400 if request.method == "POST" and form.errors else 200,
     )
