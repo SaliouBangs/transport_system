@@ -7,16 +7,15 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
-<h1>Fournisseurs maintenance</h1>
+<h1>Modifier fournisseur</h1>
 </div>
 <div class="table-actions">
-<a href="/maintenance/achat/" class="btn-secondary">Retour achat</a>
+<a href="/maintenance/fournisseurs/" class="btn-secondary">Retour fournisseurs</a>
 </div>
 </div>
 
-<div class="card" style="padding:24px; margin-bottom:18px;">
-<h2 style="margin-top:0;">Nouveau fournisseur</h2>
-<form method="post" action="/maintenance/fournisseurs/ajouter/" class="app-form">
+<div class="card" style="padding:24px;">
+<form method="post" class="app-form">
     {% csrf_token %}
     <div class="form-grid form-grid-2">
         <div>
@@ -55,54 +54,5 @@
     </div>
 </form>
 </div>
-
-<form method="get" class="search-form" style="margin-bottom:18px;">
-<input type="text" name="q" value="{{ query }}" placeholder="Rechercher nom, entreprise, activite ou telephone" autocomplete="off" spellcheck="false">
-<button type="submit" class="btn">Rechercher</button>
-<a href="/maintenance/fournisseurs/" class="btn-secondary">Reinitialiser</a>
-</form>
-
-<table class="table">
-<thead>
-<tr>
-<th>Nom fournisseur</th>
-<th>Entreprise</th>
-<th>Mail</th>
-<th>Domaine d'activite</th>
-<th>Mode paiement</th>
-<th>Numero de telephone</th>
-<th>Maintenances liees</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
-{% for fournisseur in fournisseurs %}
-<tr>
-<td>{{ fournisseur.nom_fournisseur }}</td>
-<td>{{ fournisseur.entreprise }}</td>
-<td>{{ fournisseur.email|default:"-" }}</td>
-<td>{{ fournisseur.domaine_activite|default:"-" }}</td>
-<td>{{ fournisseur.mode_paiement|default:"-" }}</td>
-<td>{{ fournisseur.numero_telephone|default:"-" }}</td>
-<td>{{ fournisseur.maintenances.count }}</td>
-<td>
-    {% if is_admin_maintenance %}
-    <a href="/maintenance/fournisseurs/modifier/{{ fournisseur.id }}/" class="btn-edit">Modifier</a>
-    <form method="post" action="/maintenance/fournisseurs/supprimer/{{ fournisseur.id }}/" onsubmit="return confirm('Supprimer ce fournisseur ?');" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn-delete">Supprimer</button>
-    </form>
-    {% else %}
-    <span class="badge badge-neutral">Lecture seule</span>
-    {% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="8">Aucun fournisseur trouve.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
 
 {% endblock %}

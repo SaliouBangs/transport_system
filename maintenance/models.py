@@ -21,7 +21,9 @@ class TypeMaintenance(models.Model):
 class Fournisseur(models.Model):
     nom_fournisseur = models.CharField(max_length=150)
     entreprise = models.CharField(max_length=150)
+    email = models.EmailField(blank=True)
     domaine_activite = models.CharField(max_length=150, blank=True)
+    mode_paiement = models.CharField(max_length=100, blank=True)
     numero_telephone = models.CharField(max_length=50, blank=True, null=True, unique=True)
 
     class Meta:
@@ -30,7 +32,9 @@ class Fournisseur(models.Model):
     def clean(self):
         self.nom_fournisseur = (self.nom_fournisseur or "").strip()
         self.entreprise = (self.entreprise or "").strip()
+        self.email = (self.email or "").strip().lower()
         self.domaine_activite = (self.domaine_activite or "").strip()
+        self.mode_paiement = (self.mode_paiement or "").strip()
         self.numero_telephone = ((self.numero_telephone or "").strip() or None)
 
     def save(self, *args, **kwargs):

@@ -419,15 +419,80 @@ def fournisseurs_maintenance(request):
             | Q(domaine_activite__icontains=query)
             | Q(numero_telephone__icontains=query)
         )
+    form = FournisseurForm()
     return render(
         request,
         "maintenance/fournisseurs.html",
         {
             "fournisseurs": fournisseurs,
             "query": query,
+            "form": form,
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("achat"),
         },
+    )
+
+
+def ajouter_fournisseur(request):
+    if request.method != "POST":
+        return redirect("fournisseurs_maintenance")
+
+    form = FournisseurForm(request.POST)
+    if form.is_valid():
+        fournisseur = form.save()
+        log_action(
+            request.user,
+            "maintenance",
+            "creation fournisseur",
+            f"{request.user.username} a cree le fournisseur {fournisseur}.",
+        )
+        messages.success(request, f"Le fournisseur {fournisseur} a ete cree.")
+        return redirect("fournisseurs_maintenance")
+
+    fournisseurs = Fournisseur.objects.all().order_by("nom_fournisseur", "entreprise")
+    messages.error(request, "Impossible de creer le fournisseur. Verifiez les champs puis reessayez.")
+    return render(
+        request,
+        "maintenance/fournisseurs.html",
+        {
+            "fournisseurs": fournisseurs,
+            "query": "",
+            "form": form,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("achat"),
+        },
+        status=400,
+    )
+
+
+def modifier_fournisseur(request, id):
+    fournisseur = get_object_or_404(Fournisseur, pk=id)
+    if request.method == "POST":
+        form = FournisseurForm(request.POST, instance=fournisseur)
+        if form.is_valid():
+            fournisseur = form.save()
+            log_action(
+                request.user,
+                "maintenance",
+                "mise a jour fournisseur",
+                f"{request.user.username} a modifie le fournisseur {fournisseur}.",
+            )
+            messages.success(request, f"Le fournisseur {fournisseur} a ete mis a jour.")
+            return redirect("fournisseurs_maintenance")
+        messages.error(request, "Impossible de mettre a jour le fournisseur. Verifiez les champs.")
+    else:
+        form = FournisseurForm(instance=fournisseur)
+
+    return render(
+        request,
+        "maintenance/modifier_fournisseur.html",
+        {
+            "form": form,
+            "fournisseur": fournisseur,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("achat"),
+        },
+        status=400 if request.method == "POST" and form.errors else 200,
     )
 
 
@@ -958,6 +1023,8 @@ liste_maintenances = role_required("logistique", "maintenancier", "directeur")(g
 garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(garage_maintenances)
 achat_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(achat_maintenances)
 fournisseurs_maintenance = role_required("logistique", "directeur")(fournisseurs_maintenance)
+ajouter_fournisseur = role_required("logistique", "directeur")(ajouter_fournisseur)
+modifier_fournisseur = role_required("logistique", "directeur")(modifier_fournisseur)
 ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
 modifier_maintenance_garage = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_garage)
 modifier_maintenance_achat = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_achat)

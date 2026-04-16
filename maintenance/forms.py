@@ -60,7 +60,14 @@ class MaintenanceAchatForm(forms.ModelForm):
 class FournisseurForm(forms.ModelForm):
     class Meta:
         model = Fournisseur
-        fields = ["nom_fournisseur", "entreprise", "domaine_activite", "numero_telephone"]
+        fields = [
+            "nom_fournisseur",
+            "entreprise",
+            "numero_telephone",
+            "email",
+            "domaine_activite",
+            "mode_paiement",
+        ]
 
 
 class PrestataireForm(forms.ModelForm):

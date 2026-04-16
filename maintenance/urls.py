@@ -22,6 +22,8 @@ urlpatterns = [
     path("achat/export/xls/", views.export_achat_xls, name="export_achat_xls"),
     path("achat/export/pdf/", views.export_achat_pdf, name="export_achat_pdf"),
     path("fournisseurs/", views.fournisseurs_maintenance, name="fournisseurs_maintenance"),
+    path("fournisseurs/ajouter/", views.ajouter_fournisseur, name="ajouter_fournisseur"),
+    path("fournisseurs/modifier/<int:id>/", views.modifier_fournisseur, name="modifier_fournisseur"),
     path("fournisseurs/supprimer/<int:id>/", views.supprimer_fournisseur, name="supprimer_fournisseur"),
     path("supprimer/<int:id>/", views.supprimer_maintenance, name="supprimer_maintenance"),
     path(
