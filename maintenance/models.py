@@ -22,10 +22,20 @@ class Fournisseur(models.Model):
     nom_fournisseur = models.CharField(max_length=150)
     entreprise = models.CharField(max_length=150)
     domaine_activite = models.CharField(max_length=150, blank=True)
-    numero_telephone = models.CharField(max_length=50, blank=True)
+    numero_telephone = models.CharField(max_length=50, blank=True, null=True, unique=True)
 
     class Meta:
         ordering = ["nom_fournisseur", "entreprise"]
+
+    def clean(self):
+        self.nom_fournisseur = (self.nom_fournisseur or "").strip()
+        self.entreprise = (self.entreprise or "").strip()
+        self.domaine_activite = (self.domaine_activite or "").strip()
+        self.numero_telephone = ((self.numero_telephone or "").strip() or None)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nom_fournisseur} - {self.entreprise}"
