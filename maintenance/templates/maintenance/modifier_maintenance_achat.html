@@ -15,6 +15,14 @@
 <form method="post" class="app-form">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+    <div class="form-alert" style="margin-bottom:16px;">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="form-grid">
         <div class="field">
             <label>Camion</label>
@@ -32,15 +40,18 @@
                 <button type="button" class="btn-secondary btn-inline" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
                 {% endif %}
             </div>
+            {% if form.fournisseur.errors %}<p class="field-error">{{ form.fournisseur.errors.0 }}</p>{% endif %}
         </div>
         <div class="field">
             <label for="{{ form.numero_facture.id_for_label }}">Numero de facture</label>
             {{ form.numero_facture }}
+            {% if form.numero_facture.errors %}<p class="field-error">{{ form.numero_facture.errors.0 }}</p>{% endif %}
         </div>
         <div class="field">
             <label for="{{ form.statut.id_for_label }}">Etat de la fiche</label>
             {% if can_edit_achat and not is_admin_maintenance %}
             <input type="text" value="{{ maintenance.get_statut_display }}" readonly>
+            {{ form.statut.as_hidden }}
             {% else %}
             {{ form.statut }}
             {% endif %}
@@ -49,14 +60,17 @@
         <div class="field">
             <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
             {{ form.date_paiement }}
+            {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
             <label for="{{ form.prestataire.id_for_label }}">Prestataire</label>
             {{ form.prestataire }}
+            {% if form.prestataire.errors %}<p class="field-error">{{ form.prestataire.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
             <label for="{{ form.observation.id_for_label }}">Observation achat</label>
             {{ form.observation }}
+            {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
         </div>
     </div>
 

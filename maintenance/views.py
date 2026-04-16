@@ -579,6 +579,10 @@ def modifier_maintenance_achat(request, id):
                     f"{request.user.username} a mis a jour l'achat et les prix du diagnostic {maintenance_label}.",
                 )
                 return redirect("achat_maintenances")
+        messages.error(
+            request,
+            "Impossible d'enregistrer les prix. Verifiez les champs achat puis reessayez.",
+        )
     else:
         form = MaintenanceAchatForm(instance=maintenance)
         if not can_edit_achat:
