@@ -76,6 +76,7 @@ def dedupe_fournisseurs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ('maintenance', '0011_prestataire'),
