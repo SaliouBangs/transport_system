@@ -270,7 +270,7 @@
 {% if can_edit_achat %}
 <script>
 const fournisseurModalForm = document.getElementById("fournisseur-modal-form");
-const fournisseurSelect = document.getElementById("{{ form.fournisseur.id_for_label }}");
+const fournisseurHiddenInput = document.getElementById("{{ form.fournisseur.id_for_label }}");
 const fournisseurSearchInput = document.getElementById("fournisseur-search-input");
 const fournisseurModalErrors = document.getElementById("fournisseur-modal-errors");
 const fournisseurCsrfInput = fournisseurModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
@@ -283,7 +283,9 @@ const prestataireCsrfInput = prestataireModalForm?.querySelector("input[name='cs
 function syncFournisseurSelection() {
     const options = Array.from(document.querySelectorAll("#fournisseurs-catalog option"));
     const match = options.find((option) => option.value === fournisseurSearchInput.value.trim());
-    fournisseurSelect.value = match ? match.dataset.id : "";
+    if (fournisseurHiddenInput) {
+        fournisseurHiddenInput.value = match ? match.dataset.id : "";
+    }
 }
 
 fournisseurSearchInput?.addEventListener("input", syncFournisseurSelection);
@@ -335,9 +337,14 @@ fournisseurModalForm?.addEventListener("submit", async (event) => {
         return;
     }
 
-    const option = new Option(data.fournisseur.label, data.fournisseur.id, true, true);
-    fournisseurSelect.add(option);
-    fournisseurSelect.value = data.fournisseur.id;
+    const datalist = document.getElementById("fournisseurs-catalog");
+    const option = document.createElement("option");
+    option.value = data.fournisseur.label;
+    option.dataset.id = data.fournisseur.id;
+    datalist?.appendChild(option);
+    if (fournisseurHiddenInput) {
+        fournisseurHiddenInput.value = data.fournisseur.id;
+    }
     if (fournisseurSearchInput) {
         fournisseurSearchInput.value = data.fournisseur.label;
     }
