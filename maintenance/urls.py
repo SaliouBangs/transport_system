@@ -32,4 +32,9 @@ urlpatterns = [
         views.ajouter_fournisseur_modal,
         name="ajouter_fournisseur_modal",
     ),
+    path(
+        "prestataires/ajouter-modal/",
+        views.ajouter_prestataire_modal,
+        name="ajouter_prestataire_modal",
+    ),
 ]

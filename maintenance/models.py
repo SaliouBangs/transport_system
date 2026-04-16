@@ -31,6 +31,21 @@ class Fournisseur(models.Model):
         return f"{self.nom_fournisseur} - {self.entreprise}"
 
 
+class Prestataire(models.Model):
+    nom_prestataire = models.CharField(max_length=150)
+    entreprise = models.CharField(max_length=150, blank=True)
+    domaine_activite = models.CharField(max_length=150, blank=True)
+    numero_telephone = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        ordering = ["nom_prestataire", "entreprise"]
+
+    def __str__(self):
+        if self.entreprise:
+            return f"{self.nom_prestataire} - {self.entreprise}"
+        return self.nom_prestataire
+
+
 class Maintenance(models.Model):
     STATUT_CHOICES = [
         ("en_cours", "En cours"),

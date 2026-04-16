@@ -17,9 +17,10 @@ from .forms import (
     MaintenanceAchatForm,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
+    PrestataireForm,
     TypeMaintenanceForm,
 )
-from .models import Fournisseur, Maintenance, MaintenanceSousLigne
+from .models import Fournisseur, Maintenance, MaintenanceSousLigne, Prestataire
 
 
 def _maintenance_queryset():
@@ -425,13 +426,28 @@ def _render_garage_form(request, template_name, form, formset, **context):
 
 
 def _render_achat_form(request, template_name, form, **context):
+    fournisseurs_catalog = [
+        {"id": fournisseur.id, "label": str(fournisseur)}
+        for fournisseur in Fournisseur.objects.all()
+    ]
+    prestataires_catalog = [
+        {"label": str(prestataire)}
+        for prestataire in Prestataire.objects.all()
+    ]
+    if context["maintenance"].prestataire and not any(
+        item["label"] == context["maintenance"].prestataire for item in prestataires_catalog
+    ):
+        prestataires_catalog.insert(0, {"label": context["maintenance"].prestataire})
     return render(
         request,
         template_name,
         {
             "form": form,
             "fournisseur_form": FournisseurForm(),
+            "prestataire_form": PrestataireForm(),
             "piece_rows": _attach_achat_piece_rows(context["maintenance"]),
+            "fournisseurs_catalog": fournisseurs_catalog,
+            "prestataires_catalog": prestataires_catalog,
             "is_admin_maintenance": is_admin_user(request.user),
             "can_edit_achat": context.get("can_edit_achat", False),
             **_maintenance_tabs_context("achat"),
@@ -562,6 +578,7 @@ def modifier_maintenance_achat(request, id):
         post_data = request.POST.copy()
         if not is_admin:
             post_data["statut"] = maintenance.statut
+        post_data["prestataire"] = (post_data.get("prestataire_search") or post_data.get("prestataire") or "").strip()
         form = MaintenanceAchatForm(post_data, instance=maintenance)
         if form.is_valid():
             with transaction.atomic():
@@ -843,6 +860,32 @@ def ajouter_fournisseur_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def ajouter_prestataire_modal(request):
+    if request.method != "POST":
+        return JsonResponse(
+            {"success": False, "errors": {"__all__": ["Requete invalide."]}},
+            status=405,
+        )
+
+    form = PrestataireForm(request.POST)
+    if form.is_valid():
+        prestataire = form.save()
+        return JsonResponse(
+            {
+                "success": True,
+                "prestataire": {
+                    "label": str(prestataire),
+                },
+            }
+        )
+
+    errors = {
+        field: [item["message"] for item in messages]
+        for field, messages in form.errors.get_json_data().items()
+    }
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
 def export_garage_xls(request):
     queryset, _ = _apply_maintenance_filters(request, _maintenance_queryset())
     return _export_maintenance_xls(queryset, "maintenance_garage")
@@ -885,6 +928,7 @@ imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "dire
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur")(ajouter_fournisseur_modal)
+ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)
 export_garage_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_xls)
 export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
 export_achat_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_achat_xls)

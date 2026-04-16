@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Fournisseur, Maintenance, MaintenanceLigne, TypeMaintenance
+from .models import Fournisseur, Maintenance, MaintenanceLigne, Prestataire, TypeMaintenance
 
 
 class MaintenanceForm(forms.ModelForm):
@@ -61,6 +61,12 @@ class FournisseurForm(forms.ModelForm):
     class Meta:
         model = Fournisseur
         fields = ["nom_fournisseur", "entreprise", "domaine_activite", "numero_telephone"]
+
+
+class PrestataireForm(forms.ModelForm):
+    class Meta:
+        model = Prestataire
+        fields = ["nom_prestataire", "entreprise", "domaine_activite", "numero_telephone"]
 
 
 class TypeMaintenanceForm(forms.ModelForm):

@@ -33,9 +33,23 @@
             <input type="text" value="{{ maintenance.reference }}" readonly>
         </div>
         <div class="field">
-            <label for="{{ form.fournisseur.id_for_label }}">Fournisseur</label>
+            <label for="fournisseur-search-input">Fournisseur</label>
             <div class="field-inline">
-                {{ form.fournisseur }}
+                {{ form.fournisseur.as_hidden }}
+                <input
+                    type="text"
+                    id="fournisseur-search-input"
+                    list="fournisseurs-catalog"
+                    placeholder="Rechercher ou saisir un fournisseur"
+                    value="{% if form.fournisseur.value %}{% for fournisseur in fournisseurs_catalog %}{% if fournisseur.id|stringformat:'s' == form.fournisseur.value|stringformat:'s' %}{{ fournisseur.label }}{% endif %}{% endfor %}{% endif %}"
+                    autocomplete="off"
+                    {% if not can_edit_achat %}readonly{% endif %}
+                >
+                <datalist id="fournisseurs-catalog">
+                    {% for fournisseur in fournisseurs_catalog %}
+                    <option value="{{ fournisseur.label }}" data-id="{{ fournisseur.id }}"></option>
+                    {% endfor %}
+                </datalist>
                 {% if can_edit_achat %}
                 <button type="button" class="btn-secondary btn-inline" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
                 {% endif %}
@@ -63,8 +77,28 @@
             {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
-            <label for="{{ form.prestataire.id_for_label }}">Prestataire</label>
-            {{ form.prestataire }}
+            <label for="prestataire-search-input">Prestataire</label>
+            <div class="field-inline">
+                {{ form.prestataire.as_hidden }}
+                <input
+                    type="text"
+                    id="prestataire-search-input"
+                    name="prestataire_search"
+                    list="prestataires-catalog"
+                    placeholder="Rechercher ou saisir un prestataire"
+                    value="{{ form.prestataire.value|default:'' }}"
+                    autocomplete="off"
+                    {% if not can_edit_achat %}readonly{% endif %}
+                >
+                <datalist id="prestataires-catalog">
+                    {% for prestataire in prestataires_catalog %}
+                    <option value="{{ prestataire.label }}"></option>
+                    {% endfor %}
+                </datalist>
+                {% if can_edit_achat %}
+                <button type="button" class="btn-secondary btn-inline" data-modal-target="prestataire-modal">Nouveau prestataire</button>
+                {% endif %}
+            </div>
             {% if form.prestataire.errors %}<p class="field-error">{{ form.prestataire.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
@@ -188,15 +222,83 @@
 </div>
 {% endif %}
 
+{% if can_edit_achat %}
+<div class="modal" id="prestataire-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="prestataire-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter un prestataire</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="prestataire-modal">x</button>
+        </div>
+
+        <form id="prestataire-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="id_nom_prestataire">Nom prestataire</label>
+                    {{ prestataire_form.nom_prestataire }}
+                </div>
+                <div class="field">
+                    <label for="id_prestataire_entreprise">Entreprise</label>
+                    {{ prestataire_form.entreprise }}
+                </div>
+                <div class="field">
+                    <label for="id_prestataire_domaine_activite">Domaine d'activite</label>
+                    {{ prestataire_form.domaine_activite }}
+                </div>
+                <div class="field">
+                    <label for="id_prestataire_numero_telephone">Numero de telephone</label>
+                    {{ prestataire_form.numero_telephone }}
+                </div>
+            </div>
+            <div class="field-error" id="prestataire-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="prestataire-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le prestataire</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_scripts %}
 {% if can_edit_achat %}
 <script>
 const fournisseurModalForm = document.getElementById("fournisseur-modal-form");
-const fournisseurSelect = document.getElementById("id_fournisseur");
+const fournisseurSelect = document.getElementById("{{ form.fournisseur.id_for_label }}");
+const fournisseurSearchInput = document.getElementById("fournisseur-search-input");
 const fournisseurModalErrors = document.getElementById("fournisseur-modal-errors");
 const fournisseurCsrfInput = fournisseurModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const prestataireModalForm = document.getElementById("prestataire-modal-form");
+const prestataireInput = document.getElementById("prestataire-search-input");
+const prestataireHiddenInput = document.getElementById("{{ form.prestataire.id_for_label }}");
+const prestataireModalErrors = document.getElementById("prestataire-modal-errors");
+const prestataireCsrfInput = prestataireModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+
+function syncFournisseurSelection() {
+    const options = Array.from(document.querySelectorAll("#fournisseurs-catalog option"));
+    const match = options.find((option) => option.value === fournisseurSearchInput.value.trim());
+    fournisseurSelect.value = match ? match.dataset.id : "";
+}
+
+fournisseurSearchInput?.addEventListener("input", syncFournisseurSelection);
+fournisseurSearchInput?.addEventListener("change", syncFournisseurSelection);
+
+prestataireInput?.addEventListener("input", () => {
+    if (prestataireHiddenInput) {
+        prestataireHiddenInput.value = prestataireInput.value.trim();
+    }
+});
+prestataireInput?.addEventListener("change", () => {
+    if (prestataireHiddenInput) {
+        prestataireHiddenInput.value = prestataireInput.value.trim();
+    }
+});
 
 fournisseurModalForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -236,8 +338,60 @@ fournisseurModalForm?.addEventListener("submit", async (event) => {
     const option = new Option(data.fournisseur.label, data.fournisseur.id, true, true);
     fournisseurSelect.add(option);
     fournisseurSelect.value = data.fournisseur.id;
+    if (fournisseurSearchInput) {
+        fournisseurSearchInput.value = data.fournisseur.label;
+    }
     fournisseurModalForm.reset();
     document.getElementById("fournisseur-modal")?.classList.remove("is-open");
+});
+
+prestataireModalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    prestataireModalErrors.hidden = true;
+    prestataireModalErrors.textContent = "";
+
+    let response = null;
+    let data = null;
+    try {
+        response = await fetch("/maintenance/prestataires/ajouter-modal/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": prestataireCsrfInput?.value || "",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: new FormData(prestataireModalForm),
+            credentials: "same-origin"
+        });
+        data = await response.json();
+    } catch (error) {
+        data = {
+            success: false,
+            errors: { __all__: ["Impossible d'ajouter le prestataire pour le moment."] }
+        };
+    }
+
+    if (!response || !response.ok || !data.success) {
+        const messages = [];
+        Object.keys(data.errors || {}).forEach((key) => {
+            messages.push(...data.errors[key]);
+        });
+        prestataireModalErrors.textContent = messages.join(" ");
+        prestataireModalErrors.hidden = false;
+        return;
+    }
+
+    const datalist = document.getElementById("prestataires-catalog");
+    const option = document.createElement("option");
+    option.value = data.prestataire.label;
+    datalist?.appendChild(option);
+    if (prestataireInput) {
+        prestataireInput.value = data.prestataire.label;
+    }
+    if (prestataireHiddenInput) {
+        prestataireHiddenInput.value = data.prestataire.label;
+    }
+    prestataireModalForm.reset();
+    document.getElementById("prestataire-modal")?.classList.remove("is-open");
 });
 </script>
 {% endif %}
