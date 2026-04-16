@@ -14,6 +14,7 @@ urlpatterns = [
     path("garage/valider-dga/<int:id>/", views.valider_maintenance_dga, name="valider_maintenance_dga"),
     path("garage/rejeter-dg/<int:id>/", views.rejeter_maintenance_dg, name="rejeter_maintenance_dg"),
     path("garage/valider-dg/<int:id>/", views.valider_maintenance_dg, name="valider_maintenance_dg"),
+    path("garage/apercu-validation/<int:id>/", views.apercu_validation_maintenance, name="apercu_validation_maintenance"),
     path("garage/imprimer/<int:id>/", views.imprimer_maintenance, name="imprimer_maintenance"),
     path("garage/export/xls/", views.export_garage_xls, name="export_garage_xls"),
     path("garage/export/pdf/", views.export_garage_pdf, name="export_garage_pdf"),

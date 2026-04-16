@@ -111,6 +111,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 <a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Saisir les prix</a>
 {% endif %}
 {% if maintenance.can_validate_dga %}
+<a href="/maintenance/garage/apercu-validation/{{ maintenance.id }}/" class="btn-secondary">Apercu</a>
 <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DGA</button>
@@ -121,6 +122,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 </form>
 {% endif %}
 {% if maintenance.can_validate_dg %}
+<a href="/maintenance/garage/apercu-validation/{{ maintenance.id }}/" class="btn-secondary">Apercu</a>
 <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DG</button>

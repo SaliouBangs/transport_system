@@ -1,4 +1,5 @@
 from io import BytesIO
+from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count, Q, Sum
@@ -180,6 +181,97 @@ def _export_maintenance_pdf(queryset, filename):
     response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
     response.write(buffer.getvalue())
     return response
+
+
+_UNITS = {
+    0: "zero",
+    1: "un",
+    2: "deux",
+    3: "trois",
+    4: "quatre",
+    5: "cinq",
+    6: "six",
+    7: "sept",
+    8: "huit",
+    9: "neuf",
+    10: "dix",
+    11: "onze",
+    12: "douze",
+    13: "treize",
+    14: "quatorze",
+    15: "quinze",
+    16: "seize",
+}
+_TENS = {
+    20: "vingt",
+    30: "trente",
+    40: "quarante",
+    50: "cinquante",
+    60: "soixante",
+}
+
+
+def _number_to_french(n):
+    n = int(n)
+    if n < 0:
+        return "moins " + _number_to_french(-n)
+    if n in _UNITS:
+        return _UNITS[n]
+    if n < 20:
+        return "dix-" + _UNITS[n - 10]
+    if n < 70:
+        tens = (n // 10) * 10
+        unit = n % 10
+        base = _TENS[tens]
+        if unit == 0:
+            return base
+        if unit == 1:
+            return f"{base} et un"
+        return f"{base}-{_number_to_french(unit)}"
+    if n < 80:
+        if n == 71:
+            return "soixante et onze"
+        return f"soixante-{_number_to_french(n - 60)}"
+    if n < 100:
+        if n == 80:
+            return "quatre-vingts"
+        return f"quatre-vingt-{_number_to_french(n - 80)}"
+    if n < 1000:
+        hundreds = n // 100
+        rest = n % 100
+        if hundreds == 1:
+            prefix = "cent"
+        else:
+            prefix = f"{_number_to_french(hundreds)} cent"
+        if rest == 0:
+            return prefix
+        return f"{prefix} {_number_to_french(rest)}"
+    if n < 1_000_000:
+        thousands = n // 1000
+        rest = n % 1000
+        if thousands == 1:
+            prefix = "mille"
+        else:
+            prefix = f"{_number_to_french(thousands)} mille"
+        if rest == 0:
+            return prefix
+        return f"{prefix} {_number_to_french(rest)}"
+    millions = n // 1_000_000
+    rest = n % 1_000_000
+    prefix = "un million" if millions == 1 else f"{_number_to_french(millions)} millions"
+    if rest == 0:
+        return prefix
+    return f"{prefix} {_number_to_french(rest)}"
+
+
+def _amount_to_words(amount):
+    amount = Decimal(amount or 0)
+    entier = int(amount)
+    decimals = int((amount - Decimal(entier)) * 100)
+    words = _number_to_french(entier) + " francs guineens"
+    if decimals:
+        words += f" et {_number_to_french(decimals)} centimes"
+    return words
 
 
 def _attach_subline_values(formset, request=None):
@@ -601,6 +693,20 @@ def _render_paiement_form(request, template_name, form, **context):
             **context,
         },
     )
+
+
+def _build_validation_preview_context(maintenance):
+    chauffeur = (
+        Chauffeur.objects.filter(camion=maintenance.camion)
+        .values_list("nom", flat=True)
+        .first()
+    )
+    return {
+        "maintenance": maintenance,
+        "piece_rows": _attach_achat_piece_rows(maintenance),
+        "montant_en_lettres": _amount_to_words(maintenance.total_facture),
+        "chauffeur_nom": chauffeur or "-",
+    }
 
 
 def _set_form_read_only(form):
@@ -1072,6 +1178,26 @@ def modifier_maintenance_paiement(request, id):
     )
 
 
+def apercu_validation_maintenance(request, id):
+    maintenance = get_object_or_404(_maintenance_queryset(), id=id)
+    user_role = get_user_role(request.user)
+    if user_role == "dga" and maintenance.statut != "attente_dga":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DGA.")
+        return redirect("garage_maintenances")
+    if user_role == "directeur" and maintenance.statut != "attente_dg":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DG.")
+        return redirect("garage_maintenances")
+    return render(
+        request,
+        "maintenance/apercu_validation_maintenance.html",
+        {
+            **_build_validation_preview_context(maintenance),
+            "user_role": user_role,
+            **_maintenance_tabs_context("garage"),
+        },
+    )
+
+
 def export_garage_xls(request):
     queryset, _ = _apply_maintenance_filters(request, _maintenance_queryset())
     return _export_maintenance_xls(queryset, "maintenance_garage")
@@ -1115,6 +1241,7 @@ rejeter_maintenance_dga = role_required("dga")(rejeter_maintenance_dga)
 valider_maintenance_dga = role_required("dga")(valider_maintenance_dga)
 rejeter_maintenance_dg = role_required("directeur")(rejeter_maintenance_dg)
 valider_maintenance_dg = role_required("directeur")(valider_maintenance_dg)
+apercu_validation_maintenance = role_required("dga", "directeur")(apercu_validation_maintenance)
 imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(imprimer_maintenance)
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)

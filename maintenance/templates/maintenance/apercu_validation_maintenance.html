@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Validation maintenance</p>
+<h1>Apercu de {{ maintenance.reference }}</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
+</div>
+</div>
+
+<div class="cards" style="margin-top:0; margin-bottom:20px;">
+    <div class="card"><h3>Camion</h3><p style="font-size:1.2rem;">{{ maintenance.camion.numero_tracteur }}</p></div>
+    <div class="card"><h3>Citerne</h3><p style="font-size:1.2rem;">{{ maintenance.camion.numero_citerne|default:"-" }}</p></div>
+    <div class="card"><h3>Chauffeur</h3><p style="font-size:1.2rem;">{{ chauffeur_nom }}</p></div>
+    <div class="card"><h3>Statut</h3><p style="font-size:1.2rem;">{{ maintenance.get_statut_display }}</p></div>
+</div>
+
+<div class="form-shell operation-shell">
+    <div class="summary-panel" style="margin-top:0;">
+        <h2>Recapitulatif</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
+                <tr><th>Date entree</th><td>{{ maintenance.date_debut }}</td></tr>
+                <tr><th>Date sortie</th><td>{{ maintenance.date_fin|default:"-" }}</td></tr>
+                <tr><th>Fournisseur</th><td>{{ maintenance.fournisseur|default:"-" }}</td></tr>
+                <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
+                <tr><th>Numero facture</th><td>{{ maintenance.numero_facture|default:"-" }}</td></tr>
+                <tr><th>Montant total</th><td>{{ maintenance.total_facture }}</td></tr>
+                <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
+                <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="summary-panel">
+        <h2>Lignes et prix</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Libelle</th>
+                    <th>Pieces / details</th>
+                    <th>Qte</th>
+                    <th>Prix unitaire</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in piece_rows %}
+                <tr>
+                    <td>{{ row.ligne.type_maintenance }}</td>
+                    <td>{{ row.ligne.libelle }}</td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.libelle }}</div>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.quantite }}</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.quantite }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.prix_unitaire }}</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.prix_unitaire }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.montant }}</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.montant }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">Aucune ligne disponible.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        {% if user_role == "dga" %}
+        <form method="post" action="/maintenance/garage/rejeter-dga/{{ maintenance.id }}/">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete">Rejeter DGA</button>
+        </form>
+        <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">
+            {% csrf_token %}
+            <button type="submit" class="btn">Valider DGA</button>
+        </form>
+        {% endif %}
+        {% if user_role == "directeur" %}
+        <form method="post" action="/maintenance/garage/rejeter-dg/{{ maintenance.id }}/">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete">Rejeter DG</button>
+        </form>
+        <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
+            {% csrf_token %}
+            <button type="submit" class="btn">Valider DG</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
