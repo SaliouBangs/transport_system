@@ -12,6 +12,7 @@
 <div class="table-actions">
 <a href="/maintenance/achat/export/xls/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
 <a href="/maintenance/achat/export/pdf/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
+<a href="/maintenance/fournisseurs/" class="btn-secondary">Fournisseurs</a>
 {% if historique %}
 <a href="/maintenance/achat/" class="btn-secondary">Nouveaux diagnostics</a>
 {% else %}

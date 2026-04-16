@@ -5,6 +5,7 @@ from django.db.models import Count, Q, Sum
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from chauffeurs.models import Chauffeur
@@ -406,6 +407,47 @@ def achat_maintenances(request):
             **_maintenance_tabs_context("achat"),
         },
     )
+
+
+def fournisseurs_maintenance(request):
+    query = (request.GET.get("q") or "").strip()
+    fournisseurs = Fournisseur.objects.all().order_by("nom_fournisseur", "entreprise")
+    if query:
+        fournisseurs = fournisseurs.filter(
+            Q(nom_fournisseur__icontains=query)
+            | Q(entreprise__icontains=query)
+            | Q(domaine_activite__icontains=query)
+            | Q(numero_telephone__icontains=query)
+        )
+    return render(
+        request,
+        "maintenance/fournisseurs.html",
+        {
+            "fournisseurs": fournisseurs,
+            "query": query,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("achat"),
+        },
+    )
+
+
+@require_POST
+def supprimer_fournisseur(request, id):
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut supprimer un fournisseur.")
+        return redirect("fournisseurs_maintenance")
+
+    fournisseur = get_object_or_404(Fournisseur, pk=id)
+    label = str(fournisseur)
+    fournisseur.delete()
+    log_action(
+        request.user,
+        "maintenance",
+        "suppression fournisseur",
+        f"{request.user.username} a supprime le fournisseur {label}.",
+    )
+    messages.success(request, f"Le fournisseur {label} a ete supprime.")
+    return redirect("fournisseurs_maintenance")
 
 
 def _render_garage_form(request, template_name, form, formset, **context):
@@ -915,6 +957,7 @@ def export_achat_pdf(request):
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
 garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(garage_maintenances)
 achat_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(achat_maintenances)
+fournisseurs_maintenance = role_required("logistique", "directeur")(fournisseurs_maintenance)
 ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
 modifier_maintenance_garage = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_garage)
 modifier_maintenance_achat = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_maintenance_achat)
@@ -929,6 +972,7 @@ supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "dir
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur")(ajouter_fournisseur_modal)
 ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)
+supprimer_fournisseur = role_required("logistique", "directeur")(supprimer_fournisseur)
 export_garage_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_xls)
 export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
 export_achat_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_achat_xls)

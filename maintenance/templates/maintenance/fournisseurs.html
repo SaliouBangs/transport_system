@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Fournisseurs maintenance</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/achat/" class="btn-secondary">Retour achat</a>
+</div>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ query }}" placeholder="Rechercher nom, entreprise, activite ou telephone" autocomplete="off" spellcheck="false">
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/fournisseurs/" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<table class="table">
+<thead>
+<tr>
+<th>Nom fournisseur</th>
+<th>Entreprise</th>
+<th>Domaine d'activite</th>
+<th>Numero de telephone</th>
+<th>Maintenances liees</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for fournisseur in fournisseurs %}
+<tr>
+<td>{{ fournisseur.nom_fournisseur }}</td>
+<td>{{ fournisseur.entreprise }}</td>
+<td>{{ fournisseur.domaine_activite|default:"-" }}</td>
+<td>{{ fournisseur.numero_telephone|default:"-" }}</td>
+<td>{{ fournisseur.maintenances.count }}</td>
+<td>
+    {% if is_admin_maintenance %}
+    <form method="post" action="/maintenance/fournisseurs/supprimer/{{ fournisseur.id }}/" onsubmit="return confirm('Supprimer ce fournisseur ?');" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-delete">Supprimer</button>
+    </form>
+    {% else %}
+    <span class="badge badge-neutral">Lecture seule</span>
+    {% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="6">Aucun fournisseur trouve.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
