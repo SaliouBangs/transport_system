@@ -92,20 +92,23 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 <div class="table-actions">
 {% if is_admin_maintenance %}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
+{% elif maintenance.can_terminate %}
+<a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
 {% else %}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>
 {% endif %}
 <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Imprimer</a>
-{% if maintenance.statut == "en_cours" %}
-    {% if not maintenance.pricing_complete %}
-    <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
-    {% endif %}
-{% endif %}
-{% if maintenance.can_validate_logistique %}
-<form method="post" action="/maintenance/garage/valider-logistique/{{ maintenance.id }}/">
+{% if maintenance.can_terminate %}
+<form method="post" action="/maintenance/garage/terminer/{{ maintenance.id }}/">
 {% csrf_token %}
-<button type="submit" class="btn-secondary">Valider logistique</button>
+<button type="submit" class="btn-secondary">Terminer</button>
 </form>
+{% endif %}
+{% if maintenance.statut == "attente_prix" %}
+<span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
+{% endif %}
+{% if maintenance.can_enter_prices %}
+<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Saisir les prix</a>
 {% endif %}
 {% if maintenance.can_validate_dga %}
 <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">

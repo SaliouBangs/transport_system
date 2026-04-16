@@ -18,6 +18,7 @@ from .forms import (
     MaintenanceAchatForm,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
+    MaintenancePaiementForm,
     PrestataireForm,
     TypeMaintenanceForm,
 )
@@ -84,6 +85,7 @@ def _maintenance_export_rows(queryset):
                 str(maintenance.total_facture),
                 maintenance.numero_facture or "",
                 maintenance.date_paiement.strftime("%Y-%m-%d") if maintenance.date_paiement else "",
+                maintenance.mode_paiement or "",
             ]
         )
     return rows
@@ -115,6 +117,7 @@ def _export_maintenance_xls(queryset, filename):
             "Montant",
             "Numero facture",
             "Date paiement",
+            "Mode paiement",
         ]
     )
     for row in _maintenance_export_rows(queryset):
@@ -154,6 +157,7 @@ def _export_maintenance_pdf(queryset, filename):
         "Montant",
         "Facture",
         "Paiement",
+        "Mode paiement",
     ]]
     data.extend(_maintenance_export_rows(queryset))
 
@@ -314,56 +318,56 @@ def garage_maintenances(request):
     is_admin = is_admin_user(request.user)
     for maintenance in maintenances:
         maintenance.pricing_complete = maintenance.is_pricing_complete()
-        maintenance.can_validate_logistique = (
-            user_role == "logistique"
-            and maintenance.statut == "en_cours"
-            and maintenance.pricing_complete
-            and not maintenance.is_validated_by_logistique()
+        maintenance.can_terminate = (
+            maintenance.statut == "en_cours"
+            and (user_role in ("maintenancier", "directeur") or is_admin)
         )
         maintenance.can_reject_dga = (
             user_role == "dga"
-            and maintenance.statut == "en_cours"
-            and maintenance.is_validated_by_logistique()
-            and not maintenance.is_validated_by_dga()
+            and maintenance.statut == "attente_dga"
         )
         maintenance.can_validate_dga = (
             user_role == "dga"
-            and maintenance.statut == "en_cours"
-            and maintenance.is_validated_by_logistique()
-            and not maintenance.is_validated_by_dga()
+            and maintenance.statut == "attente_dga"
         )
         maintenance.can_reject_dg = (
             user_role == "directeur"
-            and maintenance.statut == "en_cours"
-            and maintenance.is_validated_by_dga()
-            and not maintenance.is_validated_by_dg()
+            and maintenance.statut == "attente_dg"
         )
         maintenance.can_validate_dg = (
             user_role == "directeur"
-            and maintenance.statut == "en_cours"
-            and maintenance.is_validated_by_dga()
-            and not maintenance.is_validated_by_dg()
+            and maintenance.statut == "attente_dg"
         )
-        if maintenance.statut == "refusee":
+        maintenance.can_enter_prices = (
+            user_role == "logistique"
+            and maintenance.statut == "attente_prix"
+        )
+        if maintenance.statut == "rejetee_dga":
             maintenance.validation_status_label = "Rejete par le DGA"
             maintenance.validation_status_variant = "danger"
-        elif maintenance.statut == "annulee":
+        elif maintenance.statut == "rejetee_dg":
             maintenance.validation_status_label = "Rejete par le DG"
             maintenance.validation_status_variant = "danger"
-        elif maintenance.statut == "terminee":
-            maintenance.validation_status_label = "Validation complete"
+        elif maintenance.statut == "payee":
+            maintenance.validation_status_label = "Payee"
             maintenance.validation_status_variant = "ok"
-        elif not maintenance.is_validated_by_logistique():
-            maintenance.validation_status_label = "En attente validation logistique"
+        elif maintenance.statut == "en_cours":
+            maintenance.validation_status_label = "Diagnostic en cours"
             maintenance.validation_status_variant = "warning"
-        elif not maintenance.is_validated_by_dga():
+        elif maintenance.statut == "attente_prix":
+            maintenance.validation_status_label = "En attente de saisie de prix"
+            maintenance.validation_status_variant = "warning"
+        elif maintenance.statut == "attente_dga":
             maintenance.validation_status_label = "En attente validation DGA"
             maintenance.validation_status_variant = "warning"
-        elif not maintenance.is_validated_by_dg():
+        elif maintenance.statut == "attente_dg":
             maintenance.validation_status_label = "En attente validation DG"
             maintenance.validation_status_variant = "warning"
+        elif maintenance.statut == "attente_paiement":
+            maintenance.validation_status_label = "En attente de paiement"
+            maintenance.validation_status_variant = "warning"
         else:
-            maintenance.validation_status_label = "Validation complete"
+            maintenance.validation_status_label = maintenance.get_statut_display()
             maintenance.validation_status_variant = "ok"
     depenses_camions = (
         Maintenance.objects.values("camion__numero_tracteur", "camion__numero_citerne")
@@ -390,9 +394,9 @@ def achat_maintenances(request):
     can_edit_achat = is_admin_user(request.user) or user_role == "logistique"
     maintenances = _maintenance_queryset()
     if historique:
-        maintenances = maintenances.exclude(statut="en_cours")
+        maintenances = maintenances.exclude(statut="attente_prix")
     else:
-        maintenances = maintenances.filter(statut="en_cours")
+        maintenances = maintenances.filter(statut="attente_prix")
     maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
     return render(
         request,
@@ -405,6 +409,29 @@ def achat_maintenances(request):
             "is_admin_maintenance": is_admin_user(request.user),
             "can_edit_achat": can_edit_achat,
             **_maintenance_tabs_context("achat"),
+        },
+    )
+
+
+def paiements_maintenances(request):
+    historique = request.GET.get("scope") == "historique"
+    maintenances = _maintenance_queryset()
+    if historique:
+        maintenances = maintenances.filter(statut="payee")
+    else:
+        maintenances = maintenances.filter(statut="attente_paiement")
+    maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
+    return render(
+        request,
+        "maintenance/paiements.html",
+        {
+            "maintenances": maintenances,
+            "historique": historique,
+            "filter_values": filter_values,
+            "statut_choices": Maintenance.STATUT_CHOICES,
+            "can_edit_paiement": True,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("paiements"),
         },
     )
 
@@ -563,6 +590,19 @@ def _render_achat_form(request, template_name, form, **context):
     )
 
 
+def _render_paiement_form(request, template_name, form, **context):
+    return render(
+        request,
+        template_name,
+        {
+            "form": form,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("paiements"),
+            **context,
+        },
+    )
+
+
 def _set_form_read_only(form):
     for field in form.fields.values():
         field.disabled = True
@@ -613,7 +653,7 @@ def modifier_maintenance_garage(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
     user_role = get_user_role(request.user)
     is_admin = is_admin_user(request.user)
-    can_edit_diagnostic = is_admin or user_role == "maintenancier"
+    can_edit_diagnostic = is_admin or (user_role == "maintenancier" and maintenance.statut == "en_cours")
     if request.method == "POST":
         if not can_edit_diagnostic:
             messages.error(request, "Seuls le maintenancier et l'administrateur peuvent modifier le diagnostic.")
@@ -674,9 +714,7 @@ def modifier_maintenance_achat(request, id):
     is_admin = is_admin_user(request.user)
     can_edit_achat = is_admin or (
         user_role == "logistique"
-        and maintenance.statut == "en_cours"
-        and not maintenance.is_validated_by_dga()
-        and not maintenance.is_validated_by_dg()
+        and maintenance.statut == "attente_prix"
     )
     if request.method == "POST":
         if not can_edit_achat:
@@ -690,10 +728,20 @@ def modifier_maintenance_achat(request, id):
         if form.is_valid():
             with transaction.atomic():
                 maintenance = form.save(commit=False)
+                maintenance.statut = maintenance.statut or "attente_prix"
+                maintenance.save()
                 _save_achat_piece_prices(request, maintenance)
                 maintenance.refresh_total_facture()
-                maintenance.statut = "en_cours"
-                maintenance.save()
+                maintenance.validation_logistique_at = timezone.now()
+                maintenance.validation_logistique_by = request.user
+                maintenance.statut = "attente_dga"
+                maintenance.save(
+                    update_fields=[
+                        "validation_logistique_at",
+                        "validation_logistique_by",
+                        "statut",
+                    ]
+                )
                 maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
                 journaliser_action(
                     request.user,
@@ -727,7 +775,20 @@ def terminer_maintenance(request, id):
         return redirect("garage_maintenances")
 
     maintenance = get_object_or_404(Maintenance, id=id)
-    messages.info(request, "La cloture se fait maintenant par validation finale du DG.")
+    if maintenance.statut != "en_cours":
+        messages.info(request, "Ce diagnostic est deja transmis.")
+        return redirect("garage_maintenances")
+
+    maintenance.statut = "attente_prix"
+    maintenance.save(update_fields=["statut"])
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Transmission diagnostic",
+        maintenance.reference,
+        f"{request.user.username} a termine et transmis le diagnostic {maintenance.reference}.",
+    )
+    messages.success(request, "Le diagnostic a ete transmis pour saisie des prix.")
     return redirect("garage_maintenances")
 
 
@@ -736,26 +797,7 @@ def valider_maintenance_logistique(request, id):
         return redirect("garage_maintenances")
 
     maintenance = get_object_or_404(Maintenance, id=id)
-    if get_user_role(request.user) != "logistique":
-        messages.error(request, "Seul le role Logistique peut faire cette validation.")
-        return redirect("garage_maintenances")
-    if not maintenance.is_pricing_complete():
-        messages.error(request, "La logistique doit saisir tous les prix avant validation.")
-        return redirect("garage_maintenances")
-    if maintenance.is_validated_by_logistique():
-        messages.info(request, "Cette fiche est deja validee par la logistique.")
-        return redirect("garage_maintenances")
-
-    maintenance.validation_logistique_at = timezone.now()
-    maintenance.validation_logistique_by = request.user
-    maintenance.save(update_fields=["validation_logistique_at", "validation_logistique_by"])
-    journaliser_action(
-        request.user,
-        "Maintenance",
-        "Validation logistique",
-        maintenance.reference,
-        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau logistique.",
-    )
+    messages.info(request, "La validation logistique est maintenant automatique apres la saisie des prix.")
     return redirect("garage_maintenances")
 
 
@@ -767,11 +809,11 @@ def rejeter_maintenance_dga(request, id):
     if get_user_role(request.user) != "dga":
         messages.error(request, "Seul le role DGA peut rejeter cette fiche.")
         return redirect("garage_maintenances")
-    if not maintenance.is_validated_by_logistique():
-        messages.error(request, "La validation logistique est requise avant le DGA.")
+    if maintenance.statut != "attente_dga":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DGA.")
         return redirect("garage_maintenances")
 
-    maintenance.statut = "refusee"
+    maintenance.statut = "rejetee_dga"
     if not maintenance.date_fin:
         maintenance.date_fin = timezone.now()
     maintenance.save(update_fields=["statut", "date_fin"])
@@ -793,16 +835,17 @@ def valider_maintenance_dga(request, id):
     if get_user_role(request.user) != "dga":
         messages.error(request, "Seul le role DGA peut faire cette validation.")
         return redirect("garage_maintenances")
-    if not maintenance.is_validated_by_logistique():
-        messages.error(request, "La validation logistique est requise avant le DGA.")
+    if maintenance.statut != "attente_dga":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DGA.")
         return redirect("garage_maintenances")
-    if maintenance.is_validated_by_dga():
+    if maintenance.is_validated_by_dga() and maintenance.statut != "attente_dga":
         messages.info(request, "Cette fiche est deja validee par le DGA.")
         return redirect("garage_maintenances")
 
     maintenance.validation_dga_at = timezone.now()
     maintenance.validation_dga_by = request.user
-    maintenance.save(update_fields=["validation_dga_at", "validation_dga_by"])
+    maintenance.statut = "attente_dg"
+    maintenance.save(update_fields=["validation_dga_at", "validation_dga_by", "statut"])
     journaliser_action(
         request.user,
         "Maintenance",
@@ -821,11 +864,11 @@ def rejeter_maintenance_dg(request, id):
     if get_user_role(request.user) != "directeur":
         messages.error(request, "Seul le role DG peut rejeter cette fiche.")
         return redirect("garage_maintenances")
-    if not maintenance.is_validated_by_dga():
-        messages.error(request, "La validation DGA est requise avant le DG.")
+    if maintenance.statut != "attente_dg":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DG.")
         return redirect("garage_maintenances")
 
-    maintenance.statut = "annulee"
+    maintenance.statut = "rejetee_dg"
     if not maintenance.date_fin:
         maintenance.date_fin = timezone.now()
     maintenance.save(update_fields=["statut", "date_fin"])
@@ -847,16 +890,16 @@ def valider_maintenance_dg(request, id):
     if get_user_role(request.user) != "directeur":
         messages.error(request, "Seul le role DG peut faire cette validation.")
         return redirect("garage_maintenances")
-    if not maintenance.is_validated_by_dga():
-        messages.error(request, "La validation DGA est requise avant le DG.")
+    if maintenance.statut != "attente_dg":
+        messages.error(request, "Cette fiche n'est pas en attente de validation DG.")
         return redirect("garage_maintenances")
-    if maintenance.is_validated_by_dg():
+    if maintenance.is_validated_by_dg() and maintenance.statut != "attente_dg":
         messages.info(request, "Cette fiche est deja validee par le DG.")
         return redirect("garage_maintenances")
 
     maintenance.validation_dg_at = timezone.now()
     maintenance.validation_dg_by = request.user
-    maintenance.statut = "terminee"
+    maintenance.statut = "attente_paiement"
     if not maintenance.date_fin:
         maintenance.date_fin = timezone.now()
     maintenance.save(update_fields=["validation_dg_at", "validation_dg_by", "statut", "date_fin"])
@@ -993,6 +1036,42 @@ def ajouter_prestataire_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def modifier_maintenance_paiement(request, id):
+    maintenance = get_object_or_404(Maintenance, id=id)
+    can_edit_paiement = is_admin_user(request.user) or get_user_role(request.user) in ("comptable", "directeur")
+    if request.method == "POST":
+        if not can_edit_paiement or maintenance.statut != "attente_paiement":
+            messages.error(request, "Cette fiche n'est pas disponible pour le paiement.")
+            return redirect("paiements_maintenances")
+        form = MaintenancePaiementForm(request.POST, instance=maintenance)
+        if form.is_valid():
+            maintenance = form.save(commit=False)
+            maintenance.statut = "payee"
+            maintenance.save()
+            journaliser_action(
+                request.user,
+                "Maintenance",
+                "Paiement maintenance",
+                maintenance.reference,
+                f"{request.user.username} a enregistre le paiement de la fiche {maintenance.reference}.",
+            )
+            messages.success(request, f"Le paiement de la fiche {maintenance.reference} a ete enregistre.")
+            return redirect("paiements_maintenances")
+        messages.error(request, "Impossible d'enregistrer le paiement. Verifiez les champs.")
+    else:
+        form = MaintenancePaiementForm(instance=maintenance)
+        if not can_edit_paiement or maintenance.statut != "attente_paiement":
+            _set_form_read_only(form)
+
+    return _render_paiement_form(
+        request,
+        "maintenance/modifier_maintenance_paiement.html",
+        form,
+        maintenance=maintenance,
+        can_edit_paiement=can_edit_paiement and maintenance.statut == "attente_paiement",
+    )
+
+
 def export_garage_xls(request):
     queryset, _ = _apply_maintenance_filters(request, _maintenance_queryset())
     return _export_maintenance_xls(queryset, "maintenance_garage")
@@ -1022,6 +1101,8 @@ def export_achat_pdf(request):
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
 garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(garage_maintenances)
 achat_maintenances = role_required("logistique", "maintenancier", "dga", "directeur")(achat_maintenances)
+paiements_maintenances = role_required("comptable", "directeur")(paiements_maintenances)
+modifier_maintenance_paiement = role_required("comptable", "directeur")(modifier_maintenance_paiement)
 fournisseurs_maintenance = role_required("logistique", "directeur")(fournisseurs_maintenance)
 ajouter_fournisseur = role_required("logistique", "directeur")(ajouter_fournisseur)
 modifier_fournisseur = role_required("logistique", "directeur")(modifier_fournisseur)

@@ -18,7 +18,7 @@ def dashboard(request):
     panne_threshold = 3
     user_role = get_user_role(request.user)
     is_maintenancier = user_role in {"maintenancier", "dga"}
-    diagnostics_queryset = Maintenance.objects.exclude(statut__in=["refusee", "annulee"])
+    diagnostics_queryset = Maintenance.objects.exclude(statut__in=["rejetee_dga", "rejetee_dg"])
 
     camions_total = Camion.objects.count()
     camions_disponibles = Camion.objects.filter(etat="disponible").count()
@@ -29,10 +29,10 @@ def dashboard(request):
         kilometrage_actuel__gte=F("kilometrage_alerte_vidange"),
     ).count()
     maintenances_total = diagnostics_queryset.count()
-    maintenances_en_cours = diagnostics_queryset.filter(statut="en_cours").count()
-    maintenances_terminees = diagnostics_queryset.filter(statut="terminee").count()
-    maintenances_refusees = Maintenance.objects.filter(statut="refusee").count()
-    maintenances_annulees = Maintenance.objects.filter(statut="annulee").count()
+    maintenances_en_cours = diagnostics_queryset.filter(statut__in=["en_cours", "attente_prix", "attente_dga", "attente_dg"]).count()
+    maintenances_terminees = diagnostics_queryset.filter(statut__in=["attente_paiement", "payee"]).count()
+    maintenances_refusees = Maintenance.objects.filter(statut="rejetee_dga").count()
+    maintenances_annulees = Maintenance.objects.filter(statut="rejetee_dg").count()
     montant_maintenance_total = float(
         diagnostics_queryset.aggregate(total=Sum("total_facture"))["total"] or 0
     )
@@ -101,7 +101,7 @@ def dashboard(request):
         Camion.objects.annotate(
             panne_count=Count(
                 "maintenances",
-                filter=Q(maintenances__statut__in=["en_cours", "terminee"]),
+                filter=Q(maintenances__statut__in=["en_cours", "attente_prix", "attente_dga", "attente_dg", "attente_paiement", "payee"]),
                 distinct=True,
             )
         ).order_by("numero_tracteur")
@@ -127,12 +127,12 @@ def dashboard(request):
 
     dernieres_maintenances = diagnostics_queryset.select_related("camion").order_by("-date_creation")[:8]
     alertes_maintenance = Maintenance.objects.select_related("camion").filter(
-        Q(statut="en_cours")
+        Q(statut__in=["en_cours", "attente_prix", "attente_dga", "attente_dg"])
         | Q(
             camion__kilometrage_alerte_vidange__isnull=False,
             camion__kilometrage_actuel__gte=F("camion__kilometrage_alerte_vidange"),
         )
-    ).exclude(statut__in=["refusee", "annulee"]).order_by("-date_creation")[:8]
+    ).exclude(statut__in=["rejetee_dga", "rejetee_dg"]).order_by("-date_creation")[:8]
 
     context = {
         "user_role": user_role,

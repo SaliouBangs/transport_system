@@ -62,10 +62,14 @@ class Prestataire(models.Model):
 
 class Maintenance(models.Model):
     STATUT_CHOICES = [
-        ("en_cours", "En cours"),
-        ("terminee", "Terminee"),
-        ("refusee", "Refusee"),
-        ("annulee", "Annulee"),
+        ("en_cours", "Diagnostic en cours"),
+        ("attente_prix", "En attente de saisie de prix"),
+        ("attente_dga", "En attente validation DGA"),
+        ("attente_dg", "En attente validation DG"),
+        ("attente_paiement", "En attente de paiement"),
+        ("payee", "Payee"),
+        ("rejetee_dga", "Rejetee par le DGA"),
+        ("rejetee_dg", "Rejetee par le DG"),
     ]
 
     reference = models.CharField(max_length=20, unique=True, editable=False, blank=True)
@@ -78,11 +82,12 @@ class Maintenance(models.Model):
     date_debut = models.DateTimeField()
     date_fin = models.DateTimeField(null=True, blank=True)
     date_paiement = models.DateField(null=True, blank=True)
+    mode_paiement = models.CharField(max_length=100, blank=True)
     kilometrage_entree = models.PositiveIntegerField(null=True, blank=True)
     kilometrage_sortie = models.PositiveIntegerField(null=True, blank=True)
     prochaine_vidange_dans_km = models.PositiveIntegerField(null=True, blank=True)
     total_facture = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default="en_cours")
+    statut = models.CharField(max_length=30, choices=STATUT_CHOICES, default="en_cours")
     prestataire = models.CharField(max_length=150, blank=True)
     fournisseur = models.ForeignKey(
         Fournisseur,
@@ -124,7 +129,7 @@ class Maintenance(models.Model):
     @staticmethod
     def sync_camion_status(camion):
         has_active_maintenance = camion.maintenances.filter(
-            statut="en_cours"
+            statut__in=["en_cours", "attente_prix", "attente_dga", "attente_dg"]
         ).exists()
         target_state = "au_garage" if has_active_maintenance else "disponible"
         if camion.etat != target_state:
@@ -203,6 +208,9 @@ class Maintenance(models.Model):
 
     def is_validated_by_dg(self):
         return self.validation_dg_at is not None
+
+    def is_paid(self):
+        return self.statut == "payee"
 
     def save(self, *args, **kwargs):
         self.full_clean()

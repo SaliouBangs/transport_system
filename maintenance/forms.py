@@ -14,18 +14,12 @@ class MaintenanceForm(forms.ModelForm):
         input_formats=["%Y-%m-%dT%H:%M"],
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
     )
-    date_paiement = forms.DateField(
-        required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
-
     class Meta:
         model = Maintenance
         fields = [
             "camion",
             "date_debut",
             "date_fin",
-            "date_paiement",
             "kilometrage_entree",
             "kilometrage_sortie",
             "prochaine_vidange_dans_km",
@@ -40,20 +34,28 @@ class MaintenanceGarageForm(MaintenanceForm):
 
 
 class MaintenanceAchatForm(forms.ModelForm):
+    class Meta:
+        model = Maintenance
+        fields = [
+            "fournisseur",
+            "numero_facture",
+            "prestataire",
+            "observation",
+            "statut",
+        ]
+
+
+class MaintenancePaiementForm(forms.ModelForm):
     date_paiement = forms.DateField(
-        required=False,
         widget=forms.DateInput(attrs={"type": "date"}),
     )
 
     class Meta:
         model = Maintenance
         fields = [
-            "fournisseur",
-            "numero_facture",
             "date_paiement",
-            "prestataire",
+            "mode_paiement",
             "observation",
-            "statut",
         ]
 
 

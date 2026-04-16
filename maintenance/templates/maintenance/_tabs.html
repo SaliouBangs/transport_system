@@ -1,5 +1,6 @@
 <div class="subtabs">
-    <a href="/maintenance/garage/" class="subtab {% if active_tab == 'garage' %}active{% endif %}">Garage / diagnostic</a>
-    <a href="/maintenance/achat/" class="subtab {% if active_tab == 'achat' %}active{% endif %}">Achat / prix</a>
-    <a href="/maintenance/fournisseurs/" class="subtab {% if active_tab == 'fournisseurs' %}active{% endif %}">Fournisseurs</a>
+    {% if user_role != "comptable" %}<a href="/maintenance/garage/" class="subtab {% if active_tab == 'garage' %}active{% endif %}">Garage / diagnostic</a>{% endif %}
+    {% if user_role != "comptable" %}<a href="/maintenance/achat/" class="subtab {% if active_tab == 'achat' %}active{% endif %}">Achat / prix</a>{% endif %}
+    {% if can_access_maintenance_payment %}<a href="/maintenance/paiements/" class="subtab {% if active_tab == 'paiements' %}active{% endif %}">Paiements</a>{% endif %}
+    {% if user_role != "comptable" %}<a href="/maintenance/fournisseurs/" class="subtab {% if active_tab == 'fournisseurs' %}active{% endif %}">Fournisseurs</a>{% endif %}
 </div>

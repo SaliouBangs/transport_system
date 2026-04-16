@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Paiement de {{ maintenance.reference }}</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/paiements/" class="btn-secondary">Retour paiements</a>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+        {% for error in form.non_field_errors %}
+        <p class="field-error">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="field">
+            <label>Reference</label>
+            <input type="text" value="{{ maintenance.reference }}" readonly>
+        </div>
+        <div class="field">
+            <label>Camion</label>
+            <input type="text" value="{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}" readonly>
+        </div>
+        <div class="field">
+            <label>Total facture</label>
+            <input type="text" value="{{ maintenance.total_facture }}" readonly>
+        </div>
+        <div class="field">
+            <label>Fournisseur / prestataire</label>
+            <input type="text" value="{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:'-' }}{% endif %}" readonly>
+        </div>
+        <div class="field">
+            <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
+            {{ form.date_paiement }}
+            {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.mode_paiement.id_for_label }}">Mode de paiement</label>
+            {{ form.mode_paiement }}
+            {% if form.mode_paiement.errors %}<p class="field-error">{{ form.mode_paiement.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field field-full">
+            <label for="{{ form.observation.id_for_label }}">Observation paiement</label>
+            {{ form.observation }}
+            {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/maintenance/paiements/" class="btn-secondary">Retour</a>
+        {% if can_edit_paiement %}
+        <button type="submit" class="btn">Valider le paiement</button>
+        {% endif %}
+    </div>
+</form>
+</div>
+
+{% endblock %}

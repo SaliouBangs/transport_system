@@ -7,33 +7,24 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
-<h1>{% if historique %}Historique des prix saisis{% else %}Saisie des prix{% endif %}</h1>
+<h1>{% if historique %}Historique des paiements{% else %}Paiements maintenance{% endif %}</h1>
 </div>
 <div class="table-actions">
-<a href="/maintenance/achat/export/xls/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
-<a href="/maintenance/achat/export/pdf/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
-<a href="/maintenance/fournisseurs/" class="btn-secondary">Fournisseurs</a>
 {% if historique %}
-<a href="/maintenance/achat/" class="btn-secondary">Nouveaux diagnostics</a>
+<a href="/maintenance/paiements/" class="btn-secondary">Situations non payees</a>
 {% else %}
-<a href="/maintenance/achat/?scope=historique" class="btn-secondary">Historique</a>
+<a href="/maintenance/paiements/?scope=historique" class="btn-secondary">Historique</a>
 {% endif %}
 </div>
 </div>
 
-<form method="get" class="search-form" id="achat-search-form" style="margin-bottom:18px;">
+<form method="get" class="search-form" id="paiement-search-form" style="margin-bottom:18px;">
 {% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
 <input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search autocomplete="off" spellcheck="false">
 <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
-<select name="statut" style="min-width:190px; height:52px;" data-live-change>
-    <option value="">Tous les statuts</option>
-    {% for value, label in statut_choices %}
-    <option value="{{ value }}" {% if filter_values.statut == value %}selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-</select>
 <button type="submit" class="btn">Rechercher</button>
-<a href="{% if historique %}/maintenance/achat/?scope=historique{% else %}/maintenance/achat/{% endif %}" class="btn-secondary">Reinitialiser</a>
+<a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Reinitialiser</a>
 </form>
 
 <table class="table">
@@ -41,10 +32,10 @@
 <tr>
 <th>Reference</th>
 <th>Camion</th>
-<th>Kilometrage</th>
 <th>Fournisseur / facture</th>
-<th>Lignes</th>
 <th>Total facture</th>
+<th>Date paiement</th>
+<th>Mode paiement</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -53,15 +44,21 @@
 <tr>
 <td>{{ maintenance.reference }}</td>
 <td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
-<td>{{ maintenance.kilometrage_entree|default:"-" }}{% if maintenance.kilometrage_sortie %} / {{ maintenance.kilometrage_sortie }}{% endif %}</td>
 <td>{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:"-" }}{% endif %}{% if maintenance.numero_facture %}<br>{{ maintenance.numero_facture }}{% endif %}</td>
-<td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
-<td>{% if can_edit_achat %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
+<td>{{ maintenance.date_paiement|default:"-" }}</td>
+<td>{{ maintenance.mode_paiement|default:"-" }}</td>
+<td>
+    {% if not historique %}
+    <a href="/maintenance/paiements/modifier/{{ maintenance.id }}/" class="btn-edit">Enregistrer paiement</a>
+    {% else %}
+    <a href="/maintenance/paiements/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>
+    {% endif %}
+</td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="7">{% if historique %}Aucun ancien diagnostic avec prix disponible.{% else %}Aucun diagnostic en attente de saisie de prix.{% endif %}</td>
+<td colspan="7">{% if historique %}Aucun paiement en historique.{% else %}Aucune situation non payee disponible.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -72,7 +69,7 @@
 {% block extra_scripts %}
 <script>
 (function () {
-    const form = document.getElementById("achat-search-form");
+    const form = document.getElementById("paiement-search-form");
     const liveInput = form?.querySelector("[data-live-search]");
     if (!form || !liveInput) {
         return;
@@ -91,9 +88,7 @@
         form.requestSubmit();
     };
 
-    liveInput.addEventListener("compositionstart", () => {
-        isComposing = true;
-    });
+    liveInput.addEventListener("compositionstart", () => { isComposing = true; });
     liveInput.addEventListener("compositionend", () => {
         isComposing = false;
         clearTimeout(timeoutId);
@@ -103,7 +98,6 @@
         clearTimeout(timeoutId);
         timeoutId = setTimeout(submitSearch, 700);
     });
-
     form.querySelectorAll("[data-live-change]").forEach((field) => {
         field.addEventListener("change", () => form.requestSubmit());
     });

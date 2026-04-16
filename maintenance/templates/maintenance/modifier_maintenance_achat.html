@@ -62,19 +62,10 @@
             {% if form.numero_facture.errors %}<p class="field-error">{{ form.numero_facture.errors.0 }}</p>{% endif %}
         </div>
         <div class="field">
-            <label for="{{ form.statut.id_for_label }}">Etat de la fiche</label>
-            {% if can_edit_achat and not is_admin_maintenance %}
+            <label>Etat de la fiche</label>
             <input type="text" value="{{ maintenance.get_statut_display }}" readonly>
             {{ form.statut.as_hidden }}
-            {% else %}
-            {{ form.statut }}
-            {% endif %}
             {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
-            {{ form.date_paiement }}
-            {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
             <label for="prestataire-search-input">Prestataire</label>
