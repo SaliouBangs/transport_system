@@ -4,81 +4,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagnostic {{ maintenance.reference }}</title>
+<title>Etat {{ maintenance.reference }}</title>
 <style>
 body{
     font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color:#163042;
     margin:24px;
+    background:#f4f7fb;
 }
 .sheet{
-    max-width:980px;
+    max-width:1040px;
     margin:0 auto;
-}
-.header{
-    display:flex;
-    justify-content:space-between;
-    gap:24px;
-    align-items:flex-start;
-    margin-bottom:24px;
-}
-.brand{
-    display:flex;
-    align-items:flex-start;
-    gap:16px;
-}
-.brand img{
-    width:96px;
-    height:auto;
-    object-fit:contain;
-}
-.eyebrow{
-    margin:0 0 6px 0;
-    text-transform:uppercase;
-    letter-spacing:0.14em;
-    font-size:0.78rem;
-    font-weight:700;
-    color:#249274;
-}
-h1,h2,h3,p{
-    margin-top:0;
-}
-.meta{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px 18px;
-    margin-bottom:24px;
-}
-.box{
-    border:1px solid #d9e2e8;
-    border-radius:14px;
-    padding:12px 14px;
-    background:#f9fbfd;
-}
-.box strong{
-    display:block;
-    margin-bottom:4px;
-}
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:12px;
-}
-th{
-    background:#123047;
-    color:white;
-    text-align:left;
-    padding:10px 12px;
-}
-td{
-    border:1px solid #d9e2e8;
-    padding:10px 12px;
-    vertical-align:top;
-}
-.subline{
-    color:#5f7384;
-    font-size:0.93rem;
-    margin-top:4px;
+    background:#ffffff;
+    border-radius:24px;
+    padding:28px;
+    box-shadow:0 24px 60px rgba(18,48,71,0.08);
 }
 .actions{
     display:flex;
@@ -94,15 +34,179 @@ td{
     cursor:pointer;
     font-weight:700;
 }
+.header{
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    align-items:flex-start;
+    margin-bottom:24px;
+}
+.brand{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+}
+.brand img{
+    width:88px;
+    height:auto;
+    object-fit:contain;
+}
+.eyebrow{
+    margin:0 0 6px 0;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:0.78rem;
+    font-weight:700;
+    color:#249274;
+}
+h1,h2,h3,p{
+    margin-top:0;
+}
+h1{
+    margin-bottom:8px;
+}
+.muted{
+    color:#5f7384;
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    margin-bottom:24px;
+}
+.box{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#f9fbfd;
+}
+.box strong{
+    display:block;
+    margin-bottom:6px;
+}
+.summary{
+    display:grid;
+    grid-template-columns:1.2fr 0.8fr;
+    gap:18px;
+    margin-bottom:24px;
+}
+.summary-table{
+    width:100%;
+    border-collapse:collapse;
+}
+.summary-table th,
+.summary-table td{
+    padding:8px 0;
+    text-align:left;
+    vertical-align:top;
+    border-bottom:1px solid #edf2f6;
+}
+.summary-table th{
+    width:40%;
+    color:#5f7384;
+    font-weight:700;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:12px;
+}
+th{
+    background:#123047;
+    color:white;
+    text-align:left;
+    padding:10px 12px;
+    font-size:0.95rem;
+}
+td{
+    border:1px solid #d9e2e8;
+    padding:10px 12px;
+    vertical-align:top;
+}
+.amount-box{
+    background:#123047;
+    color:white;
+    border-radius:18px;
+    padding:18px;
+}
+.amount-box h2{
+    margin-bottom:14px;
+    font-size:1rem;
+}
+.amount-value{
+    font-size:2rem;
+    font-weight:800;
+    margin-bottom:8px;
+}
+.amount-words{
+    color:#d9edf1;
+    line-height:1.5;
+}
+.validation-list{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+    margin-top:16px;
+}
+.validation-card{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#fff;
+}
+.validation-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:10px;
+}
+.badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:0.78rem;
+    font-weight:700;
+}
+.badge-ok{
+    background:#e7f7ef;
+    color:#18794e;
+}
+.badge-pending{
+    background:#fff3d7;
+    color:#946200;
+}
+.badge-danger{
+    background:#fde8e8;
+    color:#b42318;
+}
+.badge-neutral{
+    background:#eef2f6;
+    color:#5f7384;
+}
+.validation-meta{
+    color:#5f7384;
+    font-size:0.92rem;
+    line-height:1.5;
+}
+.block-title{
+    margin:0 0 10px 0;
+    font-size:1.15rem;
+}
 @media print{
-    .actions{
-        display:none;
-    }
     body{
         margin:0;
+        background:#fff;
     }
     .sheet{
         max-width:none;
+        box-shadow:none;
+        border-radius:0;
+        padding:0;
+    }
+    .actions{
+        display:none;
     }
 }
 </style>
@@ -117,86 +221,149 @@ td{
         <div class="brand">
             <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
             <div>
-                <p class="eyebrow">Garage / diagnostic</p>
-                <h1>Fiche diagnostic {{ maintenance.reference }}</h1>
+                <p class="eyebrow">Maintenance / etat recapitulatif</p>
+                <h1>Etat {{ maintenance.reference }}</h1>
+                <p class="muted">Rapport de diagnostic, de valorisation et de validation du circuit maintenance.</p>
             </div>
         </div>
-        <div>
-            <strong>Statut :</strong> {{ maintenance.get_statut_display }}<br>
-            <strong>Date entree :</strong> {{ maintenance.date_debut|date:"Y-m-d H:i" }}<br>
-            <strong>Date sortie :</strong> {% if maintenance.date_fin %}{{ maintenance.date_fin|date:"Y-m-d H:i" }}{% else %}-{% endif %}
+        <div class="box" style="min-width:260px;">
+            <strong>Statut actuel</strong>
+            {{ maintenance.get_statut_display }}<br>
+            <span class="muted">Date entree : {{ maintenance.date_debut|date:"d/m/Y H:i" }}</span><br>
+            <span class="muted">Date sortie : {% if maintenance.date_fin %}{{ maintenance.date_fin|date:"d/m/Y H:i" }}{% else %}-{% endif %}</span>
         </div>
     </div>
 
-    <div class="meta">
+    <div class="grid">
         <div class="box">
             <strong>Camion</strong>
-            {{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}<br>
-            <span>Capacite: {{ maintenance.camion.capacite }}</span>
-        </div>
-        <div class="box">
-            <strong>Kilometrage</strong>
-            Entree: {{ maintenance.kilometrage_entree|default:"-" }}<br>
-            Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
+            {{ maintenance.camion.code_camion|default:"-" }}<br>
+            Tracteur : {{ maintenance.camion.numero_tracteur }}<br>
+            Citerne : {{ maintenance.camion.numero_citerne|default:"-" }}<br>
+            Capacite : {{ maintenance.camion.capacite|default:"-" }}
         </div>
         <div class="box">
             <strong>Chauffeur</strong>
             {% if chauffeur %}
             {{ chauffeur.nom }}<br>
-            Telephone: {{ chauffeur.telephone|default:"-" }}
+            Telephone : {{ chauffeur.telephone|default:"-" }}
             {% else %}
-            Non affecte<br>
-            Telephone: -
+            Non affecte
             {% endif %}
         </div>
         <div class="box">
-            <strong>Prestataire</strong>
-            {{ maintenance.prestataire|default:"-" }}
+            <strong>Prestataire / fournisseur</strong>
+            Prestataire : {{ maintenance.prestataire|default:"-" }}<br>
+            Fournisseur : {{ maintenance.fournisseur|default:"-" }}<br>
+            Facture : {{ maintenance.numero_facture|default:"-" }}
         </div>
         <div class="box">
-            <strong>Prochaine vidange</strong>
-            {% if maintenance.prochaine_vidange_dans_km %}
-            Dans {{ maintenance.prochaine_vidange_dans_km }} km
-            {% else %}
-            -
-            {% endif %}
+            <strong>Kilometrage</strong>
+            Entree : {{ maintenance.kilometrage_entree|default:"-" }}<br>
+            Sortie : {{ maintenance.kilometrage_sortie|default:"-" }}<br>
+            Prochaine vidange : {% if maintenance.prochaine_vidange_dans_km %}{{ maintenance.prochaine_vidange_dans_km }} km{% else %}-{% endif %}
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="box">
+            <h2 class="block-title">Informations generales</h2>
+            <table class="summary-table">
+                <tbody>
+                    <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
+                    <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
+                    <tr><th>Date paiement</th><td>{% if maintenance.date_paiement %}{{ maintenance.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="amount-box">
+            <h2>Montant total</h2>
+            <div class="amount-value">{{ montant_total_formatte }} GNF</div>
+            <div class="amount-words">{{ montant_en_lettres|capfirst }}</div>
         </div>
     </div>
 
     <div class="box" style="margin-bottom:24px;">
-        <strong>Observation</strong>
-        {{ maintenance.observation|default:"-" }}
+        <h2 class="block-title">Lignes de diagnostic et de prix</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Libelle</th>
+                    <th>Pieces / details</th>
+                    <th>Qte</th>
+                    <th>Prix unitaire</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in piece_rows %}
+                <tr>
+                    <td>{{ row.ligne.type_maintenance }}</td>
+                    <td>{{ row.ligne.libelle }}</td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.libelle }}</div>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.quantite }}</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.quantite }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.prix_unitaire_affiche }} GNF</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.prix_unitaire_affiche }} GNF
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.pieces %}
+                            {% for piece in row.pieces %}
+                            <div>{{ piece.montant_affiche }} GNF</div>
+                            {% endfor %}
+                        {% else %}
+                            {{ row.ligne.montant_affiche }} GNF
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">Aucune ligne disponible.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
-    <h2>Diagnostic detaille</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Type</th>
-                <th>Diagnostic</th>
-                <th>Pieces liees</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for ligne in maintenance.lignes.all %}
-            <tr>
-                <td>{{ ligne.type_maintenance.libelle }}</td>
-                <td>{{ ligne.libelle }}</td>
-                <td>
-                    {% for sous_ligne in ligne.sous_lignes.all %}
-                    <div>{{ sous_ligne.libelle }} (x{{ sous_ligne.quantite }})</div>
-                    {% empty %}
-                    -
-                    {% endfor %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3">Aucune ligne de diagnostic.</td>
-            </tr>
+    <div class="box">
+        <h2 class="block-title">Circuit de validation</h2>
+        <div class="validation-list">
+            {% for step in validation_steps %}
+            <div class="validation-card">
+                <div class="validation-head">
+                    <strong>{{ step.label }}</strong>
+                    <span class="badge badge-{{ step.variant }}">{{ step.status }}</span>
+                </div>
+                <div class="validation-meta">
+                    <div>Utilisateur : {{ step.by }}</div>
+                    <div>Date : {{ step.at_display }}</div>
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
 </div>
 </body>
 </html>

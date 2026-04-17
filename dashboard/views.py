@@ -134,6 +134,92 @@ def dashboard(request):
         )
     ).exclude(statut__in=["rejetee_dga", "rejetee_dg"]).order_by("-date_creation")[:8]
 
+    action_alerts = []
+    if user_role == "logistique":
+        prix_a_saisir = Maintenance.objects.filter(statut="attente_prix").count()
+        if prix_a_saisir:
+            action_alerts.append(
+                {
+                    "title": "Saisie des prix attendue",
+                    "message": f"{prix_a_saisir} fiche(s) de maintenance attendent la saisie des prix.",
+                    "cta_label": "Ouvrir achat / prix",
+                    "cta_url": "/maintenance/achat/",
+                    "variant": "warning",
+                }
+            )
+    elif user_role == "dga":
+        validations_dga = Maintenance.objects.filter(statut="attente_dga").count()
+        if validations_dga:
+            action_alerts.append(
+                {
+                    "title": "Validation DGA requise",
+                    "message": f"{validations_dga} fiche(s) de maintenance attendent votre validation DGA.",
+                    "cta_label": "Ouvrir le garage",
+                    "cta_url": "/maintenance/garage/",
+                    "variant": "danger",
+                }
+            )
+    elif user_role == "directeur":
+        validations_dg = Maintenance.objects.filter(statut="attente_dg").count()
+        if validations_dg:
+            action_alerts.append(
+                {
+                    "title": "Validation DG requise",
+                    "message": f"{validations_dg} fiche(s) de maintenance attendent votre validation DG.",
+                    "cta_label": "Ouvrir le garage",
+                    "cta_url": "/maintenance/garage/",
+                    "variant": "danger",
+                }
+            )
+    elif user_role == "caissiere":
+        paiements_en_attente = Maintenance.objects.filter(statut="attente_paiement").count()
+        if paiements_en_attente:
+            action_alerts.append(
+                {
+                    "title": "Paiements a enregistrer",
+                    "message": f"{paiements_en_attente} fiche(s) de maintenance attendent un paiement.",
+                    "cta_label": "Ouvrir les paiements",
+                    "cta_url": "/maintenance/paiements/",
+                    "variant": "ok",
+                }
+            )
+    elif user_role == "comptable":
+        factures_a_traiter = Operation.objects.filter(etat_bon="livre").filter(
+            Q(numero_facture__isnull=True) | Q(numero_facture="")
+        ).count()
+        if factures_a_traiter:
+            action_alerts.append(
+                {
+                    "title": "Facturation en attente",
+                    "message": f"{factures_a_traiter} bon(s) livres restent a facturer.",
+                    "cta_label": "Ouvrir la facturation",
+                    "cta_url": "/operations/facturation/",
+                    "variant": "warning",
+                }
+            )
+    elif user_role == "transitaire":
+        transits_a_traiter = Operation.objects.filter(etat_bon__in=["initie", "declare"]).count()
+        if transits_a_traiter:
+            action_alerts.append(
+                {
+                    "title": "Etat des bons a mettre a jour",
+                    "message": f"{transits_a_traiter} bon(s) attendent une action transitaire.",
+                    "cta_label": "Ouvrir le transitaire",
+                    "cta_url": "/operations/transitaire/",
+                    "variant": "warning",
+                }
+            )
+    elif user_role == "invite":
+        action_alerts.append(
+            {
+                "title": "Mode lecture seule",
+                "message": "Ce compte invite permet uniquement de consulter le dashboard, la maintenance, les camions et les chauffeurs.",
+                "cta_label": "Voir la maintenance",
+                "cta_url": "/maintenance/",
+                "variant": "ok",
+            }
+        )
+
     context = {
         "user_role": user_role,
         "is_maintenancier": is_maintenancier,
@@ -170,6 +256,7 @@ def dashboard(request):
         "daily_totals": daily_totals,
         "performances_camions": performances_camions,
         "seuil_retard_jours": 3,
+        "action_alerts": action_alerts,
     }
 
     return render(request, "dashboard/dashboard.html", context)
@@ -188,10 +275,12 @@ def gps_monitor(request):
 dashboard = role_required(
     "commercial",
     "comptable",
+    "caissiere",
+    "invite",
     "logistique",
     "maintenancier",
     "dga",
     "directeur",
     "transitaire",
 )(dashboard)
-gps_monitor = role_required("commercial", "comptable", "logistique", "directeur", "transitaire")(gps_monitor)
+gps_monitor = role_required("commercial", "comptable", "logistique", "transitaire")(gps_monitor)

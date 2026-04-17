@@ -4,7 +4,9 @@ ROLE_LOGISTIQUE = "logistique"
 ROLE_MAINTENANCIER = "maintenancier"
 ROLE_DGA = "dga"
 ROLE_DIRECTEUR = "directeur"
+ROLE_CAISSIERE = "caissiere"
 ROLE_TRANSITAIRE = "transitaire"
+ROLE_INVITE = "invite"
 
 ROLE_CHOICES = [
     (ROLE_COMMERCIAL, "Commercial"),
@@ -13,7 +15,9 @@ ROLE_CHOICES = [
     (ROLE_MAINTENANCIER, "Maintenancier"),
     (ROLE_DGA, "DGA"),
     (ROLE_DIRECTEUR, "Directeur"),
+    (ROLE_CAISSIERE, "Caissiere"),
     (ROLE_TRANSITAIRE, "Transitaire"),
+    (ROLE_INVITE, "Invite"),
 ]
 
 ROLE_LABELS = dict(ROLE_CHOICES)

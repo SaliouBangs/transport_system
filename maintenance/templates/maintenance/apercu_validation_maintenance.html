@@ -7,7 +7,7 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Validation maintenance</p>
-<h1>Apercu de {{ maintenance.reference }}</h1>
+<h1>Resume de validation {{ maintenance.reference }}</h1>
 </div>
 <div class="table-actions">
 <a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
@@ -22,6 +22,13 @@
 </div>
 
 <div class="form-shell operation-shell">
+    <div class="form-alert" style="background:#eef6ff; border-color:#cfe0f5;">
+        <p style="margin:0; color:#123047;">
+            Cette fiche est un resume du diagnostic et des prix saisis par la logistique.
+            Le DGA ou le DG peut seulement la consulter, l'imprimer, la valider ou la rejeter.
+        </p>
+    </div>
+
     <div class="summary-panel" style="margin-top:0;">
         <h2>Recapitulatif</h2>
         <table class="table summary-table">

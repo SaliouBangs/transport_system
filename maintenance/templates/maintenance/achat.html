@@ -57,7 +57,7 @@
 <td>{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:"-" }}{% endif %}{% if maintenance.numero_facture %}<br>{{ maintenance.numero_facture }}{% endif %}</td>
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
-<td>{% if can_edit_achat %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
+<td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
 </tr>
 {% empty %}
 <tr>

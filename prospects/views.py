@@ -85,6 +85,6 @@ def convertir_client(request, id):
     return redirect('prospects')
 
 
-liste_prospects = role_required("commercial", "directeur")(liste_prospects)
-ajouter_prospect = role_required("commercial", "directeur")(ajouter_prospect)
-convertir_client = role_required("directeur")(convertir_client)
+liste_prospects = role_required("commercial")(liste_prospects)
+ajouter_prospect = role_required("commercial")(ajouter_prospect)
+convertir_client = role_required()(convertir_client)

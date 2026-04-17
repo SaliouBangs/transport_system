@@ -170,9 +170,9 @@ def export_commandes_pdf(request):
     return response
 
 
-liste_commandes = role_required("commercial", "comptable", "directeur")(liste_commandes)
-ajouter_commande = role_required("commercial", "directeur")(ajouter_commande)
-modifier_commande = role_required("directeur")(modifier_commande)
-supprimer_commande = role_required("directeur")(supprimer_commande)
-export_commandes_xls = role_required("commercial", "comptable", "directeur")(export_commandes_xls)
-export_commandes_pdf = role_required("commercial", "comptable", "directeur")(export_commandes_pdf)
+liste_commandes = role_required("commercial", "comptable")(liste_commandes)
+ajouter_commande = role_required("commercial")(ajouter_commande)
+modifier_commande = role_required()(modifier_commande)
+supprimer_commande = role_required()(supprimer_commande)
+export_commandes_xls = role_required("commercial", "comptable")(export_commandes_xls)
+export_commandes_pdf = role_required("commercial", "comptable")(export_commandes_pdf)

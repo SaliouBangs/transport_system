@@ -5,11 +5,13 @@ from django.contrib.auth.models import Group
 from django.shortcuts import redirect
 
 from .constants import (
+    ROLE_CAISSIERE,
     ROLE_CHOICES,
     ROLE_COMMERCIAL,
     ROLE_COMPTABLE,
     ROLE_DGA,
     ROLE_DIRECTEUR,
+    ROLE_INVITE,
     ROLE_LABELS,
     ROLE_LOGISTIQUE,
     ROLE_MAINTENANCIER,
@@ -94,42 +96,48 @@ def role_required(*roles):
 
 
 def build_user_permissions(user):
-    is_boss = is_admin_or_directeur(user)
+    is_boss = is_admin_user(user)
     return {
         "user_role": get_user_role(user),
         "user_role_label": get_user_role_label(user),
         "is_admin_user": is_admin_user(user),
-        "is_admin_or_directeur": is_boss,
+        "is_admin_or_directeur": is_admin_or_directeur(user),
         "can_manage_users": is_boss,
         "can_access_settings": is_boss,
         "can_access_dashboard": bool(getattr(user, "is_authenticated", False)),
-        "can_access_gps": bool(getattr(user, "is_authenticated", False)) and get_user_role(user) not in (ROLE_MAINTENANCIER, ROLE_DGA),
-        "can_access_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
-        "can_add_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
+        "can_access_gps": user_has_role(user, ROLE_COMMERCIAL, ROLE_COMPTABLE, ROLE_LOGISTIQUE, ROLE_TRANSITAIRE),
+        "can_access_prospects": user_has_role(user, ROLE_COMMERCIAL),
+        "can_add_prospects": user_has_role(user, ROLE_COMMERCIAL),
         "can_convert_prospects": is_boss,
-        "can_access_clients": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
-        "can_add_clients": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
+        "can_access_clients": user_has_role(user, ROLE_COMMERCIAL),
+        "can_add_clients": user_has_role(user, ROLE_COMMERCIAL),
         "can_edit_clients": is_boss,
-        "can_access_commandes": user_has_role(user, ROLE_COMMERCIAL, ROLE_COMPTABLE, ROLE_DIRECTEUR),
-        "can_add_commandes": user_has_role(user, ROLE_COMMERCIAL, ROLE_DIRECTEUR),
+        "can_access_commandes": user_has_role(user, ROLE_COMMERCIAL, ROLE_COMPTABLE),
+        "can_add_commandes": user_has_role(user, ROLE_COMMERCIAL),
         "can_edit_commandes": is_boss,
         "can_access_operations_general": is_boss,
-        "can_access_operations_comptable": user_has_role(user, ROLE_COMPTABLE, ROLE_DIRECTEUR),
-        "can_access_operations_facturation": user_has_role(user, ROLE_COMPTABLE, ROLE_DIRECTEUR),
-        "can_access_operations_logistique": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
-        "can_access_operations_logisticien": user_has_role(user, ROLE_LOGISTIQUE, ROLE_DIRECTEUR),
-        "can_access_operations_transitaire": user_has_role(user, ROLE_TRANSITAIRE, ROLE_DIRECTEUR),
+        "can_access_operations_comptable": user_has_role(user, ROLE_COMPTABLE),
+        "can_access_operations_facturation": user_has_role(user, ROLE_COMPTABLE),
+        "can_access_operations_logistique": False,
+        "can_access_operations_logisticien": False,
+        "can_access_operations_transitaire": user_has_role(user, ROLE_TRANSITAIRE),
+        "can_access_camions": user_has_role(user, ROLE_LOGISTIQUE, ROLE_MAINTENANCIER, ROLE_DGA, ROLE_DIRECTEUR, ROLE_INVITE),
+        "can_access_chauffeurs": user_has_role(user, ROLE_LOGISTIQUE, ROLE_MAINTENANCIER, ROLE_DGA, ROLE_DIRECTEUR, ROLE_INVITE),
+        "can_access_documents": user_has_role(user, ROLE_LOGISTIQUE, ROLE_MAINTENANCIER, ROLE_DGA),
         "can_access_maintenance": user_has_role(
             user,
             ROLE_COMPTABLE,
+            ROLE_CAISSIERE,
             ROLE_LOGISTIQUE,
             ROLE_MAINTENANCIER,
             ROLE_DGA,
             ROLE_DIRECTEUR,
+            ROLE_INVITE,
         ),
         "can_access_maintenance_payment": user_has_role(
             user,
             ROLE_COMPTABLE,
+            ROLE_CAISSIERE,
             ROLE_DIRECTEUR,
         ),
         "can_manage_logistique_assets": user_has_role(
@@ -137,6 +145,5 @@ def build_user_permissions(user):
             ROLE_LOGISTIQUE,
             ROLE_MAINTENANCIER,
             ROLE_DGA,
-            ROLE_DIRECTEUR,
         ),
     }

@@ -7,10 +7,10 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
-<h1>Paiement de {{ maintenance.reference }}</h1>
+<h1>{% if historique %}Historique paiement {{ maintenance.reference }}{% else %}Paiement de {{ maintenance.reference }}{% endif %}</h1>
 </div>
 <div class="table-actions">
-<a href="/maintenance/paiements/" class="btn-secondary">Retour paiements</a>
+<a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour paiements</a>
 </div>
 </div>
 
@@ -48,11 +48,6 @@
             {{ form.date_paiement }}
             {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
         </div>
-        <div class="field">
-            <label for="{{ form.mode_paiement.id_for_label }}">Mode de paiement</label>
-            {{ form.mode_paiement }}
-            {% if form.mode_paiement.errors %}<p class="field-error">{{ form.mode_paiement.errors.0 }}</p>{% endif %}
-        </div>
         <div class="field field-full">
             <label for="{{ form.observation.id_for_label }}">Observation paiement</label>
             {{ form.observation }}
@@ -61,12 +56,51 @@
     </div>
 
     <div class="form-actions">
-        <a href="/maintenance/paiements/" class="btn-secondary">Retour</a>
+        <a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour</a>
         {% if can_edit_paiement %}
         <button type="submit" class="btn">Valider le paiement</button>
         {% endif %}
     </div>
 </form>
+</div>
+
+<div class="form-shell" style="margin-top:20px;">
+    <div class="summary-panel" style="margin-top:0;">
+        <h2>Recapitulatif du circuit</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Montant total</th><td>{{ montant_total_formatte }} GNF</td></tr>
+                <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
+                <tr><th>Numero facture</th><td>{{ maintenance.numero_facture|default:"-" }}</td></tr>
+                <tr><th>Fournisseur</th><td>{{ maintenance.fournisseur|default:"-" }}</td></tr>
+                <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="summary-panel">
+        <h2>Validation du circuit</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Etape</th>
+                    <th>Statut</th>
+                    <th>Utilisateur</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for step in validation_steps %}
+                <tr>
+                    <td>{{ step.label }}</td>
+                    <td>{{ step.status }}</td>
+                    <td>{{ step.by }}</td>
+                    <td>{{ step.at_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% endblock %}

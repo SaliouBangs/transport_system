@@ -128,8 +128,8 @@ def ajouter_transporteur_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
-liste_camions = role_required("logistique", "maintenancier", "directeur")(liste_camions)
-ajouter_camion = role_required("logistique", "maintenancier", "directeur")(ajouter_camion)
-modifier_camion = role_required("logistique", "maintenancier", "directeur")(modifier_camion)
-supprimer_camion = role_required("logistique", "maintenancier", "directeur")(supprimer_camion)
-ajouter_transporteur_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_transporteur_modal)
+liste_camions = role_required("logistique", "maintenancier", "dga", "directeur", "invite")(liste_camions)
+ajouter_camion = role_required("logistique", "maintenancier", "dga", "directeur")(ajouter_camion)
+modifier_camion = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_camion)
+supprimer_camion = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_camion)
+ajouter_transporteur_modal = role_required("logistique", "maintenancier", "dga", "directeur")(ajouter_transporteur_modal)

@@ -54,7 +54,6 @@ class MaintenancePaiementForm(forms.ModelForm):
         model = Maintenance
         fields = [
             "date_paiement",
-            "mode_paiement",
             "observation",
         ]
 

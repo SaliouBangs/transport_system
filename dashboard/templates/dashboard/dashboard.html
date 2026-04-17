@@ -6,9 +6,29 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Pilotage</p>
-<h1>{% if is_maintenancier %}Dashboard maintenance{% else %}Dashboard logistique{% endif %}</h1>
+<h1>{% if user_role == "invite" %}Dashboard invite{% elif is_maintenancier %}Dashboard maintenance{% else %}Dashboard logistique{% endif %}</h1>
 </div>
 </div>
+
+{% if user_role == "invite" %}
+<div class="card" style="margin-bottom:24px; text-align:center; padding:34px 24px; background:linear-gradient(135deg, #123047 0%, #1f5f8b 100%); color:white;">
+<p class="eyebrow" style="color:#d7f3e9; margin-bottom:10px;">Signature du projet</p>
+<h2 style="margin:0; font-size:2.1rem; line-height:1.2;">Cette plateforme est creee par Mohamed Saliou Bangoura</h2>
+</div>
+{% endif %}
+
+{% if action_alerts %}
+<div class="cards" style="margin-top:0; margin-bottom:22px;">
+{% for alert in action_alerts %}
+<div class="card" style="text-align:left; border-left:6px solid {% if alert.variant == 'danger' %}#d64545{% elif alert.variant == 'ok' %}#1f9d7a{% else %}#f0a83a{% endif %};">
+<p class="eyebrow" style="margin-bottom:8px;">Alerte</p>
+<h3 style="margin-bottom:8px;">{{ alert.title }}</h3>
+<p style="margin-bottom:14px; color:#5f7384;">{{ alert.message }}</p>
+<a href="{{ alert.cta_url }}" class="{% if alert.variant == 'danger' %}btn-delete{% elif alert.variant == 'ok' %}btn{% else %}btn-secondary{% endif %}">{{ alert.cta_label }}</a>
+</div>
+{% endfor %}
+</div>
+{% endif %}
 
 {% if is_maintenancier %}
 <div class="cards">

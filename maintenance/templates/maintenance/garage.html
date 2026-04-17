@@ -7,16 +7,22 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
-<h1>Garage et diagnostics</h1>
+<h1>{% if historique %}Historique garage{% else %}Garage et diagnostics{% endif %}</h1>
 </div>
 <div class="table-actions">
-{% if can_manage_logistique_assets %}<a href="/maintenance/garage/ajouter/" class="btn">Nouvelle fiche garage</a>{% endif %}
-<a href="/maintenance/garage/export/xls/?q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
-<a href="/maintenance/garage/export/pdf/?q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
+{% if not historique and can_manage_logistique_assets %}<a href="/maintenance/garage/ajouter/" class="btn">Nouvelle fiche garage</a>{% endif %}
+<a href="/maintenance/garage/export/xls/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
+<a href="/maintenance/garage/export/pdf/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">PDF</a>
+{% if historique %}
+<a href="/maintenance/garage/" class="btn-secondary">Fiches en cours</a>
+{% else %}
+<a href="/maintenance/garage/?scope=historique" class="btn-secondary">Historique</a>
+{% endif %}
 </div>
 </div>
 
 <form method="get" class="search-form" id="garage-search-form" style="margin-bottom:18px;">
+{% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
 <input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search autocomplete="off" spellcheck="false">
 <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
@@ -27,12 +33,12 @@
     {% endfor %}
 </select>
 <button type="submit" class="btn">Rechercher</button>
-<a href="/maintenance/garage/" class="btn-secondary">Reinitialiser</a>
+<a href="{% if historique %}/maintenance/garage/?scope=historique{% else %}/maintenance/garage/{% endif %}" class="btn-secondary">Reinitialiser</a>
 </form>
 
 <div class="cards" style="margin-bottom:24px; align-items:start;">
 <div class="card" style="text-align:left;">
-<h3>Fiches atelier</h3>
+<h3>{% if historique %}Fiches payees archivees{% else %}Fiches atelier{% endif %}</h3>
 <table class="table" style="margin-top:16px;">
 <thead>
 <tr>
@@ -94,16 +100,14 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
 {% elif maintenance.can_terminate %}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-edit">Diagnostic</a>
-{% else %}
+{% elif maintenance.can_validate_dga or maintenance.can_validate_dg %}
+<a href="/maintenance/garage/apercu-validation/{{ maintenance.id }}/" class="btn-secondary">Apercu</a>
+{% elif user_role == "invite" %}
+<span class="status" style="background:#edf4fb; color:#29527a;">Lecture seule</span>
+{% elif user_role != "dga" and user_role != "directeur" %}
 <a href="/maintenance/garage/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>
 {% endif %}
 <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Imprimer</a>
-{% if maintenance.can_terminate %}
-<form method="post" action="/maintenance/garage/terminer/{{ maintenance.id }}/">
-{% csrf_token %}
-<button type="submit" class="btn-secondary">Terminer</button>
-</form>
-{% endif %}
 {% if maintenance.statut == "attente_prix" %}
 <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">En attente de saisie de prix</span>
 {% endif %}
@@ -111,7 +115,6 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 <a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Saisir les prix</a>
 {% endif %}
 {% if maintenance.can_validate_dga %}
-<a href="/maintenance/garage/apercu-validation/{{ maintenance.id }}/" class="btn-secondary">Apercu</a>
 <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DGA</button>
@@ -122,7 +125,6 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 </form>
 {% endif %}
 {% if maintenance.can_validate_dg %}
-<a href="/maintenance/garage/apercu-validation/{{ maintenance.id }}/" class="btn-secondary">Apercu</a>
 <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
 {% csrf_token %}
 <button type="submit" class="btn-secondary">Valider DG</button>
@@ -140,7 +142,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 </tr>
 {% empty %}
 <tr>
-<td colspan="9">Aucune maintenance enregistree pour le moment.</td>
+<td colspan="9">{% if historique %}Aucune fiche payee dans l'historique.{% else %}Aucune maintenance enregistree pour le moment.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

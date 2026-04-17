@@ -76,7 +76,7 @@ def supprimer_document(request, id):
     return redirect("documents")
 
 
-liste_documents = role_required("logistique", "maintenancier", "directeur")(liste_documents)
-ajouter_document = role_required("logistique", "maintenancier", "directeur")(ajouter_document)
-modifier_document = role_required("logistique", "maintenancier", "directeur")(modifier_document)
-supprimer_document = role_required("logistique", "maintenancier", "directeur")(supprimer_document)
+liste_documents = role_required("logistique", "maintenancier", "dga")(liste_documents)
+ajouter_document = role_required("logistique", "maintenancier", "dga")(ajouter_document)
+modifier_document = role_required("logistique", "maintenancier", "dga")(modifier_document)
+supprimer_document = role_required("logistique", "maintenancier", "dga")(supprimer_document)

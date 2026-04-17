@@ -818,13 +818,12 @@ min-width:0;
 {% if can_access_operations_general %}<a href="/operations/" class="{% if request.path == '/operations/' %}active{% endif %}">Operations</a>{% endif %}
 {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="{% if request.path|slice:':22' == '/operations/comptable/' %}active{% endif %}">Operations comptable</a>{% endif %}
 {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="{% if request.path|slice:':24' == '/operations/facturation/' %}active{% endif %}">Facturation</a>{% endif %}
-{% if can_access_operations_logistique %}<a href="/operations/logistique/" class="{% if request.path|slice:':23' == '/operations/logistique/' %}active{% endif %}">Logistique</a>{% endif %}
-{% if can_access_operations_logisticien %}<a href="/operations/logisticien/" class="{% if request.path|slice:':24' == '/operations/logisticien/' %}active{% endif %}">Logisticien</a>{% endif %}
 {% if can_access_operations_transitaire %}<a href="/operations/transitaire/" class="{% if request.path|slice:':24' == '/operations/transitaire/' %}active{% endif %}">Transitaire</a>{% endif %}
-{% if can_manage_logistique_assets %}<a href="/camions/" class="{% if request.path|slice:':9' == '/camions/' %}active{% endif %}">Camions</a>{% endif %}
-{% if can_manage_logistique_assets %}<a href="/chauffeurs/" class="{% if request.path|slice:':12' == '/chauffeurs/' %}active{% endif %}">Chauffeurs</a>{% endif %}
-{% if can_access_maintenance %}<a href="{% if user_role == 'comptable' %}/maintenance/paiements/{% else %}/maintenance/{% endif %}" class="{% if request.path|slice:':13' == '/maintenance/' %}active{% endif %}">Maintenance</a>{% endif %}
-{% if can_manage_logistique_assets %}<a href="/documents/" class="{% if request.path|slice:':11' == '/documents/' %}active{% endif %}">Documents</a>{% endif %}
+{% if can_access_camions %}<a href="/camions/" class="{% if request.path|slice:':9' == '/camions/' %}active{% endif %}">Camions</a>{% endif %}
+{% if can_access_chauffeurs %}<a href="/chauffeurs/" class="{% if request.path|slice:':12' == '/chauffeurs/' %}active{% endif %}">Chauffeurs</a>{% endif %}
+{% if can_access_maintenance %}<a href="{% if user_role == 'comptable' or user_role == 'caissiere' %}/maintenance/paiements/{% else %}/maintenance/{% endif %}" class="{% if request.path|slice:':13' == '/maintenance/' %}active{% endif %}">Maintenance</a>{% endif %}
+{% if can_access_maintenance %}<a href="/maintenance/rapports/" class="{% if request.path|slice:':21' == '/maintenance/rapports/' %}active{% endif %}">Rapports maintenance</a>{% endif %}
+{% if can_access_documents %}<a href="/documents/" class="{% if request.path|slice:':11' == '/documents/' %}active{% endif %}">Documents</a>{% endif %}
 {% if can_access_settings %}<a href="/comptes/parametres/" class="{% if request.path|slice:':12' == '/comptes/' %}active{% endif %}">Parametres</a>{% endif %}
 
 </div>

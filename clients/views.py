@@ -133,9 +133,9 @@ def ajouter_client_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
-liste_clients = role_required("commercial", "directeur")(liste_clients)
-ajouter_client = role_required("commercial", "directeur")(ajouter_client)
-modifier_client = role_required("directeur")(modifier_client)
-supprimer_client = role_required("directeur")(supprimer_client)
-prospect_infos = role_required("commercial", "directeur")(prospect_infos)
-ajouter_client_modal = role_required("commercial", "directeur")(ajouter_client_modal)
+liste_clients = role_required("commercial")(liste_clients)
+ajouter_client = role_required("commercial")(ajouter_client)
+modifier_client = role_required()(modifier_client)
+supprimer_client = role_required()(supprimer_client)
+prospect_infos = role_required("commercial")(prospect_infos)
+ajouter_client_modal = role_required("commercial")(ajouter_client_modal)

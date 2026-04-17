@@ -9,7 +9,7 @@ from .permissions import (
     ensure_role_groups,
     get_default_landing_url,
     get_user_role_label,
-    is_admin_or_directeur,
+    is_admin_user,
 )
 
 
@@ -48,8 +48,8 @@ def acces_technique_view(request):
 
 
 def parametres_view(request):
-    if not is_admin_or_directeur(request.user):
-        messages.error(request, "Seuls l'administrateur et le directeur peuvent acceder aux parametres.")
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut acceder aux parametres.")
         return redirect(get_default_landing_url(request.user))
 
     return render(request, "utilisateurs/parametres.html")
@@ -61,8 +61,8 @@ def deconnexion_view(request):
 
 
 def historique_actions_view(request):
-    if not is_admin_or_directeur(request.user):
-        messages.error(request, "Seuls l'administrateur et le directeur peuvent consulter l'historique.")
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut consulter l'historique.")
         return redirect(get_default_landing_url(request.user))
 
     actions = HistoriqueAction.objects.select_related("utilisateur")
@@ -70,8 +70,8 @@ def historique_actions_view(request):
 
 
 def liste_utilisateurs(request):
-    if not is_admin_or_directeur(request.user):
-        messages.error(request, "Seuls l'administrateur et le directeur peuvent gerer les comptes.")
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut gerer les comptes.")
         return redirect(get_default_landing_url(request.user))
 
     ensure_role_groups()
@@ -96,8 +96,8 @@ def liste_utilisateurs(request):
 
 
 def ajouter_utilisateur(request):
-    if not is_admin_or_directeur(request.user):
-        messages.error(request, "Seuls l'administrateur et le directeur peuvent gerer les comptes.")
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut gerer les comptes.")
         return redirect(get_default_landing_url(request.user))
 
     if request.method == "POST":
@@ -120,8 +120,8 @@ def ajouter_utilisateur(request):
 
 
 def modifier_utilisateur(request, id):
-    if not is_admin_or_directeur(request.user):
-        messages.error(request, "Seuls l'administrateur et le directeur peuvent gerer les comptes.")
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut gerer les comptes.")
         return redirect(get_default_landing_url(request.user))
 
     utilisateur = get_object_or_404(User, id=id)
