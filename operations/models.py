@@ -110,7 +110,7 @@ class Operation(models.Model):
     livreur = models.CharField(max_length=150, blank=True)
     numero_facture = models.CharField(max_length=80, blank=True)
     date_facture = models.DateField(null=True, blank=True)
-    montant_facture = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    montant_facture = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     observation = models.TextField(blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 

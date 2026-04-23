@@ -137,14 +137,37 @@
                         {% if ligne_form.libelle.errors %}<p class="field-error">{{ ligne_form.libelle.errors.0 }}</p>{% endif %}
                     </td>
                     <td>
+                        <div style="margin-bottom:8px; color:#6d8090; font-size:0.92rem;">
+                            Choisissez un <strong>article du stock</strong> ou laissez le selecteur vide pour saisir une <strong>piece hors stock</strong>.
+                        </div>
                         <div class="subline-stack">
                             {% for value in ligne_form.subline_values %}
-                            <div class="subline-item" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                            <div class="subline-item" style="display:grid; grid-template-columns:minmax(220px, 240px) 90px minmax(220px, 1fr) auto; gap:8px; align-items:end; margin-bottom:10px; padding:12px; border:1px solid #d9e2e8; border-radius:14px; background:#f8fbfd;">
                                 <input type="hidden" name="subline-{{ ligne_form.prefix }}-ids" value="{{ value.id }}">
-                                <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;" {% if read_only %}readonly{% endif %}>
-                                <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;" {% if read_only %}readonly{% endif %}>
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                        <label style="margin:0; font-size:0.9rem; color:#577086;">Source</label>
+                                        <span class="subline-mode-badge status-badge {% if value.article_stock_id %}status-ok{% else %}status-warning{% endif %}">
+                                            {% if value.article_stock_id %}Stock{% else %}Hors stock{% endif %}
+                                        </span>
+                                    </div>
+                                    <select name="subline-{{ ligne_form.prefix }}-articles" style="width:100%;" class="stock-article-select" {% if read_only %}disabled{% endif %}>
+                                        <option value="">Piece hors stock</option>
+                                        {% for article in articles_stock_catalog %}
+                                        <option value="{{ article.id }}" data-label="{{ article.libelle }}" {% if article.id|stringformat:'s' == value.article_stock_id|stringformat:'s' %}selected{% endif %}>{{ article.code_article }} - {{ article.libelle }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Qte</label>
+                                    <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;" {% if read_only %}readonly{% endif %}>
+                                </div>
+                                <div>
+                                    <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
+                                    <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input" {% if read_only %}readonly{% endif %}>
+                                </div>
                                 {% if not read_only and allow_structure_changes|default:True %}
-                                <button type="button" class="btn-delete subline-remove-btn">x</button>
+                                <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
                                 {% endif %}
                             </div>
                             {% endfor %}
@@ -201,11 +224,29 @@
         <td>
             <div class="subline-stack">
                 {% for value in formset.empty_form.subline_values %}
-                <div class="subline-item" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                <div class="subline-item" style="display:grid; grid-template-columns:minmax(220px, 240px) 90px minmax(220px, 1fr) auto; gap:8px; align-items:end; margin-bottom:10px; padding:12px; border:1px solid #d9e2e8; border-radius:14px; background:#f8fbfd;">
                     <input type="hidden" name="subline-{{ formset.empty_form.prefix }}-ids" value="{{ value.id }}">
-                    <input type="number" name="subline-{{ formset.empty_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
-                    <input type="text" name="subline-{{ formset.empty_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
-                    <button type="button" class="btn-delete subline-remove-btn">x</button>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <label style="margin:0; font-size:0.9rem; color:#577086;">Source</label>
+                            <span class="subline-mode-badge status-badge status-warning">Hors stock</span>
+                        </div>
+                        <select name="subline-{{ formset.empty_form.prefix }}-articles" style="width:100%;" class="stock-article-select">
+                            <option value="">Piece hors stock</option>
+                            {% for article in articles_stock_catalog %}
+                            <option value="{{ article.id }}" data-label="{{ article.libelle }}">{{ article.code_article }} - {{ article.libelle }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Qte</label>
+                        <input type="number" name="subline-{{ formset.empty_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
+                        <input type="text" name="subline-{{ formset.empty_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input">
+                    </div>
+                    <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
                 </div>
                 {% endfor %}
             </div>
@@ -270,5 +311,40 @@
 
     searchInput.addEventListener("input", syncCamionSelection);
     searchInput.addEventListener("change", syncCamionSelection);
+})();
+</script>
+
+<script>
+(function () {
+    function updateSublineBadge(select) {
+        const item = select.closest(".subline-item");
+        const badge = item?.querySelector(".subline-mode-badge");
+        if (!badge) {
+            return;
+        }
+        const isStock = !!select.value;
+        badge.textContent = isStock ? "Stock" : "Hors stock";
+        badge.classList.toggle("status-ok", isStock);
+        badge.classList.toggle("status-warning", !isStock);
+    }
+
+    document.addEventListener("change", (event) => {
+        const select = event.target.closest(".stock-article-select");
+        if (!select) {
+            return;
+        }
+        const selectedOption = select.options[select.selectedIndex];
+        const labelInput = select.closest(".subline-item")?.querySelector(".stock-label-input");
+        if (!labelInput || !selectedOption || !selectedOption.dataset.label) {
+            updateSublineBadge(select);
+            return;
+        }
+        if (!labelInput.value.trim()) {
+            labelInput.value = selectedOption.dataset.label;
+        }
+        updateSublineBadge(select);
+    });
+
+    document.querySelectorAll(".stock-article-select").forEach(updateSublineBadge);
 })();
 </script>

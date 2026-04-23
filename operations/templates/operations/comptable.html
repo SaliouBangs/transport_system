@@ -7,27 +7,33 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Comptabilite</p>
-<h1>Preparation des factures</h1>
+<h1>{% if scope == "historique" %}Historique des BL{% else %}Commandes a transformer en BL{% endif %}</h1>
 </div>
 <div class="field-inline">
 <form method="get" class="search-form" id="comptable-search-form">
-    <input type="text" name="q" id="comptable-search-input" value="{{ query }}" placeholder="Recherche par BL, commande ou client">
+    {% if scope == "historique" %}<input type="hidden" name="scope" value="historique">{% endif %}
+    <input type="text" name="q" id="comptable-search-input" value="{{ query }}" placeholder="Recherche par commande, client, camion, chauffeur ou BL">
     <button type="submit" class="btn-secondary">Rechercher</button>
 </form>
-<a href="/operations/comptable/ajouter/" class="btn">Nouveau BL</a>
+{% if scope == "historique" %}
+<a href="/operations/comptable/" class="btn-secondary">Commandes a traiter</a>
+{% else %}
+<a href="/operations/comptable/?scope=historique" class="btn-secondary">Historique BL</a>
+{% endif %}
 </div>
 </div>
 
+{% if scope == "historique" %}
 <table class="table" id="comptable-table">
 <thead>
 <tr>
 <th>BL</th>
 <th>Commande</th>
 <th>Client</th>
+<th>Camion</th>
+<th>Chauffeur</th>
 <th>Produit</th>
 <th>Quantite</th>
-<th>Regime</th>
-<th>Depot</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -37,43 +43,63 @@
 <td>{{ operation.numero_bl }}</td>
 <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
 <td>{{ operation.client.entreprise }}</td>
+<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
 <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
 <td>{{ operation.quantite|default:"-" }}</td>
-<td>{% if operation.regime_douanier %}{{ operation.regime_douanier.libelle }}{% else %}-{% endif %}</td>
-<td>{% if operation.depot %}{{ operation.depot.nom }}{% else %}-{% endif %}</td>
 <td>
+<div class="table-actions">
 <a href="/operations/comptable/{{ operation.id }}/modifier/" class="btn-edit">Ouvrir</a>
 {% if operation.camion %}
 <a href="/operations/comptable/{{ operation.id }}/bon-livraison/" class="btn-secondary">Imprimer BL</a>
-{% else %}
-<span class="status-badge status-danger">Attente logistique</span>
 {% endif %}
+</div>
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucun BL disponible pour la comptabilite.</td>
+<td colspan="8">Aucun BL deja cree pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
+{% else %}
+<table class="table" id="comptable-table">
+<thead>
+<tr>
+<th>Commande</th>
+<th>Client</th>
+<th>Camion</th>
+<th>Chauffeur</th>
+<th>Produit</th>
+<th>Quantite</th>
+<th>Trajet</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for commande in commandes_pretes %}
+<tr>
+<td>{{ commande.reference }}</td>
+<td>{{ commande.client.entreprise }}</td>
+<td>{% if commande.camion %}{{ commande.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+<td>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</td>
+<td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
+<td>{{ commande.quantite|default:"-" }}</td>
+<td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
+<td>
+<div class="table-actions">
+<a href="/operations/comptable/ajouter/?commande_id={{ commande.id }}" class="btn">Creer le BL</a>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucune commande affectee disponible pour la comptabilite.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
 
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-const comptableSearchInput = document.getElementById("comptable-search-input");
-const comptableRows = document.querySelectorAll("#comptable-table tbody tr");
-
-function filterComptableTable() {
-    const query = (comptableSearchInput?.value || "").trim().toLowerCase();
-    comptableRows.forEach((row) => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = !query || text.includes(query) ? "" : "none";
-    });
-}
-
-comptableSearchInput?.addEventListener("input", filterComptableTable);
-filterComptableTable();
-</script>
 {% endblock %}

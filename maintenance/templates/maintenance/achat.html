@@ -7,7 +7,7 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
-<h1>{% if historique %}Historique des prix saisis{% else %}Saisie des prix{% endif %}</h1>
+<h1>{% if historique %}Historique validation logistique{% else %}Validation logistique{% endif %}</h1>
 </div>
 <div class="table-actions">
 <a href="/maintenance/achat/export/xls/?scope={% if historique %}historique{% endif %}&q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&statut={{ filter_values.statut }}" class="btn-secondary">Excel</a>
@@ -23,7 +23,7 @@
 
 <form method="get" class="search-form" id="achat-search-form" style="margin-bottom:18px;">
 {% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
-<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search autocomplete="off" spellcheck="false">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur, reference ou numero facture" data-live-search autocomplete="off" spellcheck="false">
 <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
 <select name="statut" style="min-width:190px; height:52px;" data-live-change>
@@ -57,11 +57,11 @@
 <td>{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:"-" }}{% endif %}{% if maintenance.numero_facture %}<br>{{ maintenance.numero_facture }}{% endif %}</td>
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
-<td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">Saisir les prix</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
+<td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">{% if maintenance.is_stock_only %}Valider le stock{% else %}Saisir les prix{% endif %}</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="7">{% if historique %}Aucun ancien diagnostic avec prix disponible.{% else %}Aucun diagnostic en attente de saisie de prix.{% endif %}</td>
+<td colspan="7">{% if historique %}Aucune ancienne fiche de validation logistique disponible.{% else %}Aucune fiche en attente de validation logistique.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

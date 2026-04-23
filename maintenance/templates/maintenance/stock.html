@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Gestion du stock</h1>
+</div>
+<div class="table-actions">
+{% if can_manage_stock %}<a href="/maintenance/stock/ajouter/" class="btn">Nouvel article</a>{% endif %}
+</div>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher code, article, categorie ou fournisseur" autocomplete="off" spellcheck="false">
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/stock/" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<div class="cards" style="margin-bottom:24px;">
+<div class="card"><h3>Articles</h3><p>{{ total_articles }}</p></div>
+<div class="card"><h3>Alertes stock</h3><p>{{ articles_en_alerte }}</p></div>
+</div>
+
+<div class="card" style="text-align:left;">
+<h3>Articles en stock</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Code</th>
+<th>Article</th>
+<th>Categorie</th>
+<th>Stock</th>
+<th>Seuil</th>
+<th>Fournisseur</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for article in articles %}
+<tr>
+<td>{{ article.code_article }}</td>
+<td>{{ article.libelle }}<br><span style="color:#6d8090;">{{ article.unite }}</span></td>
+<td>{{ article.categorie|default:"-" }}</td>
+<td>
+    {{ article.quantite_stock }} {{ article.unite }}
+    <div><span style="color:#6d8090;">{{ article.get_quantite_decomposee }}</span></div>
+    {% if article.en_alerte %}
+    <div><span class="status-badge status-danger">Stock faible</span></div>
+    {% endif %}
+</td>
+<td>{{ article.seuil_alerte }}</td>
+<td>{{ article.fournisseur|default:"-" }}</td>
+<td>
+    <div class="table-actions">
+        {% if can_manage_stock %}
+        <a href="/maintenance/stock/mouvement/{{ article.id }}/" class="btn-secondary">Entree / ajustement</a>
+        <a href="/maintenance/stock/modifier/{{ article.id }}/" class="btn-edit">Modifier</a>
+        {% if is_admin_maintenance %}
+        <form method="post" action="/maintenance/stock/supprimer/{{ article.id }}/" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete" onclick="return confirm('Supprimer cet article de stock ?');">Supprimer</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <span class="status" style="background:#edf4fb; color:#29527a;">Lecture seule</span>
+        {% endif %}
+    </div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucun article de stock enregistre pour le moment.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card" style="margin-top:24px; text-align:left;">
+<h3>Derniers mouvements</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Date</th>
+<th>Article</th>
+<th>Camion</th>
+<th>Type</th>
+<th>Quantite saisie</th>
+<th>Equivalent stock</th>
+<th>Stock avant</th>
+<th>Stock apres</th>
+<th>Utilisateur</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody>
+{% for mouvement in recent_movements %}
+<tr>
+<td>{{ mouvement.date_mouvement|date:"d/m/Y H:i" }}</td>
+<td>{{ mouvement.article.libelle }}</td>
+<td>{{ mouvement.camion_display }}</td>
+<td>{{ mouvement.get_type_mouvement_display }}</td>
+<td>{{ mouvement.quantite_saisie|default:mouvement.quantite }} {{ mouvement.unite_saisie|default:mouvement.article.unite }}</td>
+<td>{{ mouvement.quantite }} {{ mouvement.article.unite }}</td>
+<td>{{ mouvement.stock_avant }}</td>
+<td>{{ mouvement.stock_apres }}</td>
+<td>{% if mouvement.created_by %}{{ mouvement.created_by.username }}{% else %}-{% endif %}</td>
+<td>{{ mouvement.reference|default:"-" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="10">Aucun mouvement de stock enregistre.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="card" style="margin-top:24px; text-align:left;">
+<h3>Consommation par camion et par produit</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Camion</th>
+<th>Produit</th>
+<th>Qte totale</th>
+<th>Nb maintenances</th>
+</tr>
+</thead>
+<tbody>
+{% for row in consommation_par_camion %}
+<tr>
+<td>
+    {{ row.maintenance_ligne__maintenance__camion__numero_tracteur }}
+    {% if row.maintenance_ligne__maintenance__camion__numero_citerne %}
+    / {{ row.maintenance_ligne__maintenance__camion__numero_citerne }}
+    {% endif %}
+    <br><span style="color:#6d8090;">{{ row.maintenance_ligne__maintenance__camion__code_camion }}</span>
+</td>
+<td>{{ row.article_stock__libelle }}<br><span style="color:#6d8090;">{{ row.article_stock__unite }}</span></td>
+<td>{{ row.total_quantite }}</td>
+<td>{{ row.total_maintenances }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucune consommation de stock n'a encore ete rattachee a une maintenance validee.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+{% endblock %}

@@ -2,6 +2,7 @@ from io import BytesIO
 from decimal import Decimal
 
 from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
@@ -16,22 +17,55 @@ from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 
 from .forms import (
+    ArticleStockForm,
+    ArticleStockConversionFormSet,
     FournisseurForm,
     MaintenanceAchatForm,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
     MaintenancePaiementForm,
+    MouvementStockForm,
     PrestataireForm,
     TypeMaintenanceForm,
 )
-from .models import Fournisseur, Maintenance, MaintenanceSousLigne, Prestataire
+from .models import (
+    ArticleStock,
+    Fournisseur,
+    Maintenance,
+    MaintenanceSousLigne,
+    MouvementStock,
+    Prestataire,
+)
 
 
 def _maintenance_queryset():
+    _normalize_stock_only_workflow()
     return Maintenance.objects.select_related("camion", "fournisseur").prefetch_related(
         "lignes__type_maintenance",
-        "lignes__sous_lignes",
+        "lignes__sous_lignes__article_stock",
     )
+
+
+def _normalize_stock_only_workflow():
+    candidates = (
+        Maintenance.objects.exclude(statut__in=["payee", "rejetee_dga", "rejetee_dg", "validee_stock"])
+        .prefetch_related("lignes__sous_lignes")
+    )
+    updates = []
+    for maintenance in candidates:
+        if not maintenance.is_stock_only():
+            continue
+        if maintenance.validation_dg_at:
+            target_status = "validee_stock"
+        elif maintenance.validation_dga_at:
+            target_status = "attente_dg"
+        else:
+            target_status = "attente_dga"
+        if maintenance.statut != target_status:
+            updates.append((maintenance.pk, target_status))
+
+    for maintenance_id, target_status in updates:
+        Maintenance.objects.filter(pk=maintenance_id).update(statut=target_status)
 
 
 def _apply_maintenance_filters(request, queryset):
@@ -43,6 +77,7 @@ def _apply_maintenance_filters(request, queryset):
     if q:
         queryset = queryset.filter(
             Q(reference__icontains=q)
+            | Q(numero_facture__icontains=q)
             | Q(camion__code_camion__icontains=q)
             | Q(camion__numero_tracteur__icontains=q)
             | Q(camion__numero_citerne__icontains=q)
@@ -292,27 +327,45 @@ def _format_step_date(value):
     return date_format(value, "d/m/Y")
 
 
+def _get_duplicate_facture_matches(numero_facture, maintenance_id=None):
+    numero_facture = (numero_facture or "").strip()
+    if not numero_facture:
+        return []
+    queryset = (
+        Maintenance.objects.exclude(numero_facture="")
+        .filter(numero_facture__iexact=numero_facture)
+        .select_related("camion")
+        .order_by("-date_creation")
+    )
+    if maintenance_id:
+        queryset = queryset.exclude(pk=maintenance_id)
+    return list(queryset[:5])
+
+
 def _attach_subline_values(formset, request=None):
     for ligne_form in formset.forms:
         if request and request.method == "POST":
             ids = request.POST.getlist(f"subline-{ligne_form.prefix}-ids")
             labels = request.POST.getlist(f"subline-{ligne_form.prefix}-labels")
             quantities = request.POST.getlist(f"subline-{ligne_form.prefix}-quantites")
+            article_ids = request.POST.getlist(f"subline-{ligne_form.prefix}-articles")
             values = [
                 {
                     "id": ids[index] if index < len(ids) else "",
                     "libelle": labels[index] if index < len(labels) else "",
                     "quantite": quantities[index] if index < len(quantities) else "1",
+                    "article_stock_id": article_ids[index] if index < len(article_ids) else "",
                     "prix_unitaire": "0",
                     "montant": "0",
                 }
-                for index in range(max(len(labels), len(quantities), len(ids)))
+                for index in range(max(len(labels), len(quantities), len(ids), len(article_ids)))
             ]
         else:
             values = (
                 list(
                     ligne_form.instance.sous_lignes.values(
                         "id",
+                        "article_stock_id",
                         "libelle",
                         "quantite",
                         "prix_unitaire",
@@ -323,11 +376,25 @@ def _attach_subline_values(formset, request=None):
                 else []
             )
         ligne_form.subline_values = values or [
-            {"id": "", "libelle": "", "quantite": "1", "prix_unitaire": "0", "montant": "0"}
+            {
+                "id": "",
+                "article_stock_id": "",
+                "libelle": "",
+                "quantite": "1",
+                "prix_unitaire": "0",
+                "montant": "0",
+            }
         ]
 
     formset.empty_form.subline_values = [
-        {"id": "", "libelle": "", "quantite": "1", "prix_unitaire": "0", "montant": "0"}
+        {
+            "id": "",
+            "article_stock_id": "",
+            "libelle": "",
+            "quantite": "1",
+            "prix_unitaire": "0",
+            "montant": "0",
+        }
     ]
 
 
@@ -345,20 +412,34 @@ def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
         posted_ids = request.POST.getlist(f"subline-{ligne_form.prefix}-ids")
         labels = request.POST.getlist(f"subline-{ligne_form.prefix}-labels")
         quantities = request.POST.getlist(f"subline-{ligne_form.prefix}-quantites")
+        article_ids = request.POST.getlist(f"subline-{ligne_form.prefix}-articles")
 
         kept_ids = []
         existing_by_id = {str(item.id): item for item in ligne.sous_lignes.all()}
 
-        for index in range(max(len(labels), len(quantities), len(posted_ids))):
+        for index in range(max(len(labels), len(quantities), len(posted_ids), len(article_ids))):
             subline_id = posted_ids[index].strip() if index < len(posted_ids) and posted_ids[index] else ""
             label = labels[index].strip() if index < len(labels) and labels[index] else ""
             quantity_raw = quantities[index].strip() if index < len(quantities) and quantities[index] else "1"
+            article_id = article_ids[index].strip() if index < len(article_ids) and article_ids[index] else ""
+            article = ArticleStock.objects.filter(pk=article_id).first() if article_id else None
+            if article and not label:
+                label = article.libelle
 
             if not label:
                 continue
 
             if subline_id and subline_id in existing_by_id:
                 subline = existing_by_id[subline_id]
+                if subline.mouvement_stock_id and (
+                    str(subline.article_stock_id or "") != str(article.id if article else "")
+                    or str(subline.quantite) != str(quantity_raw or "1")
+                ):
+                    raise ValidationError(
+                        f"La piece '{subline.libelle}' a deja ete sortie du stock. "
+                        "Seul l'administrateur peut corriger ce mouvement manuellement."
+                    )
+                subline.article_stock = article
                 subline.libelle = label
                 subline.quantite = quantity_raw or "1"
                 subline.save()
@@ -366,6 +447,7 @@ def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
             elif allow_create:
                 subline = MaintenanceSousLigne.objects.create(
                     maintenance_ligne=ligne,
+                    article_stock=article,
                     libelle=label,
                     quantite=quantity_raw or "1",
                 )
@@ -386,10 +468,48 @@ def _attach_achat_piece_rows(maintenance):
     return piece_rows
 
 
+def _issue_stock_for_maintenance(maintenance, user):
+    pieces = list(
+        MaintenanceSousLigne.objects.select_related("article_stock", "mouvement_stock")
+        .filter(maintenance_ligne__maintenance=maintenance, article_stock__isnull=False)
+    )
+    if not pieces:
+        return
+
+    for piece in pieces:
+        if piece.mouvement_stock_id:
+            continue
+        stock_disponible = piece.article_stock.quantite_stock or Decimal("0")
+        if piece.quantite > stock_disponible:
+            raise ValidationError(
+                f"Stock insuffisant pour {piece.article_stock.libelle}. "
+                f"Disponible: {_format_amount(stock_disponible)} {piece.article_stock.unite}. "
+                f"Demande: {_format_amount(piece.quantite)}."
+            )
+
+    for piece in pieces:
+        if piece.mouvement_stock_id:
+            continue
+        mouvement = MouvementStock.objects.create(
+            article=piece.article_stock,
+            type_mouvement="sortie",
+            quantite=piece.quantite,
+            quantite_saisie=piece.quantite,
+            unite_saisie=piece.article_stock.unite,
+            reference=maintenance.reference,
+            observation=f"Consommation maintenance {maintenance.reference} - {piece.libelle}",
+            date_mouvement=timezone.now(),
+            created_by=user,
+        )
+        MaintenanceSousLigne.objects.filter(pk=piece.pk).update(mouvement_stock=mouvement)
+
+
 def _save_achat_piece_prices(request, maintenance):
     for ligne in maintenance.lignes.prefetch_related("sous_lignes"):
         if ligne.sous_lignes.exists():
             for piece in ligne.sous_lignes.all():
+                if piece.article_stock_id:
+                    continue
                 value = (request.POST.get(f"piece-price-{piece.id}") or "0").strip().replace(",", ".")
                 piece.prix_unitaire = value or "0"
                 piece.save()
@@ -401,6 +521,40 @@ def _save_achat_piece_prices(request, maintenance):
 
 def _maintenance_tabs_context(active_tab):
     return {"active_tab": active_tab}
+
+
+def _can_manage_stock(user):
+    return is_admin_user(user) or get_user_role(user) in {"logistique", "directeur"}
+
+
+def _build_conversion_map(article, formset, principal_unit):
+    conversions = {}
+    if formset is not None:
+        for form in formset.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data or form.cleaned_data.get("DELETE"):
+                continue
+            unite_source = (form.cleaned_data.get("unite_source") or "").strip().lower()
+            quantite_equivalente = form.cleaned_data.get("quantite_equivalente")
+            if unite_source and quantite_equivalente:
+                conversions[unite_source] = Decimal(quantite_equivalente)
+    if article is not None:
+        for conversion in article.conversions.all():
+            conversions.setdefault(conversion.unite_source.lower(), conversion.quantite_equivalente)
+    conversions[(principal_unit or "").strip().lower()] = Decimal("1")
+    return conversions
+
+
+def _convert_to_principal_unit(quantity, source_unit, principal_unit, conversion_map):
+    quantity = Decimal(quantity or 0)
+    source_unit = (source_unit or principal_unit or "").strip().lower()
+    principal_unit = (principal_unit or "").strip().lower()
+    if source_unit == principal_unit:
+        return quantity
+    if source_unit in conversion_map:
+        return quantity * Decimal(conversion_map[source_unit])
+    raise ValidationError(
+        {"unite_stock_saisie": f"Aucune conversion definie entre {source_unit} et {principal_unit}."}
+    )
 
 
 def _garage_camions_catalog():
@@ -425,9 +579,13 @@ def garage_maintenances(request):
     historique = request.GET.get("scope") == "historique"
     maintenances_qs = _maintenance_queryset()
     if historique:
-        maintenances_qs = maintenances_qs.filter(statut="payee")
+        maintenances_qs = maintenances_qs.filter(
+            statut__in=["payee", "validee_stock", "rejetee_dga", "rejetee_dg"]
+        )
     else:
-        maintenances_qs = maintenances_qs.exclude(statut="payee")
+        maintenances_qs = maintenances_qs.exclude(
+            statut__in=["payee", "validee_stock", "rejetee_dga", "rejetee_dg"]
+        )
     maintenances_qs, filter_values = _apply_maintenance_filters(request, maintenances_qs)
     maintenances = list(maintenances_qs)
     user_role = get_user_role(request.user)
@@ -463,6 +621,9 @@ def garage_maintenances(request):
             maintenance.validation_status_variant = "danger"
         elif maintenance.statut == "payee":
             maintenance.validation_status_label = "Payee"
+            maintenance.validation_status_variant = "ok"
+        elif maintenance.statut == "validee_stock":
+            maintenance.validation_status_label = "Validee stock"
             maintenance.validation_status_variant = "ok"
         elif maintenance.statut == "en_cours":
             maintenance.validation_status_label = "Diagnostic en cours"
@@ -509,12 +670,12 @@ def achat_maintenances(request):
     maintenances = _maintenance_queryset()
     if historique:
         maintenances = maintenances.exclude(
-            Q(validation_dga_at__isnull=True) & Q(statut__in=["attente_prix", "attente_dga", "rejetee_dga"])
+            Q(validation_dga_at__isnull=True) & Q(statut__in=["attente_prix", "attente_dga"])
         )
     else:
         maintenances = maintenances.filter(
             validation_dga_at__isnull=True,
-            statut__in=["attente_prix", "attente_dga", "rejetee_dga"],
+            statut__in=["attente_prix", "attente_dga"],
         )
     maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
     maintenances = list(maintenances)
@@ -522,7 +683,7 @@ def achat_maintenances(request):
         maintenance.can_edit_prices = bool(
             can_edit_achat
             and maintenance.validation_dga_at is None
-            and maintenance.statut in {"attente_prix", "attente_dga", "rejetee_dga"}
+            and maintenance.statut in {"attente_prix", "attente_dga"}
         )
     return render(
         request,
@@ -633,6 +794,237 @@ def rapport_maintenances(request):
             "total_attente": total_attente,
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("rapports"),
+        },
+    )
+
+
+def stock_maintenances(request):
+    q = (request.GET.get("q") or "").strip()
+    articles = ArticleStock.objects.select_related("fournisseur")
+    if q:
+        articles = articles.filter(
+            Q(code_article__icontains=q)
+            | Q(libelle__icontains=q)
+            | Q(categorie__icontains=q)
+            | Q(fournisseur__nom_fournisseur__icontains=q)
+        )
+    articles = list(articles.order_by("libelle"))
+    recent_movements = list(
+        MouvementStock.objects.select_related("article", "created_by")[:12]
+    )
+    maintenance_refs = {
+        mouvement.reference
+        for mouvement in recent_movements
+        if (mouvement.reference or "").startswith("MAIN")
+    }
+    maintenance_by_ref = {
+        maintenance.reference: maintenance
+        for maintenance in Maintenance.objects.select_related("camion").filter(reference__in=maintenance_refs)
+    }
+    for mouvement in recent_movements:
+        maintenance = maintenance_by_ref.get(mouvement.reference)
+        if maintenance and maintenance.camion_id:
+            mouvement.camion_display = maintenance.camion.numero_tracteur
+            if maintenance.camion.numero_citerne:
+                mouvement.camion_display += f" / {maintenance.camion.numero_citerne}"
+        else:
+            mouvement.camion_display = "-"
+    consommation_par_camion = list(
+        MaintenanceSousLigne.objects.filter(
+            article_stock__isnull=False,
+            mouvement_stock__isnull=False,
+        )
+        .values(
+            "maintenance_ligne__maintenance__camion__code_camion",
+            "maintenance_ligne__maintenance__camion__numero_tracteur",
+            "maintenance_ligne__maintenance__camion__numero_citerne",
+            "article_stock__libelle",
+            "article_stock__unite",
+        )
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_maintenances=Count("maintenance_ligne__maintenance", distinct=True),
+        )
+        .order_by("-total_quantite", "article_stock__libelle")
+    )
+    total_articles = len(articles)
+    articles_en_alerte = sum(1 for article in articles if article.en_alerte)
+    valeur_stock = sum((article.valeur_stock for article in articles), Decimal("0"))
+    can_manage_stock = _can_manage_stock(request.user)
+    return render(
+        request,
+        "maintenance/stock.html",
+        {
+            "articles": articles,
+            "recent_movements": recent_movements,
+            "filter_values": {"q": q},
+            "total_articles": total_articles,
+            "articles_en_alerte": articles_en_alerte,
+            "valeur_stock": _format_amount(valeur_stock),
+            "can_manage_stock": can_manage_stock,
+            "consommation_par_camion": consommation_par_camion,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("stock"),
+        },
+    )
+
+
+def ajouter_article_stock(request):
+    if request.method == "POST":
+        form = ArticleStockForm(request.POST)
+        formset = ArticleStockConversionFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    article = form.save(commit=False)
+                    principal_unit = (form.cleaned_data.get("unite") or "").strip().lower()
+                    source_unit = (form.cleaned_data.get("unite_stock_saisie") or principal_unit).strip().lower()
+                    conversion_map = _build_conversion_map(None, formset, principal_unit)
+                    article.quantite_stock = _convert_to_principal_unit(
+                        form.cleaned_data.get("quantite_stock"),
+                        source_unit,
+                        principal_unit,
+                        conversion_map,
+                    )
+                    article.save()
+                    formset.instance = article
+                    formset.save()
+            except ValidationError as error:
+                form.add_error("unite_stock_saisie", error.message_dict.get("unite_stock_saisie", [str(error)])[0] if hasattr(error, "message_dict") else str(error))
+            else:
+                journaliser_action(
+                    request.user,
+                    "Maintenance",
+                    "Creation article de stock",
+                    article.code_article,
+                    f"{request.user.username} a ajoute l'article de stock {article.code_article} - {article.libelle}.",
+                )
+                messages.success(request, f"L'article {article.libelle} a ete ajoute au stock.")
+                return redirect("stock_maintenances")
+    else:
+        form = ArticleStockForm(initial={"unite_stock_saisie": "piece"})
+        formset = ArticleStockConversionFormSet()
+    return render(
+        request,
+        "maintenance/ajouter_article_stock.html",
+        {
+            "form": form,
+            "formset": formset,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("stock"),
+        },
+    )
+
+
+def modifier_article_stock(request, id):
+    article = get_object_or_404(ArticleStock, id=id)
+    if request.method == "POST":
+        form = ArticleStockForm(request.POST, instance=article)
+        formset = ArticleStockConversionFormSet(request.POST, instance=article)
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    article = form.save(commit=False)
+                    principal_unit = (form.cleaned_data.get("unite") or article.unite).strip().lower()
+                    source_unit = (form.cleaned_data.get("unite_stock_saisie") or principal_unit).strip().lower()
+                    conversion_map = _build_conversion_map(article, formset, principal_unit)
+                    article.quantite_stock = _convert_to_principal_unit(
+                        form.cleaned_data.get("quantite_stock"),
+                        source_unit,
+                        principal_unit,
+                        conversion_map,
+                    )
+                    article.save()
+                    formset.save()
+            except ValidationError as error:
+                form.add_error("unite_stock_saisie", error.message_dict.get("unite_stock_saisie", [str(error)])[0] if hasattr(error, "message_dict") else str(error))
+            else:
+                journaliser_action(
+                    request.user,
+                    "Maintenance",
+                    "Modification article de stock",
+                    article.code_article,
+                    f"{request.user.username} a modifie l'article de stock {article.code_article}.",
+                )
+                messages.success(request, f"L'article {article.libelle} a ete mis a jour.")
+                return redirect("stock_maintenances")
+    else:
+        form = ArticleStockForm(instance=article, initial={"unite_stock_saisie": article.unite})
+        formset = ArticleStockConversionFormSet(instance=article)
+    return render(
+        request,
+        "maintenance/modifier_article_stock.html",
+        {
+            "form": form,
+            "formset": formset,
+            "article": article,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("stock"),
+        },
+    )
+
+
+@require_POST
+def supprimer_article_stock(request, id):
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut supprimer un article de stock.")
+        return redirect("stock_maintenances")
+
+    article = get_object_or_404(ArticleStock, id=id)
+    if article.mouvements.exists() or article.maintenances_consommees.exists():
+        messages.error(
+            request,
+            "Impossible de supprimer cet article car il a deja des mouvements ou des maintenances liees.",
+        )
+        return redirect("stock_maintenances")
+
+    label = f"{article.code_article} - {article.libelle}"
+    article.delete()
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Suppression article de stock",
+        label,
+        f"{request.user.username} a supprime l'article de stock {label}.",
+    )
+    messages.success(request, f"L'article {label} a ete supprime.")
+    return redirect("stock_maintenances")
+
+
+def ajouter_mouvement_stock(request, article_id):
+    article = get_object_or_404(ArticleStock, id=article_id)
+    if request.method == "POST":
+        form = MouvementStockForm(request.POST, article=article)
+        form.instance.article = article
+        if form.is_valid():
+            mouvement = form.save(commit=False)
+            mouvement.article = article
+            mouvement.created_by = request.user
+            mouvement.save()
+            journaliser_action(
+                request.user,
+                "Maintenance",
+                "Mouvement de stock",
+                article.code_article,
+                f"{request.user.username} a enregistre un mouvement {mouvement.get_type_mouvement_display().lower()} pour {article.code_article}.",
+            )
+            messages.success(request, f"Le mouvement de stock pour {article.libelle} a ete enregistre.")
+            return redirect("stock_maintenances")
+    else:
+        form = MouvementStockForm(
+            article=article,
+            initial={
+                "unite_saisie": article.unite,
+            },
+        )
+    return render(
+        request,
+        "maintenance/ajouter_mouvement_stock.html",
+        {
+            "form": form,
+            "article": article,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("stock"),
         },
     )
 
@@ -862,6 +1254,7 @@ def _render_garage_form(request, template_name, form, formset, **context):
             "formset": formset,
             "type_form": TypeMaintenanceForm(),
             "camions_catalog": _garage_camions_catalog(),
+            "articles_stock_catalog": ArticleStock.objects.order_by("libelle"),
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("garage"),
             **context,
@@ -892,6 +1285,10 @@ def _render_achat_form(request, template_name, form, **context):
             "piece_rows": _attach_achat_piece_rows(context["maintenance"]),
             "fournisseurs_catalog": fournisseurs_catalog,
             "prestataires_catalog": prestataires_catalog,
+            "duplicate_facture_matches": _get_duplicate_facture_matches(
+                form["numero_facture"].value() if "numero_facture" in form.fields else context["maintenance"].numero_facture,
+                maintenance_id=context["maintenance"].id,
+            ),
             "is_admin_maintenance": is_admin_user(request.user),
             "can_edit_achat": context.get("can_edit_achat", False),
             **_maintenance_tabs_context("achat"),
@@ -924,8 +1321,20 @@ def _build_validation_preview_context(maintenance):
     validation_steps = [
         {
             "label": "Validation logistique",
-            "status": "Valide par la logistique" if maintenance.validation_logistique_at else "En attente de validation logistique",
-            "variant": "ok" if maintenance.validation_logistique_at else "pending",
+            "status": (
+                "Non requise pour stock interne"
+                if maintenance.is_stock_only() and not maintenance.validation_logistique_at
+                else "Valide par la logistique"
+                if maintenance.validation_logistique_at
+                else "En attente de validation logistique"
+            ),
+            "variant": (
+                "neutral"
+                if maintenance.is_stock_only() and not maintenance.validation_logistique_at
+                else "ok"
+                if maintenance.validation_logistique_at
+                else "pending"
+            ),
             "by": maintenance.validation_logistique_by.get_full_name() or maintenance.validation_logistique_by.username
             if maintenance.validation_logistique_by
             else "-",
@@ -979,6 +1388,9 @@ def _build_validation_preview_context(maintenance):
         {
             "label": "Paiement",
             "status": (
+                "Non applicable (stock interne)"
+                if maintenance.statut == "validee_stock"
+                else
                 "Paiement effectue"
                 if maintenance.statut == "payee"
                 else "En attente de paiement"
@@ -986,6 +1398,9 @@ def _build_validation_preview_context(maintenance):
                 else "Non disponible dans le circuit actuel"
             ),
             "variant": (
+                "neutral"
+                if maintenance.statut == "validee_stock"
+                else
                 "ok"
                 if maintenance.statut == "payee"
                 else "pending"
@@ -1031,6 +1446,8 @@ def ajouter_maintenance_garage(request):
                 formset.save()
                 _save_subline_items(request, formset)
                 maintenance.refresh_total_facture()
+                maintenance.statut = "attente_dga" if maintenance.is_stock_only() else "attente_prix"
+                maintenance.save(update_fields=["statut"])
                 maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
                 journaliser_action(
                     request.user,
@@ -1041,11 +1458,15 @@ def ajouter_maintenance_garage(request):
                 )
             messages.success(
                 request,
-                f"Le diagnostic {maintenance.reference} a ete enregistre et transmis a la saisie des prix.",
+                (
+                    f"Le diagnostic {maintenance.reference} a ete enregistre et transmis a la validation DGA."
+                    if maintenance.is_stock_only()
+                    else f"Le diagnostic {maintenance.reference} a ete enregistre et transmis a la saisie des prix."
+                ),
             )
             return redirect("garage_maintenances")
     else:
-        form = MaintenanceGarageForm(initial={"statut": "attente_prix"})
+        form = MaintenanceGarageForm(initial={"statut": "en_cours"})
         formset = MaintenanceGarageLigneFormSet()
 
     return _render_garage_form(
@@ -1059,8 +1480,8 @@ def ajouter_maintenance_garage(request):
 
 def modifier_maintenance_garage(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
-    if maintenance.statut == "payee":
-        messages.info(request, "Cette fiche payee est disponible dans l'historique garage.")
+    if maintenance.statut in {"payee", "validee_stock"}:
+        messages.info(request, "Cette fiche finalisee est disponible dans l'historique garage.")
         return redirect("/maintenance/garage/?scope=historique")
     user_role = get_user_role(request.user)
     is_admin = is_admin_user(request.user)
@@ -1090,7 +1511,7 @@ def modifier_maintenance_garage(request, id):
                     allow_delete=is_admin,
                 )
                 maintenance.refresh_total_facture()
-                maintenance.statut = "attente_prix"
+                maintenance.statut = "attente_dga" if maintenance.is_stock_only() else "attente_prix"
                 maintenance.save(update_fields=["statut"])
                 maintenance_label = maintenance.reference or f"Diagnostic #{maintenance.id}"
                 journaliser_action(
@@ -1102,7 +1523,11 @@ def modifier_maintenance_garage(request, id):
                 )
             messages.success(
                 request,
-                f"Le diagnostic {maintenance.reference} a ete mis a jour et transmis a la saisie des prix.",
+                (
+                    f"Le diagnostic {maintenance.reference} a ete mis a jour et transmis a la validation DGA."
+                    if maintenance.is_stock_only()
+                    else f"Le diagnostic {maintenance.reference} a ete mis a jour et transmis a la saisie des prix."
+                ),
             )
             return redirect("garage_maintenances")
     else:
@@ -1127,8 +1552,8 @@ def modifier_maintenance_garage(request, id):
 
 def modifier_maintenance_achat(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
-    if maintenance.statut == "payee":
-        messages.info(request, "Cette fiche payee est disponible dans l'historique achat.")
+    if maintenance.statut in {"payee", "validee_stock"}:
+        messages.info(request, "Cette fiche finalisee est disponible dans l'historique achat.")
         return redirect("/maintenance/achat/?scope=historique")
     user_role = get_user_role(request.user)
     is_admin = is_admin_user(request.user)
@@ -1145,7 +1570,7 @@ def modifier_maintenance_achat(request, id):
         if not is_admin:
             post_data["statut"] = maintenance.statut
         post_data["prestataire"] = (post_data.get("prestataire_search") or post_data.get("prestataire") or "").strip()
-        form = MaintenanceAchatForm(post_data, instance=maintenance)
+        form = MaintenanceAchatForm(post_data, request.FILES, instance=maintenance)
         if form.is_valid():
             with transaction.atomic():
                 maintenance = form.save(commit=False)
@@ -1318,12 +1743,19 @@ def valider_maintenance_dg(request, id):
         messages.info(request, "Cette fiche est deja validee par le DG.")
         return redirect("garage_maintenances")
 
-    maintenance.validation_dg_at = timezone.now()
-    maintenance.validation_dg_by = request.user
-    maintenance.statut = "attente_paiement"
-    if not maintenance.date_fin:
-        maintenance.date_fin = timezone.now()
-    maintenance.save(update_fields=["validation_dg_at", "validation_dg_by", "statut", "date_fin"])
+    try:
+        with transaction.atomic():
+            _issue_stock_for_maintenance(maintenance, request.user)
+            maintenance.validation_dg_at = timezone.now()
+            maintenance.validation_dg_by = request.user
+            maintenance.statut = "validee_stock" if maintenance.is_stock_only() else "attente_paiement"
+            if not maintenance.date_fin:
+                maintenance.date_fin = timezone.now()
+            maintenance.save(update_fields=["validation_dg_at", "validation_dg_by", "statut", "date_fin"])
+    except ValidationError as error:
+        messages.error(request, str(error))
+        return redirect("garage_maintenances")
+
     journaliser_action(
         request.user,
         "Maintenance",
@@ -1556,16 +1988,20 @@ def export_achat_pdf(request):
 
 
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
-garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "invite")(garage_maintenances)
-achat_maintenances = role_required("logistique", "directeur")(achat_maintenances)
+garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(garage_maintenances)
+achat_maintenances = role_required("logistique", "directeur", "controleur")(achat_maintenances)
 paiements_maintenances = role_required("comptable", "caissiere", "directeur")(paiements_maintenances)
 modifier_maintenance_paiement = role_required("comptable", "caissiere", "directeur")(modifier_maintenance_paiement)
+stock_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "invite", "controleur")(stock_maintenances)
+ajouter_article_stock = role_required("logistique", "directeur")(ajouter_article_stock)
+modifier_article_stock = role_required("logistique", "directeur")(modifier_article_stock)
+ajouter_mouvement_stock = role_required("logistique", "directeur")(ajouter_mouvement_stock)
 fournisseurs_maintenance = role_required("logistique", "directeur")(fournisseurs_maintenance)
 ajouter_fournisseur = role_required("logistique", "directeur")(ajouter_fournisseur)
 modifier_fournisseur = role_required("logistique", "directeur")(modifier_fournisseur)
 ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
 modifier_maintenance_garage = role_required("logistique", "maintenancier")(modifier_maintenance_garage)
-modifier_maintenance_achat = role_required("logistique", "directeur")(modifier_maintenance_achat)
+modifier_maintenance_achat = role_required("logistique", "directeur", "controleur")(modifier_maintenance_achat)
 terminer_maintenance = role_required("logistique", "directeur")(terminer_maintenance)
 valider_maintenance_logistique = role_required("logistique")(valider_maintenance_logistique)
 rejeter_maintenance_dga = role_required("dga")(rejeter_maintenance_dga)
@@ -1573,7 +2009,7 @@ valider_maintenance_dga = role_required("dga")(valider_maintenance_dga)
 rejeter_maintenance_dg = role_required("directeur")(rejeter_maintenance_dg)
 valider_maintenance_dg = role_required("directeur")(valider_maintenance_dg)
 apercu_validation_maintenance = role_required("dga", "directeur")(apercu_validation_maintenance)
-imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "invite")(imprimer_maintenance)
+imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "invite", "controleur")(imprimer_maintenance)
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur")(ajouter_fournisseur_modal)
@@ -1583,5 +2019,5 @@ export_garage_xls = role_required("logistique", "maintenancier", "dga", "directe
 export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
 export_achat_xls = role_required("logistique", "directeur")(export_achat_xls)
 export_achat_pdf = role_required("logistique", "directeur")(export_achat_pdf)
-rapport_maintenances = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite")(rapport_maintenances)
-export_rapport_maintenances_xls = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite")(export_rapport_maintenances_xls)
+rapport_maintenances = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(rapport_maintenances)
+export_rapport_maintenances_xls = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(export_rapport_maintenances_xls)

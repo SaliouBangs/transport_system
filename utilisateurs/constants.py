@@ -7,6 +7,7 @@ ROLE_DIRECTEUR = "directeur"
 ROLE_CAISSIERE = "caissiere"
 ROLE_TRANSITAIRE = "transitaire"
 ROLE_INVITE = "invite"
+ROLE_CONTROLEUR = "controleur"
 
 ROLE_CHOICES = [
     (ROLE_COMMERCIAL, "Commercial"),
@@ -18,6 +19,7 @@ ROLE_CHOICES = [
     (ROLE_CAISSIERE, "Caissiere"),
     (ROLE_TRANSITAIRE, "Transitaire"),
     (ROLE_INVITE, "Invite"),
+    (ROLE_CONTROLEUR, "Controleur"),
 ]
 
 ROLE_LABELS = dict(ROLE_CHOICES)

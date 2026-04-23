@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Direction generale</p>
+<h1>Apercu de la commande {{ commande.reference }}</h1>
+</div>
+</div>
+
+<div class="form-shell">
+    <div class="summary-card">
+        <h3>Resume de la commande</h3>
+        <table class="summary-table">
+            <tbody>
+                <tr><th>Reference</th><td>{{ commande.reference }}</td></tr>
+                <tr><th>Date commande</th><td>{{ commande.date_commande|date:"Y-m-d" }}</td></tr>
+                <tr><th>Client</th><td>{{ commande.client.entreprise }}</td></tr>
+                <tr><th>Description</th><td>{{ commande.description }}</td></tr>
+                <tr><th>Produit</th><td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite</th><td>{{ commande.quantite|default:"-" }}</td></tr>
+                <tr><th>Prix negocie</th><td>{{ commande.prix_negocie|default:"-" }}</td></tr>
+                <tr><th>Trajet</th><td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td></tr>
+                <tr><th>Livraison prevue</th><td>{{ commande.date_livraison_prevue|date:"Y-m-d" }}</td></tr>
+                <tr><th>Camion affecte</th><td>{% if commande.camion %}{{ commande.camion.numero_tracteur }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Chauffeur affecte</th><td>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Statut</th><td><span class="status-badge status-ok">{{ commande.get_statut_display }}</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px;">
+        <a href="/commandes/" class="btn-secondary">Retour</a>
+        {% if commande.statut == "attente_validation_dg" %}
+        <form method="post" action="/commandes/rejeter-dg/{{ commande.id }}/" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-delete" onclick="return confirm('Rejeter cette commande ?')">Rejeter</button>
+        </form>
+        <form method="post" action="/commandes/valider-dg/{{ commande.id }}/" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn">Valider</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

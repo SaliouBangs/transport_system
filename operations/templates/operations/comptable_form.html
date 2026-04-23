@@ -89,13 +89,15 @@
         <h2>Resume du BL</h2>
         <table class="table summary-table">
             <tbody>
-                <tr><th>Commande</th><td id="commande-resume">{% if form.instance.commande %}{{ form.instance.commande.reference }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Commande</th><td id="commande-resume">{% if form.instance.commande %}{{ form.instance.commande.reference }}{% elif commande_initiale %}{{ commande_initiale.reference }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Regime</th><td id="regime-resume">{% if form.instance.regime_douanier %}{{ form.instance.regime_douanier.libelle }} ({{ form.instance.regime_douanier.code_regime }}){% else %}-{% endif %}</td></tr>
                 <tr><th>Depot</th><td id="depot-resume">{% if form.instance.depot %}{{ form.instance.depot.nom }}{% else %}-{% endif %}</td></tr>
-                <tr><th>Client</th><td id="client-resume">{% if form.instance.client %}{{ form.instance.client.entreprise }}{% else %}-{% endif %}</td></tr>
-                <tr><th>Destination</th><td id="destination-resume">{{ form.instance.destination|default:"-" }}</td></tr>
-                <tr><th>Produit</th><td id="produit-resume">{% if form.instance.produit %}{{ form.instance.produit.nom }}{% else %}-{% endif %}</td></tr>
-                <tr><th>Quantite</th><td id="quantite-resume">{{ form.instance.quantite|default:"-" }}</td></tr>
+                <tr><th>Client</th><td id="client-resume">{% if form.instance.client %}{{ form.instance.client.entreprise }}{% elif commande_initiale %}{{ commande_initiale.client.entreprise }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Destination</th><td id="destination-resume">{% if form.instance.destination %}{{ form.instance.destination }}{% elif commande_initiale %}{{ commande_initiale.ville_arrivee }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Produit</th><td id="produit-resume">{% if form.instance.produit %}{{ form.instance.produit.nom }}{% elif commande_initiale and commande_initiale.produit %}{{ commande_initiale.produit.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite</th><td id="quantite-resume">{% if form.instance.quantite %}{{ form.instance.quantite }}{% elif commande_initiale %}{{ commande_initiale.quantite|default:"-" }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Camion affecte</th><td id="camion-resume">{% if form.instance.camion %}{{ form.instance.camion.numero_tracteur }}{% elif commande_initiale and commande_initiale.camion %}{{ commande_initiale.camion.numero_tracteur }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Chauffeur affecte</th><td id="chauffeur-resume">{% if form.instance.chauffeur %}{{ form.instance.chauffeur.nom }}{% elif commande_initiale and commande_initiale.chauffeur %}{{ commande_initiale.chauffeur.nom }}{% else %}-{% endif %}</td></tr>
             </tbody>
         </table>
     </div>
@@ -215,6 +217,8 @@ const clientResume = document.getElementById("client-resume");
 const destinationResume = document.getElementById("destination-resume");
 const produitResume = document.getElementById("produit-resume");
 const quantiteResume = document.getElementById("quantite-resume");
+const camionResume = document.getElementById("camion-resume");
+const chauffeurResume = document.getElementById("chauffeur-resume");
 
 function selectedText(selectElement) {
     return selectElement?.options[selectElement.selectedIndex]?.text || "-";
@@ -271,6 +275,12 @@ async function syncCommandeInfos() {
         }
         if (quantiteInput) {
             quantiteInput.value = data.commande.quantite || "";
+        }
+        if (camionResume) {
+            camionResume.textContent = data.commande.camion || "-";
+        }
+        if (chauffeurResume) {
+            chauffeurResume.textContent = data.commande.chauffeur || "-";
         }
         refreshResume();
     } catch (error) {

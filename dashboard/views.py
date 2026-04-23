@@ -1,13 +1,16 @@
 from datetime import timedelta
+from urllib.parse import quote_plus
 
+from django.contrib import messages
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from camions.models import Camion
 from commandes.models import Commande
-from maintenance.models import Maintenance
+from maintenance.models import AlerteFactureResolue, ArticleStock, Maintenance, MouvementStock
 from operations.models import Operation
 from utilisateurs.permissions import get_user_role, role_required
 
@@ -36,6 +39,38 @@ def dashboard(request):
     montant_maintenance_total = float(
         diagnostics_queryset.aggregate(total=Sum("total_facture"))["total"] or 0
     )
+    stock_total_articles = ArticleStock.objects.count()
+    stock_articles_alerte = ArticleStock.objects.filter(
+        seuil_alerte__gt=0,
+        quantite_stock__lte=F("seuil_alerte"),
+    ).count()
+    stock_quantite_totale = float(
+        ArticleStock.objects.aggregate(total=Sum("quantite_stock"))["total"] or 0
+    )
+    stock_mouvements_recents = MouvementStock.objects.count()
+    stock_resume = ArticleStock.objects.filter(
+        Q(seuil_alerte__gt=0, quantite_stock__lte=F("seuil_alerte")) | Q(quantite_stock__gt=0)
+    ).order_by(
+        "quantite_stock",
+        "libelle",
+    )[:6]
+    for article in stock_resume:
+        article.stock_equivalent_display = (
+            article.get_quantite_decomposee() if article.conversions.exists() else ""
+        )
+    stock_chart_items = list(
+        ArticleStock.objects.filter(quantite_stock__gt=0)
+        .order_by("-quantite_stock", "libelle")[:5]
+    )
+    stock_chart_labels = [item.libelle for item in stock_chart_items]
+    stock_chart_quantities = [float(item.quantite_stock or 0) for item in stock_chart_items]
+    stock_chart_colors = [
+        "#d64545" if item.en_alerte else color
+        for item, color in zip(
+            stock_chart_items,
+            ["#1f9d7a", "#3f8fd6", "#f0a83a", "#123047", "#4fb3bf"],
+        )
+    ]
     commandes_total = Commande.objects.count()
     operations_total = Operation.objects.count()
 
@@ -219,6 +254,33 @@ def dashboard(request):
                 "variant": "ok",
             }
         )
+    elif user_role == "controleur":
+        resolved_factures = set(
+            AlerteFactureResolue.objects.values_list("numero_facture", flat=True)
+        )
+        doublons_factures = list(
+            Maintenance.objects.exclude(numero_facture="")
+            .values("numero_facture")
+            .annotate(total=Count("id"))
+            .filter(total__gt=1)
+            .order_by("-total", "numero_facture")[:3]
+        )
+        doublons_factures = [
+            item for item in doublons_factures
+            if item["numero_facture"] not in resolved_factures
+        ]
+        if doublons_factures:
+            premier = doublons_factures[0]
+            action_alerts.append(
+                {
+                    "title": "Doublons de factures detectes",
+                    "message": f"Le numero {premier['numero_facture']} existe deja plusieurs fois dans la base. Merci de controler les fiches achat / prix.",
+                    "cta_label": "Ouvrir achat / prix",
+                    "cta_url": f"/maintenance/achat/?scope=historique&q={quote_plus(premier['numero_facture'])}",
+                    "variant": "danger",
+                    "resolve_numero_facture": premier["numero_facture"],
+                }
+            )
 
     context = {
         "user_role": user_role,
@@ -234,6 +296,14 @@ def dashboard(request):
         "maintenances_refusees": maintenances_refusees,
         "maintenances_annulees": maintenances_annulees,
         "montant_maintenance_total": montant_maintenance_total,
+        "stock_total_articles": stock_total_articles,
+        "stock_articles_alerte": stock_articles_alerte,
+        "stock_quantite_totale": stock_quantite_totale,
+        "stock_mouvements_recents": stock_mouvements_recents,
+        "stock_resume": stock_resume,
+        "stock_chart_labels": stock_chart_labels,
+        "stock_chart_quantities": stock_chart_quantities,
+        "stock_chart_colors": stock_chart_colors,
         "dernieres_maintenances": dernieres_maintenances,
         "alertes_maintenance": alertes_maintenance,
         "commandes_total": commandes_total,
@@ -272,6 +342,21 @@ def gps_monitor(request):
     )
 
 
+@require_POST
+def resoudre_alerte_facture(request):
+    numero_facture = (request.POST.get("numero_facture") or "").strip()
+    if not numero_facture:
+        messages.error(request, "Numero de facture manquant pour la resolution de l'alerte.")
+        return redirect("/dashboard/")
+
+    AlerteFactureResolue.objects.get_or_create(
+        numero_facture=numero_facture,
+        defaults={"resolved_by": request.user},
+    )
+    messages.success(request, f"L'alerte sur la facture {numero_facture} a ete marquee comme resolue.")
+    return redirect("/dashboard/")
+
+
 dashboard = role_required(
     "commercial",
     "comptable",
@@ -282,5 +367,7 @@ dashboard = role_required(
     "dga",
     "directeur",
     "transitaire",
+    "controleur",
 )(dashboard)
 gps_monitor = role_required("commercial", "comptable", "logistique", "transitaire")(gps_monitor)
+resoudre_alerte_facture = role_required("controleur")(resoudre_alerte_facture)

@@ -818,6 +818,12 @@ min-width:0;
 {% if can_access_operations_general %}<a href="/operations/" class="{% if request.path == '/operations/' %}active{% endif %}">Operations</a>{% endif %}
 {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="{% if request.path|slice:':22' == '/operations/comptable/' %}active{% endif %}">Operations comptable</a>{% endif %}
 {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="{% if request.path|slice:':24' == '/operations/facturation/' %}active{% endif %}">Facturation</a>{% endif %}
+{% if can_access_operations_logistique %}
+<a href="{% if user_role == 'logistique' %}/commandes/{% else %}/operations/logistique/{% endif %}" class="{% if request.path|slice:':24' == '/operations/logistique/' or request.path|slice:':11' == '/commandes/' and user_role == 'logistique' %}active{% endif %}">
+{% if user_role == 'logistique' %}Commandes logistique{% else %}Operations logistique{% endif %}
+</a>
+{% endif %}
+{% if can_access_operations_logisticien %}<a href="/operations/logisticien/" class="{% if request.path|slice:':25' == '/operations/logisticien/' %}active{% endif %}">Operations logisticien</a>{% endif %}
 {% if can_access_operations_transitaire %}<a href="/operations/transitaire/" class="{% if request.path|slice:':24' == '/operations/transitaire/' %}active{% endif %}">Transitaire</a>{% endif %}
 {% if can_access_camions %}<a href="/camions/" class="{% if request.path|slice:':9' == '/camions/' %}active{% endif %}">Camions</a>{% endif %}
 {% if can_access_chauffeurs %}<a href="/chauffeurs/" class="{% if request.path|slice:':12' == '/chauffeurs/' %}active{% endif %}">Chauffeurs</a>{% endif %}

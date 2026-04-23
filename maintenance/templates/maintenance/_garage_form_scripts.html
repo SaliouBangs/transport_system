@@ -53,19 +53,46 @@ function updateNextServicePreview() {
 }
 
 function createSublineItem(prefix, value = {}) {
+    const optionHtml =
+        document.querySelector(".stock-article-select")?.innerHTML ||
+        '<option value="">Piece hors stock</option>';
+    const isStock = Boolean(value.article_stock_id);
     const wrapper = document.createElement("div");
     wrapper.className = "subline-item";
-    wrapper.style.display = "flex";
+    wrapper.style.display = "grid";
+    wrapper.style.gridTemplateColumns = "minmax(220px, 240px) 90px minmax(220px, 1fr) auto";
     wrapper.style.gap = "8px";
-    wrapper.style.alignItems = "center";
-    wrapper.style.marginBottom = "8px";
+    wrapper.style.alignItems = "end";
+    wrapper.style.marginBottom = "10px";
+    wrapper.style.padding = "12px";
+    wrapper.style.border = "1px solid #d9e2e8";
+    wrapper.style.borderRadius = "14px";
+    wrapper.style.background = "#f8fbfd";
     wrapper.innerHTML = `
         <input type="hidden" name="subline-${prefix}-ids" value="${value.id || ""}">
-        <input type="number" name="subline-${prefix}-quantites" value="${value.quantite || "1"}" min="0.01" step="0.01" placeholder="Qte" style="width:90px; flex:0 0 90px;">
-        <input type="text" name="subline-${prefix}-labels" value="${value.libelle || ""}" placeholder="Ex: Huile moteur 15W40" style="flex:1;">
-        <input type="hidden" name="subline-${prefix}-prixs" value="${value.prix_unitaire || "0"}">
-        <button type="button" class="btn-delete subline-remove-btn">x</button>
+        <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="margin:0; font-size:0.9rem; color:#577086;">Source</label>
+                <span class="subline-mode-badge status-badge ${isStock ? "status-ok" : "status-warning"}">${isStock ? "Stock" : "Hors stock"}</span>
+            </div>
+            <select name="subline-${prefix}-articles" style="width:100%;" class="stock-article-select">
+                ${optionHtml}
+            </select>
+        </div>
+        <div>
+            <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Qte</label>
+            <input type="number" name="subline-${prefix}-quantites" value="${value.quantite || "1"}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;">
+        </div>
+        <div>
+            <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
+            <input type="text" name="subline-${prefix}-labels" value="${value.libelle || ""}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input">
+        </div>
+        <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
     `;
+    const select = wrapper.querySelector(".stock-article-select");
+    if (select && value.article_stock_id) {
+        select.value = String(value.article_stock_id);
+    }
     return wrapper;
 }
 

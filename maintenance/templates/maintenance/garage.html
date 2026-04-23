@@ -38,7 +38,7 @@
 
 <div class="cards" style="margin-bottom:24px; align-items:start;">
 <div class="card" style="text-align:left;">
-<h3>{% if historique %}Fiches payees archivees{% else %}Fiches atelier{% endif %}</h3>
+<h3>{% if historique %}Fiches finalisees archivees{% else %}Fiches atelier{% endif %}</h3>
 <table class="table" style="margin-top:16px;">
 <thead>
 <tr>
@@ -142,7 +142,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 </tr>
 {% empty %}
 <tr>
-<td colspan="9">{% if historique %}Aucune fiche payee dans l'historique.{% else %}Aucune maintenance enregistree pour le moment.{% endif %}</td>
+<td colspan="9">{% if historique %}Aucune fiche finalisee dans l'historique.{% else %}Aucune maintenance enregistree pour le moment.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

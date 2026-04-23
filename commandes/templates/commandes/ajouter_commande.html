@@ -72,12 +72,6 @@
         </div>
 
         <div class="field">
-            <label for="{{ form.statut.id_for_label }}">Statut</label>
-            {{ form.statut }}
-            {% if form.statut.errors %}<p class="field-error">{{ form.statut.errors.0 }}</p>{% endif %}
-        </div>
-
-        <div class="field">
             <label for="{{ form.produit.id_for_label }}">Produit</label>
             {{ form.produit }}
             {% if form.produit.errors %}<p class="field-error">{{ form.produit.errors.0 }}</p>{% endif %}
@@ -88,7 +82,15 @@
             {{ form.quantite }}
             {% if form.quantite.errors %}<p class="field-error">{{ form.quantite.errors.0 }}</p>{% endif %}
         </div>
+
+        <div class="field">
+            <label for="{{ form.prix_negocie.id_for_label }}">Prix negocie</label>
+            {{ form.prix_negocie }}
+            {% if form.prix_negocie.errors %}<p class="field-error">{{ form.prix_negocie.errors.0 }}</p>{% endif %}
+        </div>
     </div>
+
+    <p class="helper-text">Apres enregistrement, la commande passera automatiquement en attente de validation DG.</p>
 
     <div class="form-actions">
         <a href="/commandes/" class="btn-secondary">Retour</a>

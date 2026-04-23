@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Entree / ajustement pour {{ article.libelle }}</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/stock/" class="btn-secondary">Retour stock</a>
+</div>
+</div>
+
+<div class="form-shell">
+<div class="cards" style="margin-top:0; margin-bottom:22px;">
+    <div class="card"><h3>Code</h3><p>{{ article.code_article }}</p></div>
+    <div class="card"><h3>Stock actuel</h3><p>{{ article.quantite_stock }} {{ article.unite }}<br><span style="color:#6d8090;">{{ article.get_quantite_decomposee }}</span></p></div>
+    <div class="card"><h3>Unite principale</h3><p>{{ article.unite }}</p></div>
+</div>
+
+<div class="box" style="margin-bottom:18px;">
+    Cet ecran sert seulement a <strong>ajouter du stock</strong> ou a <strong>corriger un stock existant</strong>. Les sorties se font automatiquement depuis une maintenance validee.
+</div>
+
+<form method="post" class="app-form">
+    {% csrf_token %}
+    <div class="form-grid">
+        {% for field in form %}
+        <div class="field {% if field.name == 'observation' %}field-full{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="form-actions">
+        <a href="/maintenance/stock/" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn">Enregistrer le mouvement</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

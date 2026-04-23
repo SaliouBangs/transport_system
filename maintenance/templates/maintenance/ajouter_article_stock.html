@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Ajouter un article de stock</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/stock/" class="btn-secondary">Retour stock</a>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="post" class="app-form">
+    {% csrf_token %}
+    <div class="form-grid">
+        {% for field in form %}
+        <div class="field {% if field.name == 'observation' %}field-full{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card" style="margin-top:24px; text-align:left;">
+        <h3>Conversions d'unite</h3>
+        <p style="color:#6d8090; margin-bottom:12px;">Exemple: <strong>Conditionnement = fut</strong> et <strong>Quantite equivalente = 1000</strong> si 1 fut = 1000 {{ form.unite.value|default:'unites principales' }}.</p>
+        {{ formset.management_form }}
+        <table class="table" style="margin-top:0;">
+            <thead>
+                <tr>
+                    <th>Conditionnement</th>
+                    <th>Equivalent en {{ form.unite.value|default:'unite principale' }}</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conversion_form in formset %}
+                <tr>
+                    {% for hidden in conversion_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    <td>{{ conversion_form.unite_source }}{% if conversion_form.unite_source.errors %}<p class="field-error">{{ conversion_form.unite_source.errors.0 }}</p>{% endif %}</td>
+                    <td>{{ conversion_form.quantite_equivalente }}{% if conversion_form.quantite_equivalente.errors %}<p class="field-error">{{ conversion_form.quantite_equivalente.errors.0 }}</p>{% endif %}</td>
+                    <td>{{ conversion_form.DELETE }} Supprimer</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="form-actions">
+        <a href="/maintenance/stock/" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

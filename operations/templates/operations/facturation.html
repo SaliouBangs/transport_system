@@ -45,7 +45,15 @@
 <td>{{ operation.date_bons_livres|default:"-" }}</td>
 <td>{% if operation.numero_facture %}{{ operation.numero_facture }}{% else %}<span class="status-badge status-danger">A facturer</span>{% endif %}</td>
 <td>{{ operation.montant_facture|default:"-" }}</td>
-<td><a href="/operations/facturation/{{ operation.id }}/modifier/" class="btn-edit">Facturer</a></td>
+<td>
+<div class="table-actions">
+<a href="/operations/facturation/{{ operation.id }}/modifier/" class="btn-edit">Facturer</a>
+{% if operation.numero_facture %}
+<a href="/operations/facturation/{{ operation.id }}/sans-tva/" class="btn-secondary">Sans TVA</a>
+<a href="/operations/facturation/{{ operation.id }}/avec-tva/" class="btn-secondary">Avec TVA</a>
+{% endif %}
+</div>
+</td>
 </tr>
 {% empty %}
 <tr>

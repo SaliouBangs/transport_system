@@ -1,5 +1,8 @@
 from django import forms
 
+from camions.models import Camion
+from chauffeurs.models import Chauffeur
+
 from .models import Commande
 
 
@@ -17,7 +20,41 @@ class CommandeForm(forms.ModelForm):
             "ville_depart",
             "ville_arrivee",
             "date_livraison_prevue",
-            "statut",
             "produit",
             "quantite",
+            "prix_negocie",
         ]
+
+
+class CommandeAffectationForm(forms.Form):
+    camion = forms.ModelChoiceField(
+        queryset=Camion.objects.order_by("numero_tracteur"),
+        required=True,
+    )
+    chauffeur = forms.ModelChoiceField(
+        queryset=Chauffeur.objects.order_by("nom"),
+        required=True,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        camion = cleaned_data.get("camion")
+        chauffeur = cleaned_data.get("chauffeur")
+        commande = getattr(self, "commande", None)
+
+        if chauffeur and camion and chauffeur.camion_id and chauffeur.camion_id != camion.id:
+            self.add_error(
+                "chauffeur",
+                "Le chauffeur choisi n'est pas rattache a ce camion principal.",
+            )
+
+        if commande and camion and commande.quantite is not None and camion.capacite is not None and commande.quantite > camion.capacite:
+            self.add_error(
+                "camion",
+                (
+                    f"Ce camion a une capacite de {camion.capacite} alors que la commande est de "
+                    f"{commande.quantite}. Merci de modifier le camion ou de revoir la commande."
+                ),
+            )
+
+        return cleaned_data

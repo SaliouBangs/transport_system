@@ -24,7 +24,16 @@
 <p class="eyebrow" style="margin-bottom:8px;">Alerte</p>
 <h3 style="margin-bottom:8px;">{{ alert.title }}</h3>
 <p style="margin-bottom:14px; color:#5f7384;">{{ alert.message }}</p>
+<div class="table-actions">
 <a href="{{ alert.cta_url }}" class="{% if alert.variant == 'danger' %}btn-delete{% elif alert.variant == 'ok' %}btn{% else %}btn-secondary{% endif %}">{{ alert.cta_label }}</a>
+{% if alert.resolve_numero_facture %}
+<form method="post" action="/dashboard/alertes/factures/resoudre/">
+{% csrf_token %}
+<input type="hidden" name="numero_facture" value="{{ alert.resolve_numero_facture }}">
+<button type="submit" class="btn-secondary">Resolu</button>
+</form>
+{% endif %}
+</div>
 </div>
 {% endfor %}
 </div>
@@ -45,6 +54,56 @@
 <div class="card"><h3>Refusees</h3><p>{{ maintenances_refusees }}</p></div>
 <div class="card"><h3>Annulees</h3><p>{{ maintenances_annulees }}</p></div>
 <div class="card"><h3>Cout maintenance</h3><p>{{ montant_maintenance_total }}</p></div>
+<div class="card"><h3>Articles stock</h3><p>{{ stock_total_articles }}</p></div>
+<div class="card"><h3>Alertes stock</h3><p>{{ stock_articles_alerte }}</p></div>
+<div class="card"><h3>Mouvements stock</h3><p>{{ stock_mouvements_recents }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Resume du stock</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Article</th>
+<th>Stock</th>
+<th>Seuil</th>
+<th>Etat</th>
+</tr>
+</thead>
+<tbody>
+{% for article in stock_resume %}
+<tr>
+<td>{{ article.libelle }}</td>
+<td>
+{% if article.stock_equivalent_display %}
+<div style="color:#6d8090; font-size:0.92rem;">{{ article.stock_equivalent_display }}</div>
+{% endif %}
+<div>{{ article.quantite_stock }} {{ article.unite }}</div>
+</td>
+<td>{{ article.seuil_alerte }}</td>
+<td>
+{% if article.seuil_alerte > 0 and article.quantite_stock <= article.seuil_alerte %}
+<span class="status status-danger">A reapprovisionner</span>
+{% else %}
+<span class="status status-ok">Disponible</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucun article de stock disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>Statistique du stock</h3>
+<div style="width:100%; margin-top:18px;">
+<canvas id="stockChart"></canvas>
+</div>
+</div>
 </div>
 
 <div class="cards" style="margin-top:24px; align-items:start;">
@@ -167,6 +226,55 @@
 <div class="card"><h3>Bons en retard</h3><p>{{ bons_en_retard }}</p></div>
 <div class="card"><h3>Bons non retournes</h3><p>{{ bons_non_retournes }}</p></div>
 <div class="card"><h3>Montant facture</h3><p>{{ montant_facture_total }}</p></div>
+<div class="card"><h3>Articles stock</h3><p>{{ stock_total_articles }}</p></div>
+<div class="card"><h3>Alertes stock</h3><p>{{ stock_articles_alerte }}</p></div>
+</div>
+
+<div class="cards" style="margin-top:24px; align-items:start;">
+<div class="card" style="text-align:left;">
+<h3>Suivi du stock</h3>
+<table class="table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Article</th>
+<th>Stock</th>
+<th>Seuil</th>
+<th>Etat</th>
+</tr>
+</thead>
+<tbody>
+{% for article in stock_resume %}
+<tr>
+<td>{{ article.libelle }}</td>
+<td>
+{% if article.stock_equivalent_display %}
+<div style="color:#6d8090; font-size:0.92rem;">{{ article.stock_equivalent_display }}</div>
+{% endif %}
+<div>{{ article.quantite_stock }} {{ article.unite }}</div>
+</td>
+<td>{{ article.seuil_alerte }}</td>
+<td>
+{% if article.seuil_alerte > 0 and article.quantite_stock <= article.seuil_alerte %}
+<span class="status status-danger">A reapprovisionner</span>
+{% else %}
+<span class="status status-ok">Disponible</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">Aucun article de stock disponible.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<div class="card">
+<h3>Statistique du stock</h3>
+<div style="width:100%; margin-top:18px;">
+<canvas id="stockChart"></canvas>
+</div>
+</div>
 </div>
 
 <div class="cards" style="margin-top:24px; align-items:start;">
@@ -358,62 +466,93 @@
 <script>
 {% if not is_maintenancier %}
 const carburantCtx = document.getElementById("carburantChart");
-new Chart(carburantCtx, {
-    type: "doughnut",
-    data: {
-        labels: ["Essence", "Gasoil"],
-        datasets: [{
-            data: [{{ total_essence|unlocalize }}, {{ total_gasoil|unlocalize }}],
-            backgroundColor: ["#1f9d7a", "#f0a83a"],
-            borderWidth: 0
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: "bottom"
-            }
-        }
-    }
-});
-{% endif %}
-
-{% if not is_maintenancier %}
-const bonsCtx = document.getElementById("bonsChart");
-new Chart(bonsCtx, {
-    type: "line",
-    data: {
-        labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-        datasets: [{
-            label: "Bons inities",
-            data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-            borderColor: "#3f8fd6",
-            backgroundColor: "rgba(63, 143, 214, 0.16)",
-            fill: true,
-            tension: 0.35,
-            pointRadius: 4,
-            pointBackgroundColor: "#123047"
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                display: true
-            }
+if (carburantCtx) {
+    new Chart(carburantCtx, {
+        type: "doughnut",
+        data: {
+            labels: ["Essence", "Gasoil"],
+            datasets: [{
+                data: [{{ total_essence|unlocalize }}, {{ total_gasoil|unlocalize }}],
+                backgroundColor: ["#1f9d7a", "#f0a83a"],
+                borderWidth: 0
+            }]
         },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    precision: 0
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: "bottom"
                 }
             }
         }
-    }
-});
+    });
+}
 {% endif %}
+
+const bonsCtx = document.getElementById("bonsChart");
+if (bonsCtx) {
+    new Chart(bonsCtx, {
+        type: "line",
+        data: {
+            labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: "Bons inities",
+                data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                borderColor: "#3f8fd6",
+                backgroundColor: "rgba(63, 143, 214, 0.16)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 4,
+                pointBackgroundColor: "#123047"
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+}
+
+const stockCtx = document.getElementById("stockChart");
+if (stockCtx) {
+    new Chart(stockCtx, {
+        type: "bar",
+        data: {
+            labels: [{% for label in stock_chart_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: "Quantite en stock",
+                data: [{% for quantity in stock_chart_quantities %}{{ quantity|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [{% for color in stock_chart_colors %}"{{ color }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
 </script>
 
 {% endblock %}

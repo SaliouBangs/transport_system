@@ -68,7 +68,7 @@ def supprimer_chauffeur(request, id):
     return redirect("chauffeurs")
 
 
-liste_chauffeurs = role_required("logistique", "maintenancier", "dga", "directeur", "invite")(liste_chauffeurs)
+liste_chauffeurs = role_required("logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(liste_chauffeurs)
 ajouter_chauffeur = role_required("logistique", "maintenancier", "dga", "directeur")(ajouter_chauffeur)
 modifier_chauffeur = role_required("logistique", "maintenancier", "dga", "directeur")(modifier_chauffeur)
 supprimer_chauffeur = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_chauffeur)

@@ -5,15 +5,67 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Exploitation</p>
-<h1>Gestion des commandes</h1>
+<h1>
+{% if scope == "historique" %}
+Historique des commandes
+{% elif page_user_role == "logistique" %}
+Commandes a affecter
+{% else %}
+Nouvelles commandes
+{% endif %}
+</h1>
 </div>
 <div class="field-inline">
-<a href="/commandes/export/xls/" class="btn-secondary">Exporter XLS</a>
-<a href="/commandes/export/pdf/" class="btn-secondary">Exporter PDF</a>
+<a href="/commandes/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter XLS</a>
+<a href="/commandes/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter PDF</a>
 {% if can_add_commandes %}
 <a href="/commandes/ajouter/" class="btn">Ajouter une commande</a>
 {% endif %}
 </div>
+</div>
+
+<div class="field-inline" style="margin-bottom:18px;">
+<a href="/commandes/" class="{% if scope != 'historique' %}btn{% else %}btn-secondary{% endif %}">
+{% if page_user_role == "logistique" %}A affecter{% else %}Nouvelles commandes{% endif %}
+</a>
+<a href="/commandes/?scope=historique" class="{% if scope == 'historique' %}btn{% else %}btn-secondary{% endif %}">Historique</a>
+</div>
+
+<div class="form-shell" style="margin-bottom:20px;">
+<form method="get" class="app-form">
+    <input type="hidden" name="scope" value="{{ scope }}">
+    <div class="form-grid">
+        <div class="field">
+            <label for="id_q">Recherche</label>
+            <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Reference, client, produit, trajet">
+        </div>
+
+        <div class="field">
+            <label for="id_statut">Statut</label>
+            <select id="id_statut" name="statut">
+                <option value="">Tous les statuts</option>
+                {% for value, label in statut_choices %}
+                <option value="{{ value }}" {% if statut == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="id_date_debut">Date debut</label>
+            <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
+        </div>
+
+        <div class="field">
+            <label for="id_date_fin">Date fin</label>
+            <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/commandes/" class="btn-secondary">Reinitialiser</a>
+        <button type="submit" class="btn">Filtrer</button>
+    </div>
+</form>
 </div>
 
 <table class="table">
@@ -23,7 +75,10 @@
 <th>Client</th>
 <th>Produit</th>
 <th>Quantite</th>
+<th>Prix negocie</th>
 <th>Trajet</th>
+<th>Affectation</th>
+<th>Date commande</th>
 <th>Livraison prevue</th>
 <th>Statut</th>
 <th>Actions</th>
@@ -36,7 +91,17 @@
 <td>{{ commande.client.entreprise }}</td>
 <td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
 <td>{% if commande.quantite %}{{ commande.quantite }}{% else %}-{% endif %}</td>
+<td>{% if commande.prix_negocie %}{{ commande.prix_negocie }}{% else %}-{% endif %}</td>
 <td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
+<td>
+{% if commande.camion %}
+{{ commande.camion.numero_tracteur }}
+{% if commande.chauffeur %}<br><span style="color:#6b7c8f;">{{ commande.chauffeur.nom }}</span>{% endif %}
+{% else %}
+-
+{% endif %}
+</td>
+<td>{{ commande.date_commande|date:"Y-m-d" }}</td>
 <td>{{ commande.date_livraison_prevue }}</td>
 <td>{{ commande.get_statut_display }}</td>
 <td>
@@ -51,12 +116,20 @@ Supprimer
 {% else %}
 <span class="status-badge status-ok">Lecture</span>
 {% endif %}
+{% if user_role == "directeur" and commande.statut == "attente_validation_dg" %}
+<a href="/commandes/apercu-dg/{{ commande.id }}/" class="btn-secondary">Apercu DG</a>
+{% endif %}
+{% if user_role == "logistique" %}
+{% if commande.statut == "validee_dg" or commande.statut == "planifiee" %}
+<a href="/commandes/affecter-logistique/{{ commande.id }}/" class="btn-secondary">Affecter camion</a>
+{% endif %}
+{% endif %}
 </div>
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucune commande enregistree pour le moment.</td>
+<td colspan="11">Aucune commande enregistree pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>

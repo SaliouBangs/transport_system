@@ -1,4 +1,5 @@
 from io import BytesIO
+from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -9,7 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from camions.models import Camion
+from commandes.models import Commande
 from utilisateurs.permissions import role_required
+from utilisateurs.permissions import get_user_role
 
 from .forms import (
     ComptableOperationForm,
@@ -22,6 +25,229 @@ from .forms import (
     RegimeDouanierForm,
 )
 from .models import Operation
+
+
+TVA_RATE = Decimal("0.18")
+
+
+def _facture_unit_price(operation):
+    if operation.commande and operation.commande.prix_negocie is not None:
+        return operation.commande.prix_negocie
+    if operation.montant_facture is not None and operation.quantite:
+        try:
+            return Decimal(operation.montant_facture) / Decimal(operation.quantite)
+        except Exception:
+            return Decimal("0")
+    return Decimal("0")
+
+
+def _facture_totals(operation, avec_tva=False):
+    quantite = Decimal(operation.quantite or 0)
+    prix_unitaire = _facture_unit_price(operation)
+    montant_ht = quantite * prix_unitaire
+    montant_tva = (montant_ht * TVA_RATE).quantize(Decimal("0.01")) if avec_tva else Decimal("0.00")
+    montant_ttc = montant_ht + montant_tva
+    return {
+        "quantite": quantite,
+        "prix_unitaire": prix_unitaire,
+        "montant_ht": montant_ht.quantize(Decimal("0.01")),
+        "montant_tva": montant_tva,
+        "montant_ttc": montant_ttc.quantize(Decimal("0.01")),
+    }
+
+
+def _build_facture_pdf(operation, avec_tva=False):
+    try:
+        import os
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfgen import canvas
+    except ImportError:
+        return HttpResponse(
+            "Le module reportlab n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    totals = _facture_totals(operation, avec_tva=avec_tva)
+    numero_facture = operation.numero_facture or f"PROFORMA-{operation.numero_bl}"
+    date_facture = operation.date_facture or timezone.localdate()
+    logo_path = r"C:\Users\HP\Downloads\Design-sans-titre-7.png"
+    footer_text = (
+        "Societe au capital de GNF 50 000 000 sise au quartier Koulewondy, commune de Kaloum - Conakry - Republique de Guinee\n"
+        "BP : 5420P / TEL : 00224 620 59 75 34 / 00224 661 15 15 15 Email: patbeavoguigmail.com / N RCCM : GN.TCC.2020.B.103"
+    )
+
+    def fmt(value, decimals=2):
+        text = f"{Decimal(value):,.{decimals}f}"
+        return text.replace(",", " ").replace(".", ",")
+
+    def draw_box(x, y, w, h, radius=3 * mm):
+        pdf.roundRect(x, y, w, h, radius, stroke=1, fill=0)
+
+    def draw_label_value(x, y, label, value, font_size=8.5):
+        pdf.setFont("Helvetica-Bold", font_size)
+        pdf.drawString(x, y, label)
+        pdf.setFont("Helvetica", font_size)
+        pdf.drawString(x + 20 * mm, y, value or "-")
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    if os.path.exists(logo_path):
+        pdf.drawImage(ImageReader(logo_path), 12 * mm, height - 34 * mm, width=28 * mm, height=20 * mm, mask="auto")
+
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(52 * mm, height - 24 * mm, "FACTURE N°")
+    pdf.drawString(112 * mm, height - 24 * mm, numero_facture)
+    pdf.setFont("Helvetica-Bold", 8.5)
+    pdf.drawString(88 * mm, height - 31 * mm, "Conakry le :")
+    pdf.setFont("Helvetica-Bold", 8.5)
+    pdf.drawString(120 * mm, height - 31 * mm, date_facture.strftime("%A %d %B %Y"))
+
+    left_box_y = height - 96 * mm
+    left_box_h = 47 * mm
+    draw_box(8 * mm, left_box_y, 94 * mm, left_box_h)
+    draw_box(110 * mm, left_box_y, 92 * mm, left_box_h)
+
+    pdf.setFont("Helvetica-Bold", 7.5)
+    pdf.drawString(12 * mm, left_box_y + left_box_h - 6 * mm, "Adresse Emetteur :")
+    pdf.setFont("Helvetica", 7.5)
+    emitter_lines = [
+        "Commune de KALOUM - Q / KOULEWONDI",
+        "BP :        5020P - CONAKRY - REP. DE GUIN",
+        "RCCM :   GN.TTC.2020.B.10316",
+        "NIF :       173604760, TVA : 7M",
+        "TEL :       +224620597534",
+        "Email :    contact@sonienergy.com",
+    ]
+    y = left_box_y + left_box_h - 13 * mm
+    for line in emitter_lines:
+        pdf.drawString(12 * mm, y, line)
+        y -= 5.8 * mm
+
+    pdf.setFont("Helvetica-Bold", 7.5)
+    pdf.drawString(114 * mm, left_box_y + left_box_h - 6 * mm, "Adresse facturation :")
+    pdf.drawString(170 * mm, left_box_y + left_box_h - 6 * mm, "Code Client :")
+    pdf.setFont("Helvetica", 7.5)
+    pdf.drawString(190 * mm, left_box_y + left_box_h - 6 * mm, f"CLT{operation.client_id:03d}")
+    pdf.drawString(114 * mm, left_box_y + left_box_h - 14 * mm, "Nom :")
+    pdf.drawString(126 * mm, left_box_y + left_box_h - 14 * mm, operation.client.entreprise)
+    pdf.drawString(114 * mm, left_box_y + left_box_h - 24 * mm, "Adresse :")
+    pdf.drawString(130 * mm, left_box_y + left_box_h - 24 * mm, operation.client.adresse or "-")
+
+    ref_y = height - 124 * mm
+    draw_box(8 * mm, ref_y, 194 * mm, 15 * mm, radius=2 * mm)
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(12 * mm, ref_y + 5.7 * mm, "Ref :")
+    pdf.drawString(66 * mm, ref_y + 5.7 * mm, f"N° BL : {operation.numero_bl}")
+    pdf.drawString(116 * mm, ref_y + 5.7 * mm, f"Lieu de livraison : {operation.destination}")
+
+    pdf.drawString(10 * mm, ref_y - 12 * mm, "Devise :  GNF")
+    pdf.drawRightString(200 * mm, ref_y - 12 * mm, "Page       1")
+
+    table_top = height - 156 * mm
+    header_h = 10 * mm
+    body_h = 42 * mm
+    total_qty_h = 8 * mm
+    table_bottom = table_top - header_h - body_h - total_qty_h
+    col_x = [10 * mm, 30 * mm, 60 * mm, 136 * mm, 160 * mm, 180 * mm, 200 * mm]
+    header_y = table_top - header_h
+    body_bottom_y = header_y - body_h
+
+    pdf.setFillColor(colors.HexColor("#d9d9d9"))
+    pdf.rect(10 * mm, header_y, 190 * mm, header_h, stroke=0, fill=1)
+    pdf.setFillColor(colors.black)
+
+    pdf.rect(10 * mm, table_bottom, 190 * mm, header_h + body_h + total_qty_h, stroke=1, fill=0)
+    for x in col_x[1:-1]:
+        pdf.line(x, body_bottom_y, x, table_top)
+    pdf.line(10 * mm, header_y, 200 * mm, header_y)
+    pdf.line(10 * mm, body_bottom_y, 200 * mm, body_bottom_y)
+
+    pdf.setFont("Helvetica-Bold", 7.5)
+    headers = ["Date CDE", "Réf CDE", "Désignation", "Qté fact.", "Prix Unitaire", "Montant"]
+    header_centers = [
+        (col_x[0] + col_x[1]) / 2,
+        (col_x[1] + col_x[2]) / 2,
+        (col_x[2] + col_x[3]) / 2,
+        (col_x[3] + col_x[4]) / 2,
+        (col_x[4] + col_x[5]) / 2,
+        (col_x[5] + col_x[6]) / 2,
+    ]
+    for center, header in zip(header_centers, headers):
+        pdf.drawCentredString(center, header_y + 3.3 * mm, header)
+
+    pdf.setFont("Helvetica", 8)
+    body_text_y = header_y - 6.5 * mm
+    pdf.drawString(12 * mm, body_text_y, operation.commande.date_commande.strftime("%d/%m/%Y") if operation.commande else "-")
+    pdf.drawString(33 * mm, body_text_y, operation.commande.reference if operation.commande else "-")
+    pdf.drawString(61 * mm, body_text_y, operation.produit.nom if operation.produit else "-")
+    pdf.drawRightString(156 * mm, body_text_y, fmt(totals["quantite"], 0))
+    pdf.setFont("Helvetica-Oblique", 8)
+    pdf.drawString(157.5 * mm, body_text_y, "L")
+    pdf.setFont("Helvetica", 8)
+    pdf.drawRightString(178 * mm, body_text_y, fmt(totals["prix_unitaire"], 0))
+    pdf.drawRightString(198 * mm, body_text_y, fmt(totals["montant_ht"], 0))
+
+    pdf.setFont("Helvetica", 8)
+    pdf.drawRightString(136 * mm, table_bottom + 2.5 * mm, "Total quantité :")
+    pdf.drawRightString(158 * mm, table_bottom + 2.5 * mm, fmt(totals["quantite"], 0))
+
+    totals_x = 136 * mm
+    totals_top = table_bottom
+    box_w = 64 * mm
+    row_h = 8 * mm
+    label_split_x = totals_x + 24 * mm
+    for i in range(3):
+        row_y = totals_top - (i + 1) * row_h
+        pdf.rect(totals_x, row_y, box_w, row_h, stroke=1, fill=0)
+        pdf.line(label_split_x, row_y, label_split_x, row_y + row_h)
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(totals_x + 2 * mm, totals_top - 5.4 * mm, "Montant HT")
+    pdf.drawString(totals_x + 2 * mm, totals_top - row_h - 5.4 * mm, "Montant TVA")
+    pdf.drawString(totals_x + 2 * mm, totals_top - 2 * row_h - 5.4 * mm, "Montant TTC")
+    pdf.drawRightString(totals_x + box_w - 2 * mm, totals_top - 5.4 * mm, fmt(totals["montant_ht"], 0))
+    pdf.drawRightString(totals_x + box_w - 2 * mm, totals_top - row_h - 5.4 * mm, fmt(totals["montant_tva"], 0))
+    pdf.drawRightString(totals_x + box_w - 2 * mm, totals_top - 2 * row_h - 5.4 * mm, fmt(totals["montant_ttc"], 0))
+
+    body_y = table_top - 84 * mm
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(10 * mm, body_y, "Sauf erreur ou omission de notre part, nous arretons la presente facture au montant :")
+    pdf.setFont("Helvetica-Bold", 8)
+    pdf.drawString(10 * mm, body_y - 6 * mm, f"{fmt(totals['montant_ttc' if avec_tva else 'montant_ht'], 0)} GNF")
+
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(10 * mm, body_y - 18 * mm, "Merci de bien vouloir regler cette facture au plus tard le :")
+    pdf.drawString(102 * mm, body_y - 18 * mm, date_facture.strftime("%d/%m/%Y"))
+    pdf.drawString(10 * mm, body_y - 28 * mm, "Mode de paiement :")
+    pdf.drawString(42 * mm, body_y - 28 * mm, "par cheque de banque a la livraison")
+
+    pdf.setFont("Helvetica-Oblique", 8)
+    pdf.drawString(10 * mm, body_y - 44 * mm, "En votre aimable reglement")
+    pdf.drawString(10 * mm, body_y - 50 * mm, "Cordialement")
+    pdf.setFont("Helvetica", 7.5)
+    pdf.drawRightString(190 * mm, body_y - 18 * mm, "LA COMPTABILITE")
+    pdf.drawRightString(190 * mm, body_y - 48 * mm, "MARIAMA DJELO SOW")
+
+    pdf.setFillColor(colors.HexColor("#c12f2f"))
+    pdf.rect(10 * mm, 8 * mm, 190 * mm, 8 * mm, stroke=0, fill=1)
+    pdf.setFillColor(colors.black)
+    pdf.setFont("Helvetica-Bold", 6.5)
+    footer_lines = footer_text.splitlines()
+    pdf.drawCentredString(width / 2, 13 * mm, footer_lines[0])
+    pdf.drawCentredString(width / 2, 9 * mm, footer_lines[1])
+
+    pdf.showPage()
+    pdf.save()
+    response = HttpResponse(content_type="application/pdf")
+    suffix = "avec_tva" if avec_tva else "sans_tva"
+    response["Content-Disposition"] = f'inline; filename="facture_{suffix}_{numero_facture}.pdf"'
+    response.write(buffer.getvalue())
+    return response
 
 
 def _operations_queryset(request):
@@ -249,8 +475,20 @@ def supprimer_operation(request, id):
 
 def comptable_operations(request):
     query = request.GET.get("q", "").strip()
-    operations = Operation.objects.select_related("commande", "client", "produit")
+    scope = request.GET.get("scope", "").strip()
+
+    commandes_pretes = Commande.objects.select_related("client", "produit", "camion", "chauffeur").filter(
+        statut="planifiee"
+    ).exclude(operations__isnull=False)
+    operations = Operation.objects.select_related("commande", "client", "produit", "camion", "chauffeur")
+
     if query:
+        commandes_pretes = commandes_pretes.filter(
+            Q(reference__icontains=query)
+            | Q(client__entreprise__icontains=query)
+            | Q(camion__numero_tracteur__icontains=query)
+            | Q(chauffeur__nom__icontains=query)
+        )
         operations = operations.filter(
             Q(numero_bl__icontains=query)
             | Q(commande__reference__icontains=query)
@@ -260,11 +498,25 @@ def comptable_operations(request):
     return render(
         request,
         "operations/comptable.html",
-        {"operations": operations, "query": query, "active_tab": "comptable"},
+        {
+            "commandes_pretes": commandes_pretes,
+            "operations": operations,
+            "query": query,
+            "scope": scope,
+            "active_tab": "comptable",
+        },
     )
 
 
 def ajouter_operation_comptable(request):
+    commande_id = request.GET.get("commande_id")
+    commande_initiale = None
+    if commande_id:
+        commande_initiale = get_object_or_404(
+            Commande.objects.select_related("client", "produit", "camion", "chauffeur"),
+            id=commande_id,
+        )
+
     if request.method == "POST":
         form = ComptableOperationForm(request.POST)
         if form.is_valid():
@@ -274,10 +526,21 @@ def ajouter_operation_comptable(request):
                 operation.produit = operation.commande.produit
                 operation.quantite = operation.commande.quantite
                 operation.destination = operation.commande.ville_arrivee
+                operation.camion = operation.commande.camion
+                operation.chauffeur = operation.commande.chauffeur
             operation.save()
             return redirect("comptable_operations")
     else:
-        form = ComptableOperationForm()
+        initial = {}
+        if commande_initiale:
+            initial = {
+                "commande": commande_initiale.id,
+                "client": commande_initiale.client_id,
+                "destination": commande_initiale.ville_arrivee,
+                "produit": commande_initiale.produit_id,
+                "quantite": commande_initiale.quantite,
+            }
+        form = ComptableOperationForm(initial=initial)
 
     return render(
         request,
@@ -290,6 +553,7 @@ def ajouter_operation_comptable(request):
             "page_title": "Nouvelle fiche comptable",
             "submit_label": "Enregistrer",
             "active_tab": "comptable",
+            "commande_initiale": commande_initiale,
         },
     )
 
@@ -305,6 +569,8 @@ def modifier_operation_comptable(request, id):
                 operation.produit = operation.commande.produit
                 operation.quantite = operation.commande.quantite
                 operation.destination = operation.commande.ville_arrivee
+                operation.camion = operation.commande.camion
+                operation.chauffeur = operation.commande.chauffeur
             operation.save()
             return redirect("comptable_operations")
     else:
@@ -360,10 +626,15 @@ def modifier_operation_facturation(request, id):
             operation = form.save(commit=False)
             if operation.numero_facture and not operation.date_facture:
                 operation.date_facture = timezone.localdate()
+            if operation.commande and operation.commande.prix_negocie is not None and operation.quantite is not None:
+                totals = _facture_totals(operation, avec_tva=False)
+                operation.montant_facture = totals["montant_ht"]
             operation.save()
             return redirect("facturation_operations")
     else:
         form = FacturationOperationForm(instance=operation)
+        if operation.commande and operation.commande.prix_negocie is not None and operation.quantite is not None and not form.initial.get("montant_facture"):
+            form.initial["montant_facture"] = _facture_totals(operation, avec_tva=False)["montant_ht"]
 
     return render(
         request,
@@ -372,11 +643,41 @@ def modifier_operation_facturation(request, id):
             "form": form,
             "operation": operation,
             "active_tab": "facturation",
+            "facture_totals_ht": _facture_totals(operation, avec_tva=False),
+            "facture_totals_tva": _facture_totals(operation, avec_tva=True),
         },
     )
 
 
+def imprimer_facture_sans_tva(request, id):
+    operation = get_object_or_404(
+        Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
+        id=id,
+        etat_bon="livre",
+    )
+    return _build_facture_pdf(operation, avec_tva=False)
+
+
+def imprimer_facture_avec_tva(request, id):
+    operation = get_object_or_404(
+        Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
+        id=id,
+        etat_bon="livre",
+    )
+    return _build_facture_pdf(operation, avec_tva=True)
+
+
 def logistique_operations(request):
+    if get_user_role(request.user) == "logistique":
+        target = "/commandes/"
+        if request.GET.get("scope") == "historique":
+            target = "/commandes/?scope=historique"
+        query = request.GET.get("q", "").strip()
+        if query:
+            separator = "&" if "?" in target else "?"
+            target = f"{target}{separator}q={query}"
+        return redirect(target)
+
     query = request.GET.get("q", "").strip()
     scope = request.GET.get("scope", "").strip()
     operations = Operation.objects.select_related("client", "camion", "chauffeur")
@@ -635,7 +936,10 @@ def commande_infos(request):
 
     from commandes.models import Commande
 
-    commande = get_object_or_404(Commande.objects.select_related("client", "produit"), id=commande_id)
+    commande = get_object_or_404(
+        Commande.objects.select_related("client", "produit", "camion", "chauffeur"),
+        id=commande_id,
+    )
     return JsonResponse(
         {
             "success": True,
@@ -645,6 +949,8 @@ def commande_infos(request):
                 "produit_id": commande.produit_id,
                 "quantite": str(commande.quantite or ""),
                 "reference": commande.reference,
+                "camion": commande.camion.numero_tracteur if commande.camion else "",
+                "chauffeur": commande.chauffeur.nom if commande.chauffeur else "",
             },
         }
     )
@@ -906,6 +1212,8 @@ ajouter_operation_comptable = role_required("comptable")(ajouter_operation_compt
 modifier_operation_comptable = role_required("comptable")(modifier_operation_comptable)
 facturation_operations = role_required("comptable")(facturation_operations)
 modifier_operation_facturation = role_required("comptable")(modifier_operation_facturation)
+imprimer_facture_sans_tva = role_required("comptable")(imprimer_facture_sans_tva)
+imprimer_facture_avec_tva = role_required("comptable")(imprimer_facture_avec_tva)
 logistique_operations = role_required("logistique")(logistique_operations)
 modifier_operation_logistique = role_required("logistique")(modifier_operation_logistique)
 transitaire_operations = role_required("transitaire")(transitaire_operations)

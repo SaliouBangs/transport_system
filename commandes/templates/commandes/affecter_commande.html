@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+.affectation-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    gap: 22px;
+}
+
+.affectation-wide {
+    grid-column: 1 / -1;
+}
+
+.affectation-card {
+    height: 100%;
+}
+
+.affectation-card .summary-table th {
+    width: 48%;
+}
+
+.affectation-compact p {
+    margin: 0 0 12px;
+}
+
+.affectation-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 8px;
+}
+
+.affectation-complete-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 420px) auto;
+    gap: 16px;
+    align-items: end;
+}
+
+@media (max-width: 1100px) {
+    .affectation-layout,
+    .affectation-inputs,
+    .affectation-complete-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Logisticien</p>
+<h1>Affecter la commande {{ commande.reference }}</h1>
+</div>
+</div>
+
+<div class="form-shell" style="max-width:1520px; width:100%;">
+<form method="post" class="app-form" style="width:100%;">
+    {% csrf_token %}
+    <input type="hidden" name="commandes_complementaires" id="commandes-complementaires-input" value="">
+
+    {% if form.non_field_errors %}
+    <div class="field-error">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div class="affectation-layout">
+        <div class="summary-card affectation-card affectation-compact">
+            <h3>Resume commande</h3>
+            <p><strong>Client :</strong> {{ commande.client.entreprise }}</p>
+            <p><strong>Produit :</strong> {% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</p>
+            <p><strong>Quantite :</strong> {{ commande.quantite|default:"-" }}</p>
+            <p><strong>Trajet :</strong> {{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</p>
+            <p><strong>Prix negocie :</strong> {{ commande.prix_negocie|default:"-" }}</p>
+
+            <div class="affectation-inputs">
+                <div class="field">
+                    <label for="camion-search-input">Recherche camion</label>
+                    <input
+                        type="text"
+                        id="camion-search-input"
+                        list="camions-list"
+                        placeholder="Tape le tracteur ou la citerne"
+                        value="{% if form.camion.value %}{% for camion in camions %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}{% endif %}{% endfor %}{% endif %}">
+                    {{ form.camion.as_hidden }}
+                    <datalist id="camions-list">
+                        {% for camion in camions %}
+                        <option value="{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}" data-id="{{ camion.id }}"></option>
+                        {% endfor %}
+                    </datalist>
+                    {% if form.camion.errors %}<p class="field-error" id="camion-server-error">{{ form.camion.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="field">
+                    <label for="chauffeur-display">Chauffeur</label>
+                    <input type="text" id="chauffeur-display" readonly placeholder="Se remplit apres choix du camion">
+                    {{ form.chauffeur.as_hidden }}
+                    <p class="helper-text" id="capacite-sous-chauffeur">Capacite camion : -</p>
+                    {% if form.chauffeur.errors %}<p class="field-error">{{ form.chauffeur.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-card affectation-card">
+            <h3>Informations du camion choisi</h3>
+            <table class="summary-table">
+                <tbody>
+                    <tr><th>Tracteur</th><td id="camion-numero">-</td></tr>
+                    <tr><th>Citerne</th><td id="camion-citerne">-</td></tr>
+                    <tr><th>Capacite</th><td id="camion-capacite">-</td></tr>
+                    <tr><th>Etat</th><td id="camion-etat">-</td></tr>
+                    <tr><th>Transporteur</th><td id="camion-transporteur">-</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-card affectation-card">
+            <h3>Comparaison capacite / commande</h3>
+            <table class="summary-table">
+                <tbody>
+                    <tr><th>Commande de base</th><td id="commande-quantite">{{ commande.quantite|default:"0" }}</td></tr>
+                    <tr><th>Commandes ajoutees</th><td id="quantite-complements">0</td></tr>
+                    <tr><th>Quantite totale</th><td id="quantite-totale-affectee">{{ commande.quantite|default:"0" }}</td></tr>
+                    <tr><th>Capacite camion</th><td id="comparaison-capacite">-</td></tr>
+                    <tr><th>Restant disponible</th><td id="capacite-restante">-</td></tr>
+                    <tr>
+                        <th>Etat de correspondance</th>
+                        <td><span class="status-badge status-danger" id="capacite-badge">Camion non choisi</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-card affectation-card">
+            <h3>5 dernieres operations du camion</h3>
+            <table class="table" id="camion-operations-table">
+                <thead>
+                    <tr>
+                        <th>BL</th>
+                        <th>Client</th>
+                        <th>Destination</th>
+                        <th>Etat</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="camion-operations-body">
+                    <tr>
+                        <td colspan="5">Aucune operation a afficher.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-card affectation-wide" style="box-shadow:none; border:1px solid #dbe6ee;">
+            <h3>Completer le camion</h3>
+            <div class="affectation-complete-grid">
+                <div class="field">
+                    <label for="commande-complement-search">Recherche commande a ajouter</label>
+                    <input type="text" id="commande-complement-search" placeholder="Tape la reference, le client, le produit ou la quantite">
+                    <p class="helper-text" id="complement-helper">Choisis une commande compatible pour reduire le restant.</p>
+                </div>
+                <div class="field" style="display:flex; align-items:flex-end;">
+                    <button type="button" class="btn-secondary" id="add-complement-btn">Ajouter cette commande</button>
+                </div>
+            </div>
+
+            <div class="affectation-layout" style="margin-top:18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+                <div>
+                    <h3 style="margin-bottom:10px;">Commandes compatibles</h3>
+                    <table class="table" id="available-commandes-table">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Client</th>
+                                <th>Produit</th>
+                                <th>Quantite</th>
+                                <th>Trajet</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="available-commandes-body">
+                            <tr>
+                                <td colspan="6">Aucune commande compatible disponible.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom:10px;">Commandes deja ajoutees</h3>
+                    <table class="table" id="selected-commandes-table">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Client</th>
+                                <th>Produit</th>
+                                <th>Quantite</th>
+                                <th>Trajet</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="selected-commandes-body">
+                            <tr>
+                                <td colspan="6">Aucune commande ajoutee pour le moment.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/commandes/" class="btn-secondary">Retour</a>
+        <button type="submit" class="btn" id="submit-affectation-btn" disabled>Affecter la commande</button>
+    </div>
+</form>
+</div>
+
+{{ commandes_candidates|json_script:"commandes-candidates-data" }}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const camionSelect = document.getElementById("id_camion");
+const chauffeurSelect = document.getElementById("id_chauffeur");
+const camionSearchInput = document.getElementById("camion-search-input");
+const camionOptions = Array.from(document.querySelectorAll("#camions-list option"));
+const chauffeurDisplay = document.getElementById("chauffeur-display");
+const camionNumero = document.getElementById("camion-numero");
+const camionCiterne = document.getElementById("camion-citerne");
+const camionCapacite = document.getElementById("camion-capacite");
+const camionEtat = document.getElementById("camion-etat");
+const camionTransporteur = document.getElementById("camion-transporteur");
+const operationsBody = document.getElementById("camion-operations-body");
+const camionServerError = document.getElementById("camion-server-error");
+const capaciteSousChauffeur = document.getElementById("capacite-sous-chauffeur");
+const comparaisonCapacite = document.getElementById("comparaison-capacite");
+const capaciteRestante = document.getElementById("capacite-restante");
+const capaciteBadge = document.getElementById("capacite-badge");
+const quantiteComplements = document.getElementById("quantite-complements");
+const quantiteTotaleAffectee = document.getElementById("quantite-totale-affectee");
+const submitAffectationBtn = document.getElementById("submit-affectation-btn");
+const commandesComplementairesInput = document.getElementById("commandes-complementaires-input");
+const complementSearch = document.getElementById("commande-complement-search");
+const addComplementBtn = document.getElementById("add-complement-btn");
+const complementHelper = document.getElementById("complement-helper");
+const selectedCommandesBody = document.getElementById("selected-commandes-body");
+const availableCommandesBody = document.getElementById("available-commandes-body");
+const commandesCandidates = JSON.parse(document.getElementById("commandes-candidates-data").textContent);
+const commandeQuantite = Number("{{ commande.quantite|default:'0' }}".replace(/\s/g, "").replace(",", ".")) || 0;
+let selectedComplements = [];
+let currentCamionCapacity = null;
+
+function formatNumber(value) {
+    return new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    }).format(value || 0);
+}
+
+function getSelectedComplementTotal() {
+    return selectedComplements.reduce((sum, item) => sum + (Number(item.quantite) || 0), 0);
+}
+
+function updateSelectedCommandesHiddenField() {
+    commandesComplementairesInput.value = selectedComplements.map((item) => item.id).join(",");
+}
+
+function renderSelectedCommandes() {
+    if (!selectedComplements.length) {
+        selectedCommandesBody.innerHTML = '<tr><td colspan="6">Aucune commande ajoutee pour le moment.</td></tr>';
+        return;
+    }
+
+    selectedCommandesBody.innerHTML = selectedComplements.map((item) => `
+        <tr>
+            <td>${item.reference}</td>
+            <td>${item.client}</td>
+            <td>${item.produit || "-"}</td>
+            <td>${formatNumber(item.quantite)}</td>
+            <td>${item.trajet}</td>
+            <td><button type="button" class="btn-secondary remove-complement-btn" data-id="${item.id}">Retirer</button></td>
+        </tr>
+    `).join("");
+}
+
+function getFilteredComplementCandidates() {
+    const restant = currentCamionCapacity === null ? null : currentCamionCapacity - (commandeQuantite + getSelectedComplementTotal());
+    const query = (complementSearch?.value || "").trim().toLowerCase();
+    return commandesCandidates.filter((item) => {
+        if (selectedComplements.some((selected) => selected.id === item.id)) {
+            return false;
+        }
+        if (restant !== null && item.quantite > restant) {
+            return false;
+        }
+        if (!query) {
+            return true;
+        }
+        const haystack = `${item.reference} ${item.client} ${item.produit || ""} ${item.trajet} ${item.quantite}`.toLowerCase();
+        return haystack.includes(query);
+    });
+}
+
+function renderAvailableCommandes() {
+    const candidates = getFilteredComplementCandidates();
+    if (!availableCommandesBody) return;
+    if (!candidates.length) {
+        availableCommandesBody.innerHTML = '<tr><td colspan="6">Aucune commande compatible disponible.</td></tr>';
+        return;
+    }
+    availableCommandesBody.innerHTML = candidates.map((item) => `
+        <tr>
+            <td>${item.reference}</td>
+            <td>${item.client}</td>
+            <td>${item.produit || "-"}</td>
+            <td>${formatNumber(item.quantite)}</td>
+            <td>${item.trajet}</td>
+            <td><button type="button" class="btn-secondary add-complement-row-btn" data-id="${item.id}">Ajouter</button></td>
+        </tr>
+    `).join("");
+}
+
+function updateCapacityComparison(capaciteValue) {
+    if (capaciteValue === null || capaciteValue === undefined || capaciteValue === "") {
+        currentCamionCapacity = null;
+        comparaisonCapacite.textContent = "-";
+        capaciteRestante.textContent = "-";
+        quantiteComplements.textContent = "0";
+        quantiteTotaleAffectee.textContent = formatNumber(commandeQuantite);
+        capaciteBadge.textContent = "Camion non choisi";
+        capaciteBadge.className = "status-badge status-danger";
+        capaciteSousChauffeur.textContent = "Capacite camion : -";
+        submitAffectationBtn.disabled = true;
+        complementHelper.textContent = "Choisis d'abord un camion pour completer le restant.";
+        renderAvailableCommandes();
+        return;
+    }
+
+    const capacite = Number(capaciteValue) || 0;
+    currentCamionCapacity = capacite;
+    const totalComplements = getSelectedComplementTotal();
+    const totalAffecte = commandeQuantite + totalComplements;
+    const restant = capacite - totalAffecte;
+
+    comparaisonCapacite.textContent = formatNumber(capacite);
+    quantiteComplements.textContent = formatNumber(totalComplements);
+    quantiteTotaleAffectee.textContent = formatNumber(totalAffecte);
+    capaciteRestante.textContent = formatNumber(restant);
+    capaciteSousChauffeur.textContent = `Capacite camion : ${formatNumber(capacite)}`;
+
+    if (restant === 0) {
+        capaciteBadge.textContent = "Correspondance exacte";
+        capaciteBadge.className = "status-badge status-ok";
+        submitAffectationBtn.disabled = false;
+        complementHelper.textContent = "Le camion est complet. Tu peux maintenant affecter la commande.";
+        if (camionServerError) {
+            camionServerError.style.display = "none";
+        }
+    } else if (restant > 0) {
+        capaciteBadge.textContent = `Restant a completer : ${formatNumber(restant)}`;
+        capaciteBadge.className = "status-badge status-danger";
+        submitAffectationBtn.disabled = true;
+        complementHelper.textContent = `Il reste ${formatNumber(restant)} a completer avec d'autres commandes.`;
+        if (camionServerError) {
+            camionServerError.style.display = "none";
+        }
+    } else {
+        capaciteBadge.textContent = `Depassement detecte : ${formatNumber(Math.abs(restant))}`;
+        capaciteBadge.className = "status-badge status-danger";
+        submitAffectationBtn.disabled = true;
+        complementHelper.textContent = "La somme depasse la capacite du camion. Retire une commande ajoutee.";
+        if (camionServerError) {
+            camionServerError.style.display = "";
+        }
+    }
+
+    updateSelectedCommandesHiddenField();
+    renderAvailableCommandes();
+}
+
+function syncCamionSelectionFromSearch() {
+    const match = camionOptions.find((option) => option.value === camionSearchInput?.value);
+    camionSelect.value = match?.dataset.id || "";
+    if (!match) {
+        chauffeurSelect.value = "";
+        chauffeurDisplay.value = "";
+    }
+    loadCamionInfos();
+}
+
+function renderOperations(items) {
+    if (!operationsBody) return;
+    if (!items.length) {
+        operationsBody.innerHTML = '<tr><td colspan="5">Aucune operation a afficher.</td></tr>';
+        return;
+    }
+
+    operationsBody.innerHTML = items.map((item) => `
+        <tr>
+            <td>${item.numero_bl}</td>
+            <td>${item.client || '-'}</td>
+            <td>${item.destination || '-'}</td>
+            <td>${item.etat_bon}</td>
+            <td>${item.date_etat || '-'}</td>
+        </tr>
+    `).join("");
+}
+
+function addSelectedComplement(selectedId = null) {
+    const searchValue = (complementSearch?.value || "").trim().toLowerCase();
+    const visibleCandidates = getFilteredComplementCandidates();
+    let selectedCommande = null;
+
+    if (selectedId !== null && selectedId !== undefined) {
+        selectedCommande = commandesCandidates.find((item) => item.id === Number(selectedId));
+    }
+
+    if (!selectedCommande && searchValue) {
+        selectedCommande = visibleCandidates.find((item) => item.reference.toLowerCase() === searchValue)
+            || visibleCandidates.find((item) => item.reference.toLowerCase().startsWith(searchValue))
+            || visibleCandidates.find((item) => {
+                const haystack = `${item.reference} ${item.client} ${item.produit || ""} ${item.trajet} ${item.quantite}`.toLowerCase();
+                return haystack.includes(searchValue);
+            })
+            || (visibleCandidates.length ? visibleCandidates[0] : null);
+    }
+
+    if (!selectedCommande && !searchValue && visibleCandidates.length) {
+        selectedCommande = visibleCandidates[0];
+    }
+
+    if (!selectedCommande) {
+        if (complementSearch?.value) {
+            complementHelper.textContent = "Choisis une commande proposee dans la liste pour l'ajouter.";
+        } else {
+            complementHelper.textContent = "Aucune commande compatible disponible a ajouter.";
+        }
+        return;
+    }
+    if (!selectedCommande || selectedComplements.some((item) => item.id === selectedCommande.id)) {
+        return;
+    }
+
+    selectedComplements.push(selectedCommande);
+    complementSearch.value = "";
+    complementHelper.textContent = `La commande ${selectedCommande.reference} a ete ajoutee au camion.`;
+    renderSelectedCommandes();
+    updateCapacityComparison(currentCamionCapacity);
+}
+
+async function loadCamionInfos() {
+    const camionId = camionSelect?.value;
+    if (!camionId) {
+        camionNumero.textContent = "-";
+        camionCiterne.textContent = "-";
+        camionCapacite.textContent = "-";
+        camionEtat.textContent = "-";
+        camionTransporteur.textContent = "-";
+        chauffeurDisplay.value = "";
+        updateCapacityComparison(null);
+        renderOperations([]);
+        return;
+    }
+
+    try {
+        const response = await fetch(`/commandes/camion-infos/?camion_id=${camionId}`, {
+            credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            return;
+        }
+
+        camionNumero.textContent = data.camion.numero_tracteur || "-";
+        camionCiterne.textContent = data.camion.numero_citerne || "-";
+        camionCapacite.textContent = data.camion.capacite || "-";
+        camionEtat.textContent = data.camion.etat_label || "-";
+        camionTransporteur.textContent = data.camion.transporteur || "-";
+        updateCapacityComparison(data.camion.capacite);
+
+        if (data.chauffeur) {
+            chauffeurSelect.value = data.chauffeur.id;
+            chauffeurDisplay.value = data.chauffeur.nom;
+        } else {
+            chauffeurSelect.value = "";
+            chauffeurDisplay.value = "";
+        }
+
+        renderOperations(data.operations || []);
+    } catch (error) {
+    }
+}
+
+camionSearchInput?.addEventListener("input", syncCamionSelectionFromSearch);
+camionSearchInput?.addEventListener("change", syncCamionSelectionFromSearch);
+complementSearch?.addEventListener("input", renderAvailableCommandes);
+complementSearch?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        addSelectedComplement();
+    }
+});
+addComplementBtn?.addEventListener("click", addSelectedComplement);
+selectedCommandesBody?.addEventListener("click", (event) => {
+    const button = event.target.closest(".remove-complement-btn");
+    if (!button) return;
+    const commandId = Number(button.dataset.id);
+    selectedComplements = selectedComplements.filter((item) => item.id !== commandId);
+    renderSelectedCommandes();
+    updateCapacityComparison(currentCamionCapacity);
+});
+availableCommandesBody?.addEventListener("click", (event) => {
+    const button = event.target.closest(".add-complement-row-btn");
+    if (!button) return;
+    addSelectedComplement(button.dataset.id);
+});
+
+renderSelectedCommandes();
+renderAvailableCommandes();
+loadCamionInfos();
+</script>
+{% endblock %}

@@ -56,11 +56,6 @@
         </div>
 
         <div class="field">
-            <label for="{{ form.statut.id_for_label }}">Statut</label>
-            {{ form.statut }}
-        </div>
-
-        <div class="field">
             <label for="{{ form.produit.id_for_label }}">Produit</label>
             {{ form.produit }}
         </div>
@@ -69,7 +64,14 @@
             <label for="{{ form.quantite.id_for_label }}">Quantite</label>
             {{ form.quantite }}
         </div>
+
+        <div class="field">
+            <label for="{{ form.prix_negocie.id_for_label }}">Prix negocie</label>
+            {{ form.prix_negocie }}
+        </div>
     </div>
+
+    <div class="status-badge status-ok">Statut actuel : {{ commande.get_statut_display }}</div>
 
     <div class="form-actions">
         <a href="/commandes/" class="btn-secondary">Retour</a>

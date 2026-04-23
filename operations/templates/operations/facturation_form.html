@@ -32,6 +32,9 @@
                 <tr><th>Produit</th><td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Quantite</th><td>{{ operation.quantite|default:"-" }}</td></tr>
                 <tr><th>Date livre</th><td>{{ operation.date_bons_livres|default:"-" }}</td></tr>
+                <tr><th>Prix client</th><td>{% if operation.commande and operation.commande.prix_negocie %}{{ operation.commande.prix_negocie }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Total HT</th><td>{{ facture_totals_ht.montant_ht }}</td></tr>
+                <tr><th>Total TTC</th><td>{{ facture_totals_tva.montant_ttc }}</td></tr>
             </tbody>
         </table>
     </div>
@@ -62,6 +65,10 @@
     <div class="form-actions">
         <a href="/operations/facturation/" class="btn-secondary">Retour</a>
         <button type="submit" class="btn">Enregistrer la facture</button>
+        {% if operation.numero_facture %}
+        <a href="/operations/facturation/{{ operation.id }}/sans-tva/" class="btn-secondary">Imprimer sans TVA</a>
+        <a href="/operations/facturation/{{ operation.id }}/avec-tva/" class="btn-secondary">Imprimer avec TVA</a>
+        {% endif %}
     </div>
 </form>
 </div>
