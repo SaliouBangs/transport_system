@@ -10,6 +10,10 @@
 Historique des commandes
 {% elif page_user_role == "logistique" %}
 Commandes a affecter
+{% elif page_user_role == "dga" %}
+Commandes a controler par le DGA
+{% elif page_user_role == "directeur" %}
+Commandes a valider par le DG
 {% else %}
 Nouvelles commandes
 {% endif %}
@@ -26,7 +30,7 @@ Nouvelles commandes
 
 <div class="field-inline" style="margin-bottom:18px;">
 <a href="/commandes/" class="{% if scope != 'historique' %}btn{% else %}btn-secondary{% endif %}">
-{% if page_user_role == "logistique" %}A affecter{% else %}Nouvelles commandes{% endif %}
+{% if page_user_role == "logistique" %}A affecter{% elif page_user_role == "dga" %}File DGA{% elif page_user_role == "directeur" %}File DG{% else %}Nouvelles commandes{% endif %}
 </a>
 <a href="/commandes/?scope=historique" class="{% if scope == 'historique' %}btn{% else %}btn-secondary{% endif %}">Historique</a>
 </div>
@@ -49,6 +53,18 @@ Nouvelles commandes
                 {% endfor %}
             </select>
         </div>
+
+        {% if page_user_role == "logistique" %}
+        <div class="field">
+            <label for="id_niveau_bon">Niveau du bon</label>
+            <select id="id_niveau_bon" name="niveau_bon">
+                <option value="">Tous les niveaux</option>
+                {% for value, label in niveau_bon_choices %}
+                <option value="{{ value }}" {% if niveau_bon == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
 
         <div class="field">
             <label for="id_date_debut">Date debut</label>
@@ -75,9 +91,11 @@ Nouvelles commandes
 <th>Client</th>
 <th>Produit</th>
 <th>Quantite</th>
-<th>Prix negocie</th>
+{% if page_user_role != "logistique" %}<th>Portefeuille</th>{% endif %}
+{% if page_user_role != "logistique" %}<th>Prix negocie</th>{% endif %}
 <th>Trajet</th>
 <th>Affectation</th>
+{% if page_user_role == "logistique" %}<th>Niveau du bon</th>{% endif %}
 <th>Date commande</th>
 <th>Livraison prevue</th>
 <th>Statut</th>
@@ -85,18 +103,72 @@ Nouvelles commandes
 </tr>
 </thead>
 <tbody>
+{% if page_user_role == "logistique" %}
+{% for row in logistique_rows %}
+<tr{% if row.has_reaffectation %} style="background:#fff0e3;"{% endif %}>
+<td>{{ row.commande.reference }}</td>
+<td>{{ row.commande.client.entreprise }}</td>
+<td>{% if row.commande.produit %}{{ row.commande.produit.nom }}{% else %}-{% endif %}</td>
+<td>{% if row.commande.quantite %}{{ row.commande.quantite }}{% else %}-{% endif %}</td>
+<td>{{ row.commande.ville_depart }} -> {{ row.commande.ville_arrivee }}</td>
+<td>
+{% if row.camion %}
+{{ row.camion.numero_tracteur }}
+{% if row.chauffeur %}<br><span style="color:#6b7c8f;">{{ row.chauffeur.nom }}</span>{% endif %}
+{% if row.camion.capacite %}<br><span style="color:#123047; font-weight:700;">Capacite : {{ row.camion.capacite }}</span>{% endif %}
+{% else %}
+-
+{% endif %}
+</td>
+<td>
+<span class="status-badge {% if row.operation and row.operation.etat_bon == 'livre' %}status-ok{% elif row.operation and row.operation.etat_bon != 'initie' %}status-danger{% endif %}">
+    {{ row.niveau_bon_label }}
+</span>
+</td>
+<td>{{ row.commande.date_commande|date:"Y-m-d" }}</td>
+<td>{{ row.commande.date_livraison_prevue }}</td>
+<td>{{ row.commande.get_statut_display }}</td>
+<td>
+<div class="table-actions">
+<span class="status-badge status-ok">Lecture</span>
+{% if row.can_change_truck %}
+<a href="/commandes/affecter-logistique/{{ row.commande.id }}/" class="btn-secondary">{{ row.button_label }}</a>
+{% else %}
+<span class="status-badge status-danger">{{ row.button_label }}</span>
+{% endif %}
+{% if row.latest_reaffectation %}
+<a href="/operations/logistique/historique/{{ row.latest_reaffectation.id }}/" class="btn-secondary">Ancienne fiche</a>
+{% endif %}
+</div>
+{% if row.has_reaffectation %}
+<div style="margin-top:8px;">
+    <span class="status-badge status-danger">Camion change sur ce BL</span>
+</div>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="11">Aucune commande enregistree pour le moment.</td>
+</tr>
+{% endfor %}
+{% else %}
 {% for commande in commandes %}
 <tr>
 <td>{{ commande.reference }}</td>
 <td>{{ commande.client.entreprise }}</td>
 <td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
 <td>{% if commande.quantite %}{{ commande.quantite }}{% else %}-{% endif %}</td>
+<td>{% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}<span class="status-badge status-danger">Non affecte</span>{% endif %}</td>
 <td>{% if commande.prix_negocie %}{{ commande.prix_negocie }}{% else %}-{% endif %}</td>
 <td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
 <td>
 {% if commande.camion %}
 {{ commande.camion.numero_tracteur }}
 {% if commande.chauffeur %}<br><span style="color:#6b7c8f;">{{ commande.chauffeur.nom }}</span>{% endif %}
+{% if commande.camion.capacite %}
+<br><span style="color:#123047; font-weight:700;">Capacite : {{ commande.camion.capacite }}</span>
+{% endif %}
 {% else %}
 -
 {% endif %}
@@ -108,30 +180,25 @@ Nouvelles commandes
 <div class="table-actions">
 {% if can_edit_commandes %}
 <a href="/commandes/modifier/{{ commande.id }}/" class="btn-edit">Modifier</a>
-<a href="/commandes/supprimer/{{ commande.id }}/"
-class="btn-delete"
-onclick="return confirm('Supprimer cette commande ?')">
-Supprimer
-</a>
+<a href="/commandes/supprimer/{{ commande.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette commande ?')">Supprimer</a>
 {% else %}
 <span class="status-badge status-ok">Lecture</span>
 {% endif %}
+{% if user_role == "dga" and commande.statut == "attente_validation_dga" %}
+<a href="/commandes/apercu-dga/{{ commande.id }}/" class="btn-secondary">Apercu DGA</a>
+{% endif %}
 {% if user_role == "directeur" and commande.statut == "attente_validation_dg" %}
 <a href="/commandes/apercu-dg/{{ commande.id }}/" class="btn-secondary">Apercu DG</a>
-{% endif %}
-{% if user_role == "logistique" %}
-{% if commande.statut == "validee_dg" or commande.statut == "planifiee" %}
-<a href="/commandes/affecter-logistique/{{ commande.id }}/" class="btn-secondary">Affecter camion</a>
-{% endif %}
 {% endif %}
 </div>
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="11">Aucune commande enregistree pour le moment.</td>
+<td colspan="12">Aucune commande enregistree pour le moment.</td>
 </tr>
 {% endfor %}
+{% endif %}
 </tbody>
 </table>
 

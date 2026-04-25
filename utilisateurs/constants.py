@@ -1,4 +1,5 @@
 ROLE_COMMERCIAL = "commercial"
+ROLE_RESPONSABLE_COMMERCIAL = "responsable_commercial"
 ROLE_COMPTABLE = "comptable"
 ROLE_LOGISTIQUE = "logistique"
 ROLE_MAINTENANCIER = "maintenancier"
@@ -11,6 +12,7 @@ ROLE_CONTROLEUR = "controleur"
 
 ROLE_CHOICES = [
     (ROLE_COMMERCIAL, "Commercial"),
+    (ROLE_RESPONSABLE_COMMERCIAL, "Responsable commerciale"),
     (ROLE_COMPTABLE, "Comptable"),
     (ROLE_LOGISTIQUE, "Logistique"),
     (ROLE_MAINTENANCIER, "Maintenancier"),

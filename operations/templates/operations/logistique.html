@@ -28,6 +28,7 @@
 <tr>
 <th>BL</th>
 <th>Client</th>
+<th>Niveau du bon</th>
 <th>Camion</th>
 <th>Chauffeur</th>
 <th>Livreur</th>
@@ -37,9 +38,14 @@
 </thead>
 <tbody>
 {% for operation in operations %}
-<tr>
+<tr{% if operation.has_reaffectation %} style="background:#fff5df;"{% endif %}>
 <td>{{ operation.numero_bl }}</td>
 <td>{{ operation.client.entreprise }}</td>
+<td>
+    <span class="status-badge {% if operation.etat_bon == 'livre' %}status-ok{% elif operation.etat_bon == 'charge' or operation.etat_bon == 'liquide' or operation.etat_bon == 'declare' %}status-danger{% endif %}">
+        {{ operation.get_etat_bon_display }}
+    </span>
+</td>
 <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
 <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
 <td>{{ operation.livreur|default:"-" }}</td>
@@ -47,12 +53,22 @@
 <td>
 <div class="table-actions">
 <a href="/operations/logistique/{{ operation.id }}/modifier/" class="btn-edit">{% if scope == "historique" %}Ouvrir{% else %}Affecter{% endif %}</a>
+{% with last_history=operation.historiques_affectation.first %}
+{% if last_history %}
+<a href="/operations/logistique/historique/{{ last_history.id }}/" class="btn-secondary">Ancienne fiche</a>
+{% endif %}
+{% endwith %}
 </div>
+{% if operation.has_reaffectation %}
+<div style="margin-top:8px;">
+    <span class="status-badge status-danger">Camion modifie apres chargement</span>
+</div>
+{% endif %}
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="7">{% if scope == "historique" %}Aucun BL affecte trouve.{% else %}Aucun BL non affecte disponible.{% endif %}</td>
+<td colspan="8">{% if scope == "historique" %}Aucun BL affecte trouve.{% else %}Aucun BL non affecte disponible.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

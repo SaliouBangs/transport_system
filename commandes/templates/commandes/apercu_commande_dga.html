@@ -108,8 +108,8 @@
 
 <div class="page-header">
 <div>
-<p class="eyebrow">Direction generale</p>
-<h1>Apercu de la commande {{ commande.reference }}</h1>
+<p class="eyebrow">Direction generale adjointe</p>
+<h1>Apercu DGA de la commande {{ commande.reference }}</h1>
 </div>
 </div>
 
@@ -129,53 +129,49 @@
                     <strong>Prix negocie</strong><span>{{ commande.prix_negocie|default:"-" }}</span>
                     <strong>Trajet</strong><span>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</span>
                     <strong>Livraison prevue</strong><span>{{ commande.date_livraison_prevue|date:"Y-m-d" }}</span>
-                    <strong>Camion affecte</strong><span>{% if commande.camion %}{{ commande.camion.numero_tracteur }}{% else %}-{% endif %}</span>
-                    <strong>Chauffeur affecte</strong><span>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</span>
                     <strong>Statut</strong><span><span class="status-badge status-ok">{{ commande.get_statut_display }}</span></span>
                 </div>
             </div>
         </div>
 
         <div class="commande-review-note">
-            <h3>Avis du DGA</h3>
-            <p><strong>Decision :</strong> {% if commande.decision_dga %}{{ commande.get_decision_dga_display }}{% else %}-{% endif %}</p>
-            <p><strong>Observation :</strong> {{ commande.observation_dga|default:"-" }}</p>
-            <p><strong>Motif de rejet :</strong> {{ commande.motif_rejet_dga|default:"-" }}</p>
-            {% if commande.date_validation_dga %}
-            <p><strong>Date avis DGA :</strong> {{ commande.date_validation_dga|date:"Y-m-d" }}</p>
-            {% endif %}
+            <h3>Contexte commercial</h3>
+            <p><strong>Portefeuille :</strong> {% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}Non affecte{% endif %}</p>
+            <p><strong>Client :</strong> {{ commande.client.entreprise }}</p>
+            <p><strong>Trajet :</strong> {{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</p>
+            <p><strong>Montant negocie :</strong> {{ commande.prix_negocie|default:"-" }}</p>
         </div>
 
-        {% if commande.statut == "attente_validation_dg" %}
+        {% if commande.statut == "attente_validation_dga" %}
         <div class="commande-review-wide">
             <div class="commande-review-actions">
-                <form method="post" action="/commandes/valider-dg/{{ commande.id }}/" class="commande-action-card is-approve">
+                <form method="post" action="/commandes/valider-dga/{{ commande.id }}/" class="commande-action-card is-approve">
                     {% csrf_token %}
-                    <h3>Validation DG</h3>
-                    <p>Cette decision est la decision finale prise en compte pour la suite du circuit.</p>
+                    <h3>Validation DGA</h3>
+                    <p>Votre decision sera transmise au DG avec vos observations.</p>
                     <div class="field field-full">
-                        <label for="observation_dg_valider">Observation DG</label>
-                        <textarea id="observation_dg_valider" name="observation_dg" rows="6" placeholder="Observation ou commentaire de validation"></textarea>
+                        <label for="observation_dga_valider">Observation DGA</label>
+                        <textarea id="observation_dga_valider" name="observation_dga" rows="6" placeholder="Observation ou commentaire de validation"></textarea>
                     </div>
                     <div class="form-actions" style="justify-content:flex-start;">
-                        <button type="submit" class="btn">Valider la commande</button>
+                        <button type="submit" class="btn">Valider et transmettre</button>
                     </div>
                 </form>
 
-                <form method="post" action="/commandes/rejeter-dg/{{ commande.id }}/" class="commande-action-card is-reject">
+                <form method="post" action="/commandes/rejeter-dga/{{ commande.id }}/" class="commande-action-card is-reject">
                     {% csrf_token %}
-                    <h3>Rejet DG</h3>
-                    <p>Si vous rejetez la commande, votre decision devient la decision finale du circuit.</p>
+                    <h3>Rejet DGA</h3>
+                    <p>Le DG verra votre motif et votre observation avant de prendre la decision finale.</p>
                     <div class="field field-full">
-                        <label for="motif_rejet_dg">Motif de rejet DG</label>
-                        <textarea id="motif_rejet_dg" name="motif_rejet_dg" rows="4" placeholder="Motif du rejet" required></textarea>
+                        <label for="motif_rejet_dga">Motif de rejet DGA</label>
+                        <textarea id="motif_rejet_dga" name="motif_rejet_dga" rows="4" placeholder="Motif du rejet" required></textarea>
                     </div>
                     <div class="field field-full">
-                        <label for="observation_dg_rejet">Observation DG</label>
-                        <textarea id="observation_dg_rejet" name="observation_dg" rows="3" placeholder="Observation complementaire"></textarea>
+                        <label for="observation_dga_rejet">Observation DGA</label>
+                        <textarea id="observation_dga_rejet" name="observation_dga" rows="3" placeholder="Observation complementaire"></textarea>
                     </div>
                     <div class="form-actions" style="justify-content:flex-start;">
-                        <button type="submit" class="btn-delete" onclick="return confirm('Rejeter cette commande ?')">Rejeter la commande</button>
+                        <button type="submit" class="btn-delete">Rejeter et transmettre</button>
                     </div>
                 </form>
             </div>

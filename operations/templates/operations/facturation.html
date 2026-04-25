@@ -36,21 +36,33 @@
 </thead>
 <tbody>
 {% for operation in operations %}
-<tr>
+<tr{% if operation.remplace_par_id %} style="background:#f3f5f7; color:#7b8794;"{% endif %}>
 <td>{{ operation.numero_bl }}</td>
 <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
 <td>{{ operation.client.entreprise }}</td>
 <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
 <td>{{ operation.quantite|default:"-" }}</td>
 <td>{{ operation.date_bons_livres|default:"-" }}</td>
-<td>{% if operation.numero_facture %}{{ operation.numero_facture }}{% else %}<span class="status-badge status-danger">A facturer</span>{% endif %}</td>
+<td>
+    {% if operation.remplace_par_id %}
+    <span class="status-badge status-danger">BL invalide</span>
+    {% elif operation.numero_facture %}
+    {{ operation.numero_facture }}
+    {% else %}
+    <span class="status-badge status-danger">A facturer</span>
+    {% endif %}
+</td>
 <td>{{ operation.montant_facture|default:"-" }}</td>
 <td>
 <div class="table-actions">
+{% if operation.remplace_par_id %}
+<span class="status-badge status-danger">Facturation bloquee</span>
+{% else %}
 <a href="/operations/facturation/{{ operation.id }}/modifier/" class="btn-edit">Facturer</a>
 {% if operation.numero_facture %}
 <a href="/operations/facturation/{{ operation.id }}/sans-tva/" class="btn-secondary">Sans TVA</a>
 <a href="/operations/facturation/{{ operation.id }}/avec-tva/" class="btn-secondary">Avec TVA</a>
+{% endif %}
 {% endif %}
 </div>
 </td>

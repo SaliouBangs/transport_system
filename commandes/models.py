@@ -9,6 +9,7 @@ from operations.models import Produit
 
 class Commande(models.Model):
     STATUT_CHOICES = [
+        ("attente_validation_dga", "En attente validation DGA"),
         ("attente_validation_dg", "En attente validation DG"),
         ("validee_dg", "Validee par DG"),
         ("rejetee_dg", "Rejetee par DG"),
@@ -16,6 +17,10 @@ class Commande(models.Model):
         ("en_cours", "En cours"),
         ("livree", "Livree"),
         ("annulee", "Annulee"),
+    ]
+    DECISION_CHOICES = [
+        ("validee", "Validee"),
+        ("rejetee", "Rejetee"),
     ]
 
     reference = models.CharField(max_length=50, unique=True)
@@ -57,6 +62,13 @@ class Commande(models.Model):
     )
     quantite = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     prix_negocie = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    decision_dga = models.CharField(max_length=20, choices=DECISION_CHOICES, blank=True)
+    observation_dga = models.TextField(blank=True)
+    motif_rejet_dga = models.TextField(blank=True)
+    date_validation_dga = models.DateField(null=True, blank=True)
+    decision_dg = models.CharField(max_length=20, choices=DECISION_CHOICES, blank=True)
+    observation_dg = models.TextField(blank=True)
+    motif_rejet_dg = models.TextField(blank=True)
     date_validation_dg = models.DateField(null=True, blank=True)
     date_affectation_logistique = models.DateField(null=True, blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)

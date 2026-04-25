@@ -1,7 +1,15 @@
+from django.conf import settings
 from django.db import models
 
 
 class Client(models.Model):
+    commercial = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="portefeuille_clients",
+    )
     prospect = models.ForeignKey(
         "prospects.Prospect",
         on_delete=models.SET_NULL,

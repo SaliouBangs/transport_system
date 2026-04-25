@@ -28,6 +28,10 @@
         <p>Et : <strong><span id="jours-retour-value">{% if operation.jours_retour_bon != None %}{{ operation.jours_retour_bon }}{% else %}-{% endif %}</span></strong> jour(s) pour retourner les bons au bureau.</p>
     </div>
 
+    <div class="form-alert" id="livraison-warning" hidden>
+        <p class="field-error" id="livraison-warning-text"></p>
+    </div>
+
     <div class="form-grid operation-grid">
         <div class="field">
             <label for="{{ form.etat_bon.id_for_label }}">Etat du bon</label>
@@ -70,8 +74,11 @@
 const logisticienDateCharge = document.getElementById("id_date_bons_charges");
 const logisticienDateLivre = document.getElementById("id_date_bons_livres");
 const logisticienDateRetour = document.getElementById("id_date_bon_retour");
+const logisticienEtatBon = document.getElementById("id_etat_bon");
 const logisticienJoursVoyage = document.getElementById("jours-voyage-value");
 const logisticienJoursRetour = document.getElementById("jours-retour-value");
+const livraisonWarning = document.getElementById("livraison-warning");
+const livraisonWarningText = document.getElementById("livraison-warning-text");
 
 function diffInDays(startValue, endValue) {
     if (!startValue || !endValue) {
@@ -99,11 +106,28 @@ function refreshLogisticienKpis() {
     }
 }
 
-[logisticienDateCharge, logisticienDateLivre, logisticienDateRetour].forEach((input) => {
+function refreshLivraisonWarning() {
+    const hasChargeDate = !!(logisticienDateCharge?.value);
+    const hasLivreDate = !!(logisticienDateLivre?.value);
+    const isLivre = logisticienEtatBon?.value === "livre";
+
+    if ((isLivre || hasLivreDate) && !hasChargeDate) {
+        livraisonWarningText.textContent = "Impossible de livrer ce bon sans date de chargement.";
+        livraisonWarning.hidden = false;
+        return;
+    }
+
+    livraisonWarning.hidden = true;
+}
+
+[logisticienDateCharge, logisticienDateLivre, logisticienDateRetour, logisticienEtatBon].forEach((input) => {
     input?.addEventListener("input", refreshLogisticienKpis);
     input?.addEventListener("change", refreshLogisticienKpis);
+    input?.addEventListener("input", refreshLivraisonWarning);
+    input?.addEventListener("change", refreshLivraisonWarning);
 });
 
 refreshLogisticienKpis();
+refreshLivraisonWarning();
 </script>
 {% endblock %}

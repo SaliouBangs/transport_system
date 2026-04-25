@@ -48,6 +48,9 @@
 }
 </style>
 
+{% with produit_label=commande.produit.nom|default:"Produit" %}
+{% with produit_label_lower=produit_label|lower %}
+
 <div class="page-header">
 <div>
 <p class="eyebrow">Logisticien</p>
@@ -95,9 +98,14 @@
                     <label for="chauffeur-display">Chauffeur</label>
                     <input type="text" id="chauffeur-display" readonly placeholder="Se remplit apres choix du camion">
                     {{ form.chauffeur.as_hidden }}
-                    <p class="helper-text" id="capacite-sous-chauffeur">Capacite camion : -</p>
                     {% if form.chauffeur.errors %}<p class="field-error">{{ form.chauffeur.errors.0 }}</p>{% endif %}
                 </div>
+            </div>
+
+            <div class="field" style="margin-top:10px;">
+                <p class="helper-text" id="capacite-sous-chauffeur" style="margin:0; font-size:1rem; font-weight:700; color:#123047;">
+                    Capacite camion : -
+                </p>
             </div>
         </div>
 
@@ -139,13 +147,14 @@
                         <th>BL</th>
                         <th>Client</th>
                         <th>Destination</th>
+                        <th>Qte produit</th>
                         <th>Etat</th>
                         <th>Date</th>
                     </tr>
                 </thead>
                 <tbody id="camion-operations-body">
                     <tr>
-                        <td colspan="5">Aucune operation a afficher.</td>
+                        <td colspan="6">Aucune operation a afficher.</td>
                     </tr>
                 </tbody>
             </table>
@@ -166,7 +175,7 @@
 
             <div class="affectation-layout" style="margin-top:18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
                 <div>
-                    <h3 style="margin-bottom:10px;">Commandes compatibles</h3>
+                    <h3 style="margin-bottom:10px;" id="compatible-commandes-title">Commandes {{ produit_label }} compatibles</h3>
                     <table class="table" id="available-commandes-table">
                         <thead>
                             <tr>
@@ -180,7 +189,7 @@
                         </thead>
                         <tbody id="available-commandes-body">
                             <tr>
-                                <td colspan="6">Aucune commande compatible disponible.</td>
+                                <td colspan="6">Aucune commande {{ produit_label_lower }} compatible disponible.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -218,7 +227,10 @@
 </div>
 
 {{ commandes_candidates|json_script:"commandes-candidates-data" }}
+<script id="commande-produit-meta" type="application/json">{"label":"{{ produit_label|escapejs }}","labelLower":"{{ produit_label_lower|escapejs }}"}</script>
 
+{% endwith %}
+{% endwith %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -248,7 +260,9 @@ const addComplementBtn = document.getElementById("add-complement-btn");
 const complementHelper = document.getElementById("complement-helper");
 const selectedCommandesBody = document.getElementById("selected-commandes-body");
 const availableCommandesBody = document.getElementById("available-commandes-body");
+const compatibleCommandesTitle = document.getElementById("compatible-commandes-title");
 const commandesCandidates = JSON.parse(document.getElementById("commandes-candidates-data").textContent);
+const produitMeta = JSON.parse(document.getElementById("commande-produit-meta").textContent);
 const commandeQuantite = Number("{{ commande.quantite|default:'0' }}".replace(/\s/g, "").replace(",", ".")) || 0;
 let selectedComplements = [];
 let currentCamionCapacity = null;
@@ -307,8 +321,11 @@ function getFilteredComplementCandidates() {
 function renderAvailableCommandes() {
     const candidates = getFilteredComplementCandidates();
     if (!availableCommandesBody) return;
+    if (compatibleCommandesTitle) {
+        compatibleCommandesTitle.textContent = `Commandes ${produitMeta.label} compatibles`;
+    }
     if (!candidates.length) {
-        availableCommandesBody.innerHTML = '<tr><td colspan="6">Aucune commande compatible disponible.</td></tr>';
+        availableCommandesBody.innerHTML = `<tr><td colspan="6">Aucune commande ${produitMeta.labelLower} compatible disponible.</td></tr>`;
         return;
     }
     availableCommandesBody.innerHTML = candidates.map((item) => `
@@ -394,7 +411,7 @@ function syncCamionSelectionFromSearch() {
 function renderOperations(items) {
     if (!operationsBody) return;
     if (!items.length) {
-        operationsBody.innerHTML = '<tr><td colspan="5">Aucune operation a afficher.</td></tr>';
+        operationsBody.innerHTML = '<tr><td colspan="6">Aucune operation a afficher.</td></tr>';
         return;
     }
 
@@ -403,6 +420,7 @@ function renderOperations(items) {
             <td>${item.numero_bl}</td>
             <td>${item.client || '-'}</td>
             <td>${item.destination || '-'}</td>
+            <td>${item.quantite_produit || '-'}<br><span style="color:#6b7c8f;">${item.produit || '-'}</span></td>
             <td>${item.etat_bon}</td>
             <td>${item.date_etat || '-'}</td>
         </tr>

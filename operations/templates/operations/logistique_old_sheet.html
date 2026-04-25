@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Logistique</p>
+<h1>Ancienne fiche du BL {{ operation.numero_bl }}</h1>
+</div>
+</div>
+
+<div class="form-shell">
+    <div class="summary-panel">
+        <h2>Ancienne affectation</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>BL</th><td>{{ operation.numero_bl }}</td></tr>
+                <tr><th>Niveau du bon</th><td>{{ historique.get_ancien_etat_bon_display|default:"-" }}</td></tr>
+                <tr><th>Client</th><td>{{ operation.client.entreprise }}</td></tr>
+                <tr><th>Commande</th><td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Ancien camion</th><td>{% if historique.ancien_camion %}{{ historique.ancien_camion.numero_tracteur }}{% if historique.ancien_camion.numero_citerne %} / {{ historique.ancien_camion.numero_citerne }}{% endif %}{% else %}-{% endif %}</td></tr>
+                <tr><th>Ancien chauffeur</th><td>{% if historique.ancien_chauffeur %}{{ historique.ancien_chauffeur.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Ancien livreur</th><td>{{ historique.ancien_livreur|default:"-" }}</td></tr>
+                <tr><th>Date decharge</th><td>{{ historique.ancienne_date_decharge_chauffeur|default:"-" }}</td></tr>
+                <tr><th>Heure decharge</th><td>{{ historique.ancienne_heure_decharge_chauffeur|default:"-" }}</td></tr>
+                <tr><th>Date du changement</th><td>{{ historique.date_changement|date:"Y-m-d H:i" }}</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Nouvelle affectation</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Camion actuel</th><td>{% if historique.nouveau_camion %}{{ historique.nouveau_camion.numero_tracteur }}{% if historique.nouveau_camion.numero_citerne %} / {{ historique.nouveau_camion.numero_citerne }}{% endif %}{% else %}-{% endif %}</td></tr>
+                <tr><th>Chauffeur actuel</th><td>{% if historique.nouveau_chauffeur %}{{ historique.nouveau_chauffeur.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Etat actuel du bon</th><td>{{ operation.get_etat_bon_display }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <a href="/operations/logistique/{{ operation.id }}/modifier/" class="btn-secondary">Retour a la fiche</a>
+        <a href="/operations/logistique/" class="btn">Retour a la liste</a>
+    </div>
+</div>
+
+{% endblock %}

@@ -39,7 +39,7 @@
 </thead>
 <tbody>
 {% for operation in operations %}
-<tr>
+<tr{% if operation.remplace_par_id %} style="background:#ffd8d8;"{% elif operation.anciennes_versions.all %} style="background:#fff0e3;"{% endif %}>
 <td>{{ operation.numero_bl }}</td>
 <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
 <td>{{ operation.client.entreprise }}</td>
@@ -54,6 +54,16 @@
 <a href="/operations/comptable/{{ operation.id }}/bon-livraison/" class="btn-secondary">Imprimer BL</a>
 {% endif %}
 </div>
+{% if operation.remplace_par_id or operation.anciennes_versions.all %}
+<div style="margin-top:8px;">
+    {% if operation.remplace_par_id %}
+    <span class="status-badge" style="background:#f8d7da;color:#a61b1b;">Ancien BL remplace</span>
+    {% else %}
+    <span class="status-badge" style="background:#fff3cd;color:#8a5a00;">Nouveau BL actif</span>
+    {% endif %}
+    <span class="status-badge status-danger">BL avec changement de camion</span>
+</div>
+{% endif %}
 </td>
 </tr>
 {% empty %}

@@ -37,6 +37,38 @@ class Depot(models.Model):
         return self.nom
 
 
+class Sommier(models.Model):
+    numero_sm = models.CharField(max_length=50, unique=True)
+    date_sommier = models.DateField()
+    reference_navire = models.CharField(max_length=150)
+    produit = models.ForeignKey(
+        Produit,
+        on_delete=models.PROTECT,
+        related_name="sommiers",
+    )
+    quantite_initiale = models.DecimalField(max_digits=12, decimal_places=2)
+    quantite_disponible = models.DecimalField(max_digits=12, decimal_places=2)
+    observation = models.TextField(blank=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date_sommier", "numero_sm"]
+
+    def clean(self):
+        if self.quantite_initiale is not None and self.quantite_initiale < 0:
+            raise ValidationError("La quantite initiale du sommier ne peut pas etre negative.")
+        if self.quantite_disponible is not None and self.quantite_disponible < 0:
+            raise ValidationError("La quantite disponible du sommier ne peut pas etre negative.")
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.quantite_disponible in {None, ""}:
+            self.quantite_disponible = self.quantite_initiale
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.numero_sm} - {self.reference_navire}"
+
+
 class Operation(models.Model):
     ETAT_BON_CHOICES = [
         ("initie", "Initie"),
@@ -56,6 +88,13 @@ class Operation(models.Model):
         blank=True,
         related_name="operations",
     )
+    remplace_par = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anciennes_versions",
+    )
     reference_externe = models.CharField(max_length=100, blank=True)
     regime_douanier = models.ForeignKey(
         RegimeDouanier,
@@ -66,6 +105,13 @@ class Operation(models.Model):
     )
     depot = models.ForeignKey(
         Depot,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operations",
+    )
+    sommier = models.ForeignKey(
+        Sommier,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -111,6 +157,7 @@ class Operation(models.Model):
     numero_facture = models.CharField(max_length=80, blank=True)
     date_facture = models.DateField(null=True, blank=True)
     montant_facture = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    stock_sommier_deduit = models.BooleanField(default=False)
     observation = models.TextField(blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 
@@ -179,8 +226,21 @@ class Operation(models.Model):
         if self.commande_id and self.client_id and self.client_id != self.commande.client_id:
             raise ValidationError("Le client doit correspondre au bon de commande selectionne.")
 
+        if self.sommier_id and self.produit_id and self.sommier.produit_id != self.produit_id:
+            raise ValidationError("Le navire selectionne ne correspond pas au produit du BL.")
+
         if self.chauffeur_id and self.camion_id and self.chauffeur.camion_id and self.chauffeur.camion_id != self.camion_id:
             raise ValidationError("Le chauffeur choisi n'est pas rattache a ce camion principal.")
+
+        if self.date_bons_livres and not self.date_bons_charges:
+            raise ValidationError(
+                "La date de livraison ne peut pas etre renseignee sans date de chargement."
+            )
+
+        if self.etat_bon == "livre" and not self.date_bons_charges:
+            raise ValidationError(
+                "Impossible de livrer ce bon sans date de chargement."
+            )
 
         if self.date_bons_charges and self.date_bons_livres and self.date_bons_livres < self.date_bons_charges:
             raise ValidationError("La date de livraison ne peut pas etre avant la date de chargement.")
@@ -206,3 +266,50 @@ class Operation(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self._sync_commande_statut()
+
+
+class HistoriqueAffectationOperation(models.Model):
+    operation = models.ForeignKey(
+        Operation,
+        on_delete=models.CASCADE,
+        related_name="historiques_affectation",
+    )
+    ancien_camion = models.ForeignKey(
+        Camion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="historiques_affectation_operation",
+    )
+    ancien_chauffeur = models.ForeignKey(
+        Chauffeur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="historiques_affectation_operation",
+    )
+    ancien_livreur = models.CharField(max_length=150, blank=True)
+    ancienne_date_decharge_chauffeur = models.DateField(null=True, blank=True)
+    ancienne_heure_decharge_chauffeur = models.TimeField(null=True, blank=True)
+    ancien_etat_bon = models.CharField(max_length=30, choices=Operation.ETAT_BON_CHOICES, blank=True)
+    nouveau_camion = models.ForeignKey(
+        Camion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="nouveaux_historiques_affectation_operation",
+    )
+    nouveau_chauffeur = models.ForeignKey(
+        Chauffeur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="nouveaux_historiques_affectation_operation",
+    )
+    date_changement = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date_changement"]
+
+    def __str__(self):
+        return f"{self.operation.numero_bl} - {self.date_changement:%Y-%m-%d %H:%M}"

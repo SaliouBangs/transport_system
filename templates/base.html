@@ -817,6 +817,7 @@ min-width:0;
 {% if can_access_commandes %}<a href="/commandes/" class="{% if request.path|slice:':11' == '/commandes/' %}active{% endif %}">Commandes</a>{% endif %}
 {% if can_access_operations_general %}<a href="/operations/" class="{% if request.path == '/operations/' %}active{% endif %}">Operations</a>{% endif %}
 {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="{% if request.path|slice:':22' == '/operations/comptable/' %}active{% endif %}">Operations comptable</a>{% endif %}
+{% if can_access_operations_sommiers %}<a href="/operations/comptable/sommiers/" class="{% if request.path|slice:':31' == '/operations/comptable/sommiers/' %}active{% endif %}">Sommiers</a>{% endif %}
 {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="{% if request.path|slice:':24' == '/operations/facturation/' %}active{% endif %}">Facturation</a>{% endif %}
 {% if can_access_operations_logistique %}
 <a href="{% if user_role == 'logistique' %}/commandes/{% else %}/operations/logistique/{% endif %}" class="{% if request.path|slice:':24' == '/operations/logistique/' or request.path|slice:':11' == '/commandes/' and user_role == 'logistique' %}active{% endif %}">

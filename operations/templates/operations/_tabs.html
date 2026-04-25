@@ -1,6 +1,7 @@
 <div class="subtabs">
     {% if can_access_operations_general %}<a href="/operations/" class="subtab {% if active_tab == 'general' %}active{% endif %}">General</a>{% endif %}
     {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="subtab {% if active_tab == 'comptable' %}active{% endif %}">Comptable</a>{% endif %}
+    {% if can_access_operations_sommiers %}<a href="/operations/comptable/sommiers/" class="subtab {% if active_tab == 'sommiers' %}active{% endif %}">Sommiers</a>{% endif %}
     {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="subtab {% if active_tab == 'facturation' %}active{% endif %}">Facturation</a>{% endif %}
     {% if can_access_operations_logistique %}
     <a href="{% if user_role == 'logistique' %}/commandes/{% else %}/operations/logistique/{% endif %}" class="subtab {% if active_tab == 'logistique' %}active{% endif %}">

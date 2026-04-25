@@ -3,7 +3,7 @@ from django import forms
 from .models import Prospect
 from clients.models import Client
 from utilisateurs.models import journaliser_action
-from utilisateurs.permissions import role_required
+from utilisateurs.permissions import get_user_role, role_required
 
 
 # FORMULAIRE
@@ -68,7 +68,8 @@ def convertir_client(request, id):
         defaults={
             "nom": prospect.nom,
             "telephone": prospect.telephone,
-            "ville": prospect.ville
+            "ville": prospect.ville,
+            "commercial": request.user if get_user_role(request.user) in {"commercial", "responsable_commercial"} else None,
         }
 
     )
@@ -85,6 +86,6 @@ def convertir_client(request, id):
     return redirect('prospects')
 
 
-liste_prospects = role_required("commercial")(liste_prospects)
-ajouter_prospect = role_required("commercial")(ajouter_prospect)
-convertir_client = role_required()(convertir_client)
+liste_prospects = role_required("commercial", "responsable_commercial")(liste_prospects)
+ajouter_prospect = role_required("commercial", "responsable_commercial")(ajouter_prospect)
+convertir_client = role_required("commercial", "responsable_commercial")(convertir_client)

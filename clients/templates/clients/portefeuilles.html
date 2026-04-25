@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Organisation commerciale</p>
+<h1>Portefeuilles clients</h1>
+</div>
+<a href="/clients/" class="btn-secondary">Retour aux clients</a>
+</div>
+
+<div class="field-inline" style="margin-bottom:18px;">
+<a href="/clients/portefeuilles/" class="{% if scope != 'unassigned' %}btn{% else %}btn-secondary{% endif %}">Tous les clients</a>
+<a href="/clients/portefeuilles/?scope=unassigned" class="{% if scope == 'unassigned' %}btn{% else %}btn-secondary{% endif %}">Non affectes</a>
+</div>
+
+<div class="form-shell" style="margin-bottom:20px;">
+<form method="get" class="app-form">
+    <div class="form-grid">
+        <div class="field">
+            <label for="id_q">Recherche</label>
+            <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Entreprise, nom, ville">
+        </div>
+
+        <div class="field">
+            <label for="id_commercial">Commercial</label>
+            <select id="id_commercial" name="commercial">
+                <option value="">Tous les commerciaux</option>
+                {% for commercial in commerciaux %}
+                <option value="{{ commercial.id }}" {% if commercial_id == commercial.id|stringformat:'s' %}selected{% endif %}>
+                    {{ commercial.get_full_name|default:commercial.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    {% if scope == "unassigned" %}
+    <input type="hidden" name="scope" value="unassigned">
+    {% endif %}
+
+    <div class="form-actions">
+        <a href="/clients/portefeuilles/" class="btn-secondary">Reinitialiser</a>
+        <button type="submit" class="btn">Filtrer</button>
+    </div>
+</form>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Entreprise</th>
+<th>Nom</th>
+<th>Ville</th>
+<th>Portefeuille actuel</th>
+<th>Nouvelle affectation</th>
+</tr>
+</thead>
+<tbody>
+{% for client in clients %}
+<tr>
+<td>{{ client.entreprise }}</td>
+<td>{{ client.nom }}</td>
+<td>{{ client.ville }}</td>
+<td>{% if client.commercial %}{{ client.commercial.get_full_name|default:client.commercial.username }}{% else %}<span class="status-badge status-danger">Non affecte</span>{% endif %}</td>
+<td>
+    <form method="post" class="field-inline" style="align-items:center;">
+        {% csrf_token %}
+        <input type="hidden" name="client_id" value="{{ client.id }}">
+        <select name="commercial_id" required>
+            <option value="">Choisir un commercial</option>
+            {% for commercial in commerciaux %}
+            <option value="{{ commercial.id }}" {% if client.commercial_id == commercial.id %}selected{% endif %}>
+                {{ commercial.get_full_name|default:commercial.username }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-secondary">Affecter</button>
+    </form>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="5">Aucun client a afficher pour ce filtre.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

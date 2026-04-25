@@ -51,6 +51,18 @@
             {% for error in form.depot.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
         <div class="field">
+            <label for="{{ form.sommier.id_for_label }}">Navire / Sommier</label>
+            {{ form.sommier }}
+            <p class="field-help" id="sommier-stock-info">
+                {% if form.instance.sommier %}
+                Stock disponible : {{ form.instance.sommier.quantite_disponible }} - Produit : {{ form.instance.sommier.produit.nom }}
+                {% else %}
+                Choisis un navire pour voir le stock disponible.
+                {% endif %}
+            </p>
+            {% for error in form.sommier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
             <label for="{{ form.client.id_for_label }}">Client</label>
             {{ form.client }}
             {% for error in form.client.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
@@ -92,6 +104,7 @@
                 <tr><th>Commande</th><td id="commande-resume">{% if form.instance.commande %}{{ form.instance.commande.reference }}{% elif commande_initiale %}{{ commande_initiale.reference }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Regime</th><td id="regime-resume">{% if form.instance.regime_douanier %}{{ form.instance.regime_douanier.libelle }} ({{ form.instance.regime_douanier.code_regime }}){% else %}-{% endif %}</td></tr>
                 <tr><th>Depot</th><td id="depot-resume">{% if form.instance.depot %}{{ form.instance.depot.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Navire</th><td id="sommier-resume">{% if form.instance.sommier %}{{ form.instance.sommier.reference_navire }} - {{ form.instance.sommier.quantite_disponible }} dispo{% else %}-{% endif %}</td></tr>
                 <tr><th>Client</th><td id="client-resume">{% if form.instance.client %}{{ form.instance.client.entreprise }}{% elif commande_initiale %}{{ commande_initiale.client.entreprise }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Destination</th><td id="destination-resume">{% if form.instance.destination %}{{ form.instance.destination }}{% elif commande_initiale %}{{ commande_initiale.ville_arrivee }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Produit</th><td id="produit-resume">{% if form.instance.produit %}{{ form.instance.produit.nom }}{% elif commande_initiale and commande_initiale.produit %}{{ commande_initiale.produit.nom }}{% else %}-{% endif %}</td></tr>
@@ -197,6 +210,7 @@
 const commandeSelect = document.getElementById("id_commande");
 const regimeSelect = document.getElementById("id_regime_douanier");
 const depotSelect = document.getElementById("id_depot");
+const sommierSelect = document.getElementById("id_sommier");
 const clientSelect = document.getElementById("id_client");
 const destinationInput = document.getElementById("id_destination");
 const produitSelect = document.getElementById("id_produit");
@@ -210,9 +224,11 @@ const regimeCsrfInput = regimeModalForm?.querySelector("input[name='csrfmiddlewa
 const depotModalForm = document.getElementById("depot-modal-form");
 const depotModalErrors = document.getElementById("depot-modal-errors");
 const depotCsrfInput = depotModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+const sommierStockInfo = document.getElementById("sommier-stock-info");
 const commandeResume = document.getElementById("commande-resume");
 const regimeResume = document.getElementById("regime-resume");
 const depotResume = document.getElementById("depot-resume");
+const sommierResume = document.getElementById("sommier-resume");
 const clientResume = document.getElementById("client-resume");
 const destinationResume = document.getElementById("destination-resume");
 const produitResume = document.getElementById("produit-resume");
@@ -224,6 +240,18 @@ function selectedText(selectElement) {
     return selectElement?.options[selectElement.selectedIndex]?.text || "-";
 }
 
+function refreshSommierInfo() {
+    if (!sommierStockInfo) {
+        return;
+    }
+    const option = sommierSelect?.options[sommierSelect.selectedIndex];
+    if (!option || !option.value) {
+        sommierStockInfo.textContent = "Choisis un navire pour voir le stock disponible.";
+        return;
+    }
+    sommierStockInfo.textContent = option.textContent;
+}
+
 function refreshResume() {
     if (commandeResume) {
         commandeResume.textContent = selectedText(commandeSelect);
@@ -233,6 +261,9 @@ function refreshResume() {
     }
     if (depotResume) {
         depotResume.textContent = selectedText(depotSelect);
+    }
+    if (sommierResume) {
+        sommierResume.textContent = selectedText(sommierSelect);
     }
     if (clientResume) {
         clientResume.textContent = selectedText(clientSelect);
@@ -246,6 +277,7 @@ function refreshResume() {
     if (quantiteResume) {
         quantiteResume.textContent = quantiteInput?.value || "-";
     }
+    refreshSommierInfo();
 }
 
 async function syncCommandeInfos() {
@@ -287,7 +319,7 @@ async function syncCommandeInfos() {
     }
 }
 
-[commandeSelect, regimeSelect, depotSelect, clientSelect, destinationInput, produitSelect, quantiteInput].forEach((element) => {
+[commandeSelect, regimeSelect, depotSelect, sommierSelect, clientSelect, destinationInput, produitSelect, quantiteInput].forEach((element) => {
     element?.addEventListener("change", refreshResume);
     element?.addEventListener("input", refreshResume);
 });

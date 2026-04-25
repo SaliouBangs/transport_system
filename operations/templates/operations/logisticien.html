@@ -29,14 +29,29 @@
 </thead>
 <tbody>
 {% for operation in operations %}
-<tr>
+<tr{% if operation.remplace_par_id %} style="background:#fff0e3; color:#7b8794;"{% endif %}>
 <td>{{ operation.numero_bl }}</td>
 <td>{{ operation.client.entreprise }}</td>
 <td>{{ operation.get_etat_bon_display }}</td>
 <td>{{ operation.date_bons_charges|default:"-" }}</td>
 <td>{{ operation.date_bons_livres|default:"-" }}</td>
 <td>{{ operation.date_bon_retour|default:"-" }}</td>
-<td><a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-edit">Mettre a jour</a></td>
+<td>
+    {% if operation.remplace_par_id %}
+    <span class="status-badge status-danger">BL invalide</span>
+    {% if operation.date_bons_charges %}
+    <div style="margin-top:8px;">
+        <span class="status-badge status-danger">Charge, mais livraison bloquee</span>
+    </div>
+    {% else %}
+    <div style="margin-top:8px;">
+        <span class="status-badge status-danger">Ancien BL non charge</span>
+    </div>
+    {% endif %}
+    {% else %}
+    <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-edit">Mettre a jour</a>
+    {% endif %}
+</td>
 </tr>
 {% empty %}
 <tr>

@@ -57,6 +57,14 @@
     </div>
 
     <div class="summary-panel">
+        {% if operation.etat_bon == "charge" or operation.etat_bon == "livre" %}
+        <div class="form-alert" style="margin-bottom:16px;">
+            <p class="field-error" style="margin:0;">
+                Ce bon est deja {{ operation.get_etat_bon_display|lower }}. Toute modification du camion sera historisee.
+            </p>
+        </div>
+        {% endif %}
+
         <h2>Infos du camion choisi</h2>
         <div class="form-alert" id="capacite-warning" hidden>
             <p class="field-error" id="capacite-warning-text"></p>
@@ -74,12 +82,39 @@
         <h2>Resume du BL</h2>
         <table class="table summary-table">
             <tbody>
+                <tr><th>Niveau du bon</th><td>{{ operation.get_etat_bon_display }}</td></tr>
                 <tr><th>Client</th><td>{{ operation.client.entreprise }}</td></tr>
                 <tr><th>Destination</th><td>{{ operation.destination }}</td></tr>
                 <tr><th>Commande</th><td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Quantite</th><td>{{ operation.quantite }}</td></tr>
             </tbody>
         </table>
+
+        {% if historiques_affectation %}
+        <h2>Historique des changements</h2>
+        <table class="table summary-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Ancien camion</th>
+                    <th>Ancien chauffeur</th>
+                    <th>Nouveau camion</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for historique in historiques_affectation %}
+                <tr>
+                    <td>{{ historique.date_changement|date:"Y-m-d H:i" }}</td>
+                    <td>{% if historique.ancien_camion %}{{ historique.ancien_camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                    <td>{% if historique.ancien_chauffeur %}{{ historique.ancien_chauffeur.nom }}{% else %}-{% endif %}</td>
+                    <td>{% if historique.nouveau_camion %}{{ historique.nouveau_camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                    <td><a href="/operations/logistique/historique/{{ historique.id }}/" class="btn-secondary">Voir l'ancienne fiche</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
     </div>
 
     <div class="form-actions">

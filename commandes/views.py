@@ -4,12 +4,13 @@ from decimal import Decimal
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from camions.models import Camion
 from clients.models import Client
-from operations.models import Operation
+from operations.models import HistoriqueAffectationOperation, Operation
 from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, role_required
 
@@ -17,25 +18,105 @@ from .forms import CommandeAffectationForm, CommandeForm
 from .models import Commande
 
 
+def _generate_archived_bl_number(numero_bl):
+    base = numero_bl or "BL"
+    suffix = 1
+    candidate = f"{base}-ANCIEN"
+    while Operation.objects.filter(numero_bl=candidate).exists():
+        suffix += 1
+        candidate = f"{base}-ANCIEN-{suffix}"
+    return candidate
+
+
+def _clone_operation_for_new_truck(operation, camion, chauffeur):
+    numero_bl_original = operation.numero_bl
+    operation.numero_bl = _generate_archived_bl_number(numero_bl_original)
+    operation.save(update_fields=["numero_bl"])
+
+    nouvelle_operation = Operation.objects.create(
+        numero_bl=numero_bl_original,
+        etat_bon=operation.etat_bon,
+        commande=operation.commande,
+        reference_externe=operation.reference_externe,
+        regime_douanier=operation.regime_douanier,
+        depot=operation.depot,
+        client=operation.client,
+        destination=operation.destination,
+        camion=camion,
+        chauffeur=chauffeur,
+        produit=operation.produit,
+        quantite=operation.quantite,
+        date_bl=operation.date_bl,
+        date_transmission=operation.date_transmission,
+        date_bons_liquides=operation.date_bons_liquides,
+        date_bons_charges=operation.date_bons_charges,
+        date_bons_livres=operation.date_bons_livres,
+        date_bon_retour=operation.date_bon_retour,
+        date_decharge_chauffeur=operation.date_decharge_chauffeur,
+        heure_decharge_chauffeur=operation.heure_decharge_chauffeur,
+        livreur=operation.livreur,
+        numero_facture=operation.numero_facture,
+        date_facture=operation.date_facture,
+        montant_facture=operation.montant_facture,
+        observation=operation.observation,
+    )
+    operation.remplace_par = nouvelle_operation
+    operation.save(update_fields=["remplace_par"])
+    HistoriqueAffectationOperation.objects.create(
+        operation=nouvelle_operation,
+        ancien_camion=operation.camion,
+        ancien_chauffeur=operation.chauffeur,
+        ancien_livreur=operation.livreur,
+        ancienne_date_decharge_chauffeur=operation.date_decharge_chauffeur,
+        ancienne_heure_decharge_chauffeur=operation.heure_decharge_chauffeur,
+        ancien_etat_bon=operation.etat_bon,
+        nouveau_camion=camion,
+        nouveau_chauffeur=chauffeur,
+    )
+    return nouvelle_operation
+
+
 def _commandes_queryset(request):
     user_role = get_user_role(request.user)
     query = request.GET.get("q", "").strip()
     statut = request.GET.get("statut", "").strip()
+    niveau_bon = request.GET.get("niveau_bon", "").strip()
     date_debut = request.GET.get("date_debut", "").strip()
     date_fin = request.GET.get("date_fin", "").strip()
     scope = request.GET.get("scope", "").strip() or "actives"
 
-    commandes = Commande.objects.select_related("client", "produit").order_by("-date_creation")
+    commandes = (
+        Commande.objects.select_related("client", "client__commercial", "produit", "camion", "chauffeur")
+        .prefetch_related(
+            Prefetch(
+                "operations",
+                queryset=Operation.objects.select_related("camion", "chauffeur").prefetch_related("historiques_affectation").order_by("-date_creation"),
+            )
+        )
+        .order_by("-date_creation")
+    )
+    if user_role == "commercial":
+        commandes = commandes.filter(client__commercial=request.user)
     if user_role == "logistique":
         if scope == "historique":
             commandes = commandes.exclude(statut="validee_dg")
         else:
             commandes = commandes.filter(statut="validee_dg")
-    else:
+    elif user_role == "dga":
+        if scope == "historique":
+            commandes = commandes.exclude(statut="attente_validation_dga")
+        else:
+            commandes = commandes.filter(statut="attente_validation_dga")
+    elif user_role == "directeur":
         if scope == "historique":
             commandes = commandes.exclude(statut="attente_validation_dg")
         else:
             commandes = commandes.filter(statut="attente_validation_dg")
+    else:
+        if scope == "historique":
+            commandes = commandes.exclude(statut="attente_validation_dga")
+        else:
+            commandes = commandes.filter(statut="attente_validation_dga")
     if query:
         commandes = commandes.filter(
             Q(reference__icontains=query)
@@ -47,28 +128,80 @@ def _commandes_queryset(request):
         )
     if statut:
         commandes = commandes.filter(statut=statut)
+    if niveau_bon:
+        commandes = commandes.filter(operations__etat_bon=niveau_bon)
     if date_debut:
         commandes = commandes.filter(date_commande__gte=date_debut)
     if date_fin:
         commandes = commandes.filter(date_commande__lte=date_fin)
 
-    return commandes, query, statut, date_debut, date_fin, scope, user_role
+    commandes = commandes.distinct()
+    commandes_list = list(commandes)
+    for commande in commandes_list:
+        latest_operation = commande.operations.all()[0] if getattr(commande, "operations", None) and commande.operations.all() else None
+        commande.latest_operation = latest_operation
+        commande.has_reaffectation = bool(
+            latest_operation and latest_operation.historiques_affectation.all()
+        )
+        commande.latest_reaffectation = (
+            latest_operation.historiques_affectation.all()[0]
+            if latest_operation and latest_operation.historiques_affectation.all()
+            else None
+        )
+
+    return commandes_list, query, statut, niveau_bon, date_debut, date_fin, scope, user_role
 
 
 def liste_commandes(request):
-    commandes, query, statut, date_debut, date_fin, scope, user_role = _commandes_queryset(request)
+    commandes, query, statut, niveau_bon, date_debut, date_fin, scope, user_role = _commandes_queryset(request)
+    logistique_rows = []
+    if user_role == "logistique":
+        for commande in commandes:
+            operations = list(commande.operations.all())
+            if operations:
+                for operation in operations:
+                    logistique_rows.append(
+                        {
+                            "commande": commande,
+                            "operation": operation,
+                            "camion": operation.camion or commande.camion,
+                            "chauffeur": operation.chauffeur or commande.chauffeur,
+                            "niveau_bon_label": operation.get_etat_bon_display(),
+                            "has_reaffectation": bool(operation.remplace_par_id or operation.anciennes_versions.all()),
+                            "latest_reaffectation": operation.historiques_affectation.all()[0] if operation.historiques_affectation.all() else None,
+                            "button_label": "Lecture seule" if operation.etat_bon == "livre" else "Changer de camion" if operation.etat_bon in {"declare", "liquide", "charge"} else "Affecter camion",
+                            "can_change_truck": operation.etat_bon != "livre",
+                        }
+                    )
+            else:
+                logistique_rows.append(
+                    {
+                        "commande": commande,
+                        "operation": None,
+                        "camion": commande.camion,
+                        "chauffeur": commande.chauffeur,
+                        "niveau_bon_label": "Aucun BL",
+                        "has_reaffectation": False,
+                        "latest_reaffectation": None,
+                        "button_label": "Affecter camion",
+                        "can_change_truck": True,
+                    }
+                )
     return render(
         request,
         "commandes/commandes.html",
         {
             "commandes": commandes,
+            "logistique_rows": logistique_rows,
             "query": query,
             "statut": statut,
+            "niveau_bon": niveau_bon,
             "date_debut": date_debut,
             "date_fin": date_fin,
             "scope": scope,
             "page_user_role": user_role,
             "statut_choices": Commande.STATUT_CHOICES,
+            "niveau_bon_choices": Operation.ETAT_BON_CHOICES,
             "current_filters": request.GET.urlencode(),
         },
     )
@@ -76,10 +209,10 @@ def liste_commandes(request):
 
 def ajouter_commande(request):
     if request.method == "POST":
-        form = CommandeForm(request.POST)
+        form = CommandeForm(request.POST, user=request.user)
         if form.is_valid():
             commande = form.save(commit=False)
-            commande.statut = "attente_validation_dg"
+            commande.statut = "attente_validation_dga"
             commande.save()
             journaliser_action(
                 request.user,
@@ -90,19 +223,22 @@ def ajouter_commande(request):
             )
             return redirect("commandes")
     else:
-        form = CommandeForm()
+        form = CommandeForm(user=request.user)
 
     return render(
         request,
         "commandes/ajouter_commande.html",
-        {"form": form, "clients": Client.objects.order_by("entreprise", "nom")},
+        {"form": form, "clients": form.fields["client"].queryset},
     )
 
 
 def modifier_commande(request, id):
-    commande = get_object_or_404(Commande, id=id)
+    commandes_queryset = Commande.objects.all()
+    if get_user_role(request.user) == "commercial":
+        commandes_queryset = commandes_queryset.filter(client__commercial=request.user)
+    commande = get_object_or_404(commandes_queryset, id=id)
     if request.method == "POST":
-        form = CommandeForm(request.POST, instance=commande)
+        form = CommandeForm(request.POST, instance=commande, user=request.user)
         if form.is_valid():
             commande = form.save()
             journaliser_action(
@@ -114,7 +250,7 @@ def modifier_commande(request, id):
             )
             return redirect("commandes")
     else:
-        form = CommandeForm(instance=commande)
+        form = CommandeForm(instance=commande, user=request.user)
 
     return render(
         request,
@@ -122,13 +258,16 @@ def modifier_commande(request, id):
         {
             "form": form,
             "commande": commande,
-            "clients": Client.objects.order_by("entreprise", "nom"),
+            "clients": form.fields["client"].queryset,
         },
     )
 
 
 def supprimer_commande(request, id):
-    commande = get_object_or_404(Commande, id=id)
+    commandes_queryset = Commande.objects.all()
+    if get_user_role(request.user) == "commercial":
+        commandes_queryset = commandes_queryset.filter(client__commercial=request.user)
+    commande = get_object_or_404(commandes_queryset, id=id)
     commande_label = commande.reference
     commande.delete()
     journaliser_action(
@@ -141,20 +280,91 @@ def supprimer_commande(request, id):
     return redirect("commandes")
 
 
+def valider_commande_dga(request, id):
+    if request.method != "POST":
+        return redirect("commandes")
+
+    commande = get_object_or_404(Commande, id=id)
+    commande.decision_dga = "validee"
+    commande.observation_dga = (request.POST.get("observation_dga") or "").strip()
+    commande.motif_rejet_dga = ""
+    commande.date_validation_dga = timezone.localdate()
+    commande.statut = "attente_validation_dg"
+    commande.save(
+        update_fields=[
+            "decision_dga",
+            "observation_dga",
+            "motif_rejet_dga",
+            "date_validation_dga",
+            "statut",
+        ]
+    )
+    journaliser_action(
+        request.user,
+        "Commandes",
+        "Validation DGA de commande",
+        commande.reference,
+        f"{request.user.username} a valide la commande {commande.reference} et l'a transmise au DG.",
+    )
+    messages.success(request, f"La commande {commande.reference} a ete transmise au DG apres validation DGA.")
+    return redirect("commandes")
+
+
+def rejeter_commande_dga(request, id):
+    if request.method != "POST":
+        return redirect("commandes")
+
+    commande = get_object_or_404(Commande, id=id)
+    commande.decision_dga = "rejetee"
+    commande.observation_dga = (request.POST.get("observation_dga") or "").strip()
+    commande.motif_rejet_dga = (request.POST.get("motif_rejet_dga") or "").strip()
+    commande.date_validation_dga = timezone.localdate()
+    commande.statut = "attente_validation_dg"
+    commande.save(
+        update_fields=[
+            "decision_dga",
+            "observation_dga",
+            "motif_rejet_dga",
+            "date_validation_dga",
+            "statut",
+        ]
+    )
+    journaliser_action(
+        request.user,
+        "Commandes",
+        "Rejet DGA de commande",
+        commande.reference,
+        f"{request.user.username} a rejete la commande {commande.reference} et l'a transmise au DG avec motif.",
+    )
+    messages.warning(request, f"La commande {commande.reference} a ete transmise au DG avec avis de rejet du DGA.")
+    return redirect("commandes")
+
+
 def valider_commande_dg(request, id):
     if request.method != "POST":
         return redirect("commandes")
 
     commande = get_object_or_404(Commande, id=id)
-    commande.statut = "validee_dg"
+    commande.decision_dg = "validee"
+    commande.observation_dg = (request.POST.get("observation_dg") or "").strip()
+    commande.motif_rejet_dg = ""
     commande.date_validation_dg = timezone.localdate()
-    commande.save(update_fields=["statut", "date_validation_dg"])
+    commande.statut = "validee_dg"
+    commande.save(
+        update_fields=[
+            "decision_dg",
+            "observation_dg",
+            "motif_rejet_dg",
+            "date_validation_dg",
+            "statut",
+        ]
+    )
     journaliser_action(
         request.user,
         "Commandes",
         "Validation DG de commande",
         commande.reference,
-        f"{request.user.username} a valide la commande {commande.reference} pour la logistique.",
+        f"{request.user.username} a valide definitivement la commande {commande.reference} pour la logistique.",
     )
     messages.success(request, f"La commande {commande.reference} a ete validee par le DG.")
     return redirect("commandes")
@@ -165,21 +375,44 @@ def rejeter_commande_dg(request, id):
         return redirect("commandes")
 
     commande = get_object_or_404(Commande, id=id)
+    commande.decision_dg = "rejetee"
+    commande.observation_dg = (request.POST.get("observation_dg") or "").strip()
+    commande.motif_rejet_dg = (request.POST.get("motif_rejet_dg") or "").strip()
+    commande.date_validation_dg = timezone.localdate()
     commande.statut = "rejetee_dg"
-    commande.save(update_fields=["statut"])
+    commande.save(
+        update_fields=[
+            "decision_dg",
+            "observation_dg",
+            "motif_rejet_dg",
+            "date_validation_dg",
+            "statut",
+        ]
+    )
     journaliser_action(
         request.user,
         "Commandes",
         "Rejet DG de commande",
         commande.reference,
-        f"{request.user.username} a rejete la commande {commande.reference}.",
+        f"{request.user.username} a rejete definitivement la commande {commande.reference}.",
     )
     messages.error(request, f"La commande {commande.reference} a ete rejetee par le DG.")
     return redirect("/commandes/?scope=historique")
 
 
+def apercu_commande_dga(request, id):
+    commande = get_object_or_404(Commande.objects.select_related("client", "client__commercial", "produit"), id=id)
+    return render(
+        request,
+        "commandes/apercu_commande_dga.html",
+        {
+            "commande": commande,
+        },
+    )
+
+
 def apercu_commande_dg(request, id):
-    commande = get_object_or_404(Commande.objects.select_related("client", "produit"), id=id)
+    commande = get_object_or_404(Commande.objects.select_related("client", "client__commercial", "produit"), id=id)
     return render(
         request,
         "commandes/apercu_commande_dg.html",
@@ -190,9 +423,16 @@ def apercu_commande_dg(request, id):
 
 
 def affecter_commande_logistique(request, id):
-    commande = get_object_or_404(Commande.objects.select_related("client", "produit"), id=id)
+    commande = get_object_or_404(
+        Commande.objects.select_related("client", "produit", "camion", "chauffeur").prefetch_related("operations"),
+        id=id,
+    )
     if commande.statut not in {"validee_dg", "planifiee"}:
         messages.error(request, "Cette commande doit d'abord etre validee par le DG.")
+        return redirect("commandes")
+    latest_locked_operation = commande.operations.filter(remplace_par__isnull=True, etat_bon="livre").order_by("-date_creation").first()
+    if latest_locked_operation:
+        messages.error(request, "Ce BL est deja livre. Le changement de camion n'est plus autorise.")
         return redirect("commandes")
     initial_data = {
         "camion": commande.camion_id,
@@ -209,12 +449,20 @@ def affecter_commande_logistique(request, id):
             selected_ids = [int(item) for item in raw_ids.split(",") if item.strip().isdigit()]
             commandes_complementaires = list(
                 Commande.objects.select_related("client", "produit")
-                .filter(statut="validee_dg", camion__isnull=True, id__in=selected_ids)
+                .filter(
+                    statut="validee_dg",
+                    camion__isnull=True,
+                    id__in=selected_ids,
+                    produit_id=commande.produit_id,
+                )
                 .exclude(id=commande.id)
                 .order_by("date_commande", "reference")
             )
             if len(commandes_complementaires) != len(set(selected_ids)):
-                form.add_error(None, "Certaines commandes ajoutees ne sont plus disponibles. Recharge la page et recommence.")
+                form.add_error(
+                    None,
+                    "Certaines commandes ajoutees ne sont plus disponibles ou n'ont pas le meme produit que la commande de base.",
+                )
             else:
                 total_quantite = Decimal(commande.quantite or 0) + sum(
                     Decimal(item.quantite or 0) for item in commandes_complementaires
@@ -233,6 +481,9 @@ def affecter_commande_logistique(request, id):
                     commandes_a_affecter = [commande, *commandes_complementaires]
                     with transaction.atomic():
                         for item in commandes_a_affecter:
+                            latest_operation = item.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
+                            if latest_operation and latest_operation.etat_bon in {"declare", "liquide", "charge", "livre"} and latest_operation.camion_id != camion.id:
+                                _clone_operation_for_new_truck(latest_operation, camion, chauffeur)
                             item.camion = camion
                             item.chauffeur = chauffeur
                             item.date_affectation_logistique = today
@@ -266,7 +517,11 @@ def affecter_commande_logistique(request, id):
 
     commandes_candidates = list(
         Commande.objects.select_related("client", "produit")
-        .filter(statut="validee_dg", camion__isnull=True)
+        .filter(
+            statut="validee_dg",
+            camion__isnull=True,
+            produit_id=commande.produit_id,
+        )
         .exclude(id=commande.id)
         .order_by("date_commande", "reference")
     )
@@ -340,6 +595,8 @@ def commande_camion_infos(request):
                     "numero_bl": operation.numero_bl,
                     "client": operation.client.entreprise,
                     "destination": operation.destination,
+                    "quantite_produit": f"{int(operation.quantite) if operation.quantite == int(operation.quantite) else operation.quantite} L",
+                    "produit": operation.produit.nom if operation.produit else "-",
                     "etat_bon": operation.get_etat_bon_display(),
                     "date_etat": (
                         operation.date_bons_livres.strftime("%Y-%m-%d")
@@ -388,7 +645,7 @@ def export_commandes_xls(request):
         ]
     )
 
-    commandes, _, _, _, _, _, _ = _commandes_queryset(request)
+    commandes, _, _, _, _, _, _, _ = _commandes_queryset(request)
     for commande in commandes:
         sheet.append(
             [
@@ -438,7 +695,7 @@ def export_commandes_pdf(request):
         "Livraison",
         "Statut",
     ]]
-    commandes, _, _, _, _, _, _ = _commandes_queryset(request)
+    commandes, _, _, _, _, _, _, _ = _commandes_queryset(request)
     for commande in commandes:
         data.append(
             [
@@ -475,15 +732,18 @@ def export_commandes_pdf(request):
     return response
 
 
-liste_commandes = role_required("commercial", "comptable", "directeur", "logistique")(liste_commandes)
-ajouter_commande = role_required("commercial")(ajouter_commande)
-modifier_commande = role_required("commercial")(modifier_commande)
-supprimer_commande = role_required()(supprimer_commande)
+liste_commandes = role_required("commercial", "responsable_commercial", "comptable", "dga", "directeur", "logistique")(liste_commandes)
+ajouter_commande = role_required("commercial", "responsable_commercial")(ajouter_commande)
+modifier_commande = role_required("commercial", "responsable_commercial")(modifier_commande)
+supprimer_commande = role_required("commercial", "responsable_commercial")(supprimer_commande)
+valider_commande_dga = role_required("dga")(valider_commande_dga)
+rejeter_commande_dga = role_required("dga")(rejeter_commande_dga)
+apercu_commande_dga = role_required("dga")(apercu_commande_dga)
 valider_commande_dg = role_required("directeur")(valider_commande_dg)
 rejeter_commande_dg = role_required("directeur")(rejeter_commande_dg)
 apercu_commande_dg = role_required("directeur")(apercu_commande_dg)
 affecter_commande_logistique = role_required("logistique")(affecter_commande_logistique)
 completer_capacite_commande = role_required("logistique")(completer_capacite_commande)
 commande_camion_infos = role_required("logistique")(commande_camion_infos)
-export_commandes_xls = role_required("commercial", "comptable", "directeur", "logistique")(export_commandes_xls)
-export_commandes_pdf = role_required("commercial", "comptable", "directeur", "logistique")(export_commandes_pdf)
+export_commandes_xls = role_required("commercial", "responsable_commercial", "comptable", "dga", "directeur", "logistique")(export_commandes_xls)
+export_commandes_pdf = role_required("commercial", "responsable_commercial", "comptable", "dga", "directeur", "logistique")(export_commandes_pdf)

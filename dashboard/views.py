@@ -359,6 +359,7 @@ def resoudre_alerte_facture(request):
 
 dashboard = role_required(
     "commercial",
+    "responsable_commercial",
     "comptable",
     "caissiere",
     "invite",

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Comptabilite</p>
+<h1>Gestion des sommiers</h1>
+</div>
+<form method="get" class="search-form">
+    <input type="text" name="q" value="{{ query }}" placeholder="Recherche par N° SM, navire ou produit">
+    <select name="produit">
+        <option value="">Tous les produits</option>
+        {% for item in produits %}
+        <option value="{{ item.id }}" {% if produit_filter == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nom }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn-secondary">Filtrer</button>
+</form>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:18px; margin-bottom:24px;">
+    {% for total in totals_by_product %}
+    <article class="stat-card" style="padding:20px 22px;">
+        <p class="eyebrow" style="margin-bottom:10px;">Stock total</p>
+        <h2 style="margin:0 0 6px; font-size:2rem;">{{ total.total_stock|default:"0" }}</h2>
+        <p style="margin:0; color:#123047; font-weight:700;">{{ total.produit__nom }}</p>
+    </article>
+    {% empty %}
+    <article class="stat-card" style="padding:20px 22px;">
+        <p class="eyebrow" style="margin-bottom:10px;">Stock total</p>
+        <h2 style="margin:0;">0</h2>
+    </article>
+    {% endfor %}
+</div>
+
+<div style="display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(320px, 0.9fr); gap:24px; align-items:start; margin-bottom:24px;">
+    <div class="form-shell" style="margin-bottom:0;">
+        <div style="display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap;">
+            <div>
+                <p class="eyebrow">Ajout</p>
+                <h2 style="margin:0;">Nouveau sommier</h2>
+            </div>
+            <div style="padding:10px 14px; border-radius:16px; background:#edf6f3; color:#1f8f6a; font-weight:700;">
+                Positionnement des stocks navires pour la comptabilite
+            </div>
+        </div>
+        <form method="post" class="app-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="{{ form.numero_sm.id_for_label }}">N° SM</label>
+                    {{ form.numero_sm }}
+                    {% for error in form.numero_sm.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.date_sommier.id_for_label }}">Date</label>
+                    {{ form.date_sommier }}
+                    {% for error in form.date_sommier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.reference_navire.id_for_label }}">Ref navire</label>
+                    {{ form.reference_navire }}
+                    {% for error in form.reference_navire.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.produit.id_for_label }}">Produit</label>
+                    {{ form.produit }}
+                    {% for error in form.produit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.quantite_initiale.id_for_label }}">Quantite initiale</label>
+                    {{ form.quantite_initiale }}
+                    {% for error in form.quantite_initiale.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.quantite_disponible.id_for_label }}">Quantite disponible</label>
+                    {{ form.quantite_disponible }}
+                    {% for error in form.quantite_disponible.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="field field-full">
+                    <label for="{{ form.observation.id_for_label }}">Observation</label>
+                    {{ form.observation }}
+                    {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+            {% if form.non_field_errors %}
+            <div class="form-alert">
+                {% for error in form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="form-actions">
+                <button type="submit" class="btn">Ajouter le sommier</button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="form-shell" style="margin-bottom:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+                <p class="eyebrow">Statistiques</p>
+                <h2 style="margin:0;">Stock par produit</h2>
+            </div>
+        </div>
+        <div style="display:grid; gap:18px;">
+            {% for item in chart_totals %}
+            <div style="display:grid; grid-template-columns:86px minmax(0, 1fr); gap:16px; align-items:center; padding:14px 12px; border-radius:18px; background:#f8fbfd;">
+                <div style="display:flex; justify-content:center;">
+                    <div style="position:relative; width:54px; height:124px; border:3px solid #123047; border-radius:18px 18px 14px 14px; background:linear-gradient(180deg,#f2f6fa 0%, #e4edf3 100%); overflow:hidden; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.7);">
+                        <div style="position:absolute; left:0; right:0; bottom:0; height:{{ item.width_percent }}%; background:linear-gradient(180deg, {{ item.color }}cc 0%, {{ item.color }} 100%);"></div>
+                        <div style="position:absolute; left:6px; right:6px; top:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                        <div style="position:absolute; left:6px; right:6px; top:58px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                        <div style="position:absolute; left:6px; right:6px; bottom:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-weight:700; color:#123047;">
+                        <span>{{ item.label }}</span>
+                        <span>{{ item.total_stock }}</span>
+                    </div>
+                    <div style="height:12px; background:#edf3f7; border-radius:999px; overflow:hidden; margin-bottom:8px;">
+                        <div style="height:100%; width:{{ item.width_percent }}%; background:{{ item.color }}; border-radius:999px;"></div>
+                    </div>
+                    <p style="margin:0; color:#607487; font-size:0.92rem;">
+                        {{ item.width_percent }}% du niveau max actuel
+                    </p>
+                </div>
+            </div>
+            {% empty %}
+            <p style="margin:0; color:#607487;">Aucune statistique disponible pour le moment.</p>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top:24px; padding-top:20px; border-top:1px solid #dce7ef;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+                <div>
+                    <p class="eyebrow">Sorties</p>
+                    <h2 style="margin:0;">Quantites liquidees</h2>
+                </div>
+                <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input type="hidden" name="q" value="{{ query }}">
+                    <input type="hidden" name="produit" value="{{ produit_filter }}">
+                    <input type="date" name="stats_date" value="{{ stats_date }}" style="min-width:170px;">
+                    <button type="submit" class="btn-secondary">Voir</button>
+                </form>
+            </div>
+            <div style="display:grid; gap:18px;">
+                {% for item in chart_sorties %}
+                <div style="display:grid; grid-template-columns:86px minmax(0, 1fr); gap:16px; align-items:center; padding:14px 12px; border-radius:18px; background:#f8fbfd;">
+                    <div style="display:flex; justify-content:center;">
+                        <div style="position:relative; width:54px; height:124px; border:3px solid #123047; border-radius:18px 18px 14px 14px; background:linear-gradient(180deg,#f2f6fa 0%, #e4edf3 100%); overflow:hidden; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.7);">
+                            <div style="position:absolute; left:0; right:0; bottom:0; height:{{ item.width_percent }}%; background:linear-gradient(180deg, {{ item.color }}cc 0%, {{ item.color }} 100%);"></div>
+                            <div style="position:absolute; left:6px; right:6px; top:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                            <div style="position:absolute; left:6px; right:6px; top:58px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                            <div style="position:absolute; left:6px; right:6px; bottom:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-weight:700; color:#123047;">
+                            <span>{{ item.label }}</span>
+                            <span>{{ item.total_sortie }}</span>
+                        </div>
+                        <div style="height:12px; background:#edf3f7; border-radius:999px; overflow:hidden; margin-bottom:8px;">
+                            <div style="height:100%; width:{{ item.width_percent }}%; background:{{ item.color }}; border-radius:999px;"></div>
+                        </div>
+                        <p style="margin:0; color:#607487; font-size:0.92rem;">
+                            Sortie totale du {{ stats_date }}
+                        </p>
+                    </div>
+                </div>
+                {% empty %}
+                <p style="margin:0; color:#607487;">Aucune quantite liquidee pour cette date.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+</div>
+
+<div class="form-shell" style="padding-top:20px;">
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:16px; flex-wrap:wrap;">
+    <div>
+        <p class="eyebrow">Historique</p>
+        <h2 style="margin:0;">Liste des sommiers</h2>
+    </div>
+    <div style="padding:10px 14px; border-radius:16px; background:#f5f8fb; color:#123047;">
+        Suivi des navires et des quantites disponibles par produit
+    </div>
+</div>
+<table class="table">
+    <thead>
+        <tr>
+            <th>N° SM</th>
+            <th>Date</th>
+            <th>Navire</th>
+            <th>Produit</th>
+            <th>Stock initial</th>
+            <th>Stock disponible</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sommier in sommiers %}
+        <tr>
+            <td>{{ sommier.numero_sm }}</td>
+            <td>{{ sommier.date_sommier|date:"Y-m-d" }}</td>
+            <td>{{ sommier.reference_navire }}</td>
+            <td>{{ sommier.produit.nom }}</td>
+            <td>{{ sommier.quantite_initiale }}</td>
+            <td>{{ sommier.quantite_disponible }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">Aucun sommier enregistre pour le moment.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% endblock %}

@@ -3,7 +3,11 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
+from django.db.models import Exists
+from django.db.models import OuterRef
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,11 +27,32 @@ from .forms import (
     OperationForm,
     ProduitForm,
     RegimeDouanierForm,
+    SommierForm,
 )
-from .models import Operation
+from .models import HistoriqueAffectationOperation, Operation, Produit, Sommier
 
 
 TVA_RATE = Decimal("0.18")
+
+
+def _decrement_sommier_stock_on_liquidation(operation):
+    if operation.stock_sommier_deduit:
+        return
+    if not operation.sommier_id:
+        raise ValidationError({"__all__": ["Aucun navire n'est selectionne sur ce BL. La comptabilite doit d'abord choisir le sommier."]})
+
+    with transaction.atomic():
+        sommier = Sommier.objects.select_for_update().get(pk=operation.sommier_id)
+        quantite = Decimal(operation.quantite or 0)
+        if operation.produit_id and sommier.produit_id != operation.produit_id:
+            raise ValidationError({"__all__": ["Le navire selectionne ne correspond pas au produit de ce BL."]})
+        if Decimal(sommier.quantite_disponible or 0) < quantite:
+            raise ValidationError(
+                {"__all__": [f"Le navire {sommier.reference_navire} n'a pas assez de stock disponible pour cette liquidation."]}
+            )
+        sommier.quantite_disponible = Decimal(sommier.quantite_disponible or 0) - quantite
+        sommier.save(update_fields=["quantite_disponible"])
+        operation.stock_sommier_deduit = True
 
 
 def _facture_unit_price(operation):
@@ -480,7 +505,7 @@ def comptable_operations(request):
     commandes_pretes = Commande.objects.select_related("client", "produit", "camion", "chauffeur").filter(
         statut="planifiee"
     ).exclude(operations__isnull=False)
-    operations = Operation.objects.select_related("commande", "client", "produit", "camion", "chauffeur")
+    operations = Operation.objects.select_related("commande", "client", "produit", "camion", "chauffeur", "remplace_par").prefetch_related("anciennes_versions")
 
     if query:
         commandes_pretes = commandes_pretes.filter(
@@ -504,6 +529,94 @@ def comptable_operations(request):
             "query": query,
             "scope": scope,
             "active_tab": "comptable",
+        },
+    )
+
+
+def sommiers_operations(request):
+    query = request.GET.get("q", "").strip()
+    produit = request.GET.get("produit", "").strip()
+    stats_date = request.GET.get("stats_date", "").strip() or str(timezone.localdate())
+
+    sommiers = Sommier.objects.select_related("produit")
+    if query:
+        sommiers = sommiers.filter(
+            Q(numero_sm__icontains=query)
+            | Q(reference_navire__icontains=query)
+            | Q(produit__nom__icontains=query)
+        )
+    if produit:
+        sommiers = sommiers.filter(produit_id=produit)
+
+    totals_by_product = (
+        Sommier.objects.select_related("produit")
+        .values("produit__nom")
+        .annotate(total_stock=Sum("quantite_disponible"))
+        .order_by("produit__nom")
+    )
+    totals_by_product = list(totals_by_product)
+    max_total_stock = max((item["total_stock"] or 0 for item in totals_by_product), default=0)
+    chart_totals = []
+    for index, item in enumerate(totals_by_product):
+        total_stock = item["total_stock"] or 0
+        width_percent = 0
+        if max_total_stock:
+            width_percent = max(10, int((total_stock / max_total_stock) * 100))
+        chart_totals.append(
+            {
+                "label": item["produit__nom"],
+                "total_stock": total_stock,
+                "width_percent": width_percent,
+                "color": "#d9534f" if "ess" in (item["produit__nom"] or "").lower() else "#1f8f6a",
+            }
+        )
+
+    sorties_queryset = (
+        Operation.objects.filter(etat_bon="liquide", date_bons_liquides=stats_date)
+        .values("produit__nom")
+        .annotate(total_sortie=Sum("quantite"))
+        .order_by("produit__nom")
+    )
+    sorties_queryset = list(sorties_queryset)
+    max_sortie = max((item["total_sortie"] or 0 for item in sorties_queryset), default=0)
+    chart_sorties = []
+    for item in sorties_queryset:
+        total_sortie = item["total_sortie"] or 0
+        width_percent = 0
+        if max_sortie:
+            width_percent = max(10, int((total_sortie / max_sortie) * 100))
+        chart_sorties.append(
+            {
+                "label": item["produit__nom"],
+                "total_sortie": total_sortie,
+                "width_percent": width_percent,
+                "color": "#d9534f" if "ess" in (item["produit__nom"] or "").lower() else "#1f8f6a",
+            }
+        )
+
+    if request.method == "POST":
+        form = SommierForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Le sommier a bien ete enregistre.")
+            return redirect("sommiers_operations")
+    else:
+        form = SommierForm(initial={"date_sommier": timezone.localdate()})
+
+    return render(
+        request,
+        "operations/sommiers.html",
+        {
+            "sommiers": sommiers,
+            "form": form,
+            "query": query,
+            "produit_filter": produit,
+            "totals_by_product": totals_by_product,
+            "chart_totals": chart_totals,
+            "stats_date": stats_date,
+            "chart_sorties": chart_sorties,
+            "produits": Produit.objects.order_by("nom"),
+            "active_tab": "sommiers",
         },
     )
 
@@ -550,6 +663,7 @@ def ajouter_operation_comptable(request):
             "regime_form": RegimeDouanierForm(),
             "depot_form": DepotForm(),
             "produit_form": ProduitForm(),
+            "sommier_form": SommierForm(),
             "page_title": "Nouvelle fiche comptable",
             "submit_label": "Enregistrer",
             "active_tab": "comptable",
@@ -584,6 +698,7 @@ def modifier_operation_comptable(request, id):
             "regime_form": RegimeDouanierForm(),
             "depot_form": DepotForm(),
             "produit_form": ProduitForm(),
+            "sommier_form": SommierForm(),
             "page_title": f"Comptable BL {operation.numero_bl}",
             "submit_label": "Mettre a jour",
             "active_tab": "comptable",
@@ -594,7 +709,7 @@ def modifier_operation_comptable(request, id):
 def facturation_operations(request):
     query = request.GET.get("q", "").strip()
     statut = request.GET.get("statut_facture", "").strip()
-    operations = Operation.objects.select_related("commande", "client", "produit").filter(etat_bon="livre")
+    operations = Operation.objects.select_related("commande", "client", "produit", "remplace_par", "camion").filter(etat_bon="livre")
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -620,6 +735,9 @@ def facturation_operations(request):
 
 def modifier_operation_facturation(request, id):
     operation = get_object_or_404(Operation, id=id, etat_bon="livre")
+    if operation.remplace_par_id:
+        messages.error(request, "Ce BL n'est plus valide suite au changement de camion. Il reste visible mais n'est plus facturable.")
+        return redirect("facturation_operations")
     if request.method == "POST":
         form = FacturationOperationForm(request.POST, instance=operation)
         if form.is_valid():
@@ -680,7 +798,15 @@ def logistique_operations(request):
 
     query = request.GET.get("q", "").strip()
     scope = request.GET.get("scope", "").strip()
-    operations = Operation.objects.select_related("client", "camion", "chauffeur")
+    operations = (
+        Operation.objects.select_related("client", "camion", "chauffeur", "commande")
+        .prefetch_related("historiques_affectation")
+        .annotate(
+            has_reaffectation=Exists(
+                HistoriqueAffectationOperation.objects.filter(operation_id=OuterRef("pk"))
+            )
+        )
+    )
     if scope == "historique":
         operations = operations.filter(camion__isnull=False)
     else:
@@ -720,7 +846,30 @@ def modifier_operation_logistique(request, id):
     if request.method == "POST":
         form = LogistiqueOperationForm(request.POST, instance=operation)
         if form.is_valid():
-            form.save()
+            ancienne_operation = Operation.objects.select_related("camion", "chauffeur").get(pk=operation.pk)
+            operation_modifiee = form.save(commit=False)
+            camion_change = ancienne_operation.camion_id != operation_modifiee.camion_id
+            doit_tracer = camion_change and ancienne_operation.etat_bon in {"charge", "livre"}
+            operation_modifiee.save()
+            if doit_tracer:
+                HistoriqueAffectationOperation.objects.create(
+                    operation=operation_modifiee,
+                    ancien_camion=ancienne_operation.camion,
+                    ancien_chauffeur=ancienne_operation.chauffeur,
+                    ancien_livreur=ancienne_operation.livreur,
+                    ancienne_date_decharge_chauffeur=ancienne_operation.date_decharge_chauffeur,
+                    ancienne_heure_decharge_chauffeur=ancienne_operation.heure_decharge_chauffeur,
+                    ancien_etat_bon=ancienne_operation.etat_bon,
+                    nouveau_camion=operation_modifiee.camion,
+                    nouveau_chauffeur=operation_modifiee.chauffeur,
+                )
+                messages.warning(
+                    request,
+                    (
+                        "Le camion du BL a ete modifie apres chargement. "
+                        "L'ancienne affectation a ete conservee dans l'historique."
+                    ),
+                )
             return redirect("logistique_operations")
     else:
         form = LogistiqueOperationForm(instance=operation)
@@ -733,6 +882,37 @@ def modifier_operation_logistique(request, id):
             "operation": operation,
             "active_tab": "logistique",
             "camion_capacites": camion_capacites,
+            "historiques_affectation": operation.historiques_affectation.select_related(
+                "ancien_camion",
+                "ancien_chauffeur",
+                "nouveau_camion",
+                "nouveau_chauffeur",
+            ),
+        },
+    )
+
+
+def ancienne_fiche_operation_logistique(request, id):
+    historique = get_object_or_404(
+        HistoriqueAffectationOperation.objects.select_related(
+            "operation",
+            "operation__client",
+            "operation__commande",
+            "ancien_camion",
+            "ancien_camion__transporteur",
+            "ancien_chauffeur",
+            "nouveau_camion",
+            "nouveau_chauffeur",
+        ),
+        id=id,
+    )
+    return render(
+        request,
+        "operations/logistique_old_sheet.html",
+        {
+            "historique": historique,
+            "operation": historique.operation,
+            "active_tab": "logistique",
         },
     )
 
@@ -770,10 +950,16 @@ def changer_etat_transitaire(request, id, etat):
         operation.date_bons_liquides = today
     try:
         operation.full_clean()
+        if etat == "liquide":
+            _decrement_sommier_stock_on_liquidation(operation)
         operation.save()
     except ValidationError as exc:
-        for errors in exc.message_dict.values():
-            for error in errors:
+        if hasattr(exc, "message_dict"):
+            for errors in exc.message_dict.values():
+                for error in errors:
+                    messages.error(request, error)
+        else:
+            for error in exc.messages:
                 messages.error(request, error)
 
     return redirect("transitaire_operations")
@@ -799,6 +985,9 @@ def logisticien_operations(request):
 
 def modifier_operation_logisticien(request, id):
     operation = get_object_or_404(Operation, id=id)
+    if operation.remplace_par_id:
+        messages.error(request, "Cet ancien BL n'est plus modifiable, car le camion a deja ete change.")
+        return redirect("logisticien_operations")
     if request.method == "POST":
         form = LogisticienOperationForm(request.POST, instance=operation)
         if form.is_valid():
@@ -1078,6 +1267,17 @@ def imprimer_bon_livraison(request, id):
     pdf.setFont("Helvetica-Bold", 17)
     pdf.drawCentredString(width / 2, height - 30 * mm, f"BON DE LIVRAISON No  {operation.numero_bl}")
 
+    if operation.remplace_par_id:
+        pdf.setFillColor(colors.HexColor("#c12f2f"))
+        pdf.setFont("Helvetica-Bold", 9)
+        nouveau_camion = operation.remplace_par.camion.numero_tracteur if operation.remplace_par.camion else "-"
+        pdf.drawCentredString(
+            width / 2,
+            height - 38 * mm,
+            f"Ce BL n'est plus valide, car le camion a ete change par le {nouveau_camion}.",
+        )
+        pdf.setFillColor(colors.black)
+
     left_x = 16 * mm
     right_x = 108 * mm
     top_y = height - 74 * mm
@@ -1208,6 +1408,7 @@ ajouter_operation = role_required()(ajouter_operation)
 modifier_operation = role_required()(modifier_operation)
 supprimer_operation = role_required()(supprimer_operation)
 comptable_operations = role_required("comptable")(comptable_operations)
+sommiers_operations = role_required("comptable", "dga", "directeur")(sommiers_operations)
 ajouter_operation_comptable = role_required("comptable")(ajouter_operation_comptable)
 modifier_operation_comptable = role_required("comptable")(modifier_operation_comptable)
 facturation_operations = role_required("comptable")(facturation_operations)
@@ -1216,6 +1417,7 @@ imprimer_facture_sans_tva = role_required("comptable")(imprimer_facture_sans_tva
 imprimer_facture_avec_tva = role_required("comptable")(imprimer_facture_avec_tva)
 logistique_operations = role_required("logistique")(logistique_operations)
 modifier_operation_logistique = role_required("logistique")(modifier_operation_logistique)
+ancienne_fiche_operation_logistique = role_required("logistique")(ancienne_fiche_operation_logistique)
 transitaire_operations = role_required("transitaire")(transitaire_operations)
 changer_etat_transitaire = role_required("transitaire")(changer_etat_transitaire)
 logisticien_operations = role_required("logistique")(logisticien_operations)

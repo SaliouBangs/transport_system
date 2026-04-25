@@ -1,6 +1,8 @@
 from django import forms
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.forms.models import construct_instance
 
-from .models import Depot, Operation, Produit, RegimeDouanier
+from .models import Depot, Operation, Produit, RegimeDouanier, Sommier
 
 
 class StyledDateInput(forms.DateInput):
@@ -27,6 +29,22 @@ class DepotForm(forms.ModelForm):
     class Meta:
         model = Depot
         fields = ["nom"]
+
+
+class SommierForm(forms.ModelForm):
+    date_sommier = forms.DateField(required=True, widget=StyledDateInput())
+
+    class Meta:
+        model = Sommier
+        fields = [
+            "numero_sm",
+            "date_sommier",
+            "reference_navire",
+            "produit",
+            "quantite_initiale",
+            "quantite_disponible",
+            "observation",
+        ]
 
 
 class OperationForm(forms.ModelForm):
@@ -71,6 +89,51 @@ class OperationForm(forms.ModelForm):
 class ComptableOperationForm(forms.ModelForm):
     date_bl = forms.DateField(required=False, widget=StyledDateInput())
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["sommier"].queryset = Sommier.objects.select_related("produit").order_by("-date_sommier", "numero_sm")
+        self.fields["sommier"].label_from_instance = (
+            lambda sommier: f"{sommier.numero_sm} - {sommier.reference_navire} - {sommier.produit.nom} - {sommier.quantite_disponible} dispo"
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        sommier = cleaned_data.get("sommier")
+        commande = cleaned_data.get("commande")
+        produit = cleaned_data.get("produit") or getattr(commande, "produit", None)
+        quantite = cleaned_data.get("quantite")
+
+        if commande:
+            produit = commande.produit
+            quantite = commande.quantite
+
+        if sommier and produit and sommier.produit_id != produit.id:
+            self.add_error("sommier", "Ce navire ne correspond pas au produit de cette commande.")
+
+        if sommier and quantite is not None and sommier.quantite_disponible is not None:
+            ancienne_quantite = 0
+            ancienne_sommier_id = None
+            if self.instance.pk:
+                ancienne_quantite = self.instance.quantite or 0
+                ancienne_sommier_id = self.instance.sommier_id
+            quantite_disponible = sommier.quantite_disponible + (ancienne_quantite if ancienne_sommier_id == sommier.id else 0)
+            if quantite > quantite_disponible:
+                self.add_error(
+                    "sommier",
+                    f"Le navire {sommier.reference_navire} n'a que {quantite_disponible} disponible pour ce produit.",
+                )
+
+        if self.instance.pk and self.instance.stock_sommier_deduit:
+            if (
+                self.instance.sommier_id != getattr(sommier, "id", None)
+                or Decimal(self.instance.quantite or 0) != Decimal(quantite or 0)
+            ):
+                raise forms.ValidationError(
+                    "Le stock de ce navire a deja ete deduit a la liquidation. Tu ne peux plus modifier le navire ou la quantite depuis la comptabilite."
+                )
+
+        return cleaned_data
+
     class Meta:
         model = Operation
         fields = [
@@ -78,6 +141,7 @@ class ComptableOperationForm(forms.ModelForm):
             "commande",
             "regime_douanier",
             "depot",
+            "sommier",
             "client",
             "destination",
             "produit",
@@ -136,6 +200,26 @@ class LogisticienOperationForm(forms.ModelForm):
             ("livre", "Livre"),
         ]
 
+    def clean(self):
+        cleaned_data = super().clean()
+        etat_bon = cleaned_data.get("etat_bon")
+        date_bons_charges = cleaned_data.get("date_bons_charges") or getattr(self.instance, "date_bons_charges", None)
+        date_bons_livres = cleaned_data.get("date_bons_livres")
+
+        if date_bons_livres and not date_bons_charges:
+            self.add_error(
+                "date_bons_livres",
+                "Tu ne peux pas renseigner la date de livraison sans date de chargement.",
+            )
+
+        if etat_bon == "livre" and not date_bons_charges:
+            self.add_error(
+                "date_bons_charges",
+                "Tu dois d'abord renseigner la date de chargement avant de livrer ce bon.",
+            )
+
+        return cleaned_data
+
     class Meta:
         model = Operation
         fields = [
@@ -149,6 +233,36 @@ class LogisticienOperationForm(forms.ModelForm):
 
 class FacturationOperationForm(forms.ModelForm):
     date_facture = forms.DateField(required=False, widget=StyledDateInput())
+
+    def _post_clean(self):
+        opts = self._meta
+        exclude = self._get_validation_exclusions()
+
+        try:
+            self.instance = construct_instance(self, self.instance, opts.fields, opts.exclude)
+        except ValidationError as error:
+            self._update_errors(error)
+            return
+
+        try:
+            self.instance.full_clean(exclude=exclude, validate_unique=False)
+        except ValidationError as error:
+            if hasattr(error, "error_dict"):
+                normalized = {}
+                non_field_errors = []
+                for field_name, field_errors in error.error_dict.items():
+                    if field_name in self.fields:
+                        normalized[field_name] = field_errors
+                    else:
+                        non_field_errors.extend(field_errors)
+                if non_field_errors:
+                    normalized[NON_FIELD_ERRORS] = non_field_errors
+                self._update_errors(ValidationError(normalized))
+            else:
+                self._update_errors(error)
+
+        if self._validate_unique:
+            self.validate_unique()
 
     class Meta:
         model = Operation

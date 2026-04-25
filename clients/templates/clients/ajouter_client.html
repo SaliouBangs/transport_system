@@ -14,6 +14,16 @@
     {% csrf_token %}
 
     <div class="form-grid">
+        {% if form.commercial.is_hidden %}
+            {{ form.commercial }}
+        {% else %}
+        <div class="field field-full">
+            <label for="{{ form.commercial.id_for_label }}">Commercial responsable</label>
+            {{ form.commercial }}
+            {% if form.commercial.errors %}<p class="field-error">{{ form.commercial.errors.0 }}</p>{% endif %}
+        </div>
+        {% endif %}
+
         <div class="field field-full">
             <label for="{{ form.prospect.id_for_label }}">Prospect</label>
             {{ form.prospect }}

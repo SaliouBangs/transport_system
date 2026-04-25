@@ -2,6 +2,9 @@ from django import forms
 
 from camions.models import Camion
 from chauffeurs.models import Chauffeur
+from clients.models import Client
+from utilisateurs.permissions import get_user_role
+from utilisateurs.permissions import is_admin_user
 
 from .models import Commande
 
@@ -24,6 +27,14 @@ class CommandeForm(forms.ModelForm):
             "quantite",
             "prix_negocie",
         ]
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        self.fields["client"].queryset = Client.objects.order_by("entreprise", "nom")
+        user_role = get_user_role(user) if user else ""
+        if user and not is_admin_user(user) and user_role != "responsable_commercial":
+            self.fields["client"].queryset = self.fields["client"].queryset.filter(commercial=user)
 
 
 class CommandeAffectationForm(forms.Form):
