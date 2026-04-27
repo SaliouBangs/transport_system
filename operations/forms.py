@@ -192,6 +192,37 @@ class LogisticienOperationForm(forms.ModelForm):
     date_bons_charges = forms.DateField(required=False, widget=StyledDateInput())
     date_bons_livres = forms.DateField(required=False, widget=StyledDateInput())
     date_bon_retour = forms.DateField(required=False, widget=StyledDateInput())
+    mouvement_camion = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 4,
+                "placeholder": "Resumez ici le mouvement du camion, les etapes franchies, les incidents ou observations terrain.",
+            }
+        ),
+    )
+    latitude_position = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=6,
+        widget=forms.NumberInput(
+            attrs={
+                "step": "0.000001",
+                "placeholder": "Latitude",
+            }
+        ),
+    )
+    longitude_position = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=6,
+        widget=forms.NumberInput(
+            attrs={
+                "step": "0.000001",
+                "placeholder": "Longitude",
+            }
+        ),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -227,6 +258,9 @@ class LogisticienOperationForm(forms.ModelForm):
             "date_bons_charges",
             "date_bons_livres",
             "date_bon_retour",
+            "mouvement_camion",
+            "latitude_position",
+            "longitude_position",
             "observation",
         ]
 

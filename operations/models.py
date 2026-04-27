@@ -158,6 +158,9 @@ class Operation(models.Model):
     date_facture = models.DateField(null=True, blank=True)
     montant_facture = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     stock_sommier_deduit = models.BooleanField(default=False)
+    mouvement_camion = models.TextField(blank=True)
+    latitude_position = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
+    longitude_position = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
     observation = models.TextField(blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 

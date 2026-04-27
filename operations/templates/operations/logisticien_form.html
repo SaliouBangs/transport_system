@@ -23,7 +23,7 @@
     </div>
     {% endif %}
 
-    <div class="operation-kpis">
+    <div class="operation-kpis operation-kpis--harmonized">
         <p>Ce camion a fait : <strong><span id="jours-voyage-value">{% if operation.jours_voyage != None %}{{ operation.jours_voyage }}{% else %}-{% endif %}</span></strong> jour(s) de voyage</p>
         <p>Et : <strong><span id="jours-retour-value">{% if operation.jours_retour_bon != None %}{{ operation.jours_retour_bon }}{% else %}-{% endif %}</span></strong> jour(s) pour retourner les bons au bureau.</p>
     </div>
@@ -33,26 +33,54 @@
     </div>
 
     <div class="form-grid operation-grid">
-        <div class="field">
-            <label for="{{ form.etat_bon.id_for_label }}">Etat du bon</label>
-            {{ form.etat_bon }}
+        <div class="field field-full">
+            <label>Etat du bon</label>
+            <div class="state-toggle" role="group" aria-label="Etat du bon">
+                <button type="button" class="state-toggle__btn" data-state-value="charge">Charge</button>
+                <button type="button" class="state-toggle__btn" data-state-value="livre">Livre</button>
+            </div>
+            <div style="display:none;">
+                {{ form.etat_bon }}
+            </div>
             {% for error in form.etat_bon.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
-        <div class="field">
+
+        <div class="field state-date-field" data-state-field="charge">
             <label for="{{ form.date_bons_charges.id_for_label }}">Date charge</label>
             {{ form.date_bons_charges }}
             {% for error in form.date_bons_charges.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
-        <div class="field">
+
+        <div class="field state-date-field" data-state-field="livre">
             <label for="{{ form.date_bons_livres.id_for_label }}">Date livre</label>
             {{ form.date_bons_livres }}
             {% for error in form.date_bons_livres.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+
         <div class="field">
             <label for="{{ form.date_bon_retour.id_for_label }}">Date retour bon</label>
             {{ form.date_bon_retour }}
             {% for error in form.date_bon_retour.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+
+        <div class="field field-full">
+            <label for="{{ form.mouvement_camion.id_for_label }}">Mouvement du camion</label>
+            {{ form.mouvement_camion }}
+            {% for error in form.mouvement_camion.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.latitude_position.id_for_label }}">Latitude</label>
+            {{ form.latitude_position }}
+            {% for error in form.latitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.longitude_position.id_for_label }}">Longitude</label>
+            {{ form.longitude_position }}
+            {% for error in form.longitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+
         <div class="field field-full">
             <label for="{{ form.observation.id_for_label }}">Observation</label>
             {{ form.observation }}
@@ -79,6 +107,8 @@ const logisticienJoursVoyage = document.getElementById("jours-voyage-value");
 const logisticienJoursRetour = document.getElementById("jours-retour-value");
 const livraisonWarning = document.getElementById("livraison-warning");
 const livraisonWarningText = document.getElementById("livraison-warning-text");
+const logisticienStateButtons = document.querySelectorAll("[data-state-value]");
+const logisticienStateFields = document.querySelectorAll("[data-state-field]");
 
 function diffInDays(startValue, endValue) {
     if (!startValue || !endValue) {
@@ -120,6 +150,36 @@ function refreshLivraisonWarning() {
     livraisonWarning.hidden = true;
 }
 
+function refreshLogisticienStateUI() {
+    const currentState = logisticienEtatBon?.value;
+
+    logisticienStateButtons.forEach((button) => {
+        const isActive = button.dataset.stateValue === currentState;
+        button.classList.toggle("state-toggle__btn--active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+
+    logisticienStateFields.forEach((field) => {
+        const fieldState = field.dataset.stateField;
+        const shouldShow =
+            fieldState === "charge"
+                ? currentState === "charge" || currentState === "livre"
+                : currentState === "livre";
+        field.hidden = !shouldShow;
+    });
+}
+
+logisticienStateButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        if (!logisticienEtatBon) {
+            return;
+        }
+        logisticienEtatBon.value = button.dataset.stateValue;
+        refreshLogisticienStateUI();
+        refreshLivraisonWarning();
+    });
+});
+
 [logisticienDateCharge, logisticienDateLivre, logisticienDateRetour, logisticienEtatBon].forEach((input) => {
     input?.addEventListener("input", refreshLogisticienKpis);
     input?.addEventListener("change", refreshLogisticienKpis);
@@ -127,7 +187,44 @@ function refreshLivraisonWarning() {
     input?.addEventListener("change", refreshLivraisonWarning);
 });
 
+refreshLogisticienStateUI();
 refreshLogisticienKpis();
 refreshLivraisonWarning();
 </script>
+<style>
+.operation-kpis--harmonized {
+    border-top: 3px solid #4d73d1;
+    background: #f6faff;
+}
+
+.state-toggle {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.state-toggle__btn {
+    min-width: 140px;
+    border: 1px solid #c9d8e6;
+    background: #f6fafc;
+    color: #123047;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.state-toggle__btn:hover {
+    border-color: #2da88b;
+    color: #0e846b;
+}
+
+.state-toggle__btn--active {
+    background: linear-gradient(135deg, #39b490, #2a8f78);
+    border-color: #2a8f78;
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(42, 143, 120, 0.2);
+}
+</style>
 {% endblock %}
