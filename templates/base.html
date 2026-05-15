@@ -1095,13 +1095,14 @@ min-width:0;
 
 {% if can_access_settings or can_access_operations_general %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if request.path == '/operations/' or '/comptes/' in request.path or '/camions/affretes/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if request.path == '/operations/' or '/comptes/' in request.path or '/camions/affretes/' in request.path or '/operations/produits/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9881;</span>Administration</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if request.path == '/operations/' or '/comptes/' in request.path or '/camions/affretes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if request.path == '/operations/' or '/comptes/' in request.path or '/camions/affretes/' in request.path or '/operations/produits/' in request.path %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_operations_general %}<a href="/operations/" class="{% if request.path == '/operations/' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Vue generale operations</span></a>{% endif %}
     {% if is_admin_user %}<a href="/camions/affretes/" class="{% if '/camions/affretes/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Affretes</span></a>{% endif %}
+    {% if is_admin_user %}<a href="/operations/produits/" class="{% if '/operations/produits/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Produits</span></a>{% endif %}
     {% if can_access_settings %}<a href="/comptes/parametres/" class="{% if '/comptes/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9881;</span>Parametres</span></a>{% endif %}
 </div>
 </div>

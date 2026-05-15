@@ -49,6 +49,7 @@ urlpatterns = [
     path("chef-chauffeur/historique/", views.historique_chef_chauffeur_operations, name="historique_chef_chauffeur_operations"),
     path("chef-chauffeur/<int:id>/action/<str:action>/", views.action_chef_chauffeur, name="action_chef_chauffeur"),
     path("chef-chauffeur/<int:id>/modifier/", views.modifier_operation_logisticien, name="modifier_operation_chef_chauffeur"),
+    path("produits/", views.gestion_produits, name="gestion_produits"),
     path("produits/ajouter-modal/", views.ajouter_produit_modal, name="ajouter_produit_modal"),
     path("regimes/ajouter-modal/", views.ajouter_regime_modal, name="ajouter_regime_modal"),
     path("depots/ajouter-modal/", views.ajouter_depot_modal, name="ajouter_depot_modal"),

@@ -3087,6 +3087,27 @@ def ajouter_produit_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def gestion_produits(request):
+    if request.method == "POST":
+        form = ProduitForm(request.POST)
+        if form.is_valid():
+            produit = form.save()
+            messages.success(request, f"Le produit {produit.nom} a ete ajoute.")
+            return redirect("gestion_produits")
+    else:
+        form = ProduitForm()
+
+    return render(
+        request,
+        "operations/produits.html",
+        {
+            "form": form,
+            "produits": Produit.objects.order_by("nom"),
+            "active_tab": "produits",
+        },
+    )
+
+
 def ajouter_regime_modal(request):
     if request.method != "POST":
         return JsonResponse(
@@ -3499,6 +3520,7 @@ historique_chef_chauffeur_operations = role_required("chef_chauffeur")(historiqu
 action_chef_chauffeur = role_required("chef_chauffeur")(action_chef_chauffeur)
 action_groupee_transitaire = role_required("transitaire")(action_groupee_transitaire)
 modifier_operation_logisticien = role_required("logistique", "chef_chauffeur")(modifier_operation_logisticien)
+gestion_produits = role_required()(gestion_produits)
 ajouter_produit_modal = role_required("comptable", "logistique")(ajouter_produit_modal)
 ajouter_regime_modal = role_required("comptable", "logistique")(ajouter_regime_modal)
 ajouter_depot_modal = role_required("comptable", "logistique")(ajouter_depot_modal)

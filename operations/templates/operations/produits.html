@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Administration</p>
+    <h1>Produits</h1>
+  </div>
+</div>
+
+<div class="operation-shell" style="display:grid; gap:20px;">
+  <section class="form-shell" style="max-width:none;">
+    <div class="page-header" style="margin-bottom:14px;">
+      <div>
+        <div class="section-label">Saisie</div>
+        <h3 style="margin:4px 0 0; color:var(--navy);">Ajouter un produit</h3>
+      </div>
+    </div>
+
+    <form method="post" class="app-form">
+      {% csrf_token %}
+      <div class="form-grid" style="grid-template-columns:minmax(0,1fr) auto;">
+        <div class="field">
+          <label for="{{ form.nom.id_for_label }}">Nom du produit</label>
+          {{ form.nom }}
+          {% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label style="visibility:hidden;">Action</label>
+          <button type="submit" class="btn">Ajouter le produit</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="form-shell" style="max-width:none; padding:0; overflow:hidden;">
+    <div style="padding:18px 22px; border-bottom:1px solid rgba(217, 226, 232, 0.85); background:linear-gradient(135deg, rgba(18, 48, 71, 0.04), rgba(79, 191, 159, 0.09)); display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center;">
+      <div>
+        <div class="section-label">Catalogue</div>
+        <h3 style="margin:4px 0 0; color:var(--navy);">Produits disponibles</h3>
+      </div>
+      <div class="commandes-filter-chip">
+        <span>Total :</span>
+        <strong>{{ produits|length }} produit(s)</strong>
+      </div>
+    </div>
+
+    <div style="padding:0 0 4px;">
+      <table class="table" style="margin-top:0; box-shadow:none; border-radius:0;">
+        <thead>
+          <tr>
+            <th>Nom</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for produit in produits %}
+          <tr>
+            <td><strong>{{ produit.nom }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td style="text-align:center; color:var(--muted); padding:24px 16px;">Aucun produit enregistre pour le moment.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
