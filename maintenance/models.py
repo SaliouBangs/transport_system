@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -17,6 +17,36 @@ class TypeMaintenance(models.Model):
 
     def __str__(self):
         return self.libelle
+
+
+class PanneCatalogue(models.Model):
+    type_maintenance = models.ForeignKey(
+        TypeMaintenance,
+        on_delete=models.CASCADE,
+        related_name="pannes_catalogue",
+    )
+    libelle = models.CharField(max_length=160)
+
+    class Meta:
+        ordering = ["type_maintenance__libelle", "libelle"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["type_maintenance", "libelle"],
+                name="unique_panne_by_type_maintenance",
+            )
+        ]
+
+    def clean(self):
+        self.libelle = (self.libelle or "").strip()
+        if not self.libelle:
+            raise ValidationError({"libelle": "Le libelle de la panne est obligatoire."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.type_maintenance.libelle} - {self.libelle}"
 
 
 class Fournisseur(models.Model):
@@ -68,7 +98,9 @@ class ArticleStock(models.Model):
     unite = models.CharField(max_length=50, default="piece")
     quantite_stock = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     seuil_alerte = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    prix_unitaire = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    prix_unitaire = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    prix_conditionnement = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    unite_prix_conditionnement = models.CharField(max_length=50, blank=True)
     fournisseur = models.ForeignKey(
         Fournisseur,
         on_delete=models.SET_NULL,
@@ -107,6 +139,29 @@ class ArticleStock(models.Model):
     @property
     def valeur_stock(self):
         return (self.quantite_stock or Decimal("0")) * (self.prix_unitaire or Decimal("0"))
+
+    @property
+    def prix_conditionnement_display(self):
+        if not self.prix_conditionnement:
+            return ""
+        unit = self.unite_prix_conditionnement or self.unite
+        return f"{self._format_decimal(self.prix_conditionnement)} GNF / {unit}"
+
+    @property
+    def prix_unitaire_display(self):
+        if not self.prix_unitaire:
+            return f"0 GNF / {self.unite}"
+        return f"{self._format_decimal(self.prix_unitaire)} GNF / {self.unite}"
+
+    @property
+    def prix_conditionnement_equivalent_display(self):
+        if not self.prix_conditionnement:
+            return ""
+        unit = (self.unite_prix_conditionnement or self.unite or "").strip().lower()
+        principal = (self.unite or "").strip().lower()
+        if not unit or unit == principal:
+            return ""
+        return f"Equivalent : {self.prix_unitaire_display}"
 
     @property
     def unite_principale(self):
@@ -152,10 +207,15 @@ class ArticleStock(models.Model):
             return text[:-1]
         return text
 
+    @staticmethod
+    def _money(value):
+        return Decimal(value or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     def clean(self):
         self.libelle = (self.libelle or "").strip()
         self.categorie = (self.categorie or "").strip()
         self.unite = ((self.unite or "").strip().lower() or "piece")
+        self.unite_prix_conditionnement = (self.unite_prix_conditionnement or "").strip().lower()
         self.observation = (self.observation or "").strip()
         if self.quantite_stock is not None and self.quantite_stock < 0:
             raise ValidationError({"quantite_stock": "Le stock ne peut pas etre negatif."})
@@ -163,6 +223,8 @@ class ArticleStock(models.Model):
             raise ValidationError({"seuil_alerte": "Le seuil d'alerte ne peut pas etre negatif."})
         if self.prix_unitaire is not None and self.prix_unitaire < 0:
             raise ValidationError({"prix_unitaire": "Le prix unitaire ne peut pas etre negatif."})
+        if self.prix_conditionnement is not None and self.prix_conditionnement < 0:
+            raise ValidationError({"prix_conditionnement": "Le prix du conditionnement ne peut pas etre negatif."})
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -229,7 +291,17 @@ class MouvementStock(models.Model):
     quantite_saisie = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     unite_saisie = models.CharField(max_length=50, blank=True)
     coefficient_conversion = models.DecimalField(max_digits=12, decimal_places=2, default=1)
-    prix_unitaire = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    prix_unitaire = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    prix_conditionnement = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    remise = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    montant_net = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    fournisseur = models.ForeignKey(
+        Fournisseur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mouvements_stock",
+    )
     reference = models.CharField(max_length=80, blank=True)
     observation = models.TextField(blank=True)
     date_mouvement = models.DateTimeField(default=timezone.now)
@@ -249,6 +321,10 @@ class MouvementStock(models.Model):
     def clean(self):
         self.reference = (self.reference or "").strip()
         self.observation = (self.observation or "").strip()
+        if self.prix_conditionnement is not None and self.prix_conditionnement < 0:
+            raise ValidationError({"prix_conditionnement": "Le prix du conditionnement ne peut pas etre negatif."})
+        if self.remise is not None and self.remise < 0:
+            raise ValidationError({"remise": "La remise ne peut pas etre negative."})
         if self.quantite_saisie is None:
             self.quantite_saisie = self.quantite
         if self.quantite_saisie is None or self.quantite_saisie <= 0:
@@ -265,6 +341,10 @@ class MouvementStock(models.Model):
                 current_stock = previous.stock_avant
         if self.type_mouvement == "sortie" and self.quantite > current_stock:
             raise ValidationError({"quantite_saisie": f"Stock insuffisant. Disponible: {current_stock} {self.article.unite}."})
+        if self.type_mouvement == "entree":
+            montant_brut = (self.quantite_saisie or Decimal("0")) * (self.prix_conditionnement or Decimal("0"))
+            if (self.remise or Decimal("0")) > montant_brut:
+                raise ValidationError({"remise": "La remise ne peut pas depasser le montant brut de l'achat."})
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -272,16 +352,53 @@ class MouvementStock(models.Model):
             raise ValidationError("La modification d'un mouvement de stock n'est pas autorisee.")
         self.full_clean()
         stock_actuel = self.article.quantite_stock or Decimal("0")
+        cmp_actuel = self.article.prix_unitaire or Decimal("0")
+        valeur_stock_avant = stock_actuel * cmp_actuel
         self.stock_avant = stock_actuel
         if self.type_mouvement == "entree":
-            self.stock_apres = stock_actuel + self.quantite
+            montant_brut = ArticleStock._money((self.quantite_saisie or Decimal("0")) * (self.prix_conditionnement or Decimal("0")))
+            self.montant_net = ArticleStock._money(montant_brut - (self.remise or Decimal("0")))
+            self.prix_unitaire = ArticleStock._money(
+                self.montant_net / self.quantite if self.quantite and self.montant_net > 0 else Decimal("0")
+            )
+            self.stock_apres = ArticleStock._money(stock_actuel + self.quantite)
+            valeur_stock_apres = valeur_stock_avant + self.montant_net
+            nouveau_cmp = ArticleStock._money(
+                valeur_stock_apres / self.stock_apres if self.stock_apres > 0 else Decimal("0")
+            )
         elif self.type_mouvement == "sortie":
-            self.stock_apres = stock_actuel - self.quantite
+            self.prix_unitaire = ArticleStock._money(cmp_actuel)
+            self.montant_net = ArticleStock._money(self.quantite * cmp_actuel)
+            self.prix_conditionnement = Decimal("0")
+            self.remise = Decimal("0")
+            self.stock_apres = ArticleStock._money(stock_actuel - self.quantite)
+            nouveau_cmp = ArticleStock._money(cmp_actuel)
         else:
-            self.stock_apres = self.quantite
+            self.prix_unitaire = ArticleStock._money(cmp_actuel)
+            self.montant_net = ArticleStock._money(self.quantite * cmp_actuel)
+            self.prix_conditionnement = Decimal("0")
+            self.remise = Decimal("0")
+            self.stock_apres = ArticleStock._money(self.quantite)
+            nouveau_cmp = ArticleStock._money(cmp_actuel)
         super().save(*args, **kwargs)
-        self.article.quantite_stock = self.stock_apres
-        self.article.save(update_fields=["quantite_stock"])
+        self.article.quantite_stock = ArticleStock._money(self.stock_apres)
+        self.article.prix_unitaire = ArticleStock._money(nouveau_cmp)
+        if self.type_mouvement == "entree":
+            self.article.prix_conditionnement = ArticleStock._money(self.prix_conditionnement or Decimal("0"))
+            self.article.unite_prix_conditionnement = self.unite_saisie or self.article.unite
+            if self.fournisseur_id:
+                self.article.fournisseur = self.fournisseur
+                self.article.save(
+                    update_fields=[
+                        "quantite_stock",
+                        "prix_unitaire",
+                        "prix_conditionnement",
+                        "unite_prix_conditionnement",
+                        "fournisseur",
+                    ]
+                )
+                return
+        self.article.save(update_fields=["quantite_stock", "prix_unitaire", "prix_conditionnement", "unite_prix_conditionnement"])
 
     def __str__(self):
         return f"{self.article.libelle} - {self.get_type_mouvement_display()}"
@@ -311,6 +428,9 @@ class Maintenance(models.Model):
     date_fin = models.DateTimeField(null=True, blank=True)
     date_paiement = models.DateField(null=True, blank=True)
     mode_paiement = models.CharField(max_length=100, blank=True)
+    receveur_nom = models.CharField(max_length=150, blank=True)
+    receveur_poste = models.CharField(max_length=150, blank=True)
+    receveur_telephone = models.CharField(max_length=50, blank=True)
     kilometrage_entree = models.PositiveIntegerField(null=True, blank=True)
     kilometrage_sortie = models.PositiveIntegerField(null=True, blank=True)
     prochaine_vidange_dans_km = models.PositiveIntegerField(null=True, blank=True)
@@ -366,6 +486,9 @@ class Maintenance(models.Model):
             camion.save(update_fields=["etat"])
 
     def clean(self):
+        self.receveur_nom = (self.receveur_nom or "").strip()
+        self.receveur_poste = (self.receveur_poste or "").strip()
+        self.receveur_telephone = (self.receveur_telephone or "").strip()
         if self.date_fin and self.date_fin < self.date_debut:
             raise ValidationError("La date de fin ne peut pas etre avant la date de debut.")
         if (
@@ -406,7 +529,10 @@ class Maintenance(models.Model):
             or Decimal("0")
         )
         total_pieces = (
-            MaintenanceSousLigne.objects.filter(maintenance_ligne__maintenance=self).aggregate(total=Sum("montant"))["total"]
+            MaintenanceSousLigne.objects.filter(
+                maintenance_ligne__maintenance=self,
+                article_stock__isnull=True,
+            ).aggregate(total=Sum("montant"))["total"]
             or Decimal("0")
         )
         total = total_lignes + total_pieces
@@ -414,6 +540,20 @@ class Maintenance(models.Model):
         if commit and self.pk:
             Maintenance.objects.filter(pk=self.pk).update(total_facture=total)
         return total
+
+    @property
+    def total_information_stock(self):
+        return (
+            MaintenanceSousLigne.objects.filter(
+                maintenance_ligne__maintenance=self,
+                article_stock__isnull=False,
+            ).aggregate(total=Sum("montant"))["total"]
+            or Decimal("0")
+        )
+
+    @property
+    def total_global_information(self):
+        return (self.total_facture or Decimal("0")) + self.total_information_stock
 
     def is_pricing_complete(self):
         lignes = list(self.lignes.prefetch_related("sous_lignes"))
@@ -499,6 +639,41 @@ class Maintenance(models.Model):
         return f"{self.reference} - {self.camion.numero_tracteur}"
 
 
+class MaintenanceFacture(models.Model):
+    maintenance = models.ForeignKey(
+        Maintenance,
+        on_delete=models.CASCADE,
+        related_name="factures_achat",
+    )
+    fournisseur = models.ForeignKey(
+        Fournisseur,
+        on_delete=models.PROTECT,
+        related_name="factures_maintenance",
+    )
+    numero_facture = models.CharField(max_length=80)
+    facture_fichier = models.FileField(upload_to="maintenance/factures/")
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def clean(self):
+        self.numero_facture = (self.numero_facture or "").strip()
+        if not self.fournisseur_id:
+            raise ValidationError({"fournisseur": "Le fournisseur est obligatoire."})
+        if not self.numero_facture:
+            raise ValidationError({"numero_facture": "Le numero de facture est obligatoire."})
+        if not self.facture_fichier:
+            raise ValidationError({"facture_fichier": "Le fichier facture est obligatoire."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.numero_facture} - {self.fournisseur}"
+
+
 class MaintenanceLigne(models.Model):
     maintenance = models.ForeignKey(
         Maintenance,
@@ -554,6 +729,13 @@ class MaintenanceSousLigne(models.Model):
         blank=True,
         related_name="maintenances_consommees",
     )
+    panne_catalogue = models.ForeignKey(
+        PanneCatalogue,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sous_lignes_maintenance",
+    )
     mouvement_stock = models.OneToOneField(
         MouvementStock,
         on_delete=models.SET_NULL,
@@ -571,6 +753,8 @@ class MaintenanceSousLigne(models.Model):
 
     def clean(self):
         self.libelle = (self.libelle or "").strip()
+        if self.panne_catalogue_id and not self.libelle:
+            self.libelle = self.panne_catalogue.libelle
         if self.article_stock and not self.libelle:
             self.libelle = self.article_stock.libelle
         if not self.libelle:

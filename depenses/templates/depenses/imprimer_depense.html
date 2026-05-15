@@ -1,0 +1,343 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etat {{ depense.reference }}</title>
+<style>
+body{
+    font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color:#163042;
+    margin:24px;
+    background:#f4f7fb;
+}
+.sheet{
+    max-width:1040px;
+    margin:0 auto;
+    background:#ffffff;
+    border-radius:24px;
+    padding:28px;
+    box-shadow:0 24px 60px rgba(18,48,71,0.08);
+}
+.actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:18px;
+}
+.print-btn{
+    border:none;
+    background:#249274;
+    color:white;
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
+}
+.header{
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    align-items:flex-start;
+    margin-bottom:24px;
+}
+.brand{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+}
+.brand img{
+    width:88px;
+    height:auto;
+    object-fit:contain;
+}
+.eyebrow{
+    margin:0 0 6px 0;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:0.78rem;
+    font-weight:700;
+    color:#249274;
+}
+h1,h2,h3,p{
+    margin-top:0;
+}
+h1{
+    margin-bottom:8px;
+}
+.muted{
+    color:#5f7384;
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    margin-bottom:24px;
+}
+.box{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#f9fbfd;
+}
+.box strong{
+    display:block;
+    margin-bottom:6px;
+}
+.summary{
+    display:grid;
+    grid-template-columns:1.2fr 0.8fr;
+    gap:18px;
+    margin-bottom:24px;
+}
+.summary-table{
+    width:100%;
+    border-collapse:collapse;
+}
+.summary-table th,
+.summary-table td{
+    padding:8px 0;
+    text-align:left;
+    vertical-align:top;
+    border-bottom:1px solid #edf2f6;
+}
+.summary-table th{
+    width:40%;
+    color:#5f7384;
+    font-weight:700;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:12px;
+}
+th{
+    background:#123047;
+    color:white;
+    text-align:left;
+    padding:10px 12px;
+    font-size:0.95rem;
+}
+td{
+    border:1px solid #d9e2e8;
+    padding:10px 12px;
+    vertical-align:top;
+}
+.amount-box{
+    background:#123047;
+    color:white;
+    border-radius:18px;
+    padding:18px;
+}
+.amount-box h2{
+    margin-bottom:14px;
+    font-size:1rem;
+}
+.amount-value{
+    font-size:2rem;
+    font-weight:800;
+    margin-bottom:8px;
+}
+.amount-words{
+    color:#d9edf1;
+    line-height:1.5;
+}
+.validation-list{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+    margin-top:16px;
+}
+.validation-card{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#fff;
+}
+.validation-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:10px;
+}
+.badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:0.78rem;
+    font-weight:700;
+}
+.badge-ok{
+    background:#e7f7ef;
+    color:#18794e;
+}
+.badge-pending{
+    background:#fff3d7;
+    color:#946200;
+}
+.badge-danger{
+    background:#fde8e8;
+    color:#b42318;
+}
+.validation-meta{
+    color:#5f7384;
+    font-size:0.92rem;
+    line-height:1.5;
+}
+.block-title{
+    margin:0 0 10px 0;
+    font-size:1.15rem;
+}
+@media print{
+    body{
+        margin:0;
+        background:#fff;
+    }
+    .sheet{
+        max-width:none;
+        box-shadow:none;
+        border-radius:0;
+        padding:0;
+    }
+    .actions{
+        display:none;
+    }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="actions">
+        <button type="button" class="print-btn" onclick="window.print()">Imprimer</button>
+    </div>
+
+    <div class="header">
+        <div class="brand">
+            <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
+            <div>
+                <p class="eyebrow">Depenses / etat recapitulatif</p>
+                <h1>Etat {{ depense.reference }}</h1>
+                <p class="muted">Rapport d'expression de besoin, d'engagement, de validation et de paiement.</p>
+            </div>
+        </div>
+        <div class="box" style="min-width:260px;">
+            <strong>Statut actuel</strong>
+            {{ depense.get_statut_display }}<br>
+            <span class="muted">Date creation : {{ depense.date_creation|date:"d/m/Y H:i" }}</span><br>
+            <span class="muted">Paiement : {% if depense.date_paiement %}{{ depense.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</span>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="box">
+            <strong>Expression de besoin</strong>
+            Demandeur : {{ depense.demandeur.username }}<br>
+            Titre : {{ depense.titre }}<br>
+            Montant estime : {{ depense.montant_estime|default:"-" }}
+        </div>
+        {% if is_charge_related %}
+        <div class="box">
+            <strong>BL / camion rattache</strong>
+            BL : {{ depense.operation.numero_bl }}<br>
+            Camion : {{ depense.operation.camion|default:"-" }}<br>
+            Chauffeur : {{ depense.operation.chauffeur|default:"-" }}<br>
+            Date charge : {{ depense.operation.date_bons_charges|date:"d/m/Y"|default:"-" }}<br>
+            Libelle : {{ depense.libelle_depense|default:"-" }}
+        </div>
+        {% else %}
+        <div class="box">
+            <strong>Decision finale</strong>
+            Mode decide par DG : {{ depense.get_mode_reglement_display|default:"-" }}<br>
+            Mode effectif : {{ depense.mode_paiement_effectif|default:"-" }}<br>
+            Reference paiement : {{ depense.reference_paiement|default:"-" }}
+        </div>
+        {% endif %}
+        <div class="box">
+            <strong>Fournisseur / projet</strong>
+            Fournisseur : {{ depense.fournisseur|default:"-" }}<br>
+            Type de depense : {{ depense.type_depense|default:"-" }}<br>
+            Lieu / projet : {{ depense.lieu_ou_projet|default:"-" }}
+        </div>
+        <div class="box">
+            <strong>Facturation / justificatif</strong>
+            Numero facture : {{ depense.numero_facture|default:"-" }}<br>
+            Piece justificative :
+            {% if depense.piece_justificative %}
+            disponible
+            {% else %}
+            -
+            {% endif %}<br>
+            Numero cheque : {{ depense.numero_cheque|default:"-" }}
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="box">
+            <h2 class="block-title">Informations generales</h2>
+            <table class="summary-table">
+                <tbody>
+                    <tr><th>Reference</th><td>{{ depense.reference }}</td></tr>
+                    <tr><th>Description</th><td>{{ depense.description|default:"-" }}</td></tr>
+                    <tr><th>Observation achat</th><td>{{ depense.engagement_observation|default:"-" }}</td></tr>
+                    <tr><th>Observation paiement</th><td>{{ depense.paiement_observation|default:"-" }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="amount-box">
+            <h2>Montant total</h2>
+            <div class="amount-value">{{ montant_total_affiche }} GNF</div>
+            <div class="amount-words">{{ montant_en_lettres|capfirst }}</div>
+        </div>
+    </div>
+
+    <div class="box" style="margin-bottom:24px;">
+        <h2 class="block-title">{% if is_charge_related %}Lignes / details de la depense{% else %}Lignes d'engagement{% endif %}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Designation</th>
+                    <th>Qte</th>
+                    <th>Prix unitaire</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in lignes %}
+                <tr>
+                    <td>{{ ligne.designation }}</td>
+                    <td>{{ ligne.quantite_affiche }}</td>
+                    <td>{{ ligne.prix_unitaire_affiche }} GNF</td>
+                    <td>{{ ligne.montant_affiche }} GNF</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">Aucune ligne disponible.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="box">
+        <h2 class="block-title">Circuit de validation</h2>
+        <div class="validation-list">
+            {% for step in validation_steps %}
+            <div class="validation-card">
+                <div class="validation-head">
+                    <strong>{{ step.label }}</strong>
+                    <span class="badge badge-{{ step.variant }}">{{ step.status }}</span>
+                </div>
+                <div class="validation-meta">
+                    <div>Utilisateur : {{ step.by }}</div>
+                    <div>Date : {% if step.at %}{{ step.at|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
+                    {% if step.motif %}<div>Motif : {{ step.motif }}</div>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</body>
+</html>

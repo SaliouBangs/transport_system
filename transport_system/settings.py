@@ -6,6 +6,8 @@ import os
 from importlib.util import find_spec
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 try:
     import dj_database_url
 except ImportError:  # pragma: no cover - optional locally until deployment deps are installed
@@ -27,6 +29,14 @@ def env_bool(name, default=False):
 def env_list(name, default=""):
     value = os.getenv(name, default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def env_int(name, default=0):
+    value = os.getenv(name, str(default)).strip()
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 SECRET_KEY = os.getenv(
@@ -62,6 +72,7 @@ INSTALLED_APPS = [
     'maintenance',
     'documents',
     'operations',
+    'depenses',
     'utilisateurs',
 ]
 
@@ -116,6 +127,8 @@ if database_url and dj_database_url:
         conn_max_age=600,
         ssl_require=not DEBUG,
     )
+elif not DEBUG:
+    raise ImproperlyConfigured("DATABASE_URL est obligatoire en production.")
 
 
 # Password validation
@@ -171,6 +184,10 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    SECURE_HSTS_SECONDS = env_int("DJANGO_SECURE_HSTS_SECONDS", 3600)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
+    SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 
 LOGIN_URL = "/comptes/connexion/"
 LOGIN_REDIRECT_URL = "/"

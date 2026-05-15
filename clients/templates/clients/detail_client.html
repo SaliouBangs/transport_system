@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+
+<div class="client-detail-shell">
+    <div class="client-detail-hero">
+        <div class="client-hero-main">
+            <p class="eyebrow">Base clients</p>
+            <h1>Detail client - {{ client.entreprise }}</h1>
+            <p class="client-hero-subtitle">
+                {{ client.nom|default:"Contact non renseigne" }}{% if client.fonction_contact %} - {{ client.fonction_contact }}{% endif %}
+            </p>
+
+            <div class="client-identity-grid">
+                <div class="identity-card">
+                    <span class="identity-label">Telephone</span>
+                    <strong>{{ client.telephone|default:"-" }}</strong>
+                    <small>{{ client.ville|default:"Ville non renseignee" }}</small>
+                </div>
+                <div class="identity-card">
+                    <span class="identity-label">Portefeuille</span>
+                    <strong>{% if client.commercial %}{{ client.commercial.get_full_name|default:client.commercial.username }}{% else %}-{% endif %}</strong>
+                    <small>Commercial rattache</small>
+                </div>
+                <div class="identity-card">
+                    <span class="identity-label">Delai de paiement</span>
+                    <strong>{{ client.delai_paiement_jours }} jour(s)</strong>
+                    <small>Echeance contractuelle</small>
+                </div>
+                <div class="identity-card">
+                    <span class="identity-label">Solde initial</span>
+                    <strong>{{ client.solde_initial|gnf }}</strong>
+                    <small>{% if client.date_solde_initial %}Au {{ client.date_solde_initial|date:"d/m/Y" }}{% else %}Aucune date renseignee{% endif %}</small>
+                </div>
+            </div>
+        </div>
+
+        <aside class="client-hero-side">
+            <div class="client-action-panel">
+                <div class="client-action-buttons">
+                    <a href="/clients/" class="btn-secondary">Retour</a>
+                    <a href="/clients/rapport-financier/{{ client.id }}/" class="btn-secondary">Rapport financier</a>
+                    {% if can_edit_clients %}<a href="/clients/modifier/{{ client.id }}/" class="btn-edit">Modifier</a>{% endif %}
+                </div>
+                <div class="client-risk-banner {% if disponible_decouvert < 0 %}is-danger{% elif risque_client > 0 %}is-warning{% else %}is-safe{% endif %}">
+                    <span class="risk-banner-label">Situation DMA</span>
+                    <strong>
+                        {% if disponible_decouvert < 0 %}
+                        Client hors seuil
+                        {% elif risque_client > 0 %}
+                        Sous surveillance
+                        {% else %}
+                        Situation saine
+                        {% endif %}
+                    </strong>
+                    <small>Disponible avant decouvert : {{ disponible_decouvert|gnf }}</small>
+                </div>
+                <div class="client-address-card">
+                    <span class="identity-label">Siege du client</span>
+                    <strong>{{ client.adresse|default:"-" }}</strong>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="client-finance-grid">
+        <div class="finance-card finance-card--danger">
+            <span class="finance-label">Risque net</span>
+            <strong>{{ risque_client|gnf }}</strong>
+            <small>Encours + engagement - avances</small>
+        </div>
+        <div class="finance-card finance-card--warning">
+            <span class="finance-label">DMA</span>
+            <strong>{{ client.decouvert_maximum_autorise|gnf }}</strong>
+            <small>Decouvert maximum autorise</small>
+        </div>
+        <div class="finance-card finance-card--danger-soft">
+            <span class="finance-label">Disponible avant decouvert</span>
+            <strong class="{% if disponible_decouvert < 0 %}text-danger{% endif %}">{{ disponible_decouvert|gnf }}</strong>
+            <small>Marge restante avant alerte</small>
+        </div>
+        <div class="finance-card finance-card--blue">
+            <span class="finance-label">Encours reel</span>
+            <strong>{{ client.encours_client|gnf }}</strong>
+            <small>Creances immediates</small>
+        </div>
+        <div class="finance-card finance-card--green">
+            <span class="finance-label">Paiements anticipes</span>
+            <strong>{{ paiements_anticipes|gnf }}</strong>
+            <small>Montants recus d'avance</small>
+        </div>
+        <div class="finance-card finance-card--slate">
+            <span class="finance-label">Total encaissements</span>
+            <strong>{{ total_encaissements|gnf }}</strong>
+            <small>Tous paiements confondus</small>
+        </div>
+        <div class="finance-card finance-card--amber">
+            <span class="finance-label">Total commandes valorisees</span>
+            <strong>{{ valorisation_commandes|gnf }}</strong>
+            <small>Base commandes filtrees</small>
+        </div>
+        <div class="finance-card finance-card--violet">
+            <span class="finance-label">Total livre</span>
+            <strong>{{ valorisation_livree|gnf }}</strong>
+            <small>Montants deja livres</small>
+        </div>
+        <div class="finance-card finance-card--blue-soft">
+            <span class="finance-label">Solde initial restant</span>
+            <strong>{{ solde_initial_restant|gnf }}</strong>
+            <small>Reliquat du solde initial</small>
+        </div>
+        <div class="finance-card finance-card--slate">
+            <span class="finance-label">Paiements sur solde initial</span>
+            <strong>{{ total_encaissements_solde_initial|gnf }}</strong>
+            <small>Reglements affectes au solde initial</small>
+        </div>
+        <div class="finance-card finance-card--essence">
+            <span class="finance-label">Total essence</span>
+            <strong>{{ total_essence|gnf }}</strong>
+            <small>Valorisation produit essence</small>
+        </div>
+        <div class="finance-card finance-card--gasoil">
+            <span class="finance-label">Total gasoil</span>
+            <strong>{{ total_gasoil|gnf }}</strong>
+            <small>Valorisation produit gasoil</small>
+        </div>
+    </div>
+
+    <div class="client-detail-grid">
+        <section class="detail-section">
+            <div class="section-header">
+                <div>
+                    <p class="eyebrow">Pilotage</p>
+                    <h2>Destinations et contexte</h2>
+                </div>
+            </div>
+            <div class="detail-card-grid">
+                <div class="detail-panel detail-panel--full">
+                    <span class="detail-panel-label">Adresses de destination</span>
+                    <div class="detail-list">
+                        {% for destination in client.destinations.all %}
+                        <div class="detail-list-item">
+                            <strong>{{ forloop.counter|stringformat:"02d" }}</strong>
+                            <span>{{ destination.adresse }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="detail-list-item">
+                            <strong>-</strong>
+                            <span>Aucune destination enregistree.</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="detail-panel">
+                    <span class="detail-panel-label">Suivi portefeuille</span>
+                    <strong>{% if client.commercial %}{{ client.commercial.get_full_name|default:client.commercial.username }}{% else %}-{% endif %}</strong>
+                    <small>Responsable commercial du compte</small>
+                </div>
+                <div class="detail-panel">
+                    <span class="detail-panel-label">Contact principal</span>
+                    <strong>{{ client.nom|default:"-" }}</strong>
+                    <small>{{ client.fonction_contact|default:"Fonction non renseignee" }}</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="detail-section">
+            <div class="section-header">
+                <div>
+                    <p class="eyebrow">Lecture rapide</p>
+                    <h2>Synthese par etat</h2>
+                </div>
+            </div>
+            <div class="status-grid">
+                {% for item in synthese_statuts %}
+                <div class="status-card">
+                    <span class="status-card-label">{{ item.statut|capfirst }}</span>
+                    <strong>{{ item.total|gnf }}</strong>
+                </div>
+                {% empty %}
+                <div class="status-card status-card--empty">
+                    <span class="status-card-label">Synthese</span>
+                    <strong>Aucune valorisation disponible</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="detail-section filter-section">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Filtres</p>
+                <h2>Relire les flux du client</h2>
+            </div>
+        </div>
+        <form method="get" class="app-form">
+            <div class="filter-grid">
+                <div class="field">
+                    <label for="id_statut_commande">Filtre commandes</label>
+                    <select id="id_statut_commande" name="statut_commande">
+                        <option value="">Tous les statuts</option>
+                        {% for value, label in statut_choices %}
+                        <option value="{{ value }}" {% if statut_commande == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="id_etat_bl">Filtre BL</label>
+                    <select id="id_etat_bl" name="etat_bl">
+                        <option value="">Tous les etats BL</option>
+                        {% for value, label in etat_bl_choices %}
+                        <option value="{{ value }}" {% if etat_bl == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="id_date_debut">Date debut</label>
+                    <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
+                </div>
+                <div class="field">
+                    <label for="id_date_fin">Date fin</label>
+                    <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn">Filtrer</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="detail-section table-section">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Commandes</p>
+                <h2>Commandes du client</h2>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Produit</th>
+                        <th>Trajet</th>
+                        <th>Quantite</th>
+                        <th>Prix negocie</th>
+                        <th>Montant commande</th>
+                        <th>Montant livre</th>
+                        <th>Encaisse</th>
+                        <th>Solde commande</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for commande in commandes %}
+                    <tr>
+                        <td>{{ commande.reference_affichee|default:commande.reference|default:"-" }}</td>
+                        <td>{{ commande.produit|default:"-" }}</td>
+                        <td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
+                        <td>{{ commande.quantite|default:"-" }}</td>
+                        <td>{% if commande.prix_negocie %}{{ commande.prix_negocie|gnf }}{% else %}-{% endif %}</td>
+                        <td>{{ commande.montant_commande_affiche|gnf }}</td>
+                        <td>{{ commande.montant_livre_affiche|gnf }}</td>
+                        <td>
+                            {{ commande.total_encaisse_affiche|gnf }}
+                            {% if commande.dernier_reglement_affiche %}
+                            <br><small>{{ commande.dernier_reglement_affiche.get_type_encaissement_display }}{% if commande.dernier_reglement_affiche.reference %} - Ref {{ commande.dernier_reglement_affiche.reference }}{% endif %}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ commande.solde_commande_affiche|gnf }}
+                            {% if commande.solde_commande_affiche == 0 and commande.total_encaisse_affiche > 0 %}
+                            <br><small>Commande soldee</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ commande.get_statut_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">Aucune commande pour ce filtre.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="detail-section table-section">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">BL</p>
+                <h2>Suivi des bons de livraison</h2>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>BL</th>
+                        <th>Commande</th>
+                        <th>Produit</th>
+                        <th>Etat</th>
+                        <th>Qte commandee</th>
+                        <th>Qte livree</th>
+                        <th>Date charge</th>
+                        <th>Date livre</th>
+                        <th>Retour bon</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for operation in operations %}
+                    <tr>
+                        <td>{{ operation.numero_bl }}</td>
+                        <td>{{ operation.commande.reference_affichee|default:operation.commande.reference|default:"-" }}</td>
+                        <td>{{ operation.produit|default:"-" }}</td>
+                        <td>{{ operation.get_etat_bon_display }}</td>
+                        <td>{{ operation.quantite }}</td>
+                        <td>{{ operation.quantite_livree|default:"-" }}</td>
+                        <td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.date_bon_retour|date:"d/m/Y"|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">Aucun BL pour ce filtre.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="detail-section table-section">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Tresorerie</p>
+                <h2>Encaissements du client</h2>
+            </div>
+        </div>
+        <div class="table-shell">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Mode</th>
+                        <th>Type</th>
+                        <th>Commande</th>
+                        <th>Reference</th>
+                        <th>Banque</th>
+                        <th>Deposant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for encaissement in encaissements %}
+                    <tr>
+                        <td>{{ encaissement.date_encaissement|date:"d/m/Y" }}</td>
+                        <td>{{ encaissement.montant|gnf }}</td>
+                        <td>{{ encaissement.get_mode_paiement_display }}</td>
+                        <td>{{ encaissement.get_type_encaissement_display }}</td>
+                        <td>
+                            {{ encaissement.commandes_resume }}
+                            {% if encaissement.type_encaissement == "multi_commandes" %}
+                            <br><small>Affecte: {{ encaissement.montant_affecte_total|gnf }}</small>
+                            {% elif encaissement.type_encaissement == "avance_client" %}
+                            <br><small>Disponible: {{ encaissement.montant_non_affecte|gnf }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ encaissement.reference|default:"-" }}</td>
+                        <td>{{ encaissement.banque|default:"-" }}</td>
+                        <td>
+                            {{ encaissement.nom_deposant|default:"-" }}
+                            {% if encaissement.fonction_deposant %}
+                            <br><small>{{ encaissement.fonction_deposant }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">Aucun encaissement enregistre.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.client-detail-shell {
+    display: grid;
+    gap: 18px;
+}
+
+.client-detail-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+.client-hero-main,
+.client-hero-side,
+.detail-section {
+    background: #ffffff;
+    border: 1px solid #d9e8f2;
+    border-radius: 28px;
+    box-shadow: 0 20px 48px rgba(18, 48, 71, 0.08);
+}
+
+.client-hero-main {
+    padding: 22px;
+    background:
+        radial-gradient(circle at top left, rgba(68, 197, 162, 0.08), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #f8fcff 100%);
+}
+
+.client-hero-side {
+    padding: 18px;
+    background:
+        radial-gradient(circle at top right, rgba(44, 167, 240, 0.07), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.client-hero-subtitle {
+    margin: 8px 0 16px;
+    color: #4c667c;
+    font-size: 1rem;
+}
+
+.client-identity-grid,
+.client-finance-grid,
+.detail-card-grid,
+.status-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.client-identity-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.identity-card,
+.finance-card,
+.detail-panel,
+.status-card {
+    border-radius: 22px;
+    border: 1px solid #d9e8f2;
+    background: #ffffff;
+    padding: 14px 16px 13px;
+}
+
+.identity-label,
+.finance-label,
+.detail-panel-label,
+.status-card-label {
+    display: block;
+    color: #6d8193;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
+
+.identity-card strong,
+.finance-card strong,
+.detail-panel strong,
+.status-card strong {
+    color: #123047;
+    font-size: 1rem;
+}
+
+.identity-card small,
+.finance-card small,
+.detail-panel small,
+.status-card small {
+    display: block;
+    margin-top: 4px;
+    color: #658094;
+}
+
+.client-action-panel {
+    display: grid;
+    gap: 12px;
+    height: 100%;
+}
+
+.client-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.client-risk-banner,
+.client-address-card {
+    border-radius: 22px;
+    padding: 14px 16px;
+    border: 1px solid #d9e8f2;
+}
+
+.client-risk-banner {
+    background: #fbfdff;
+}
+
+.client-risk-banner.is-danger {
+    background: #fff4f2;
+    border-color: #f5beb1;
+}
+
+.client-risk-banner.is-warning {
+    background: #fff8ea;
+    border-color: #f0d492;
+}
+
+.client-risk-banner.is-safe {
+    background: #f3fbf7;
+    border-color: #b6e7ca;
+}
+
+.risk-banner-label {
+    display: block;
+    color: #6d8193;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+}
+
+.client-risk-banner strong {
+    display: block;
+    color: #123047;
+    font-size: 1.05rem;
+}
+
+.client-risk-banner small {
+    display: block;
+    margin-top: 6px;
+    color: #4c667c;
+}
+
+.client-address-card {
+    background: #fbfdff;
+}
+
+.client-finance-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.finance-card {
+    min-height: 104px;
+}
+
+.finance-card--danger {
+    background: #fff7f4;
+    border-color: #f5beb1;
+}
+
+.finance-card--warning {
+    background: #fffaf0;
+    border-color: #f0d492;
+}
+
+.finance-card--danger-soft {
+    background: #fff8f8;
+    border-color: #f3c0c0;
+}
+
+.finance-card--blue {
+    background: #f7fbff;
+    border-color: #bfd7fb;
+}
+
+.finance-card--green {
+    background: #f5fcf8;
+    border-color: #b8e7ca;
+}
+
+.finance-card--slate {
+    background: #fafcff;
+    border-color: #d6e4f1;
+}
+
+.finance-card--amber {
+    background: #fffaf3;
+    border-color: #f1d6a4;
+}
+
+.finance-card--violet {
+    background: #faf8ff;
+    border-color: #d6c9fb;
+}
+
+.finance-card--blue-soft {
+    background: #f7fcff;
+    border-color: #c4e2f4;
+}
+
+.finance-card--essence {
+    background: #f7fcfe;
+    border-color: #b7dcf0;
+}
+
+.finance-card--gasoil {
+    background: #fafcf5;
+    border-color: #cbe3aa;
+}
+
+.client-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+    gap: 18px;
+}
+
+.detail-section {
+    padding: 18px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+.detail-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-panel--full {
+    grid-column: 1 / -1;
+}
+
+.detail-list {
+    display: grid;
+    gap: 8px;
+}
+
+.detail-list-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: #f8fbff;
+}
+
+.status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-card {
+    min-height: 90px;
+    background: #fbfdff;
+}
+
+.status-card--empty {
+    grid-column: 1 / -1;
+}
+
+.filter-section .app-form {
+    margin: 0;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.table-section {
+    padding-bottom: 18px;
+}
+
+.table-shell {
+    overflow-x: auto;
+    border: 1px solid #dfeaf2;
+    border-radius: 20px;
+}
+
+.text-danger {
+    color: #d64545;
+}
+
+@media (max-width: 1500px) {
+    .client-finance-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1250px) {
+    .client-detail-hero,
+    .client-detail-grid,
+    .client-identity-grid,
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .client-finance-grid,
+    .status-grid,
+    .detail-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .client-action-buttons {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 760px) {
+    .client-finance-grid,
+    .status-grid,
+    .detail-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

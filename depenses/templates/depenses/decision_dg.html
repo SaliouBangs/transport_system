@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>Decision DG pour {{ depense.reference }}</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <table class="table summary-table">
+    <tr><th>Demandeur</th><td>{{ depense.demandeur.username }}</td></tr>
+    <tr><th>Titre</th><td>{{ depense.titre }}</td></tr>
+    <tr><th>Type de depense</th><td>{{ depense.type_depense }}</td></tr>
+    <tr><th>Lieu / projet</th><td>{{ depense.lieu_ou_projet }}</td></tr>
+    <tr><th>Fournisseur</th><td>{{ depense.fournisseur }}</td></tr>
+    <tr><th>Montant engage</th><td>{{ depense.montant_engage }}</td></tr>
+    <tr><th>Observation achat</th><td>{{ depense.engagement_observation|default:"-" }}</td></tr>
+  </table>
+
+  <form method="post" class="app-form" style="margin-top:24px;">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.mode_reglement.id_for_label }}">Mode de reglement</label>
+        {{ form.mode_reglement }}
+        {% if form.mode_reglement.errors %}<p class="field-error">{{ form.mode_reglement.errors|join:", " }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/depenses/" class="btn-secondary">Retour</a>
+      <button type="submit" class="btn">Valider et orienter le paiement</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+

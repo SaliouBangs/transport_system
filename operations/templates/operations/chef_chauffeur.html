@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<style>
+.chef-shell{
+    display:grid;
+    gap:20px;
+}
+.chef-hero,
+.chef-filter-shell,
+.chef-table-shell{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+}
+.chef-hero{
+    padding:24px 26px;
+}
+.chef-hero-head{
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+}
+.chef-hero-copy{
+    margin:10px 0 0;
+    color:#567082;
+    line-height:1.65;
+    max-width:820px;
+}
+.chef-kpis{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:14px;
+    min-width:300px;
+}
+.chef-kpi{
+    background:#fff;
+    border:1px solid #dce9f3;
+    border-radius:22px;
+    padding:16px;
+}
+.chef-kpi p{
+    margin:0;
+}
+.chef-kpi-label{
+    color:#667d8f;
+    font-size:.82rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.chef-kpi-value{
+    margin-top:8px !important;
+    color:#123047;
+    font-size:2rem;
+    font-weight:800;
+}
+.chef-filter-shell{
+    padding:16px;
+}
+.chef-filter-grid{
+    display:grid;
+    grid-template-columns:minmax(260px,1.4fr) minmax(180px,.7fr) minmax(160px,.55fr) minmax(160px,.55fr) auto;
+    gap:12px;
+    align-items:end;
+}
+.chef-filter-field label{
+    display:block;
+    margin:0 0 8px;
+    color:#5f7789;
+    font-size:.82rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.chef-filter-field input,
+.chef-filter-field select{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 8px 18px rgba(18,48,71,.04);
+}
+.chef-filter-field select{
+    appearance:none;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95)),
+        linear-gradient(45deg, transparent 50%, #4d6678 50%),
+        linear-gradient(135deg, #4d6678 50%, transparent 50%);
+    background-repeat:no-repeat;
+    background-size:auto, 8px 8px, 8px 8px;
+    background-position:0 0, calc(100% - 22px) 23px, calc(100% - 16px) 23px;
+    padding-right:42px;
+}
+.chef-filter-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+}
+.chef-filter-actions .btn,
+.chef-filter-actions .btn-secondary{
+    min-height:54px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 20px;
+    margin:0;
+    border-radius:18px;
+}
+.chef-table-shell{
+    padding:20px;
+}
+.chef-table-shell .table{
+    margin-top:0;
+}
+.chef-status{
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:.84rem;
+    font-weight:700;
+    white-space:nowrap;
+}
+.chef-status-wait{
+    background:rgba(240,168,58,.14);
+    color:#b87000;
+}
+.chef-status-charge{
+    background:rgba(63,143,214,.14);
+    color:#256497;
+}
+.chef-expense-status{
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:.84rem;
+    font-weight:700;
+    white-space:nowrap;
+}
+.chef-expense-danger{
+    background:rgba(214,69,69,.13);
+    color:#b43a3a;
+}
+.chef-expense-warning{
+    background:rgba(240,168,58,.16);
+    color:#b87000;
+}
+.chef-expense-info{
+    background:rgba(63,143,214,.14);
+    color:#256497;
+}
+.chef-expense-success{
+    background:rgba(31,157,122,.14);
+    color:#15785f;
+}
+.chef-meta{
+    display:block;
+    margin-top:4px;
+    color:#6a8192;
+    font-size:.88rem;
+}
+.chef-action-trigger{
+    min-width:110px;
+}
+.chef-modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(11, 32, 49, .42);
+    z-index:1200;
+}
+.chef-modal.is-open{
+    display:flex;
+}
+.chef-modal-card{
+    width:min(640px, 100%);
+    background:#fff;
+    border-radius:28px;
+    border:1px solid #dce9f4;
+    box-shadow:0 24px 54px rgba(18,48,71,.18);
+    overflow:hidden;
+}
+.chef-modal-head{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    align-items:flex-start;
+    padding:24px 26px 8px;
+}
+.chef-modal-close{
+    width:40px;
+    height:40px;
+    border:none;
+    border-radius:999px;
+    background:#f2f7fb;
+    color:#173449;
+    font-size:1.1rem;
+    cursor:pointer;
+}
+.chef-modal-body{
+    padding:0 26px 26px;
+}
+.chef-modal-body label{
+    display:block;
+    margin:0 0 10px;
+    color:#173449;
+    font-size:1rem;
+    font-weight:700;
+}
+.chef-modal-body input{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 8px 18px rgba(18,48,71,.04);
+}
+.chef-modal-grid{
+    display:grid;
+    gap:16px;
+}
+.chef-modal-note{
+    margin:16px 0 0;
+    color:#5f7789;
+    line-height:1.65;
+}
+.chef-modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:28px;
+    flex-wrap:wrap;
+}
+.chef-modal-actions .btn,
+.chef-modal-actions .btn-secondary{
+    min-height:48px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 20px;
+    margin:0;
+    border-radius:16px;
+}
+@media (max-width: 1200px){
+    .chef-filter-grid{
+        grid-template-columns:1fr;
+    }
+    .chef-kpis{
+        width:100%;
+    }
+}
+@media (max-width: 760px){
+    .chef-kpis{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<div class="chef-shell">
+    <section class="chef-hero">
+        <div class="chef-hero-head">
+            <div>
+                <p class="eyebrow">Exploitation</p>
+                <h1 style="margin:0;">{{ page_title|default:"Suivi chef chauffeur" }}</h1>
+                <p class="chef-hero-copy">
+                    Cette vue reste volontairement simple : le chef chauffeur voit uniquement les BL a charger ou a livrer,
+                    puis ils basculent automatiquement dans son historique.
+                </p>
+            </div>
+            <div class="chef-kpis">
+                <article class="chef-kpi">
+                    <p class="chef-kpi-label">A charger</p>
+                    <p class="chef-kpi-value">{{ total_waiting_load }}</p>
+                </article>
+                <article class="chef-kpi">
+                    <p class="chef-kpi-label">A livrer</p>
+                    <p class="chef-kpi-value">{{ total_loaded }}</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <form method="get" class="chef-filter-shell">
+        <div class="chef-filter-grid">
+            <div class="chef-filter-field">
+                <label for="id_chef_query">Recherche</label>
+                <input id="id_chef_query" type="text" name="q" value="{{ query }}" placeholder="BL, client, camion, chauffeur ou commande">
+            </div>
+            <div class="chef-filter-field">
+                <label for="id_chef_etat">Etat</label>
+                <select id="id_chef_etat" name="etat">
+                    <option value="">Tous les etats</option>
+                    {% for value, label in etat_options_chef_chauffeur %}
+                    <option value="{{ value }}"{% if etat == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="chef-filter-field">
+                <label for="id_chef_date_from">Date debut</label>
+                <input id="id_chef_date_from" type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="chef-filter-field">
+                <label for="id_chef_date_to">Date fin</label>
+                <input id="id_chef_date_to" type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <div class="chef-filter-actions">
+                <button type="submit" class="btn">Filtrer</button>
+                <a href="/operations/chef-chauffeur/" class="btn-secondary">Reinitialiser</a>
+            </div>
+        </div>
+    </form>
+
+    <section class="chef-table-shell">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>BL</th>
+                    <th>Client</th>
+                    <th>Camion</th>
+                    <th>Capacite</th>
+                    <th>Chauffeur</th>
+                    <th>Qte commandee</th>
+                    <th>Etat</th>
+                    <th>Date charge</th>
+                    <th>Etat depenses</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations %}
+                <tr>
+                    <td><strong>{{ operation.numero_bl }}</strong></td>
+                    <td>{{ operation.client.entreprise }}</td>
+                    <td>
+                        {% if operation.camion %}
+                            {{ operation.camion.numero_tracteur }}
+                            {% if operation.camion.numero_citerne %}<span class="chef-meta">{{ operation.camion.numero_citerne }}</span>{% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{% if operation.camion and operation.camion.capacite != None %}{{ operation.camion.capacite }}{% else %}-{% endif %}</td>
+                    <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                    <td>{{ operation.quantite|default:"-" }}</td>
+                    <td>
+                        {% if operation.etat_bon == "liquide_chauffeur" %}
+                        <span class="chef-status chef-status-wait">En attente de chargement</span>
+                        {% else %}
+                        <span class="chef-status chef-status-charge">Charge</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ operation.date_bons_charges|default:"-" }}</td>
+                    <td><span class="chef-expense-status chef-expense-{{ operation.depenses_status_variant }}">{{ operation.depenses_status_label }}</span></td>
+                    <td>
+                        <button type="button" class="btn chef-action-trigger" data-chef-toggle="chef-action-{{ operation.id }}">{{ operation.next_action_label }}</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10">Aucun BL n'est en attente d'action chauffeur.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+{% for operation in operations %}
+<div class="chef-modal" id="chef-action-{{ operation.id }}">
+    <div class="chef-modal-card">
+        <div class="chef-modal-head">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2 style="margin:8px 0 0;">{% if operation.next_action == "charge" %}Marquer le BL comme charge{% else %}Marquer le BL comme livre{% endif %}</h2>
+            </div>
+            <button type="button" class="chef-modal-close" data-chef-close="chef-action-{{ operation.id }}">x</button>
+        </div>
+        <form method="post" action="/operations/chef-chauffeur/{{ operation.id }}/action/{{ operation.next_action }}/" class="chef-modal-body">
+            {% csrf_token %}
+            <div class="chef-modal-grid">
+                <div>
+                    <label for="id_date_action_{{ operation.id }}">Date de {% if operation.next_action == "charge" %}chargement{% else %}livraison{% endif %}</label>
+                    <input id="id_date_action_{{ operation.id }}" type="date" name="date_action" value="{% if operation.next_action == 'livre' and operation.date_bons_charges %}{{ operation.date_bons_charges|date:'Y-m-d' }}{% else %}{{ default_action_date }}{% endif %}">
+                </div>
+                {% if operation.next_action == "livre" %}
+                <div>
+                    <label for="id_quantite_livree_{{ operation.id }}">Quantite livree</label>
+                    <input id="id_quantite_livree_{{ operation.id }}" type="text" name="quantite_livree" inputmode="decimal" placeholder="Ex : {{ operation.quantite }}" value="{% if operation.quantite_livree != None %}{{ operation.quantite_livree }}{% else %}{{ operation.quantite }}{% endif %}">
+                </div>
+                {% endif %}
+            </div>
+            <p class="chef-modal-note">
+                Cette date sera enregistree sur le BL comme preuve de {% if operation.next_action == "charge" %}chargement{% else %}livraison{% endif %}. La date du jour est proposee par defaut, mais vous pouvez la modifier.
+                {% if operation.next_action == "livre" %}Renseignez aussi la quantite effectivement livree pour finaliser le BL.{% endif %}
+            </p>
+            <div class="chef-modal-actions">
+                <button type="button" class="btn-secondary" data-chef-close="chef-action-{{ operation.id }}">Annuler</button>
+                <button type="submit" class="btn">{{ operation.next_action_label }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+document.querySelectorAll("[data-chef-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-chef-toggle");
+        document.querySelectorAll(".chef-modal.is-open").forEach((panel) => {
+            if (panel.id !== targetId) {
+                panel.classList.remove("is-open");
+            }
+        });
+        document.getElementById(targetId)?.classList.toggle("is-open");
+    });
+});
+
+document.querySelectorAll("[data-chef-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-chef-close");
+        document.getElementById(targetId)?.classList.remove("is-open");
+    });
+});
+
+document.querySelectorAll(".chef-modal").forEach((modal) => {
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            modal.classList.remove("is-open");
+        }
+    });
+});
+</script>
+
+{% endblock %}

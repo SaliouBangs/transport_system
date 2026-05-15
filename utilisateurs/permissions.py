@@ -6,17 +6,22 @@ from django.shortcuts import redirect
 
 from .constants import (
     ROLE_CAISSIERE,
+    ROLE_CHEF_CHAUFFEUR,
     ROLE_CHOICES,
     ROLE_COMMERCIAL,
     ROLE_COMPTABLE,
+    ROLE_COMPTABLE_SOGEFI,
     ROLE_CONTROLEUR,
     ROLE_DGA,
+    ROLE_DGA_SOGEFI,
     ROLE_DIRECTEUR,
     ROLE_INVITE,
     ROLE_LABELS,
     ROLE_LOGISTIQUE,
     ROLE_MAINTENANCIER,
+    ROLE_RESPONSABLE_ACHAT,
     ROLE_RESPONSABLE_COMMERCIAL,
+    ROLE_SECRETAIRE,
     ROLE_TRANSITAIRE,
 )
 
@@ -41,6 +46,8 @@ def get_user_role(user):
 
 
 def get_user_role_label(user):
+    if getattr(user, "is_superuser", False):
+        return "Administrateur"
     role_name = get_user_role(user)
     if not role_name:
         return "Administrateur" if getattr(user, "is_superuser", False) else "Aucun role"
@@ -75,6 +82,11 @@ def assign_role(user, role_name):
 def get_default_landing_url(user):
     if not getattr(user, "is_authenticated", False):
         return "/comptes/connexion/"
+    role = get_user_role(user)
+    if role == ROLE_SECRETAIRE:
+        return "/operations/secretaire/"
+    if role == ROLE_CHEF_CHAUFFEUR:
+        return "/operations/chef-chauffeur/"
     return "/dashboard/"
 
 
@@ -107,23 +119,27 @@ def build_user_permissions(user):
         "can_manage_users": is_boss,
         "can_access_settings": is_boss,
         "can_access_dashboard": bool(getattr(user, "is_authenticated", False)),
-        "can_access_gps": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL, ROLE_COMPTABLE, ROLE_LOGISTIQUE, ROLE_TRANSITAIRE),
+        "can_access_gps": user_has_role(user, ROLE_COMPTABLE, ROLE_LOGISTIQUE, ROLE_TRANSITAIRE),
         "can_access_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
         "can_add_prospects": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
+        "can_delete_prospects": is_boss or user_has_role(user, ROLE_DIRECTEUR),
         "can_convert_prospects": is_boss,
-        "can_access_clients": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
+        "can_access_clients": bool(getattr(user, "is_authenticated", False)),
         "can_add_clients": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
         "can_edit_clients": is_boss or user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
+        "can_delete_clients": is_boss or user_has_role(user, ROLE_DIRECTEUR),
         "can_manage_client_portfolios": is_boss or user_has_role(user, ROLE_RESPONSABLE_COMMERCIAL),
         "can_access_commandes": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL, ROLE_COMPTABLE, ROLE_DGA, ROLE_DIRECTEUR, ROLE_LOGISTIQUE),
         "can_add_commandes": user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
         "can_edit_commandes": is_boss or user_has_role(user, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL),
         "can_access_operations_general": is_boss,
         "can_access_operations_comptable": user_has_role(user, ROLE_COMPTABLE),
+        "can_access_operations_secretaire": user_has_role(user, ROLE_SECRETAIRE),
         "can_access_operations_sommiers": user_has_role(user, ROLE_COMPTABLE, ROLE_DGA, ROLE_DIRECTEUR),
         "can_access_operations_facturation": user_has_role(user, ROLE_COMPTABLE),
         "can_access_operations_logistique": user_has_role(user, ROLE_LOGISTIQUE),
         "can_access_operations_logisticien": user_has_role(user, ROLE_LOGISTIQUE),
+        "can_access_operations_chef_chauffeur": user_has_role(user, ROLE_CHEF_CHAUFFEUR),
         "can_access_operations_transitaire": user_has_role(user, ROLE_TRANSITAIRE),
         "can_access_camions": user_has_role(user, ROLE_LOGISTIQUE, ROLE_MAINTENANCIER, ROLE_DGA, ROLE_DIRECTEUR, ROLE_INVITE, ROLE_CONTROLEUR),
         "can_access_chauffeurs": user_has_role(user, ROLE_LOGISTIQUE, ROLE_MAINTENANCIER, ROLE_DGA, ROLE_DIRECTEUR, ROLE_INVITE, ROLE_CONTROLEUR),
@@ -145,10 +161,17 @@ def build_user_permissions(user):
             ROLE_CAISSIERE,
             ROLE_DIRECTEUR,
         ),
+        "can_access_depenses": bool(getattr(user, "is_authenticated", False)),
+        "can_access_rapport_global": bool(getattr(user, "is_authenticated", False)),
+        "can_access_reports_center": bool(getattr(user, "is_authenticated", False)),
         "can_manage_logistique_assets": user_has_role(
             user,
             ROLE_LOGISTIQUE,
             ROLE_MAINTENANCIER,
             ROLE_DGA,
         ),
+        "can_access_depenses_expression_validation": user_has_role(user, ROLE_DGA_SOGEFI, ROLE_DIRECTEUR),
+        "can_access_depenses_engagement": user_has_role(user, ROLE_RESPONSABLE_ACHAT, ROLE_DIRECTEUR),
+        "can_access_depenses_payment_cheque": user_has_role(user, ROLE_COMPTABLE_SOGEFI, ROLE_DIRECTEUR),
+        "can_access_depenses_payment_espece": user_has_role(user, ROLE_CAISSIERE, ROLE_DIRECTEUR),
     }

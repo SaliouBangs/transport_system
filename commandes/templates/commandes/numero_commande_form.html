@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+<div>
+<p class="eyebrow">Workflow commercial</p>
+<h1>Renseigner le numero Sage</h1>
+</div>
+</div>
+
+<div class="form-shell">
+    <form method="post" class="app-form">
+        {% csrf_token %}
+
+        <div class="form-alert form-alert--info" style="margin-bottom:16px;">
+            <strong>Commande validee par le DG</strong>
+            <span>La commande est prete pour la suite, mais elle doit d'abord recevoir son numero Sage avant l'affectation logistique.</span>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom:18px;">
+            <div class="stat-card">
+                <span class="stat-label">Commande</span>
+                <strong class="stat-value">{{ commande.reference_affichee }}</strong>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Client</span>
+                <strong class="stat-value">{{ commande.client.entreprise }}</strong>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Montant</span>
+                <strong class="stat-value">{{ commande.montant_commande }}</strong>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field field-full">
+                <label for="{{ form.reference.id_for_label }}">Numero de commande Sage</label>
+                {{ form.reference }}
+                {% if form.reference.errors %}<p class="field-error">{{ form.reference.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="field-error" style="margin-bottom:14px;">{{ form.non_field_errors.0 }}</div>
+        {% endif %}
+
+        <div class="form-actions">
+            <a href="/commandes/" class="btn-secondary">Retour</a>
+            <button type="submit" class="btn">Enregistrer le numero</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.stat-card {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #dbe7f3;
+    background: #fff;
+}
+
+.stat-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    display: block;
+    margin-top: 8px;
+    color: #12324a;
+    font-size: 1.08rem;
+}
+</style>
+{% endblock %}

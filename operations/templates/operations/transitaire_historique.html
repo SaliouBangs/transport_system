@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<style>
+.transitaire-history-hero{
+    display:grid;
+    grid-template-columns:1.25fr .95fr;
+    gap:20px;
+    margin-bottom:22px;
+}
+.transitaire-history-panel{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:24px;
+}
+.transitaire-history-title{
+    margin:0 0 10px;
+    font-size:2.1rem;
+    line-height:1.08;
+}
+.transitaire-history-copy{
+    margin:0;
+    color:#4d6678;
+    line-height:1.65;
+    max-width:760px;
+}
+.transitaire-history-kpis{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+}
+.transitaire-history-kpi{
+    border-radius:20px;
+    padding:16px 16px 14px;
+    background:#fff;
+    border:1px solid #dbe8f2;
+}
+.transitaire-history-kpi-label{
+    margin:0 0 8px;
+    color:#627a8d;
+    font-weight:700;
+    font-size:.84rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.transitaire-history-kpi-value{
+    margin:0;
+    font-size:1.9rem;
+    font-weight:800;
+    color:#123047;
+}
+.transitaire-history-kpi-note{
+    margin:8px 0 0;
+    color:#6c8191;
+    font-size:.88rem;
+}
+.transitaire-history-filter-shell{
+    margin-bottom:18px;
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:26px;
+    padding:16px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+}
+.transitaire-history-filter-tools{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+.transitaire-history-filter-grid{
+    display:grid;
+    grid-template-columns:minmax(220px,1.45fr) minmax(180px,.72fr) minmax(160px,.68fr) minmax(160px,.68fr) auto;
+    gap:12px;
+    align-items:end;
+}
+.transitaire-history-filter-field label{
+    display:block;
+    margin:0 0 8px;
+    font-size:.82rem;
+    font-weight:700;
+    color:#5d7688;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.transitaire-history-filter-field input,
+.transitaire-history-filter-field select{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 8px 18px rgba(18,48,71,.04);
+    transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.transitaire-history-filter-field input::placeholder{
+    color:#7890a1;
+    font-weight:500;
+}
+.transitaire-history-filter-field input:focus,
+.transitaire-history-filter-field select:focus{
+    outline:none;
+    border-color:#4fbf9f;
+    box-shadow:0 0 0 4px rgba(79,191,159,.18), 0 12px 24px rgba(18,48,71,.08);
+    transform:translateY(-1px);
+}
+.transitaire-history-filter-field select{
+    appearance:none;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95)),
+        linear-gradient(45deg, transparent 50%, #4d6678 50%),
+        linear-gradient(135deg, #4d6678 50%, transparent 50%);
+    background-repeat:no-repeat;
+    background-size:auto, 8px 8px, 8px 8px;
+    background-position:0 0, calc(100% - 22px) 23px, calc(100% - 16px) 23px;
+    padding-right:42px;
+}
+.transitaire-history-filter-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    min-width:200px;
+}
+.transitaire-history-filter-actions .btn,
+.transitaire-history-filter-actions .btn-secondary{
+    min-height:54px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 20px;
+    margin:0;
+    border-radius:18px;
+}
+.transitaire-history-card{
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+    padding:22px 22px 16px;
+    margin-bottom:18px;
+}
+.transitaire-history-card-head{
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    margin-bottom:16px;
+}
+.transitaire-history-card-title{
+    margin:0;
+    font-size:1.05rem;
+}
+.transitaire-history-card-note{
+    margin:8px 0 0;
+    color:#5e7587;
+    line-height:1.55;
+}
+.transitaire-history-table{
+    overflow:auto;
+    border-radius:22px;
+}
+.transitaire-history-status{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:.84rem;
+    font-weight:700;
+    white-space:nowrap;
+    background:#e8f2ff;
+    color:#1f5d96;
+}
+.transitaire-history-subinfo{
+    margin-top:4px;
+    color:#6b8191;
+    font-size:.88rem;
+}
+@media (max-width: 1180px){
+    .transitaire-history-hero,
+    .transitaire-history-filter-grid{
+        grid-template-columns:1fr;
+    }
+    .transitaire-history-kpis{
+        grid-template-columns:1fr;
+    }
+    .transitaire-history-filter-actions{
+        justify-content:stretch;
+    }
+    .transitaire-history-filter-actions .btn,
+    .transitaire-history-filter-actions .btn-secondary{
+        flex:1 1 180px;
+    }
+}
+</style>
+
+<section class="transitaire-history-hero">
+    <div class="transitaire-history-panel">
+        <p class="eyebrow">Circuit administratif</p>
+        <h1 class="transitaire-history-title">Historique transitaire</h1>
+        <p class="transitaire-history-copy">
+            Les BL apparaissent ici a partir du moment ou la logistique valide leur reception. Vous retrouvez ensuite
+            le suivi aval utile au transitaire, jusqu'au chargement, a la livraison et au bon retour.
+        </p>
+    </div>
+
+    <div class="transitaire-history-panel">
+        <p class="eyebrow" style="margin-bottom:12px;">Vue d'ensemble</p>
+        <div class="transitaire-history-kpis">
+            <div class="transitaire-history-kpi">
+                <p class="transitaire-history-kpi-label">Dans l'historique</p>
+                <p class="transitaire-history-kpi-value">{{ total_history }}</p>
+                <p class="transitaire-history-kpi-note">BL deja recus par la logistique</p>
+            </div>
+            <div class="transitaire-history-kpi">
+                <p class="transitaire-history-kpi-label">Charges</p>
+                <p class="transitaire-history-kpi-value">{{ total_loaded }}</p>
+                <p class="transitaire-history-kpi-note">BL deja charges cote terrain</p>
+            </div>
+            <div class="transitaire-history-kpi">
+                <p class="transitaire-history-kpi-label">Livres</p>
+                <p class="transitaire-history-kpi-value">{{ total_delivered }}</p>
+                <p class="transitaire-history-kpi-note">BL arrives a livraison</p>
+            </div>
+            <div class="transitaire-history-kpi">
+                <p class="transitaire-history-kpi-label">Bons retournes</p>
+                <p class="transitaire-history-kpi-value">{{ total_returned }}</p>
+                <p class="transitaire-history-kpi-note">BL totalement boucles</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<form method="get" class="transitaire-history-filter-shell">
+    <div class="transitaire-history-filter-tools">
+        <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Filtres</p>
+            <strong style="font-size:1.05rem; color:#123047;">Rechercher, filtrer et exporter l'historique transitaire</strong>
+        </div>
+        <div class="table-actions">
+            <a href="/operations/transitaire/historique/export/xls/?{{ current_filters }}" class="btn-secondary">Exporter Excel</a>
+            <a href="/operations/transitaire/historique/export/pdf/?{{ current_filters }}" class="btn-secondary">Exporter PDF</a>
+        </div>
+    </div>
+    <div class="transitaire-history-filter-grid">
+        <div class="transitaire-history-filter-field">
+            <label for="id_q_transitaire_historique">Recherche</label>
+            <input id="id_q_transitaire_historique" type="text" name="q" value="{{ query }}" placeholder="BL, commande, client, camion ou chauffeur">
+        </div>
+        <div class="transitaire-history-filter-field">
+            <label for="id_etat_transitaire_historique">Etat</label>
+            <select id="id_etat_transitaire_historique" name="etat">
+                <option value="">Tous les etats</option>
+                <option value="attente_reception_logistique" {% if etat == "attente_reception_logistique" %}selected{% endif %}>BL liquide transitaire</option>
+                <option value="liquide_logistique" {% if etat == "liquide_logistique" %}selected{% endif %}>BL liquides logistique</option>
+                <option value="liquide_chauffeur" {% if etat == "liquide_chauffeur" %}selected{% endif %}>BL liquide chauffeur</option>
+                <option value="charge" {% if etat == "charge" %}selected{% endif %}>Charge</option>
+                <option value="livre" {% if etat == "livre" %}selected{% endif %}>Livre</option>
+            </select>
+        </div>
+        <div class="transitaire-history-filter-field">
+            <label for="id_date_from_transitaire_historique">Date debut</label>
+            <input id="id_date_from_transitaire_historique" type="date" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="transitaire-history-filter-field">
+            <label for="id_date_to_transitaire_historique">Date fin</label>
+            <input id="id_date_to_transitaire_historique" type="date" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="transitaire-history-filter-actions">
+            <button type="submit" class="btn">Filtrer</button>
+            <a href="/operations/transitaire/historique/" class="btn-secondary">Reinitialiser</a>
+        </div>
+    </div>
+</form>
+
+<section class="transitaire-history-card">
+    <div class="transitaire-history-card-head">
+        <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Historique</p>
+            <h2 class="transitaire-history-card-title">BL deja recus par la logistique</h2>
+            <p class="transitaire-history-card-note">
+                Ce tableau retrace les BL qui ont deja quitte le perimetre direct du transitaire et vous permet
+                de suivre leur avancement aval jusqu'au bon retour.
+            </p>
+        </div>
+    </div>
+    <div class="transitaire-history-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>BL</th>
+                    <th>Commande</th>
+                    <th>Client</th>
+                    <th>Etat</th>
+                    <th>Reception logistique</th>
+                    <th>Remis a</th>
+                    <th>Date charge</th>
+                    <th>Date livre</th>
+                    <th>Bon retour</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations_history %}
+                <tr>
+                    <td>
+                        <strong>{{ operation.numero_bl }}</strong>
+                        <div class="transitaire-history-subinfo">
+                            {% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}
+                        </div>
+                    </td>
+                    <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+                    <td>{{ operation.client.entreprise }}</td>
+                    <td><span class="transitaire-history-status">{{ operation.status_label }}</span></td>
+                    <td>{{ operation.date_reception_logistique|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        {% if operation.remis_a_nom %}
+                        {{ operation.remis_a_nom }}
+                        <div class="transitaire-history-subinfo">
+                            {% if operation.remis_a_telephone %}{{ operation.remis_a_telephone }}{% else %}-{% endif %}
+                        </div>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_bon_retour|date:"d/m/Y"|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9">Aucun BL n'a encore ete valide par la logistique.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% endblock %}

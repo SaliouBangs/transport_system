@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="page-header camion-report-header">
+    <div>
+        <p class="eyebrow">Flotte</p>
+        <h1>Rapport camion {{ camion.numero_tracteur }}</h1>
+        <p class="camion-report-subtitle">Vue structuree des couts, maintenances, BL et depenses liees a ce camion.</p>
+    </div>
+    <div class="table-actions no-print">
+        <a href="/camions/" class="btn-secondary">Retour</a>
+        <a href="/camions/detail/{{ camion.id }}/imprimer/" class="btn">Imprimer</a>
+    </div>
+</div>
+
+<section class="print-only print-header-card">
+    <div class="print-brand">
+        <img src="{% static 'images/sogefi-logo.png' %}" alt="Logo SOGEFI">
+        <div>
+            <h2>ETAT GENERAL CAMION {{ camion.numero_tracteur }}</h2>
+            <p>Synthese d'exploitation, de maintenance et de couts rattaches a ce camion.</p>
+        </div>
+    </div>
+    <div class="print-meta">
+        <span>Transporteur affiche : SOGEFI</span>
+        <strong id="print-date-inline"></strong>
+    </div>
+</section>
+
+<div class="camion-report-shell">
+    <section class="report-card no-print">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Filtres</p>
+                <h2>Affiner ce rapport</h2>
+            </div>
+        </div>
+        <form method="get" class="camion-report-filters">
+            <div class="filter-field">
+                <label for="id_q">Recherche</label>
+                <input id="id_q" type="text" name="q" value="{{ filter_values.q }}" placeholder="BL, reference, panne, prestataire, chauffeur, produit">
+            </div>
+            <div class="filter-field">
+                <label for="id_date_from">Date debut</label>
+                <input id="id_date_from" type="date" name="date_from" value="{{ filter_values.date_from }}">
+            </div>
+            <div class="filter-field">
+                <label for="id_date_to">Date fin</label>
+                <input id="id_date_to" type="date" name="date_to" value="{{ filter_values.date_to }}">
+            </div>
+            <button type="submit" class="btn filter-btn">Filtrer</button>
+            <a href="/camions/detail/{{ camion.id }}/" class="btn-secondary filter-btn">Reinitialiser</a>
+        </form>
+    </section>
+
+    <section class="camion-report-hero">
+        <div class="hero-card hero-primary">
+            <span class="hero-label">Cout total camion</span>
+            <strong class="hero-value">{{ cout_total|floatformat:0 }} GNF</strong>
+            <span class="hero-note">Maintenance + stock + depenses chargement</span>
+        </div>
+        <div class="hero-card">
+            <span class="hero-label">Maintenances</span>
+            <strong class="hero-value">{{ maintenances|length }}</strong>
+            <span class="hero-note">Interventions enregistrees</span>
+        </div>
+        <div class="hero-card">
+            <span class="hero-label">BL transportes</span>
+            <strong class="hero-value">{{ operations|length }}</strong>
+            <span class="hero-note">Commandes reellement portees</span>
+        </div>
+        <div class="hero-card">
+            <span class="hero-label">Qte transportee</span>
+            <strong class="hero-value">{{ quantite_transportee|floatformat:0 }}</strong>
+            <span class="hero-note">Volume cumule</span>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Synthese</p>
+                <h2>Identite du camion</h2>
+            </div>
+            <span class="section-pill">{{ camion.get_etat_display }}</span>
+        </div>
+        <div class="info-grid">
+            <div class="info-tile">
+                <span class="info-label">Numero tracteur</span>
+                <strong>{{ camion.numero_tracteur }}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Numero citerne</span>
+                <strong>{{ camion.numero_citerne|default:"-" }}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Type</span>
+                <strong>{{ camion.get_type_camion_display }}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Transporteur affiche</span>
+                <strong>SOGEFI</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Entreprise affretee</span>
+                <strong>{% if camion.est_affrete and camion.transporteur %}{{ camion.transporteur.nom }}{% else %}-{% endif %}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Capacite</span>
+                <strong>{{ camion.capacite }}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Km actuel</span>
+                <strong>{{ camion.kilometrage_actuel }}</strong>
+            </div>
+            <div class="info-tile">
+                <span class="info-label">Prochaine vidange</span>
+                <strong>{{ camion.kilometrage_alerte_vidange|default:"-" }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="camion-report-panels">
+        <div class="report-card">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Couts</p>
+                    <h2>Repartition</h2>
+                </div>
+            </div>
+            <div class="cost-breakdown">
+                <div class="cost-row">
+                    <span>Maintenance payable</span>
+                    <strong>{{ maintenance_payable_total|floatformat:0 }} GNF</strong>
+                </div>
+                <div class="cost-row">
+                    <span>Valorisation stock / maintenance</span>
+                    <strong>{{ maintenance_total|floatformat:0 }} GNF</strong>
+                </div>
+                <div class="cost-row">
+                    <span>Depenses chargement</span>
+                    <strong>{{ depenses_total|floatformat:0 }} GNF</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Pannes</p>
+                    <h2>Pannes / pieces frequentes</h2>
+                </div>
+            </div>
+            <div class="table-wrap compact-wrap">
+                <table class="table compact-table">
+                    <thead>
+                        <tr>
+                            <th>Categorie</th>
+                            <th>Libelle</th>
+                            <th>Nb fois</th>
+                            <th>Prix moyen</th>
+                            <th>Montant total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in panne_rows %}
+                        <tr>
+                            <td>{{ row.panne_catalogue__type_maintenance__libelle|default:"-" }}</td>
+                            <td>{{ row.libelle }}</td>
+                            <td>{{ row.total }}</td>
+                            <td>{{ row.prix_moyen|default:0|floatformat:0 }} GNF</td>
+                            <td>{{ row.montant_total|default:0|floatformat:0 }} GNF</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5">Aucune panne ou piece rattachee a ce camion.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Exploitation</p>
+                <h2>BL et activite transport</h2>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>BL</th>
+                        <th>Client</th>
+                        <th>Etat</th>
+                        <th>Produit / qte</th>
+                        <th>Dates cles</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for operation in operations %}
+                    <tr>
+                        <td>
+                            <strong>{{ operation.numero_bl }}</strong>
+                            <div class="sub-text">{{ operation.commande.reference|default:"-" }}</div>
+                        </td>
+                        <td>{{ operation.client }}</td>
+                        <td>{{ operation.get_etat_bon_display }}</td>
+                        <td>
+                            {{ operation.produit|default:"-" }}
+                            <div class="sub-text">{{ operation.quantite|floatformat:0 }}</div>
+                        </td>
+                        <td>
+                            <div>BL : {{ operation.date_bl|date:"j M Y"|default:"-" }}</div>
+                            <div>Charge : {{ operation.date_bons_charges|date:"j M Y"|default:"-" }}</div>
+                            <div>Livre : {{ operation.date_bons_livres|date:"j M Y"|default:"-" }}</div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">Aucun BL rattache a ce camion.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Maintenance</p>
+                <h2>Historique des maintenances</h2>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Debut</th>
+                        <th>Statut</th>
+                        <th>Prestataire</th>
+                        <th>Montant payable</th>
+                        <th>Cout global</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for maintenance in maintenances %}
+                    <tr>
+                        <td>{{ maintenance.reference }}</td>
+                        <td>{{ maintenance.date_debut|date:"j M Y" }}</td>
+                        <td>{{ maintenance.get_statut_display }}</td>
+                        <td>{{ maintenance.prestataire|default:"-" }}</td>
+                        <td>{{ maintenance.total_facture|floatformat:0 }} GNF</td>
+                        <td>{{ maintenance.total_global_information|floatformat:0 }} GNF</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6">Aucune maintenance pour ce camion.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Depenses</p>
+                <h2>Depenses liees au chargement</h2>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>BL</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for depense in depenses %}
+                    <tr>
+                        <td>{{ depense.reference }}</td>
+                        <td>{{ depense.operation.numero_bl|default:"-" }}</td>
+                        <td>{{ depense.type_depense|default:"-" }}</td>
+                        <td>{{ depense.get_statut_display }}</td>
+                        <td>{{ depense.montant_total|floatformat:0 }} GNF</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">Aucune depense de chargement pour ce camion.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<style>
+.camion-report-shell {
+    display: grid;
+    gap: 18px;
+}
+.camion-report-filters {
+    display: grid;
+    grid-template-columns: 1.6fr 180px 180px auto auto;
+    gap: 12px;
+    align-items: end;
+}
+.camion-report-filters input {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 16px;
+}
+.filter-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #6d8090;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.filter-btn {
+    min-height: 48px;
+}
+.camion-report-subtitle {
+    margin: 6px 0 0;
+    color: #6d8090;
+}
+.print-only {
+    display: none;
+}
+.print-header-card {
+    margin-bottom: 14px;
+    padding: 14px 18px;
+    border: 1px solid #d8e8f7;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef6fb 100%);
+}
+.print-brand {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    gap: 14px;
+    align-items: center;
+}
+.print-brand img {
+    max-width: 76px;
+    max-height: 54px;
+    object-fit: contain;
+}
+.print-brand h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: .04em;
+    color: #12344d;
+}
+.print-brand p {
+    margin: 4px 0 0;
+    color: #61798d;
+}
+.print-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #dbe8f4;
+    color: #5d768a;
+    font-size: 13px;
+}
+.print-meta strong {
+    color: #12344d;
+}
+.camion-report-hero {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+.hero-card {
+    position: relative;
+    border: 1px solid #d8e8f7;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    padding: 20px;
+    box-shadow: 0 18px 35px rgba(10, 30, 45, 0.08);
+}
+.hero-primary {
+    background: linear-gradient(135deg, #12324a 0%, #1b4767 100%);
+    color: #fff;
+    border-color: transparent;
+}
+.hero-primary .hero-label,
+.hero-primary .hero-note {
+    color: rgba(255,255,255,.78);
+}
+.hero-label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #6d8090;
+}
+.hero-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 900;
+    color: #18344a;
+    line-height: 1.2;
+}
+.hero-note {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6d8090;
+}
+.report-card {
+    border: 1px solid #d8e8f7;
+    border-radius: 26px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    padding: 22px;
+    box-shadow: 0 18px 35px rgba(10, 30, 45, 0.08);
+}
+.camion-report-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.section-head h2 {
+    margin: 6px 0 0;
+    font-size: 30px;
+}
+.section-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #1f6c4d;
+    background: #e7f8f1;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.info-tile {
+    padding: 16px;
+    border-radius: 18px;
+    background: #f7fbff;
+    border: 1px solid #e0eef9;
+}
+.info-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #6d8090;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.info-tile strong {
+    color: #18344a;
+    font-size: 16px;
+    line-height: 1.4;
+}
+.cost-breakdown {
+    display: grid;
+    gap: 14px;
+}
+.cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: #f7fbff;
+    border: 1px solid #e0eef9;
+}
+.cost-row span {
+    color: #53708a;
+    font-weight: 700;
+}
+.cost-row strong {
+    color: #18344a;
+    font-size: 18px;
+}
+.table-wrap {
+    overflow: auto;
+}
+.compact-wrap {
+    max-height: 380px;
+}
+.sub-text {
+    margin-top: 4px;
+    color: #6d8090;
+    font-size: 12px;
+}
+@media (max-width: 1200px) {
+    .camion-report-filters {
+        grid-template-columns: 1fr 1fr;
+    }
+    .camion-report-hero,
+    .info-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .camion-report-panels {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 760px) {
+    .camion-report-hero,
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media print {
+    .print-only {
+        display: block !important;
+    }
+    .no-print,
+    .table-actions,
+    nav,
+    aside,
+    .sidebar,
+    .topbar {
+        display: none !important;
+    }
+    body {
+        background: #fff !important;
+    }
+    .camion-report-header h1,
+    .camion-report-header .camion-report-subtitle,
+    .camion-report-header .eyebrow {
+        display: none !important;
+    }
+    .report-card,
+    .hero-card {
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+    .report-card {
+        padding: 14px;
+        border-radius: 16px;
+    }
+    .hero-card {
+        padding: 14px;
+    }
+    .hero-label,
+    .hero-note,
+    .info-label,
+    .sub-text {
+        font-size: 10px !important;
+    }
+    .hero-value,
+    .info-tile strong,
+    .cost-row strong {
+        font-size: 14px !important;
+    }
+    .section-head h2 {
+        font-size: 18px;
+    }
+    .table th,
+    .table td {
+        padding: 8px 10px;
+        font-size: 10px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const target = document.getElementById("print-date-inline");
+    if (target) {
+        target.textContent = new Intl.DateTimeFormat("fr-FR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+        }).format(new Date());
+    }
+});
+</script>
+
+{% endblock %}

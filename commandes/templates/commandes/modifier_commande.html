@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load client_extras %}
 
 {% block content %}
 
 <div class="page-header">
 <div>
 <p class="eyebrow">Exploitation</p>
-<h1>Modifier la commande {{ commande.reference }}</h1>
+<h1>Modifier la commande {{ commande.reference_affichee }}</h1>
 </div>
 </div>
 
@@ -13,12 +14,22 @@
 <form method="post" class="app-form">
     {% csrf_token %}
 
-    <div class="form-grid">
-        <div class="field">
-            <label for="{{ form.reference.id_for_label }}">Reference</label>
-            {{ form.reference }}
-        </div>
+    <div class="form-alert form-alert--info" style="margin-bottom:16px;">
+        <strong>Numero de commande</strong>
+        <span>Le numero Sage n'est pas renseigne ici. Il sera complete apres validation du DG.</span>
+    </div>
 
+    {% if dma_alert and dma_alert.depasse_dma %}
+    <div class="form-alert form-alert--danger" style="margin-bottom:16px;">
+        <strong>Seuil DMA depasse</strong>
+        <span>
+            La commande reste modifiable, mais le client depasse son seuil de decouvert de
+            {{ dma_alert.depassement_dma|gnf }}. Le DGA et le DG verront cette alerte avant validation.
+        </span>
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
         <div class="field">
             <label for="{{ form.client.id_for_label }}">Client</label>
             <input
@@ -33,41 +44,74 @@
                 <option value="{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}" data-id="{{ client.id }}"></option>
                 {% endfor %}
             </datalist>
+            {% if form.client.errors %}<p class="field-error">{{ form.client.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field field-full">
-            <label for="{{ form.description.id_for_label }}">Description</label>
+            <label for="{{ form.description.id_for_label }}">Commentaire</label>
             {{ form.description }}
+            {% if form.description.errors %}<p class="field-error">{{ form.description.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.ville_depart.id_for_label }}">Ville de depart</label>
             {{ form.ville_depart }}
+            {% if form.ville_depart.errors %}<p class="field-error">{{ form.ville_depart.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.ville_arrivee.id_for_label }}">Ville d'arrivee</label>
             {{ form.ville_arrivee }}
+            {% if form.ville_arrivee.errors %}<p class="field-error">{{ form.ville_arrivee.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.date_livraison_prevue.id_for_label }}">Livraison prevue</label>
             {{ form.date_livraison_prevue }}
+            {% if form.date_livraison_prevue.errors %}<p class="field-error">{{ form.date_livraison_prevue.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.delai_paiement_jours.id_for_label }}">Delai d'echeance (jours)</label>
+            {{ form.delai_paiement_jours }}
+            {% if form.delai_paiement_jours.errors %}<p class="field-error">{{ form.delai_paiement_jours.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.produit.id_for_label }}">Produit</label>
             {{ form.produit }}
+            {% if form.produit.errors %}<p class="field-error">{{ form.produit.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.quantite.id_for_label }}">Quantite</label>
             {{ form.quantite }}
+            {% if form.quantite.errors %}<p class="field-error">{{ form.quantite.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
             <label for="{{ form.prix_negocie.id_for_label }}">Prix negocie</label>
             {{ form.prix_negocie }}
+            {% if form.prix_negocie.errors %}<p class="field-error">{{ form.prix_negocie.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="field-error" style="margin-bottom:14px;">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div class="stats-grid" style="margin-bottom: 18px;">
+        <div class="stat-card">
+            <span class="stat-label">Encours reel</span>
+            <strong class="stat-value">{{ commande.client.encours_client|gnf }}</strong>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Paiements anticipes</span>
+            <strong class="stat-value">{{ commande.client.paiements_anticipes|gnf }}</strong>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">DMA</span>
+            <strong class="stat-value">{{ commande.client.decouvert_maximum_autorise|gnf }}</strong>
         </div>
     </div>
 
@@ -96,4 +140,34 @@ function syncClientSelectionFromSearch() {
 clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
 clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
 </script>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.stat-card {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #dbe7f3;
+    background: #fff;
+}
+
+.stat-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    display: block;
+    margin-top: 8px;
+    color: #12324a;
+    font-size: 1.08rem;
+}
+</style>
 {% endblock %}

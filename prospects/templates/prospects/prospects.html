@@ -2,29 +2,55 @@
 
 {% block content %}
 
+<div class="page-header">
+<div>
+<p class="eyebrow">Developpement commercial</p>
 <h1>Prospects</h1>
-
+</div>
+<div class="field-inline">
 {% if can_add_prospects %}
 <a href="/prospects/ajouter/" class="btn">Ajouter prospect</a>
 {% endif %}
+</div>
+</div>
 
 <table class="table">
+<thead>
 <tr>
 <th>Nom</th>
+<th>Fonction</th>
 <th>Entreprise</th>
-<th>TÃ©lÃ©phone</th>
+<th>Telephone</th>
 <th>Ville</th>
+<th>Portefeuille</th>
+<th>Actions</th>
 </tr>
-
+</thead>
+<tbody>
 {% for prospect in prospects %}
 <tr>
 <td>{{ prospect.nom }}</td>
+<td>{{ prospect.fonction|default:"-" }}</td>
 <td>{{ prospect.entreprise }}</td>
 <td>{{ prospect.telephone }}</td>
 <td>{{ prospect.ville }}</td>
+<td>{% if prospect.commercial %}{{ prospect.commercial.get_full_name|default:prospect.commercial.username }}{% else %}-{% endif %}</td>
+<td>
+<div class="table-actions">
+<a href="/prospects/modifier/{{ prospect.id }}/" class="btn-edit">Modifier</a>
+<a href="/prospects/convertir/{{ prospect.id }}/" class="btn-secondary">Convertir</a>
+{% if can_delete_prospects %}
+<a href="/prospects/supprimer/{{ prospect.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce prospect ?')">Supprimer</a>
+{% endif %}
+</div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="7">Aucun prospect enregistre pour le moment.</td>
 </tr>
 {% endfor %}
-
+</tbody>
 </table>
 
 {% endblock %}

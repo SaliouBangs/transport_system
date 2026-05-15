@@ -4,95 +4,553 @@
 
 {% include "operations/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Exploitation</p>
-<h1>Suivi du BL {{ operation.numero_bl }}</h1>
-</div>
-</div>
-
-<div class="form-shell operation-shell">
-<form method="post" class="app-form">
-    {% csrf_token %}
-
-    {% if form.non_field_errors %}
-    <div class="form-alert">
-        {% for error in form.non_field_errors %}
-        <p class="field-error">{{ error }}</p>
-        {% endfor %}
+<div class="page-header logisticien-page-header">
+    <div>
+        <p class="eyebrow">Exploitation</p>
+        <h1>
+            Suivi du BL {{ operation.numero_bl }}
+            <span class="status-pill">
+                {% if operation.date_bon_retour %}
+                    Livre / Retourne
+                {% else %}
+                    {{ operation.get_etat_bon_display }}
+                {% endif %}
+            </span>
+        </h1>
+        <p class="muted">{{ workflow_role_label|default:"Logistique" }} : cette fiche affiche uniquement les actions utiles a votre etape du circuit.</p>
     </div>
+</div>
+
+<div class="operation-page-shell">
+    <form method="post" class="app-form operation-main-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-alert">
+            {% for error in form.non_field_errors %}
+            <p class="field-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <section class="operation-hero">
+            <div class="operation-hero__identity">
+                <div class="operation-hero__badge">BL en suivi</div>
+                <h2>{{ operation.commande.reference|default:"Commande sans reference" }}</h2>
+                <div class="operation-hero__meta">
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Client</span>
+                        <strong>{{ operation.commande.client.entreprise|default:operation.commande.client|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Produit</span>
+                        <strong>{{ operation.commande.produit|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Camion</span>
+                        <strong>{{ operation.camion.numero_tracteur|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Chauffeur</span>
+                        <strong>{{ operation.chauffeur.nom|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Destination</span>
+                        <strong>{{ operation.commande.ville_arrivee|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-hero__meta-item">
+                        <span class="operation-hero__meta-label">Prochaine etape</span>
+                        <strong>
+                            {% if operation.date_bon_retour %}
+                                Fin du circuit
+                            {% elif can_mark_retour %}
+                                BL retour
+                            {% elif can_mark_livre %}
+                                Livraison
+                            {% elif can_mark_charge %}
+                                Chargement
+                            {% elif can_remettre_chauffeur %}
+                                Remise chauffeur
+                            {% elif can_validate_reception_logistique %}
+                                Reception logistique
+                            {% elif operation.etat_bon == 'liquide_chauffeur' %}
+                                Charge chauffeur
+                            {% else %}
+                                Suivi en cours
+                            {% endif %}
+                        </strong>
+                    </div>
+                </div>
+                <div class="operation-hero__chips">
+                    <span class="operation-hero__chip">Trajet : {{ operation.commande.ville_depart|default:"-" }} → {{ operation.commande.ville_arrivee|default:"-" }}</span>
+                    {% if commande_multi_bl %}
+                    <span class="operation-hero__chip">{{ commande_operations_group|length }} BL sur cette commande</span>
+                    {% else %}
+                    <span class="operation-hero__chip">Qte : {{ operation.quantite|default:"-" }}</span>
+                    <span class="operation-hero__chip">BL : {{ operation.numero_bl }}</span>
+                    {% endif %}
+                </div>
+                {% if commande_multi_bl %}
+                <div class="operation-hero__group-list">
+                    {% for bl_operation in commande_operations_group %}
+                    <div class="operation-hero__group-item{% if bl_operation.id == operation.id %} is-current{% endif %}">
+                        <strong>{{ bl_operation.numero_bl }}</strong>
+                        <span>Quantite : {{ bl_operation.quantite|default:"-" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="operation-hero__status-card">
+                <span class="operation-hero__status-label">Etat du BL</span>
+                <strong class="operation-hero__status-value" id="etat-bl-value">
+                    {% if operation.date_bon_retour %}
+                        Livre / Retourne
+                    {% else %}
+                        {{ operation.get_etat_bon_display }}
+                    {% endif %}
+                </strong>
+                <p class="operation-hero__status-note">
+                    {% if operation.etat_bon == 'liquide_chauffeur' %}
+                        En attente de chargement par le chef chauffeur.
+                    {% elif operation.etat_bon == 'liquide_logistique' %}
+                        Pret pour remise chauffeur.
+                    {% elif operation.etat_bon == 'attente_reception_logistique' %}
+                        En attente de reception par la logistique.
+                    {% elif operation.etat_bon == 'charge' %}
+                        BL charge, suivi terrain ouvert.
+                    {% elif operation.etat_bon == 'livre' %}
+                        BL livre, retour du bon attendu.
+                    {% else %}
+                        Circuit en cours.
+                    {% endif %}
+                </p>
+            </div>
+        </section>
+
+        <div class="form-alert" id="livraison-warning" hidden>
+            <p class="field-error" id="livraison-warning-text"></p>
+        </div>
+
+        <section class="operation-section operation-section--split">
+            <div class="operation-action-card">
+                <div class="operation-section__header">
+                    <div>
+                        <p class="eyebrow">Action</p>
+                        <h2>Etat du bon</h2>
+                    </div>
+                </div>
+
+                <div class="workflow-strip" aria-label="Workflow du BL">
+                    <div class="workflow-step {% if operation.etat_bon == 'declare' or operation.etat_bon == 'liquide' or operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide_logistique' or operation.etat_bon == 'liquide_chauffeur' or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Declare</span>
+                        <span class="workflow-step__meta">Transitaire</span>
+                    </div>
+                    <span class="workflow-arrow">→</span>
+
+                    <div class="workflow-step {% if operation.etat_bon == 'liquide' %}is-current{% elif operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide_logistique' or operation.etat_bon == 'liquide_chauffeur' or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Liquide transitaire</span>
+                        <span class="workflow-step__meta">Sortie douane</span>
+                    </div>
+                    <span class="workflow-arrow">→</span>
+
+                    {% if can_validate_reception_logistique %}
+                    <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="reception_logistique" data-action-name="Reception logistique">
+                        <span class="workflow-step__title">Liquide logistique</span>
+                        <span class="workflow-step__meta">Valider reception BL</span>
+                    </button>
+                    {% else %}
+                    <div class="workflow-step {% if operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide_logistique' %}is-current{% elif operation.etat_bon == 'liquide_chauffeur' or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Liquide logistique</span>
+                        <span class="workflow-step__meta">Reception BL</span>
+                    </div>
+                    {% endif %}
+                    <span class="workflow-arrow">→</span>
+
+                    {% if can_remettre_chauffeur %}
+                    <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="remise_chauffeur" data-action-name="Remise chauffeur">
+                        <span class="workflow-step__title">Remise chauffeur</span>
+                        <span class="workflow-step__meta">Remettre le BL</span>
+                    </button>
+                    {% else %}
+                    <div class="workflow-step {% if operation.etat_bon == 'liquide_chauffeur' %}is-current{% elif operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Remise chauffeur</span>
+                        <span class="workflow-step__meta">BL remis</span>
+                    </div>
+                    {% endif %}
+                    <span class="workflow-arrow">→</span>
+
+                    {% if can_mark_charge %}
+                    <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="charge" data-action-name="Charge">
+                        <span class="workflow-step__title">Charge</span>
+                        <span class="workflow-step__meta">Enregistrer le chargement</span>
+                    </button>
+                    {% else %}
+                    <div class="workflow-step {% if operation.etat_bon == 'charge' %}is-current{% elif operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Charge</span>
+                        <span class="workflow-step__meta">Camion charge</span>
+                    </div>
+                    {% endif %}
+                    <span class="workflow-arrow">→</span>
+
+                    {% if can_mark_livre %}
+                    <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="livre" data-action-name="Livre">
+                        <span class="workflow-step__title">Livre</span>
+                        <span class="workflow-step__meta">Confirmer la livraison</span>
+                    </button>
+                    {% else %}
+                    <div class="workflow-step {% if operation.etat_bon == 'livre' and not operation.date_bon_retour %}is-current{% elif operation.date_bon_retour %}is-done{% endif %}">
+                        <span class="workflow-step__title">Livre</span>
+                        <span class="workflow-step__meta">Client servi</span>
+                    </div>
+                    {% endif %}
+                    <span class="workflow-arrow">→</span>
+
+                    {% if can_mark_retour %}
+                    <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="retour" data-action-name="Bon retour">
+                        <span class="workflow-step__title">BL retour</span>
+                        <span class="workflow-step__meta">Cloturer le circuit</span>
+                    </button>
+                    {% else %}
+                    <div class="workflow-step {% if operation.date_bon_retour %}is-current is-final{% endif %}">
+                        <span class="workflow-step__title">BL retour</span>
+                        <span class="workflow-step__meta">Fin de circuit</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="operation-action-banner">
+                    <div>
+                        <span class="operation-action-banner__label">Action utile maintenant</span>
+                        <strong>
+                            {% if operation.date_bon_retour %}
+                                Circuit termine
+                            {% elif can_mark_retour %}
+                                Enregistrer le bon retour du BL
+                            {% elif can_mark_livre %}
+                                Confirmer la livraison du BL
+                            {% elif can_mark_charge %}
+                                Enregistrer le chargement du BL
+                            {% elif can_remettre_chauffeur %}
+                                Remettre le BL au chauffeur
+                            {% elif can_validate_reception_logistique %}
+                                Valider la reception logistique
+                            {% elif operation.etat_bon == 'liquide_chauffeur' %}
+                                En attente du chef chauffeur
+                            {% else %}
+                                Suivi en cours
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <span class="operation-action-banner__state">
+                        {% if operation.date_bon_retour %}
+                            Fin de cycle
+                        {% elif operation.etat_bon == 'livre' %}
+                            Client servi
+                        {% elif operation.etat_bon == 'charge' %}
+                            Camion charge
+                        {% elif operation.etat_bon == 'liquide_chauffeur' %}
+                            BL remis
+                        {% elif operation.etat_bon == 'liquide_logistique' %}
+                            Pret chauffeur
+                        {% else %}
+                            Workflow actif
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="workflow-context-grid">
+                    <div class="workflow-context-card workflow-context-card--main">
+                        <span class="workflow-context-label">Etape actuelle</span>
+                        <strong>
+                            {% if operation.date_bon_retour %}
+                                BL retour
+                            {% elif operation.etat_bon == 'livre' %}
+                                BL livre
+                            {% elif operation.etat_bon == 'charge' %}
+                                BL charge
+                            {% elif operation.etat_bon == 'liquide_chauffeur' %}
+                                BL remis au chauffeur
+                            {% elif operation.etat_bon == 'liquide_logistique' %}
+                                BL liquide logistique
+                            {% elif operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide' %}
+                                BL liquide transitaire
+                            {% else %}
+                                {{ operation.get_etat_bon_display }}
+                            {% endif %}
+                        </strong>
+                        <small>Le workflow s'arrete visuellement sur cette etape du circuit.</small>
+                    </div>
+                    <div class="workflow-context-card">
+                        <span class="workflow-context-label">Responsable actuel</span>
+                        <strong>
+                            {% if operation.date_bon_retour %}
+                                Circuit cloture
+                            {% elif operation.etat_bon == 'livre' %}
+                                Logistique
+                            {% elif operation.etat_bon == 'charge' or operation.etat_bon == 'liquide_chauffeur' %}
+                                Chef chauffeur
+                            {% elif operation.etat_bon == 'liquide_logistique' or operation.etat_bon == 'attente_reception_logistique' %}
+                                Logistique
+                            {% else %}
+                                Transitaire
+                            {% endif %}
+                        </strong>
+                        <small>Pole attendu sur le BL a cet instant.</small>
+                    </div>
+                    <div class="workflow-context-card">
+                        <span class="workflow-context-label">Prochaine action</span>
+                        <strong>
+                            {% if operation.date_bon_retour %}
+                                Aucune action restante
+                            {% elif can_mark_retour %}
+                                Enregistrer le bon retour
+                            {% elif can_mark_livre %}
+                                Confirmer la livraison
+                            {% elif can_mark_charge %}
+                                Enregistrer le chargement
+                            {% elif can_remettre_chauffeur %}
+                                Remettre le BL au chauffeur
+                            {% elif can_validate_reception_logistique %}
+                                Valider la reception logistique
+                            {% elif operation.etat_bon == 'liquide_chauffeur' %}
+                                Attente du chargement chauffeur
+                            {% else %}
+                                Suivi en cours
+                            {% endif %}
+                        </strong>
+                        <small>Une seule action utile reste active dans le workflow.</small>
+                    </div>
+                </div>
+
+                {% if active_tab != 'chef_chauffeur' and operation.etat_bon == 'liquide_chauffeur' %}
+                <div class="operation-inline-note">
+                    <strong>En attente de chargement</strong>
+                    <span>Le chef chauffeur doit maintenant enregistrer le chargement.</span>
+                </div>
+                {% endif %}
+
+                <div style="display:none;">
+                    {{ form.etat_bon }}
+                    {{ form.date_bons_charges }}
+                    {{ form.date_bons_livres }}
+                    {{ form.quantite_livree }}
+                    {{ form.date_bon_retour }}
+                    <input type="hidden" name="workflow_action" id="workflow-action-input">
+                </div>
+                {% for error in form.etat_bon.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                {% for error in form.date_bons_charges.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                {% for error in form.date_bons_livres.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                {% for error in form.quantite_livree.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+
+                {% if operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}
+                <div class="workflow-expense-box">
+                    <div class="workflow-expense-box__head">
+                        <div>
+                            <span class="workflow-expense-box__eyebrow">Depenses de chargement</span>
+                            <strong>Lecture rapide dans le workflow</strong>
+                        </div>
+                        <span class="workflow-expense-box__count">{{ depenses_camion|length }} ligne(s)</span>
+                    </div>
+                <div class="workflow-expense-box__body">
+                    {% for depense in depenses_camion|slice:":4" %}
+                    <div class="workflow-expense-chip">
+                        <strong>{{ depense.type_depense|default:"Depense" }}</strong>
+                        <span>{{ depense.montant_affiche }}</span>
+                        <em>{{ depense.portee_affichee }} · {{ depense.get_statut_display }}</em>
+                    </div>
+                    {% empty %}
+                        <div class="workflow-expense-empty">Aucune depense de chargement rattachee a ce BL pour le moment.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="operation-side-card">
+                <div class="operation-section__header">
+                    <div>
+                        <p class="eyebrow">Repere</p>
+                        <h2>Infos utiles</h2>
+                    </div>
+                </div>
+                <div class="operation-side-card__list">
+                    <div class="operation-side-card__item">
+                        <span>Destination</span>
+                        <strong>{{ operation.commande.ville_arrivee|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-side-card__item">
+                        <span>Ville depart</span>
+                        <strong>{{ operation.commande.ville_depart|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-side-card__item">
+                        <span>Camion</span>
+                        <strong>{{ operation.camion.numero_tracteur|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-side-card__item">
+                        <span>Chauffeur</span>
+                        <strong>{{ operation.chauffeur.nom|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-side-card__item">
+                        <span>Remis a</span>
+                        <strong>{{ operation.remis_a_nom|default:"-" }}</strong>
+                    </div>
+                    <div class="operation-side-card__item">
+                        <span>Telephone</span>
+                        <strong>{{ operation.remis_a_telephone|default:"-" }}</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if active_tab != 'chef_chauffeur' %}
+            {% if operation.date_bons_charges or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}
+            <section class="operation-section">
+                <div class="operation-section__header">
+                    <div>
+                        <p class="eyebrow">Suivi terrain</p>
+                        <h2>Mouvement et position du camion</h2>
+                    </div>
+                </div>
+
+                <div class="form-grid operation-grid operation-grid--compact">
+                    <div class="field field-full">
+                        <label for="{{ form.mouvement_camion.id_for_label }}">Mouvement du camion</label>
+                        {{ form.mouvement_camion }}
+                        {% if not can_edit_suivi_camion %}
+                        <p class="field-help">La mise a jour du mouvement et de la position releve de la logistique apres chargement.</p>
+                        {% endif %}
+                        {% for error in form.mouvement_camion.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.latitude_position.id_for_label }}">Latitude</label>
+                        {{ form.latitude_position }}
+                        {% for error in form.latitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.longitude_position.id_for_label }}">Longitude</label>
+                        {{ form.longitude_position }}
+                        {% for error in form.longitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="field field-full">
+                        <label for="{{ form.observation.id_for_label }}">Observation</label>
+                        {{ form.observation }}
+                        {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+        {% endif %}
+
+        <div class="form-actions operation-actions">
+            <a href="{% if active_tab == 'chef_chauffeur' %}/operations/chef-chauffeur/{% else %}/operations/logisticien/{% endif %}" class="btn-secondary">Retour</a>
+            <button type="submit" class="btn">Enregistrer les informations</button>
+        </div>
+    </form>
+
+    {% if can_manage_depenses_camion and active_tab != 'chef_chauffeur' %}
+    <section class="summary-panel depenses-panel">
+        <div class="depenses-panel__header">
+            <div>
+                <p class="eyebrow">Depenses terrain</p>
+                <h2>Depenses liees au camion</h2>
+                <p class="muted">Suivez ici les frais terrain rattaches a ce BL charge ou, en cas de commande fractionnee, a l'ensemble des BL de la meme commande.</p>
+            </div>
+            <div class="depenses-panel__actions">
+                {% if can_add_depenses_camion %}
+                    {% if commande_multi_bl %}
+                    <a href="/depenses/chargement/{{ operation.id }}/ajouter/" class="btn-secondary">Depense du BL</a>
+                    <a href="/depenses/chargement/{{ operation.id }}/ajouter/?scope=commande" class="btn">Depense de la commande</a>
+                    {% else %}
+                    <a href="/depenses/chargement/{{ operation.id }}/ajouter/" class="btn">Nouvelle depense camion</a>
+                    {% endif %}
+                {% else %}
+                <span class="status-badge status-danger">Ajout verrouille apres decision DGA</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Type</th>
+                    <th>Portee</th>
+                    <th>Demandeur</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for depense in depenses_camion %}
+                <tr>
+                    <td>{{ depense.reference }}</td>
+                    <td>{{ depense.type_depense|default:"-" }}</td>
+                    <td><span class="status-badge {{ depense.portee_badge_class }}">{{ depense.portee_affichee }}</span></td>
+                    <td>{{ depense.demandeur.username }}</td>
+                    <td>{{ depense.montant_affiche }}</td>
+                    <td>{{ depense.get_statut_display }}</td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="/depenses/apercu/{{ depense.id }}/" class="btn-secondary">Apercu</a>
+                            {% if depense.can_edit_by_logistique %}
+                            <a href="{{ depense.edit_url }}" class="btn-edit">Modifier</a>
+                            {% endif %}
+                        </div>
+                        <div class="muted" style="margin-top:6px;">{{ depense.scope_detail }}</div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7">Aucune depense camion rattachee a ce BL pour le moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if depenses_camion_locked_by_dga %}
+        <p class="muted depenses-panel__locked-note">Le DGA a deja statue sur au moins une depense de ce BL. L'ajout de nouvelles depenses camion est maintenant bloque.</p>
+        {% endif %}
+    </section>
     {% endif %}
+</div>
 
-    <div class="operation-kpis operation-kpis--harmonized">
-        <p>Ce camion a fait : <strong><span id="jours-voyage-value">{% if operation.jours_voyage != None %}{{ operation.jours_voyage }}{% else %}-{% endif %}</span></strong> jour(s) de voyage</p>
-        <p>Et : <strong><span id="jours-retour-value">{% if operation.jours_retour_bon != None %}{{ operation.jours_retour_bon }}{% else %}-{% endif %}</span></strong> jour(s) pour retourner les bons au bureau.</p>
-    </div>
-
-    <div class="form-alert" id="livraison-warning" hidden>
-        <p class="field-error" id="livraison-warning-text"></p>
-    </div>
-
-    <div class="form-grid operation-grid">
-        <div class="field field-full">
-            <label>Etat du bon</label>
-            <div class="state-toggle" role="group" aria-label="Etat du bon">
-                <button type="button" class="state-toggle__btn" data-state-value="charge">Charge</button>
-                <button type="button" class="state-toggle__btn" data-state-value="livre">Livre</button>
+<div class="modal" id="logisticien-state-modal" aria-hidden="true">
+    <div class="modal-backdrop" id="logisticien-state-backdrop"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2 id="logisticien-state-title">Mettre a jour l'etat du BL</h2>
             </div>
-            <div style="display:none;">
-                {{ form.etat_bon }}
+            <button type="button" class="modal-close" id="close-logisticien-modal">x</button>
+        </div>
+        <div class="app-form modal-form">
+            <div class="field">
+                <label for="logisticien-modal-date" id="logisticien-modal-date-label">Date</label>
+                <input type="date" id="logisticien-modal-date">
+                <p class="field-help" id="logisticien-modal-date-help">Renseignez la date de l'etape selectionnee.</p>
             </div>
-            {% for error in form.etat_bon.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field state-date-field" data-state-field="charge">
-            <label for="{{ form.date_bons_charges.id_for_label }}">Date charge</label>
-            {{ form.date_bons_charges }}
-            {% for error in form.date_bons_charges.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field state-date-field" data-state-field="livre">
-            <label for="{{ form.date_bons_livres.id_for_label }}">Date livre</label>
-            {{ form.date_bons_livres }}
-            {% for error in form.date_bons_livres.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field">
-            <label for="{{ form.date_bon_retour.id_for_label }}">Date retour bon</label>
-            {{ form.date_bon_retour }}
-            {% for error in form.date_bon_retour.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field field-full">
-            <label for="{{ form.mouvement_camion.id_for_label }}">Mouvement du camion</label>
-            {{ form.mouvement_camion }}
-            {% for error in form.mouvement_camion.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field">
-            <label for="{{ form.latitude_position.id_for_label }}">Latitude</label>
-            {{ form.latitude_position }}
-            {% for error in form.latitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field">
-            <label for="{{ form.longitude_position.id_for_label }}">Longitude</label>
-            {{ form.longitude_position }}
-            {% for error in form.longitude_position.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-        </div>
-
-        <div class="field field-full">
-            <label for="{{ form.observation.id_for_label }}">Observation</label>
-            {{ form.observation }}
-            {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            <div class="field" id="logisticien-modal-quantite-field" hidden>
+                <label for="logisticien-modal-quantite">Quantite livree</label>
+                <input type="number" id="logisticien-modal-quantite" step="0.01" min="0" placeholder="Quantite livree">
+                <p class="field-help">Le manquant sera calcule automatiquement : quantite commandee - quantite livree.</p>
+            </div>
+            <div class="field" id="logisticien-modal-remis-nom-field" hidden>
+                <label for="logisticien-modal-remis-nom">Remis a</label>
+                <input type="text" id="logisticien-modal-remis-nom" placeholder="Nom du porteur">
+            </div>
+            <div class="field" id="logisticien-modal-remis-tel-field" hidden>
+                <label for="logisticien-modal-remis-tel">Numero de telephone</label>
+                <input type="text" id="logisticien-modal-remis-tel" placeholder="Telephone du porteur">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="cancel-logisticien-modal">Annuler</button>
+                <button type="button" class="btn" id="confirm-logisticien-modal">OK</button>
+            </div>
         </div>
     </div>
-
-    <div class="form-actions">
-        <a href="/operations/logisticien/" class="btn-secondary">Retour</a>
-        <button type="submit" class="btn">Mettre a jour l'etat</button>
-    </div>
-</form>
 </div>
 
 {% endblock %}
@@ -101,38 +559,75 @@
 <script>
 const logisticienDateCharge = document.getElementById("id_date_bons_charges");
 const logisticienDateLivre = document.getElementById("id_date_bons_livres");
+const logisticienQuantiteLivree = document.getElementById("id_quantite_livree");
 const logisticienDateRetour = document.getElementById("id_date_bon_retour");
 const logisticienEtatBon = document.getElementById("id_etat_bon");
+const logisticienWorkflowAction = document.getElementById("workflow-action-input");
+const logisticienDureeVoyageDetail = document.getElementById("duree-voyage-detail");
 const logisticienJoursVoyage = document.getElementById("jours-voyage-value");
+const logisticienDureeRetourDetail = document.getElementById("duree-retour-detail");
 const logisticienJoursRetour = document.getElementById("jours-retour-value");
+const logisticienEtatBlValue = document.getElementById("etat-bl-value");
+const logisticienDateChargeeValue = document.getElementById("date-chargee-value");
+const logisticienDateLivreeValue = document.getElementById("date-livree-value");
+const logisticienDateRetourValue = document.getElementById("date-retour-value");
+const logisticienQuantiteLivreeValue = document.getElementById("quantite-livree-value");
+const logisticienQuantiteManquanteValue = document.getElementById("quantite-manquante-value");
 const livraisonWarning = document.getElementById("livraison-warning");
 const livraisonWarningText = document.getElementById("livraison-warning-text");
-const logisticienStateButtons = document.querySelectorAll("[data-state-value]");
-const logisticienStateFields = document.querySelectorAll("[data-state-field]");
+const logisticienStateButtons = document.querySelectorAll(".js-logisticien-action");
+const logisticienStateModal = document.getElementById("logisticien-state-modal");
+const logisticienStateBackdrop = document.getElementById("logisticien-state-backdrop");
+const logisticienStateTitle = document.getElementById("logisticien-state-title");
+const logisticienModalDate = document.getElementById("logisticien-modal-date");
+const logisticienModalDateLabel = document.getElementById("logisticien-modal-date-label");
+const logisticienModalDateHelp = document.getElementById("logisticien-modal-date-help");
+const logisticienModalQuantiteField = document.getElementById("logisticien-modal-quantite-field");
+const logisticienModalQuantite = document.getElementById("logisticien-modal-quantite");
+const logisticienModalRemisNomField = document.getElementById("logisticien-modal-remis-nom-field");
+const logisticienModalRemisNom = document.getElementById("logisticien-modal-remis-nom");
+const logisticienModalRemisTelField = document.getElementById("logisticien-modal-remis-tel-field");
+const logisticienModalRemisTel = document.getElementById("logisticien-modal-remis-tel");
+const closeLogisticienModal = document.getElementById("close-logisticien-modal");
+const cancelLogisticienModal = document.getElementById("cancel-logisticien-modal");
+const confirmLogisticienModal = document.getElementById("confirm-logisticien-modal");
+const logisticienMainForm = document.querySelector(".operation-main-form");
+const quantiteCommandee = Number("{{ operation.quantite|default:'0'|escapejs }}".replace(",", ".")) || 0;
+let pendingLogisticienState = null;
 
-function diffInDays(startValue, endValue) {
-    if (!startValue || !endValue) {
-        return null;
-    }
-
+function buildDurationDetails(startValue, endValue) {
+    if (!startValue || !endValue) return null;
     const start = new Date(`${startValue}T00:00:00`);
     const end = new Date(`${endValue}T00:00:00`);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return null;
-    }
-
-    return Math.round((end - start) / 86400000);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    const totalMilliseconds = end - start;
+    if (totalMilliseconds < 0) return null;
+    const totalSeconds = Math.round(totalMilliseconds / 1000);
+    const totalMinutes = Math.round(totalSeconds / 60);
+    const totalHours = Math.round(totalMinutes / 60);
+    const totalDays = Math.round(totalHours / 24);
+    return {
+        detail: `${totalHours} h / ${totalMinutes} min / ${totalSeconds} s`,
+        days: `Soit ${totalDays} jour(s)`,
+    };
 }
 
 function refreshLogisticienKpis() {
-    const voyage = diffInDays(logisticienDateCharge?.value, logisticienDateLivre?.value);
-    const retour = diffInDays(logisticienDateLivre?.value, logisticienDateRetour?.value);
-
-    if (logisticienJoursVoyage) {
-        logisticienJoursVoyage.textContent = voyage === null ? "-" : String(voyage);
-    }
-    if (logisticienJoursRetour) {
-        logisticienJoursRetour.textContent = retour === null ? "-" : String(retour);
+    const voyage = buildDurationDetails(logisticienDateCharge?.value, logisticienDateLivre?.value);
+    const retour = buildDurationDetails(logisticienDateLivre?.value, logisticienDateRetour?.value);
+    const quantiteLivree = logisticienQuantiteLivree?.value ? Number(logisticienQuantiteLivree.value) : null;
+    const manquant = quantiteLivree === null || Number.isNaN(quantiteLivree) ? null : (quantiteCommandee - quantiteLivree);
+    if (logisticienDureeVoyageDetail) logisticienDureeVoyageDetail.textContent = voyage ? voyage.detail : "-";
+    if (logisticienJoursVoyage) logisticienJoursVoyage.textContent = voyage ? voyage.days : "-";
+    if (logisticienDureeRetourDetail) logisticienDureeRetourDetail.textContent = retour ? retour.detail : "-";
+    if (logisticienJoursRetour) logisticienJoursRetour.textContent = retour ? retour.days : "-";
+    if (logisticienDateChargeeValue) logisticienDateChargeeValue.textContent = logisticienDateCharge?.value ? new Date(`${logisticienDateCharge.value}T00:00:00`).toLocaleDateString("fr-FR") : "-";
+    if (logisticienDateLivreeValue) logisticienDateLivreeValue.textContent = logisticienDateLivre?.value ? new Date(`${logisticienDateLivre.value}T00:00:00`).toLocaleDateString("fr-FR") : "-";
+    if (logisticienDateRetourValue) logisticienDateRetourValue.textContent = logisticienDateRetour?.value ? new Date(`${logisticienDateRetour.value}T00:00:00`).toLocaleDateString("fr-FR") : "-";
+    if (logisticienQuantiteLivreeValue) logisticienQuantiteLivreeValue.textContent = quantiteLivree === null ? "-" : String(quantiteLivree);
+    if (logisticienQuantiteManquanteValue) {
+        logisticienQuantiteManquanteValue.textContent = manquant === null ? "-" : String(manquant);
+        logisticienQuantiteManquanteValue.classList.toggle("quantity-missing", manquant !== null && manquant > 0);
     }
 }
 
@@ -140,91 +635,768 @@ function refreshLivraisonWarning() {
     const hasChargeDate = !!(logisticienDateCharge?.value);
     const hasLivreDate = !!(logisticienDateLivre?.value);
     const isLivre = logisticienEtatBon?.value === "livre";
-
     if ((isLivre || hasLivreDate) && !hasChargeDate) {
         livraisonWarningText.textContent = "Impossible de livrer ce bon sans date de chargement.";
         livraisonWarning.hidden = false;
         return;
     }
-
     livraisonWarning.hidden = true;
 }
 
 function refreshLogisticienStateUI() {
     const currentState = logisticienEtatBon?.value;
+    const hasRetour = !!(logisticienDateRetour?.value);
+    const labelMap = {
+        initie: "Initie",
+        attente_reception_transitaire: "En attente validation reception transitaire",
+        transmis: "Transmis",
+        declare: "Declare",
+        liquide: "Liquide",
+        attente_reception_logistique: "BL liquides en attente validation reception logistique",
+        liquide_logistique: "BL liquides logistique",
+        liquide_chauffeur: "BL liquide chauffeur",
+        charge: "Charge",
+        livre: "Livre",
+    };
+    logisticienStateButtons.forEach((button) => button.setAttribute("aria-pressed", "false"));
+    if (logisticienEtatBlValue) {
+        logisticienEtatBlValue.textContent = hasRetour ? "Livre / Retourne" : (labelMap[currentState] || currentState || "-");
+    }
+}
 
-    logisticienStateButtons.forEach((button) => {
-        const isActive = button.dataset.stateValue === currentState;
-        button.classList.toggle("state-toggle__btn--active", isActive);
-        button.setAttribute("aria-pressed", isActive ? "true" : "false");
-    });
+function openLogisticienModal(state) {
+    pendingLogisticienState = state;
+    const isLivre = state === "livre";
+    const isRetour = state === "retour";
+    const isReception = state === "reception_logistique";
+    const isRemise = state === "remise_chauffeur";
+    logisticienStateTitle.textContent = isLivre ? "Renseigner la livraison" : isRetour ? "Renseigner le bon retour" : isReception ? "Valider la reception logistique" : isRemise ? "Renseigner la remise chauffeur" : "Renseigner le chargement";
+    logisticienModalDateLabel.textContent = isLivre ? "Date livree" : isRetour ? "Date bon retour" : isReception ? "Date de reception logistique" : isRemise ? "Date de remise" : "Date charge";
+    logisticienModalDateHelp.textContent = isLivre ? "Renseignez la date de livraison du BL." : isRetour ? "Une fois le bon retour enregistre, la date de livraison ne pourra plus etre modifiee." : isReception ? "Cette date sert de preuve que la logistique a bien recu le BL liquide." : isRemise ? "Renseignez les informations de la personne a qui le BL liquide est remis." : "Renseignez la date de chargement du BL.";
+    logisticienModalDate.value = isLivre ? (logisticienDateLivre?.value || new Date().toISOString().split("T")[0]) : isRetour ? (logisticienDateRetour?.value || new Date().toISOString().split("T")[0]) : isReception ? new Date().toISOString().split("T")[0] : isRemise ? new Date().toISOString().split("T")[0] : (logisticienDateCharge?.value || new Date().toISOString().split("T")[0]);
+    logisticienModalQuantiteField.hidden = !isLivre;
+    logisticienModalQuantiteField.style.display = isLivre ? "" : "none";
+    logisticienModalQuantite.value = isLivre ? (logisticienQuantiteLivree?.value || quantiteCommandee || "") : "";
+    logisticienModalRemisNomField.hidden = !isRemise;
+    logisticienModalRemisNomField.style.display = isRemise ? "" : "none";
+    logisticienModalRemisTelField.hidden = !isRemise;
+    logisticienModalRemisTelField.style.display = isRemise ? "" : "none";
+    logisticienModalRemisNom.value = isRemise ? "{{ operation.remis_a_nom|default:''|escapejs }}" : "";
+    logisticienModalRemisTel.value = isRemise ? "{{ operation.remis_a_telephone|default:''|escapejs }}" : "";
+    logisticienStateModal.classList.add("is-open");
+    logisticienStateModal.setAttribute("aria-hidden", "false");
+}
 
-    logisticienStateFields.forEach((field) => {
-        const fieldState = field.dataset.stateField;
-        const shouldShow =
-            fieldState === "charge"
-                ? currentState === "charge" || currentState === "livre"
-                : currentState === "livre";
-        field.hidden = !shouldShow;
-    });
+function closeLogisticienStateModal() {
+    logisticienStateModal?.classList.remove("is-open");
+    logisticienStateModal?.setAttribute("aria-hidden", "true");
+    pendingLogisticienState = null;
+}
+
+function applyLogisticienState() {
+    if (!pendingLogisticienState || !logisticienEtatBon) return;
+    if (!logisticienModalDate.value) {
+        logisticienModalDate.reportValidity();
+        return;
+    }
+
+    logisticienWorkflowAction.value = "";
+    let hiddenDate = document.getElementById("workflow-date-hidden");
+    if (!hiddenDate) {
+        hiddenDate = document.createElement("input");
+        hiddenDate.type = "hidden";
+        hiddenDate.name = "workflow_date";
+        hiddenDate.id = "workflow-date-hidden";
+        logisticienMainForm.appendChild(hiddenDate);
+    }
+    hiddenDate.value = "";
+
+    if (pendingLogisticienState === "reception_logistique") {
+        logisticienWorkflowAction.value = "reception_logistique";
+        hiddenDate.value = logisticienModalDate.value;
+    } else if (pendingLogisticienState === "remise_chauffeur") {
+        if (!logisticienModalRemisNom.value || !logisticienModalRemisTel.value) {
+            if (!logisticienModalRemisNom.value) logisticienModalRemisNom.reportValidity();
+            return;
+        }
+        logisticienWorkflowAction.value = "remise_chauffeur";
+        let hiddenName = document.getElementById("remis-a-nom-hidden");
+        let hiddenTel = document.getElementById("remis-a-tel-hidden");
+        if (!hiddenName) {
+            hiddenName = document.createElement("input");
+            hiddenName.type = "hidden";
+            hiddenName.name = "remis_a_nom";
+            hiddenName.id = "remis-a-nom-hidden";
+            logisticienMainForm.appendChild(hiddenName);
+        }
+        if (!hiddenTel) {
+            hiddenTel = document.createElement("input");
+            hiddenTel.type = "hidden";
+            hiddenTel.name = "remis_a_telephone";
+            hiddenTel.id = "remis-a-tel-hidden";
+            logisticienMainForm.appendChild(hiddenTel);
+        }
+        hiddenName.value = logisticienModalRemisNom.value;
+        hiddenTel.value = logisticienModalRemisTel.value;
+        hiddenDate.value = logisticienModalDate.value;
+    } else if (pendingLogisticienState === "charge") {
+        logisticienEtatBon.value = "charge";
+        logisticienDateCharge.value = logisticienModalDate.value;
+    } else if (pendingLogisticienState === "livre") {
+        if (!logisticienModalQuantite.value) {
+            logisticienModalQuantite.reportValidity();
+            return;
+        }
+        logisticienEtatBon.value = "livre";
+        logisticienDateLivre.value = logisticienModalDate.value;
+        logisticienQuantiteLivree.value = logisticienModalQuantite.value;
+    } else if (pendingLogisticienState === "retour") {
+        logisticienEtatBon.value = "livre";
+        logisticienDateRetour.value = logisticienModalDate.value;
+    }
+
+    refreshLogisticienStateUI();
+    refreshLivraisonWarning();
+    refreshLogisticienKpis();
+    closeLogisticienStateModal();
+    logisticienMainForm?.requestSubmit();
 }
 
 logisticienStateButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-        if (!logisticienEtatBon) {
-            return;
-        }
-        logisticienEtatBon.value = button.dataset.stateValue;
-        refreshLogisticienStateUI();
-        refreshLivraisonWarning();
-    });
+    button.addEventListener("click", () => openLogisticienModal(button.dataset.stateValue));
 });
 
-[logisticienDateCharge, logisticienDateLivre, logisticienDateRetour, logisticienEtatBon].forEach((input) => {
+[logisticienDateCharge, logisticienDateLivre, logisticienQuantiteLivree, logisticienDateRetour, logisticienEtatBon].forEach((input) => {
     input?.addEventListener("input", refreshLogisticienKpis);
     input?.addEventListener("change", refreshLogisticienKpis);
     input?.addEventListener("input", refreshLivraisonWarning);
     input?.addEventListener("change", refreshLivraisonWarning);
 });
 
+closeLogisticienModal?.addEventListener("click", closeLogisticienStateModal);
+cancelLogisticienModal?.addEventListener("click", closeLogisticienStateModal);
+logisticienStateBackdrop?.addEventListener("click", closeLogisticienStateModal);
+confirmLogisticienModal?.addEventListener("click", applyLogisticienState);
+
 refreshLogisticienStateUI();
 refreshLogisticienKpis();
 refreshLivraisonWarning();
 </script>
 <style>
-.operation-kpis--harmonized {
-    border-top: 3px solid #4d73d1;
-    background: #f6faff;
+.operation-page-shell {
+    display: grid;
+    gap: 28px;
+    width: 100%;
+    max-width: 100%;
 }
 
-.state-toggle {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+.operation-main-form {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    gap: 28px;
 }
 
-.state-toggle__btn {
-    min-width: 140px;
-    border: 1px solid #c9d8e6;
-    background: #f6fafc;
-    color: #123047;
+.logisticien-page-header .status-pill {
+    margin-left: 14px;
+}
+
+.operation-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 2.35fr) minmax(340px, 1fr);
+    gap: 24px;
+}
+
+.operation-hero__identity,
+.operation-hero__status-card,
+.operation-section,
+.depenses-panel {
+    background:
+        radial-gradient(circle at top right, rgba(79, 179, 191, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 250, 253, 0.98));
+    border: 1px solid rgba(191, 216, 236, 0.95);
+    border-radius: 28px;
+    box-shadow: 0 20px 44px rgba(18, 48, 71, 0.08);
+}
+
+.operation-hero__identity {
+    padding: 30px 32px;
+    background:
+        radial-gradient(circle at top left, rgba(50, 181, 144, 0.22), transparent 36%),
+        radial-gradient(circle at right center, rgba(63, 143, 214, 0.12), transparent 28%),
+        linear-gradient(135deg, #ffffff 0%, #f5fbff 100%);
+}
+
+.operation-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
     border-radius: 999px;
-    padding: 12px 18px;
+    background: rgba(50, 181, 144, 0.14);
+    color: #15745e;
+    font-size: 0.84rem;
     font-weight: 700;
-    cursor: pointer;
+    margin-bottom: 12px;
+}
+
+.operation-hero__identity h2 {
+    margin: 0 0 16px;
+    color: #123047;
+    font-size: 1.65rem;
+}
+
+.operation-hero__meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.operation-hero__meta-item {
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #dfeaf3;
+}
+
+.operation-hero__meta-label {
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #678093;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.operation-hero__meta-item strong {
+    color: #123047;
+    font-size: 1rem;
+}
+
+.operation-hero__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.operation-hero__chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(18, 48, 71, 0.08);
+    color: #234860;
+    font-weight: 700;
+    font-size: 0.86rem;
+    border: 1px solid rgba(18, 48, 71, 0.08);
+}
+
+.operation-hero__group-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.operation-hero__group-item {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #dfeaf3;
+}
+
+.operation-hero__group-item strong {
+    color: #123047;
+    font-size: 0.95rem;
+}
+
+.operation-hero__group-item span {
+    color: #5f7384;
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+
+.operation-hero__group-item.is-current {
+    background: linear-gradient(135deg, rgba(50, 181, 144, 0.14), rgba(50, 181, 144, 0.05));
+    border-color: rgba(50, 181, 144, 0.34);
+    box-shadow: 0 12px 26px rgba(42, 143, 120, 0.12);
+}
+
+.operation-hero__status-card {
+    padding: 30px;
+    background: linear-gradient(135deg, #123047 0%, #205273 100%);
+    border-color: #123047;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+
+.operation-hero__status-card::after {
+    content: "";
+    position: absolute;
+    right: -36px;
+    bottom: -36px;
+    width: 150px;
+    height: 150px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.operation-hero__status-label {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    opacity: 0.82;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.operation-hero__status-value {
+    display: block;
+    font-size: 1.36rem;
+    line-height: 1.3;
+    margin-bottom: 12px;
+}
+
+.operation-hero__status-note {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.86);
+    line-height: 1.55;
+}
+
+.operation-section {
+    padding: 30px;
+}
+
+.operation-section--split {
+    display: grid;
+    grid-template-columns: minmax(0, 2.1fr) minmax(320px, 0.92fr);
+    gap: 24px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.operation-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.operation-section__header h2 {
+    margin: 0;
+    color: #123047;
+    font-size: 1.45rem;
+}
+
+.operation-action-card,
+.operation-side-card {
+    background:
+        radial-gradient(circle at top left, rgba(50, 181, 144, 0.12), transparent 28%),
+        radial-gradient(circle at right bottom, rgba(63, 143, 214, 0.08), transparent 24%),
+        linear-gradient(180deg, #ffffff 0%, #f8fcff 100%);
+    border: 1px solid rgba(191, 216, 236, 0.95);
+    border-radius: 28px;
+    box-shadow: 0 20px 44px rgba(18, 48, 71, 0.08);
+    padding: 28px;
+}
+
+.operation-action-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.operation-action-card::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(50, 181, 144, 0.06);
+}
+
+.operation-inline-note {
+    display: grid;
+    gap: 4px;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 191, 71, 0.12);
+    color: #8a5b0a;
+    border: 1px solid rgba(255, 191, 71, 0.26);
+}
+
+.operation-side-card__list {
+    display: grid;
+    gap: 12px;
+}
+
+.operation-side-card__item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: baseline;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fbfdff 0%, #f5faff 100%);
+    border: 1px solid #dfeaf3;
+}
+
+.operation-side-card__item span {
+    color: #678093;
+    font-size: 0.9rem;
+}
+
+.operation-side-card__item strong {
+    color: #123047;
+    text-align: right;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    background: #eaf6ef;
+    color: #1f7a54;
+    vertical-align: middle;
+}
+
+.quantity-missing {
+    color: #c12f2f;
+}
+
+.workflow-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 20px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #fbfeff 0%, #f4f8fb 100%);
+    border: 1px solid #dce7f0;
+}
+
+.workflow-step {
+    min-width: 148px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #dce7f0;
+    color: #698092;
+    display: grid;
+    gap: 3px;
     transition: all 0.2s ease;
 }
 
-.state-toggle__btn:hover {
-    border-color: #2da88b;
-    color: #0e846b;
+.workflow-step--button {
+    appearance: none;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
-.state-toggle__btn--active {
-    background: linear-gradient(135deg, #39b490, #2a8f78);
+.workflow-step__title {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: inherit;
+}
+
+.workflow-step__meta {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+}
+
+.workflow-step.is-done {
+    background: rgba(50, 181, 144, 0.12);
+    border-color: rgba(50, 181, 144, 0.28);
+    color: #166c58;
+}
+
+.workflow-step.is-current {
+    background: linear-gradient(135deg, #123047 0%, #205273 100%);
+    border-color: #123047;
+    color: #ffffff;
+    box-shadow: 0 12px 28px rgba(18, 48, 71, 0.16);
+}
+
+.workflow-step.is-final.is-current {
+    background: linear-gradient(135deg, #208d72 0%, #39b490 100%);
+    border-color: #208d72;
+}
+
+.workflow-step--action {
+    background: linear-gradient(135deg, #39b490 0%, #2a8f78 100%);
     border-color: #2a8f78;
+    color: #ffffff;
+    box-shadow: 0 14px 30px rgba(42, 143, 120, 0.22);
+}
+
+.workflow-step--action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 34px rgba(42, 143, 120, 0.28);
+}
+
+.workflow-arrow {
+    color: #7a90a1;
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.operation-action-banner {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.05), rgba(50, 181, 144, 0.11));
+    border: 1px solid rgba(50, 181, 144, 0.22);
+}
+
+.operation-action-banner__label {
+    display: block;
+    color: #5f7384;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.operation-action-banner strong {
+    color: #123047;
+    font-size: 1.05rem;
+}
+
+.operation-action-banner__state {
+    white-space: nowrap;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: #123047;
     color: #fff;
-    box-shadow: 0 10px 24px rgba(42, 143, 120, 0.2);
+    font-weight: 700;
+    font-size: 0.88rem;
+}
+
+.workflow-context-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.workflow-context-card {
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid #dce7f0;
+    box-shadow: 0 10px 24px rgba(18, 48, 71, 0.04);
+}
+
+.workflow-context-card--main {
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.05), rgba(50, 181, 144, 0.08));
+}
+
+.workflow-context-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #678093;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.workflow-context-card strong {
+    display: block;
+    color: #123047;
+    font-size: 1.02rem;
+    line-height: 1.35;
+}
+
+.workflow-context-card small {
+    display: block;
+    margin-top: 8px;
+    color: #6b8192;
+    line-height: 1.45;
+}
+
+.operation-grid--compact {
+    gap: 18px;
+}
+
+.operation-actions {
+    margin-top: 6px;
+}
+
+.workflow-expense-box {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 20px;
+    background: #f8fbfd;
+    border: 1px solid #dce7f0;
+}
+
+.workflow-expense-box__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.workflow-expense-box__eyebrow {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6d8191;
+    margin-bottom: 4px;
+    font-weight: 700;
+}
+
+.workflow-expense-box__count {
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(50, 181, 144, 0.12);
+    color: #176d59;
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+
+.workflow-expense-box__body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.workflow-expense-chip {
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #dde7ef;
+}
+
+.workflow-expense-chip strong {
+    color: #123047;
+}
+
+.workflow-expense-chip span {
+    color: #0d725d;
+    font-weight: 700;
+}
+
+.workflow-expense-chip em {
+    color: #6b8192;
+    font-style: normal;
+    font-size: 0.84rem;
+}
+
+.workflow-expense-empty {
+    grid-column: 1 / -1;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px dashed #d7e2ea;
+    color: #6a8090;
+}
+
+.depenses-panel {
+    padding: 28px;
+}
+
+.depenses-panel__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.depenses-panel__header h2 {
+    margin: 0;
+    color: #123047;
+}
+
+.depenses-panel__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.depenses-panel__locked-note {
+    margin: 12px 0 0;
+}
+
+@media (max-width: 1180px) {
+    .operation-hero,
+    .operation-section--split {
+        grid-template-columns: 1fr;
+    }
+
+    .workflow-context-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .operation-hero__meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .workflow-strip {
+        align-items: stretch;
+    }
+
+    .workflow-arrow {
+        display: none;
+    }
+
+    .workflow-step {
+        width: 100%;
+    }
+
+    .operation-hero__meta {
+        grid-template-columns: 1fr;
+    }
+
+    .workflow-context-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .operation-action-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .operation-side-card__item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .operation-side-card__item strong {
+        text-align: left;
+    }
 }
 </style>
 {% endblock %}

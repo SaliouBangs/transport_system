@@ -40,6 +40,34 @@
         </form>
     </div>
 </div>
+<div class="modal" id="panne-maintenance-modal">
+    <div class="modal-backdrop" data-modal-close="panne-maintenance-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Maintenance</p>
+                <h2 style="margin:0;">Ajouter une panne</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="panne-maintenance-modal">x</button>
+        </div>
+        <form id="panne-maintenance-form" class="app-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="{{ panne_form.type_maintenance.id_for_label }}">Type de maintenance</label>
+                {{ panne_form.type_maintenance }}
+            </div>
+            <div class="field">
+                <label for="{{ panne_form.libelle.id_for_label }}">Libelle panne</label>
+                {{ panne_form.libelle }}
+                <p class="field-error" id="panne-maintenance-error" style="display:none;"></p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="panne-maintenance-modal">Annuler</button>
+                <button type="submit" class="btn">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}

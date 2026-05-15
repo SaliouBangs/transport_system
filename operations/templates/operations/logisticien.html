@@ -4,79 +4,627 @@
 
 {% include "operations/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Exploitation</p>
-<h1>Chargement et livraison</h1>
-</div>
-<form method="get" class="search-form" id="logisticien-search-form">
-    <input type="text" name="q" id="logisticien-search-input" value="{{ query }}" placeholder="Recherche par BL, client, camion ou chauffeur">
-    <button type="submit" class="btn-secondary">Rechercher</button>
-</form>
-</div>
+<style>
+.logistique-hero{
+    display:grid;
+    grid-template-columns:1.18fr .92fr;
+    gap:20px;
+    margin-bottom:22px;
+}
+.logistique-panel{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,250,247,.96));
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:24px;
+}
+.logistique-hero-title{
+    margin:0 0 10px;
+    font-size:2.2rem;
+    line-height:1.08;
+}
+.logistique-hero-copy{
+    margin:0;
+    color:#4d6678;
+    line-height:1.65;
+    max-width:760px;
+}
+.logistique-badges{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+}
+.logistique-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    padding:10px 14px;
+    font-weight:700;
+    font-size:.92rem;
+}
+.logistique-badge-soft{
+    background:#eaf3ff;
+    color:#214a6a;
+}
+.logistique-badge-mint{
+    background:#e7f7ef;
+    color:#18794e;
+}
+.logistique-kpis{
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+    gap:12px;
+}
+.logistique-kpi{
+    border-radius:20px;
+    padding:16px 16px 14px;
+    background:#fff;
+    border:1px solid #dbe8f2;
+}
+.logistique-kpi-label{
+    margin:0 0 8px;
+    color:#627a8d;
+    font-weight:700;
+    font-size:.84rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.logistique-kpi-value{
+    margin:0;
+    font-size:1.9rem;
+    font-weight:800;
+    color:#123047;
+}
+.logistique-kpi-note{
+    margin:8px 0 0;
+    color:#6c8191;
+    font-size:.88rem;
+}
+.logistique-filter-shell{
+    margin-bottom:18px;
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:26px;
+    padding:16px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+}
+.logistique-filter-tools{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+.logistique-filter-grid{
+    display:grid;
+    grid-template-columns:minmax(220px,1.35fr) minmax(180px,.72fr) minmax(180px,.72fr) minmax(150px,.62fr) minmax(150px,.62fr) auto;
+    gap:12px;
+    align-items:end;
+}
+.logistique-filter-field label{
+    display:block;
+    margin:0 0 8px;
+    font-size:.82rem;
+    font-weight:700;
+    color:#5d7688;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.logistique-filter-field input,
+.logistique-filter-field select{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 8px 18px rgba(18,48,71,.04);
+    transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.logistique-filter-field input::placeholder{
+    color:#7890a1;
+    font-weight:500;
+}
+.logistique-filter-field input:focus,
+.logistique-filter-field select:focus{
+    outline:none;
+    border-color:#4fbf9f;
+    box-shadow:0 0 0 4px rgba(79,191,159,.18), 0 12px 24px rgba(18,48,71,.08);
+    transform:translateY(-1px);
+}
+.logistique-filter-field select{
+    appearance:none;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95)),
+        linear-gradient(45deg, transparent 50%, #4d6678 50%),
+        linear-gradient(135deg, #4d6678 50%, transparent 50%);
+    background-repeat:no-repeat;
+    background-size:auto, 8px 8px, 8px 8px;
+    background-position:0 0, calc(100% - 22px) 23px, calc(100% - 16px) 23px;
+    padding-right:42px;
+}
+.logistique-filter-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    min-width:220px;
+}
+.logistique-filter-actions .btn,
+.logistique-filter-actions .btn-secondary{
+    min-height:54px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 20px;
+    margin:0;
+    border-radius:18px;
+}
+.logistique-filter-tools .table-actions{
+    margin-left:auto;
+}
+.logistique-card{
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+    padding:22px 22px 16px;
+    margin-bottom:18px;
+}
+.logistique-card-head{
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    margin-bottom:16px;
+}
+.logistique-card-title{
+    margin:0;
+    font-size:1.05rem;
+}
+.logistique-card-note{
+    margin:8px 0 0;
+    color:#5e7587;
+    line-height:1.55;
+}
+.logistique-action-strip{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+}
+.logistique-emphasis{
+    background:linear-gradient(135deg, #1f8f6a, #48ba90);
+    color:#fff;
+    border-radius:20px;
+    padding:12px 14px;
+    min-width:180px;
+}
+.logistique-emphasis small{
+    display:block;
+    opacity:.84;
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.logistique-emphasis strong{
+    font-size:1.45rem;
+}
+.logistique-table{
+    overflow:auto;
+    border-radius:22px;
+}
+.logistique-table table{
+    margin:0;
+}
+.logistique-subinfo{
+    margin-top:4px;
+    color:#6b8191;
+    font-size:.88rem;
+}
+.logistique-subinfo-strong{
+    margin-top:4px;
+    color:#234860;
+    font-size:.88rem;
+    font-weight:700;
+}
+.logistique-group-cell{
+    vertical-align:top;
+    background:linear-gradient(180deg, rgba(246,251,255,.96), rgba(238,247,255,.96));
+}
+.logistique-group-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-top:8px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:#e8f2ff;
+    color:#1f5d96;
+    font-size:.78rem;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.logistique-group-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:12px;
+}
+.logistique-group-hint{
+    margin-top:10px;
+    color:#5c7587;
+    font-size:.84rem;
+    line-height:1.45;
+}
+.logistique-status{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:.84rem;
+    font-weight:700;
+    white-space:nowrap;
+}
+.logistique-status-warning{
+    background:#fff3d7;
+    color:#946200;
+}
+.logistique-status-progress{
+    background:#e8f2ff;
+    color:#1f5d96;
+}
+.logistique-status-success{
+    background:#e7f7ef;
+    color:#18794e;
+}
+.logistique-status-danger{
+    background:#fdeaea;
+    color:#c44444;
+}
+.logistique-depense{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    min-width:120px;
+}
+.logistique-depense-amount{
+    font-weight:800;
+    color:#123047;
+}
+.logistique-empty{
+    color:#7a8f9f;
+}
+.logistique-depense-note{
+    color:#6c8191;
+    font-size:.88rem;
+    font-weight:600;
+}
+@media (max-width: 1220px){
+    .logistique-hero,
+    .logistique-filter-grid{
+        grid-template-columns:1fr;
+    }
+    .logistique-kpis{
+        grid-template-columns:1fr;
+    }
+    .logistique-filter-actions{
+        justify-content:stretch;
+    }
+    .logistique-filter-actions .btn,
+    .logistique-filter-actions .btn-secondary{
+        flex:1 1 180px;
+    }
+}
+</style>
 
-<table class="table" id="logisticien-table">
-<thead>
-<tr>
-<th>BL</th>
-<th>Client</th>
-<th>Etat</th>
-<th>Date charge</th>
-<th>Date livre</th>
-<th>Retour bon</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
-{% for operation in operations %}
-<tr{% if operation.remplace_par_id %} style="background:#fff0e3; color:#7b8794;"{% endif %}>
-<td>{{ operation.numero_bl }}</td>
-<td>{{ operation.client.entreprise }}</td>
-<td>{{ operation.get_etat_bon_display }}</td>
-<td>{{ operation.date_bons_charges|default:"-" }}</td>
-<td>{{ operation.date_bons_livres|default:"-" }}</td>
-<td>{{ operation.date_bon_retour|default:"-" }}</td>
-<td>
-    {% if operation.remplace_par_id %}
-    <span class="status-badge status-danger">BL invalide</span>
-    {% if operation.date_bons_charges %}
-    <div style="margin-top:8px;">
-        <span class="status-badge status-danger">Charge, mais livraison bloquee</span>
+<section class="logistique-hero">
+    <div class="logistique-panel">
+        <p class="eyebrow">Exploitation</p>
+        <h1 class="logistique-hero-title">Suivi logistique BL</h1>
+        <p class="logistique-hero-copy">
+            Cette vue concentre la reception logistique, le suivi des BL pris en charge par la logistique
+            et l'etat d'avancement des depenses rattachees. L'objectif est d'aller a l'essentiel, avec
+            des filtres rapides et une lecture plus nette du travail en cours.
+        </p>
+        <div class="logistique-badges">
+            <span class="logistique-badge logistique-badge-soft">Reception groupee disponible</span>
+            <span class="logistique-badge logistique-badge-mint">Lecture directe de l'etat des depenses BL</span>
+        </div>
     </div>
-    {% else %}
-    <div style="margin-top:8px;">
-        <span class="status-badge status-danger">Ancien BL non charge</span>
+
+    <div class="logistique-panel">
+        <p class="eyebrow" style="margin-bottom:12px;">Vue d'ensemble</p>
+        <div class="logistique-kpis">
+            <div class="logistique-kpi">
+                <p class="logistique-kpi-label">A receptionner</p>
+                <p class="logistique-kpi-value">{{ total_receptions_logistique }}</p>
+                <p class="logistique-kpi-note">BL transferes par le transitaire a receptionner</p>
+            </div>
+            <div class="logistique-kpi">
+                <p class="logistique-kpi-label">Montant periode</p>
+                <p class="logistique-kpi-value" style="font-size:1.35rem;">{{ total_montant_depenses_display }}</p>
+                <p class="logistique-kpi-note">Total des depenses BL sur la selection courante</p>
+            </div>
+            <div class="logistique-kpi">
+                <p class="logistique-kpi-label">Qté totale</p>
+                <p class="logistique-kpi-value">{{ total_quantite_display }}</p>
+                <p class="logistique-kpi-note">Volume cumule sur la periode selectionnee</p>
+            </div>
+            <div class="logistique-kpi">
+                <p class="logistique-kpi-label">Gasoil</p>
+                <p class="logistique-kpi-value">{{ total_gasoil_display }}</p>
+                <p class="logistique-kpi-note">Quantite produit gasoil</p>
+            </div>
+            <div class="logistique-kpi">
+                <p class="logistique-kpi-label">Essence</p>
+                <p class="logistique-kpi-value">{{ total_essence_display }}</p>
+                <p class="logistique-kpi-note">Quantite produit essence</p>
+            </div>
+        </div>
     </div>
-    {% endif %}
-    {% else %}
-    <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-edit">Mettre a jour</a>
-    {% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="7">Aucune operation disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+</section>
+
+<form method="get" class="logistique-filter-shell">
+    <div class="logistique-filter-tools">
+        <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Filtres</p>
+            <strong style="font-size:1.05rem; color:#123047;">Filtrer le suivi logistique et exporter la periode courante</strong>
+        </div>
+        <div class="table-actions">
+            <a href="/operations/logisticien/export/xls/?{{ current_filters }}" class="btn-secondary">Exporter Excel</a>
+            <a href="/operations/logisticien/export/pdf/?{{ current_filters }}" class="btn-secondary">Exporter PDF</a>
+        </div>
+    </div>
+    <div class="logistique-filter-grid">
+        <div class="logistique-filter-field">
+            <label for="id_q_logistique">Recherche</label>
+            <input id="id_q_logistique" type="text" name="q" value="{{ query }}" placeholder="BL, commande, client, camion ou chauffeur">
+        </div>
+        <div class="logistique-filter-field">
+            <label for="id_etat_logistique">Etat</label>
+            <select id="id_etat_logistique" name="etat">
+                <option value="">Tous les etats</option>
+                <option value="attente_reception_logistique" {% if etat == "attente_reception_logistique" %}selected{% endif %}>Reception logistique</option>
+                <option value="liquide_logistique" {% if etat == "liquide_logistique" %}selected{% endif %}>BL liquides logistique</option>
+                <option value="liquide_chauffeur" {% if etat == "liquide_chauffeur" %}selected{% endif %}>BL liquide chauffeur</option>
+                <option value="charge" {% if etat == "charge" %}selected{% endif %}>Charge</option>
+                <option value="livre" {% if etat == "livre" %}selected{% endif %}>Livre</option>
+            </select>
+        </div>
+        <div class="logistique-filter-field">
+            <label for="id_depense_niveau_logistique">Niveau depense BL</label>
+            <select id="id_depense_niveau_logistique" name="depense_niveau">
+                <option value="">Tous les niveaux</option>
+                <option value="logistique" {% if depense_niveau == "logistique" %}selected{% endif %}>Chez logistique</option>
+                <option value="dga" {% if depense_niveau == "dga" %}selected{% endif %}>Chez DGA</option>
+                <option value="dg" {% if depense_niveau == "dg" %}selected{% endif %}>Chez DG</option>
+                <option value="paiement" {% if depense_niveau == "paiement" %}selected{% endif %}>Chez paiement</option>
+                <option value="payee" {% if depense_niveau == "payee" %}selected{% endif %}>Payee</option>
+            </select>
+        </div>
+        <div class="logistique-filter-field">
+            <label for="id_date_from_logistique">Date debut</label>
+            <input id="id_date_from_logistique" type="date" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="logistique-filter-field">
+            <label for="id_date_to_logistique">Date fin</label>
+            <input id="id_date_to_logistique" type="date" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="logistique-filter-actions">
+            <button type="submit" class="btn">Filtrer</button>
+            <a href="/operations/logisticien/" class="btn-secondary">Reinitialiser</a>
+        </div>
+    </div>
+</form>
+
+<section class="logistique-card">
+    <div class="logistique-card-head">
+        <div>
+            <p class="eyebrow">Action groupee</p>
+            <h2 class="logistique-card-title">Reception logistique</h2>
+            <p class="logistique-card-note">Selectionnez plusieurs BL en attente de reception logistique pour appliquer une meme date de reception, comme sur la page secretaire.</p>
+        </div>
+        <div class="logistique-emphasis">
+            <small>BL a receptionner</small>
+            <strong id="logistique-selected-count">{{ total_receptions_logistique }}</strong>
+        </div>
+    </div>
+    <div class="logistique-action-strip">
+        <button type="button" class="btn" id="open-logistique-bulk" {% if not total_receptions_logistique %}disabled{% endif %}>Receptionner la selection</button>
+        <span class="logistique-subinfo">La date de reception est pre-remplie a aujourd'hui et reste modifiable avant validation.</span>
+    </div>
+</section>
+
+<section class="logistique-card">
+    <div class="logistique-card-head">
+        <div>
+            <p class="eyebrow">Suivi terrain</p>
+            <h2 class="logistique-card-title">BL suivis par la logistique</h2>
+            <p class="logistique-card-note">Vous retrouvez ici la reception, le suivi charge / livre et surtout l'etat exact des depenses rattachees a chaque BL.</p>
+        </div>
+    </div>
+    <div class="logistique-table">
+        <table class="table" id="logistique-table">
+            <thead>
+                <tr>
+                    <th style="width:48px;"><input type="checkbox" id="select-all-logistique"></th>
+                    <th>BL</th>
+                    <th>Commande / client</th>
+                    <th>Camion</th>
+                    <th>Capacite</th>
+                    <th>Chauffeur</th>
+                    <th>Qte commandee</th>
+                    <th>Etat</th>
+                    <th>Date charge</th>
+                    <th>Date livre</th>
+                    <th>Niveau depense BL</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations %}
+                <tr>
+                    <td>
+                        {% if operation.can_validate_logistique %}
+                        <input type="checkbox" class="js-logistique-select" value="{{ operation.id }}">
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ operation.numero_bl }}</strong></td>
+                    {% if operation.commande_group_start %}
+                    <td rowspan="{{ operation.commande_group_rowspan }}" class="logistique-group-cell">
+                        <strong>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</strong>
+                        <div class="logistique-subinfo-strong">
+                            {% if operation.commande and operation.commande.produit %}{{ operation.commande.produit }}{% elif operation.produit %}{{ operation.produit }}{% else %}Produit non renseigne{% endif %}
+                            ·
+                            {% if operation.commande and operation.commande.quantite != None %}{{ operation.commande.quantite }}{% else %}-{% endif %}
+                        </div>
+                        <div class="logistique-subinfo">{{ operation.client.entreprise }}</div>
+                        {% if operation.commande_group_is_multi %}
+                        <div class="logistique-group-chip">{{ operation.commande_group_count }} BL</div>
+                        <div class="logistique-group-actions">
+                            <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-secondary">Mettre a jour le groupe</a>
+                        </div>
+                        <div class="logistique-group-hint">La reception logistique et la remise au chauffeur seront repercutees sur les BL de cette meme commande quand ils sont au meme stade.</div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        <strong>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</strong>
+                        <div class="logistique-subinfo">{% if operation.camion and operation.camion.numero_citerne %}{{ operation.camion.numero_citerne }}{% else %}-{% endif %}</div>
+                    </td>
+                    <td>{% if operation.camion and operation.camion.capacite %}{{ operation.camion.capacite|floatformat:0 }}{% else %}-{% endif %}</td>
+                    <td>{{ operation.chauffeur.nom|default:"-" }}</td>
+                    <td>{% if operation.quantite %}{{ operation.quantite|floatformat:2 }}{% else %}-{% endif %}</td>
+                    <td>
+                        <span class="logistique-status {% if operation.etat_bon == 'attente_reception_logistique' %}logistique-status-warning{% elif operation.etat_bon == 'livre' %}logistique-status-success{% else %}logistique-status-progress{% endif %}">
+                            {{ operation.status_label }}
+                        </span>
+                    </td>
+                    <td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        <div class="logistique-depense">
+                            {% if operation.depenses_status_note and operation.depenses_stage_key != "logistique" and operation.depenses_display_amount %}
+                            <div class="logistique-depense-amount">{{ operation.depenses_display_amount }}</div>
+                            {% endif %}
+                            <span class="logistique-status {% if operation.depenses_status_variant == 'danger' %}logistique-status-danger{% elif operation.depenses_status_variant == 'warning' %}logistique-status-warning{% elif operation.depenses_status_variant == 'info' %}logistique-status-progress{% else %}logistique-status-success{% endif %}">
+                                {{ operation.depenses_status_label }}
+                            </span>
+                            {% if operation.depenses_is_shared_note %}
+                            <div class="logistique-depense-note">Depense commune commande, comptee une seule fois dans le total.</div>
+                            {% endif %}
+                            {% if operation.depenses_stage_key == "logistique" %}
+                            <div class="logistique-depense-note">{{ operation.depenses_status_note }}</div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-secondary">{% if operation.commande_group_is_multi %}Ouvrir BL{% else %}Mettre a jour{% endif %}</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="12">Aucun BL dans le suivi logistique pour le moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal" id="logistique-action-modal" aria-hidden="true">
+    <div class="modal-backdrop" id="logistique-modal-backdrop"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Reception logistique</h2>
+            </div>
+            <button type="button" class="modal-close" id="close-logistique-modal">x</button>
+        </div>
+        <form method="post" action="/operations/logistique/reception/" class="app-form" id="logistique-action-form">
+            {% csrf_token %}
+            <div id="logistique-selected-inputs"></div>
+            <div class="field">
+                <label for="logistique-date-input">Date de reception logistique</label>
+                <input type="date" id="logistique-date-input" name="date_reception_logistique" required>
+                <p class="field-help">Cette date confirme la prise en charge logistique des BL transferes par le transitaire.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="cancel-logistique-modal">Annuler</button>
+                <button type="submit" class="btn">Receptionner</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-const logisticienSearchInput = document.getElementById("logisticien-search-input");
-const logisticienRows = document.querySelectorAll("#logisticien-table tbody tr");
+const logistiqueModal = document.getElementById("logistique-action-modal");
+const logistiqueDateInput = document.getElementById("logistique-date-input");
+const logistiqueSelectedInputs = document.getElementById("logistique-selected-inputs");
+const logistiqueSelectAll = document.getElementById("select-all-logistique");
+const logistiqueCheckboxes = document.querySelectorAll(".js-logistique-select");
+const openLogistiqueBulk = document.getElementById("open-logistique-bulk");
+const logistiqueSelectedCount = document.getElementById("logistique-selected-count");
 
-function filterLogisticienTable() {
-    const query = (logisticienSearchInput?.value || "").trim().toLowerCase();
-    logisticienRows.forEach((row) => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = !query || text.includes(query) ? "" : "none";
-    });
+function fillLogistiqueSelection(ids) {
+    logistiqueSelectedInputs.innerHTML = ids.map((id) => `<input type="hidden" name="selected_operations" value="${id}">`).join("");
 }
 
-logisticienSearchInput?.addEventListener("input", filterLogisticienTable);
-filterLogisticienTable();
+function openLogistiqueModal(ids) {
+    fillLogistiqueSelection(ids);
+    logistiqueDateInput.value = "{{ default_reception_logistique_date }}";
+    logistiqueModal.classList.add("is-open");
+    logistiqueModal.setAttribute("aria-hidden", "false");
+}
+
+function closeLogistiqueModal() {
+    logistiqueModal.classList.remove("is-open");
+    logistiqueModal.setAttribute("aria-hidden", "true");
+}
+
+function refreshLogistiqueBulkState() {
+    const checked = Array.from(logistiqueCheckboxes).filter((checkbox) => checkbox.checked);
+    if (openLogistiqueBulk) {
+        openLogistiqueBulk.disabled = checked.length === 0;
+    }
+    if (logistiqueSelectedCount) {
+        logistiqueSelectedCount.textContent = checked.length || {{ total_receptions_logistique|default:0 }};
+    }
+    if (logistiqueSelectAll) {
+        logistiqueSelectAll.checked = checked.length > 0 && checked.length === logistiqueCheckboxes.length;
+    }
+}
+
+openLogistiqueBulk?.addEventListener("click", () => {
+    const ids = Array.from(logistiqueCheckboxes).filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    if (ids.length) {
+        openLogistiqueModal(ids);
+    }
+});
+
+logistiqueSelectAll?.addEventListener("change", () => {
+    logistiqueCheckboxes.forEach((checkbox) => {
+        checkbox.checked = logistiqueSelectAll.checked;
+    });
+    refreshLogistiqueBulkState();
+});
+
+logistiqueCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", refreshLogistiqueBulkState));
+document.getElementById("close-logistique-modal")?.addEventListener("click", closeLogistiqueModal);
+document.getElementById("cancel-logistique-modal")?.addEventListener("click", closeLogistiqueModal);
+document.getElementById("logistique-modal-backdrop")?.addEventListener("click", closeLogistiqueModal);
+refreshLogistiqueBulkState();
 </script>
 {% endblock %}

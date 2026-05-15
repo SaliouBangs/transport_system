@@ -41,12 +41,27 @@
         </div>
         <div class="field">
             <label>Fournisseur / prestataire</label>
-            <input type="text" value="{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:'-' }}{% endif %}" readonly>
+            <input type="text" value="{% if invoice_rows %}{{ invoice_rows|length }} facture(s) fournisseur{% else %}{{ maintenance.prestataire|default:'-' }}{% endif %}" readonly>
         </div>
         <div class="field">
             <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
             {{ form.date_paiement }}
             {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.receveur_nom.id_for_label }}">Nom du receveur</label>
+            {{ form.receveur_nom }}
+            {% if form.receveur_nom.errors %}<p class="field-error">{{ form.receveur_nom.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.receveur_poste.id_for_label }}">Poste du receveur</label>
+            {{ form.receveur_poste }}
+            {% if form.receveur_poste.errors %}<p class="field-error">{{ form.receveur_poste.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="field">
+            <label for="{{ form.receveur_telephone.id_for_label }}">Numero de telephone</label>
+            {{ form.receveur_telephone }}
+            {% if form.receveur_telephone.errors %}<p class="field-error">{{ form.receveur_telephone.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
             <label for="{{ form.observation.id_for_label }}">Observation paiement</label>
@@ -71,9 +86,30 @@
             <tbody>
                 <tr><th>Montant total</th><td>{{ montant_total_formatte }} GNF</td></tr>
                 <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
-                <tr><th>Numero facture</th><td>{{ maintenance.numero_facture|default:"-" }}</td></tr>
-                <tr><th>Fournisseur</th><td>{{ maintenance.fournisseur|default:"-" }}</td></tr>
+                <tr>
+                    <th>Factures fournisseurs</th>
+                    <td>
+                        {% if invoice_rows %}
+                            {% for invoice in invoice_rows %}
+                            <div style="margin-bottom:6px;">
+                                {% if invoice.fournisseur %}<strong>{{ invoice.fournisseur }}</strong>{% else %}<strong>-</strong>{% endif %}
+                                {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
+                                {% if invoice.facture_fichier %}
+                                <div style="margin-top:4px;">
+                                    <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
                 <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
+                <tr><th>Receveur</th><td>{{ maintenance.receveur_nom|default:"-" }}</td></tr>
+                <tr><th>Poste receveur</th><td>{{ maintenance.receveur_poste|default:"-" }}</td></tr>
+                <tr><th>Telephone receveur</th><td>{{ maintenance.receveur_telephone|default:"-" }}</td></tr>
             </tbody>
         </table>
     </div>

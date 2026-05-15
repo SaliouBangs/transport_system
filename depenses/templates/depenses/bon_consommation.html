@@ -1,0 +1,234 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bon de consommation {{ bon_conso_reference }}</title>
+<style>
+body{
+    font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color:#163042;
+    margin:16px;
+    background:#f4f7fb;
+}
+.sheet{
+    max-width:1100px;
+    margin:0 auto;
+    background:#ffffff;
+    border-radius:20px;
+    padding:18px;
+    box-shadow:0 24px 60px rgba(18,48,71,0.08);
+}
+.actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:14px;
+}
+.print-btn{
+    border:none;
+    background:#249274;
+    color:white;
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-weight:700;
+}
+.copy{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:16px;
+    background:#fff;
+    margin-bottom:18px;
+}
+.copy:last-child{
+    margin-bottom:0;
+}
+.copy-header{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    align-items:flex-start;
+    margin-bottom:14px;
+}
+.brand{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+}
+.brand img{
+    width:72px;
+    height:auto;
+}
+.eyebrow{
+    margin:0 0 4px 0;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:0.72rem;
+    font-weight:700;
+    color:#249274;
+}
+.copy-title{
+    font-size:1.35rem;
+    margin:0 0 4px 0;
+}
+.copy-badge{
+    display:inline-flex;
+    padding:8px 12px;
+    border-radius:999px;
+    background:#eef8f4;
+    color:#1d6b52;
+    font-weight:700;
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:14px;
+}
+.box{
+    border:1px solid #d9e2e8;
+    border-radius:14px;
+    padding:12px 14px;
+    background:#f9fbfd;
+}
+.box strong{
+    display:block;
+    margin-bottom:10px;
+}
+.summary-table{
+    width:100%;
+    border-collapse:collapse;
+}
+.summary-table th,
+.summary-table td{
+    padding:7px 0;
+    text-align:left;
+    vertical-align:top;
+    border-bottom:1px solid #edf2f6;
+    font-size:0.92rem;
+}
+.summary-table th{
+    width:40%;
+    color:#5f7384;
+    font-weight:700;
+}
+.signatures{
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0,1fr));
+    gap:10px;
+    margin-top:14px;
+}
+.signature-card{
+    min-height:90px;
+    border:1px dashed #cfd9e4;
+    border-radius:14px;
+    padding:10px 12px;
+    background:#fff;
+}
+.signature-label{
+    font-weight:800;
+    color:#123047;
+    margin-bottom:28px;
+    font-size:0.92rem;
+}
+.signature-meta{
+    color:#5f7384;
+    font-size:0.84rem;
+    line-height:1.35;
+}
+@media print{
+    body{
+        margin:0;
+        background:#fff;
+    }
+    .sheet{
+        max-width:none;
+        box-shadow:none;
+        border-radius:0;
+        padding:0;
+    }
+    .actions{
+        display:none;
+    }
+    .copy{
+        break-inside:avoid;
+        page-break-inside:avoid;
+    }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="actions">
+    <button type="button" class="print-btn" onclick="window.print()">Imprimer</button>
+  </div>
+
+  {% for copy_label in copies %}
+  <div class="copy">
+    <div class="copy-header">
+      <div class="brand">
+        <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
+        <div>
+          <p class="eyebrow">Depenses / bon de consommation</p>
+          <h1 class="copy-title">Bon de consommation {{ bon_conso_reference }}</h1>
+          <p style="margin:0; color:#5f7384;">{{ copy_label }}</p>
+        </div>
+      </div>
+      <span class="copy-badge">{{ operation.numero_bl }}</span>
+    </div>
+
+    <div class="grid">
+      <div class="box">
+        <strong>Informations transport</strong>
+        <table class="summary-table">
+          <tr><th>Date bon de conso</th><td>{{ date_bon_conso_affichee|date:"d/m/Y" }}</td></tr>
+          <tr><th>Produit a transporte</th><td>{{ operation.produit|default:"-" }}</td></tr>
+          <tr><th>Quantite</th><td>{{ quantite_transportee_affichee }}</td></tr>
+          <tr><th>Ville depart</th><td>{{ ville_depart }}</td></tr>
+          <tr><th>Destination</th><td>{{ destination }}</td></tr>
+          <tr><th>Camion</th><td>{{ operation.camion|default:"-" }}</td></tr>
+          <tr><th>Chauffeur</th><td>{{ operation.chauffeur|default:"-" }}</td></tr>
+        </table>
+      </div>
+
+      <div class="box">
+        <strong>Informations consommation</strong>
+        <table class="summary-table">
+          <tr><th>Numero BL</th><td>{{ operation.numero_bl }}</td></tr>
+          <tr><th>Numero bon de conso</th><td>{{ bon_conso_reference }}</td></tr>
+          <tr><th>Type de depense</th><td>{{ depense.type_depense|default:"-" }}</td></tr>
+          <tr><th>Quantite a consommer</th><td>{{ quantite_a_consommer_affichee }}</td></tr>
+          <tr><th>Montant</th><td>{{ montant_bon_conso_affiche }} GNF</td></tr>
+          <tr><th>Commentaire</th><td>{{ depense.description|default:"-" }}</td></tr>
+          <tr><th>Date charge</th><td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="signatures">
+      <div class="signature-card">
+        <div class="signature-label">Logistique</div>
+        <div class="signature-meta">{% if depense.demandeur %}{{ depense.demandeur.username }}{% else %}-{% endif %}</div>
+      </div>
+      <div class="signature-card">
+        <div class="signature-label">DGA</div>
+        <div class="signature-meta">{% if depense.expression_decision_dga_par %}{{ depense.expression_decision_dga_par.username }}{% else %}-{% endif %}</div>
+      </div>
+      <div class="signature-card">
+        <div class="signature-label">DG</div>
+        <div class="signature-meta">{% if depense.expression_decision_dg_par %}{{ depense.expression_decision_dg_par.username }}{% else %}-{% endif %}</div>
+      </div>
+      <div class="signature-card">
+        <div class="signature-label">Chauffeur</div>
+        <div class="signature-meta">{{ operation.chauffeur|default:"-" }}</div>
+      </div>
+      <div class="signature-card">
+        <div class="signature-label">Gerant</div>
+        <div class="signature-meta">....................................</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+</body>
+</html>

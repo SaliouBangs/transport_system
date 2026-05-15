@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Rapport pannes / main d'oeuvre</h1>
+<p style="margin:6px 0 0; color:#6d8090;">Vue centralisée des pannes, pièces et interventions de main d'oeuvre par camion.</p>
+</div>
+<div class="table-actions">
+<button type="button" class="btn-secondary" onclick="window.print()">Imprimer l'etat</button>
+</div>
+</div>
+
+<div class="card report-pannes-shell">
+    <form method="get" class="report-pannes-filters">
+        <div class="filter-field">
+            <label for="id_q">Recherche</label>
+            <input id="id_q" type="text" name="q" value="{{ filter_values.q }}" placeholder="Reference, camion, panne, fournisseur">
+        </div>
+        <div class="filter-field">
+            <label for="id_camion">Camion</label>
+            <select id="id_camion" name="camion">
+                <option value="">Tous les camions</option>
+                {% for camion_id, camion_label in camion_choices %}
+                <option value="{{ camion_id }}" {% if filter_values.camion == camion_id|stringformat:"s" %}selected{% endif %}>{{ camion_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_categorie">Categorie</label>
+            <select id="id_categorie" name="categorie">
+                <option value="">Toutes les categories</option>
+                {% for choice in categorie_choices %}
+                <option value="{{ choice }}" {% if filter_values.categorie == choice %}selected{% endif %}>{{ choice }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_source">Source</label>
+            <select id="id_source" name="source">
+                <option value="">Toutes les sources</option>
+                {% for choice in source_choices %}
+                <option value="{{ choice }}" {% if filter_values.source == choice %}selected{% endif %}>{{ choice }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_libelle">Libelle panne / piece</label>
+            <input id="id_libelle" type="text" name="libelle" list="libelles-catalog" value="{{ filter_values.libelle }}" placeholder="Ex: Filtre a gasoil">
+            <datalist id="libelles-catalog">
+                {% for choice in libelle_choices %}
+                <option value="{{ choice }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="filter-field">
+            <label for="id_date_from">Date debut</label>
+            <input id="id_date_from" type="date" name="date_from" value="{{ filter_values.date_from }}">
+        </div>
+        <div class="filter-field">
+            <label for="id_date_to">Date fin</label>
+            <input id="id_date_to" type="date" name="date_to" value="{{ filter_values.date_to }}">
+        </div>
+        <button type="submit" class="btn filter-btn">Filtrer</button>
+        <a href="/maintenance/rapports/pannes/" class="btn-secondary filter-btn">Reinitialiser</a>
+    </form>
+
+    <div class="cards report-pannes-kpis">
+        <div class="card"><h3>Lignes</h3><p>{{ total_lignes }}</p></div>
+        <div class="card"><h3>Camions concernes</h3><p>{{ total_camions }}</p></div>
+        <div class="card"><h3>Maintenances</h3><p>{{ total_maintenances }}</p></div>
+        <div class="card"><h3>Montant total</h3><p>{{ total_montant }} GNF</p></div>
+    </div>
+
+    <div class="report-pannes-top">
+        <div class="card report-top-card">
+            <div class="panel-head">
+                <h3>Top 5 camions</h3>
+                <span class="panel-badge">Impact cout</span>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Camion</th>
+                        <th>Nb fois</th>
+                        <th>Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in top_camions %}
+                    <tr>
+                        <td>{{ row.camion_label }}</td>
+                        <td>{{ row.nb_fois }}</td>
+                        <td>{{ row.montant_display }} GNF</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">Aucune donnée.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card report-top-card">
+            <div class="panel-head">
+                <h3>Top 5 pannes / pieces</h3>
+                <span class="panel-badge">Frequence</span>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Libelle</th>
+                        <th>Categorie</th>
+                        <th>Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in top_libelles %}
+                    <tr>
+                        <td>{{ row.libelle }}</td>
+                        <td>{{ row.categorie }}</td>
+                        <td>{{ row.montant_display }} GNF</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">Aucune donnée.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card report-detail-card">
+        <div class="panel-head">
+            <h3>Etat detaille</h3>
+            <span class="panel-badge">Imprimable</span>
+        </div>
+        <div style="overflow:auto;">
+            <table class="table report-detail-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Reference</th>
+                        <th>Camion</th>
+                        <th>Categorie</th>
+                        <th>Libelle</th>
+                        <th>Source</th>
+                        <th>Qte</th>
+                        <th>Prix unitaire</th>
+                        <th>Montant</th>
+                        <th>Fournisseur / prestataire</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.date_display }}</td>
+                        <td>{{ row.reference }}</td>
+                        <td>{{ row.camion_label }}</td>
+                        <td>{{ row.categorie }}</td>
+                        <td>{{ row.libelle }}</td>
+                        <td>{{ row.source }}</td>
+                        <td>{{ row.quantite_display }}</td>
+                        <td>{{ row.prix_unitaire_display }} GNF</td>
+                        <td>{{ row.montant_display }} GNF</td>
+                        <td>{{ row.fournisseur }}</td>
+                        <td>{{ row.statut }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11">Aucune ligne de panne ou main d'oeuvre ne correspond aux filtres selectionnes.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.report-pannes-shell{
+    padding:22px;
+    text-align:left;
+}
+.report-pannes-filters{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr 1fr 0.9fr 1.2fr 170px 170px auto auto;
+    gap:12px;
+    align-items:end;
+    margin-bottom:20px;
+}
+.report-pannes-filters input,
+.report-pannes-filters select{
+    width:100%;
+    min-height:48px;
+    border-radius:16px;
+}
+.report-pannes-kpis{
+    margin-bottom:20px;
+}
+.report-pannes-top{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:18px;
+    margin-bottom:18px;
+}
+.report-top-card,
+.report-detail-card{
+    margin:0;
+    text-align:left;
+}
+.panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.panel-head h3{
+    margin:0;
+}
+.panel-badge{
+    display:inline-flex;
+    align-items:center;
+    padding:7px 12px;
+    border-radius:999px;
+    background:rgba(79,191,159,0.12);
+    color:#1c7c63;
+    font-size:12px;
+    font-weight:800;
+}
+.report-detail-table{
+    min-width:1260px;
+}
+@media (max-width: 1280px){
+    .report-pannes-filters{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .report-pannes-top{
+        grid-template-columns: 1fr;
+    }
+}
+@media print {
+    .subtabs,
+    .page-header .table-actions,
+    .report-pannes-filters,
+    .topbar,
+    .sidebar,
+    .mobile-menu-button,
+    .sidebar-overlay {
+        display:none !important;
+    }
+    .report-pannes-shell,
+    .report-top-card,
+    .report-detail-card,
+    .cards .card{
+        box-shadow:none !important;
+        border:1px solid #d7e1e8 !important;
+        break-inside:avoid;
+    }
+    .report-detail-table th,
+    .report-detail-table td,
+    .table th,
+    .table td{
+        font-size:11px !important;
+        padding:6px !important;
+    }
+}
+</style>
+
+{% endblock %}

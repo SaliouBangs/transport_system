@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>Engagement {{ depense.reference }}</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <div class="summary-panel">
+    <h2>Recap de l'expression</h2>
+    <table class="table summary-table">
+      <tr><th>Demandeur</th><td>{{ depense.demandeur.username }}</td></tr>
+      <tr><th>Titre</th><td>{{ depense.titre }}</td></tr>
+      <tr><th>Description</th><td>{{ depense.description }}</td></tr>
+      <tr><th>Montant estime</th><td>{{ depense.montant_estime|default:"-" }}</td></tr>
+    </table>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="app-form" style="margin-top:24px;">
+    {% csrf_token %}
+    {{ form.type_depense }}
+    {{ form.lieu_projet_ref }}
+    {{ form.lieu_ou_projet }}
+    {{ form.fournisseur }}
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+      {% for error in form.non_field_errors %}
+      <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.type_depense_search.id_for_label }}">Type de depense</label>
+        <div class="field-inline">
+          {{ form.type_depense_search }}
+          <button type="button" class="btn-secondary btn-inline" data-modal-target="type-depense-modal">Nouveau type</button>
+        </div>
+        <datalist id="depense-types-list">
+          {% for type_depense in form.type_depenses %}
+          <option value="{{ type_depense.libelle }}" data-id="{{ type_depense.id }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if form.type_depense_search.errors %}<p class="field-error">{{ form.type_depense_search.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.lieu_ou_projet_search.id_for_label }}">Lieu ou projet</label>
+        <div class="field-inline">
+          {{ form.lieu_ou_projet_search }}
+          <button type="button" class="btn-secondary btn-inline" data-modal-target="lieu-projet-modal">Nouveau lieu</button>
+        </div>
+        <datalist id="depense-lieux-list">
+          {% for lieu in form.lieux_projets %}
+          <option value="{{ lieu.libelle }}" data-id="{{ lieu.id }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if form.lieu_ou_projet_search.errors %}<p class="field-error">{{ form.lieu_ou_projet_search.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.numero_facture.id_for_label }}">Numero de facture</label>
+        {{ form.numero_facture }}
+        {% if form.numero_facture.errors %}<p class="field-error">{{ form.numero_facture.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.fournisseur_search.id_for_label }}">Fournisseur</label>
+        <div class="field-inline">
+          {{ form.fournisseur_search }}
+          <a href="/maintenance/fournisseurs/" class="btn-secondary btn-inline">Gerer</a>
+        </div>
+        <datalist id="depense-fournisseurs-list">
+          {% for fournisseur in form.fournisseurs %}
+          <option value="{{ fournisseur }}" data-id="{{ fournisseur.id }}"></option>
+          {% endfor %}
+        </datalist>
+        {% if form.fournisseur.errors %}<p class="field-error">{{ form.fournisseur.errors|join:", " }}</p>{% endif %}
+        {% if form.fournisseur_search.errors %}<p class="field-error">{{ form.fournisseur_search.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field field-full">
+        <label for="{{ form.piece_justificative.id_for_label }}">Piece justificative (facture en photo)</label>
+        {{ form.piece_justificative }}
+        {% if depense.piece_justificative %}
+        <p><a href="{{ depense.piece_justificative.url }}" target="_blank">Voir la piece actuelle</a></p>
+        {% endif %}
+        {% if form.piece_justificative.errors %}<p class="field-error">{{ form.piece_justificative.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field field-full">
+        <label>Lignes de depense</label>
+        <table class="table" id="depense-lignes-table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Designation</th>
+              <th>Qte</th>
+              <th>Prix</th>
+              <th>Montant</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="depense-lignes-body">
+            {% for ligne in ligne_values %}
+            <tr class="depense-ligne-row">
+              <td><input type="text" name="ligne_designation[]" value="{{ ligne.designation }}" placeholder="Designation"></td>
+              <td><input type="number" name="ligne_quantite[]" value="{{ ligne.quantite }}" min="0.01" step="0.01" class="ligne-quantite"></td>
+              <td><input type="number" name="ligne_prix[]" value="{{ ligne.prix_unitaire }}" min="0" step="0.01" class="ligne-prix"></td>
+              <td><input type="text" value="{{ ligne.montant }}" class="ligne-montant" readonly></td>
+              <td><button type="button" class="btn-delete remove-ligne">Retirer</button></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>Total</th>
+              <th><span id="depense-total-quantite">0</span></th>
+              <th></th>
+              <th><span id="depense-total-montant">0</span></th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+        <button type="button" class="btn-secondary" id="add-ligne-button" style="margin-top:10px;">Ajouter une ligne</button>
+      </div>
+      <div class="field field-full">
+        <label for="{{ form.engagement_observation.id_for_label }}">Observation achat</label>
+        {{ form.engagement_observation }}
+        {% if form.engagement_observation.errors %}<p class="field-error">{{ form.engagement_observation.errors|join:", " }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/depenses/" class="btn-secondary">Retour</a>
+      <button type="submit" class="btn">Transmettre au DGA SOGEFI</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<div class="modal" id="type-depense-modal">
+  <div class="modal-backdrop" data-modal-close="type-depense-modal"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Depenses</p>
+        <h2>Nouveau type de depense</h2>
+      </div>
+      <button type="button" class="modal-close" data-modal-close="type-depense-modal">X</button>
+    </div>
+    <form id="type-depense-form" class="app-form">
+      {% csrf_token %}
+      <div class="field">
+        <label for="type-depense-libelle">Libelle</label>
+        <input type="text" id="type-depense-libelle" name="libelle">
+      </div>
+      <p class="field-error" id="type-depense-error"></p>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" data-modal-close="type-depense-modal">Annuler</button>
+        <button type="submit" class="btn">Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="modal" id="lieu-projet-modal">
+  <div class="modal-backdrop" data-modal-close="lieu-projet-modal"></div>
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Depenses</p>
+        <h2>Nouveau lieu ou projet</h2>
+      </div>
+      <button type="button" class="modal-close" data-modal-close="lieu-projet-modal">X</button>
+    </div>
+    <form id="lieu-projet-form" class="app-form">
+      {% csrf_token %}
+      <div class="field">
+        <label for="lieu-projet-libelle">Libelle</label>
+        <input type="text" id="lieu-projet-libelle" name="libelle">
+      </div>
+      <p class="field-error" id="lieu-projet-error"></p>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" data-modal-close="lieu-projet-modal">Annuler</button>
+        <button type="submit" class="btn">Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function bindDatalistInput(input, hidden, datalistId) {
+  const datalist = document.getElementById(datalistId);
+  if (!input || !hidden || !datalist) return;
+  input.setAttribute("list", datalistId);
+  input.addEventListener("input", () => {
+    const searchValue = input.value.trim().toLowerCase();
+    let matchedId = "";
+    Array.from(datalist.options).forEach((option) => {
+      if ((option.value || "").trim().toLowerCase() === searchValue) {
+        matchedId = option.dataset.id || "";
+      }
+    });
+    hidden.value = matchedId;
+  });
+}
+
+bindDatalistInput(
+  document.getElementById("id_type_depense_search"),
+  document.getElementById("id_type_depense"),
+  "depense-types-list",
+);
+bindDatalistInput(
+  document.getElementById("id_lieu_ou_projet_search"),
+  document.getElementById("id_lieu_projet_ref"),
+  "depense-lieux-list",
+);
+const fournisseurSearchInput = document.getElementById("id_fournisseur_search");
+const fournisseurHiddenInput = document.getElementById("id_fournisseur");
+bindDatalistInput(fournisseurSearchInput, fournisseurHiddenInput, "depense-fournisseurs-list");
+
+const typeDepenseForm = document.getElementById("type-depense-form");
+const typeDepenseError = document.getElementById("type-depense-error");
+const typeDepenseHidden = document.getElementById("id_type_depense");
+const typeDepenseSearch = document.getElementById("id_type_depense_search");
+const typeDepenseList = document.getElementById("depense-types-list");
+typeDepenseForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  typeDepenseError.textContent = "";
+  const csrfToken = typeDepenseForm.querySelector("[name=csrfmiddlewaretoken]").value;
+  const response = await fetch("/depenses/types/ajouter-modal/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-CSRFToken": csrfToken,
+    },
+    body: new URLSearchParams(new FormData(typeDepenseForm)),
+  });
+  const payload = await response.json();
+  if (!payload.success) {
+    typeDepenseError.textContent = Object.values(payload.errors).flat().join(" ");
+    return;
+  }
+  const option = document.createElement("option");
+  option.value = payload.type_depense.label;
+  option.dataset.id = payload.type_depense.id;
+  typeDepenseList?.appendChild(option);
+  if (typeDepenseHidden) typeDepenseHidden.value = payload.type_depense.id;
+  if (typeDepenseSearch) typeDepenseSearch.value = payload.type_depense.label;
+  document.getElementById("type-depense-modal")?.classList.remove("is-open");
+  typeDepenseForm.reset();
+});
+
+const lieuProjetForm = document.getElementById("lieu-projet-form");
+const lieuProjetError = document.getElementById("lieu-projet-error");
+const lieuProjetHidden = document.getElementById("id_lieu_projet_ref");
+const lieuProjetSearch = document.getElementById("id_lieu_ou_projet_search");
+const lieuProjetList = document.getElementById("depense-lieux-list");
+lieuProjetForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  lieuProjetError.textContent = "";
+  const csrfToken = lieuProjetForm.querySelector("[name=csrfmiddlewaretoken]").value;
+  const response = await fetch("/depenses/lieux/ajouter-modal/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-CSRFToken": csrfToken,
+    },
+    body: new URLSearchParams(new FormData(lieuProjetForm)),
+  });
+  const payload = await response.json();
+  if (!payload.success) {
+    lieuProjetError.textContent = Object.values(payload.errors).flat().join(" ");
+    return;
+  }
+  const option = document.createElement("option");
+  option.value = payload.lieu_projet.label;
+  option.dataset.id = payload.lieu_projet.id;
+  lieuProjetList?.appendChild(option);
+  if (lieuProjetHidden) lieuProjetHidden.value = payload.lieu_projet.id;
+  if (lieuProjetSearch) lieuProjetSearch.value = payload.lieu_projet.label;
+  document.getElementById("lieu-projet-modal")?.classList.remove("is-open");
+  lieuProjetForm.reset();
+});
+
+function updateDepenseTotals() {
+  let totalQuantite = 0;
+  let totalMontant = 0;
+  document.querySelectorAll(".depense-ligne-row").forEach((row) => {
+    const quantite = parseFloat(row.querySelector(".ligne-quantite")?.value || "0");
+    const prix = parseFloat(row.querySelector(".ligne-prix")?.value || "0");
+    const montant = (isNaN(quantite) ? 0 : quantite) * (isNaN(prix) ? 0 : prix);
+    const montantInput = row.querySelector(".ligne-montant");
+    if (montantInput) montantInput.value = montant.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    totalQuantite += isNaN(quantite) ? 0 : quantite;
+    totalMontant += montant;
+  });
+  const totalQuantiteNode = document.getElementById("depense-total-quantite");
+  const totalMontantNode = document.getElementById("depense-total-montant");
+  if (totalQuantiteNode) totalQuantiteNode.textContent = totalQuantite.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  if (totalMontantNode) totalMontantNode.textContent = totalMontant.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function bindLigneRow(row) {
+  row.querySelectorAll(".ligne-quantite, .ligne-prix").forEach((input) => {
+    input.addEventListener("input", updateDepenseTotals);
+  });
+  row.querySelector(".remove-ligne")?.addEventListener("click", () => {
+    const body = document.getElementById("depense-lignes-body");
+    if (body && body.querySelectorAll(".depense-ligne-row").length > 1) {
+      row.remove();
+      updateDepenseTotals();
+    }
+  });
+}
+
+document.querySelectorAll(".depense-ligne-row").forEach(bindLigneRow);
+document.getElementById("add-ligne-button")?.addEventListener("click", () => {
+  const body = document.getElementById("depense-lignes-body");
+  if (!body) return;
+  const row = document.createElement("tr");
+  row.className = "depense-ligne-row";
+  row.innerHTML = `
+    <td><input type="text" name="ligne_designation[]" placeholder="Designation"></td>
+    <td><input type="number" name="ligne_quantite[]" value="1" min="0.01" step="0.01" class="ligne-quantite"></td>
+    <td><input type="number" name="ligne_prix[]" value="0" min="0" step="0.01" class="ligne-prix"></td>
+    <td><input type="text" value="0" class="ligne-montant" readonly></td>
+    <td><button type="button" class="btn-delete remove-ligne">Retirer</button></td>
+  `;
+  body.appendChild(row);
+  bindLigneRow(row);
+  updateDepenseTotals();
+});
+
+updateDepenseTotals();
+</script>
+{% endblock %}

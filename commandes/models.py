@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from datetime import timedelta
 
 from camions.models import Camion
 from chauffeurs.models import Chauffeur
@@ -23,17 +24,18 @@ class Commande(models.Model):
         ("rejetee", "Rejetee"),
     ]
 
-    reference = models.CharField(max_length=50, unique=True)
+    reference = models.CharField(max_length=50, unique=True, null=True, blank=True)
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE,
         related_name="commandes",
     )
-    description = models.TextField()
+    description = models.TextField(blank=True)
     ville_depart = models.CharField(max_length=100)
     ville_arrivee = models.CharField(max_length=100)
     date_commande = models.DateField(default=timezone.localdate, editable=False)
     date_livraison_prevue = models.DateField()
+    delai_paiement_jours = models.PositiveIntegerField(default=0)
     statut = models.CharField(
         max_length=30,
         choices=STATUT_CHOICES,
@@ -77,4 +79,18 @@ class Commande(models.Model):
         ordering = ["-date_creation"]
 
     def __str__(self):
-        return self.reference
+        return self.reference_affichee
+
+    @property
+    def reference_affichee(self):
+        return self.reference or f"A numeroter (commande #{self.pk})"
+
+    @property
+    def montant_commande(self):
+        return (self.quantite or 0) * (self.prix_negocie or 0)
+
+    @property
+    def date_echeance(self):
+        if not self.date_livraison_prevue:
+            return None
+        return self.date_livraison_prevue + timedelta(days=self.delai_paiement_jours or 0)

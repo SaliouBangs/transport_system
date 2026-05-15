@@ -60,8 +60,15 @@
 {% else %}
 <a href="/operations/facturation/{{ operation.id }}/modifier/" class="btn-edit">Facturer</a>
 {% if operation.numero_facture %}
-<a href="/operations/facturation/{{ operation.id }}/sans-tva/" class="btn-secondary">Sans TVA</a>
-<a href="/operations/facturation/{{ operation.id }}/avec-tva/" class="btn-secondary">Avec TVA</a>
+<details class="facture-menu">
+    <summary class="btn-secondary">Imprimer</summary>
+    <div class="facture-menu-panel">
+        <a href="/operations/facturation/{{ operation.id }}/sans-tva/" class="facture-menu-link">Sans TVA</a>
+        <a href="/operations/facturation/{{ operation.id }}/avec-tva/" class="facture-menu-link">Avec TVA</a>
+        <a href="/operations/facturation/{{ operation.id }}/sans-tva-manquant/" class="facture-menu-link">Sans TVA avec manquant</a>
+        <a href="/operations/facturation/{{ operation.id }}/avec-tva-manquant/" class="facture-menu-link">Avec TVA avec manquant</a>
+    </div>
+</details>
 {% endif %}
 {% endif %}
 </div>
@@ -74,5 +81,51 @@
 {% endfor %}
 </tbody>
 </table>
+
+<style>
+.facture-menu {
+    position: relative;
+}
+
+.facture-menu summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.facture-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.facture-menu-panel {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 10px);
+    transform: translateY(-50%);
+    min-width: 250px;
+    padding: 10px;
+    border: 1px solid #d7e3ef;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 18px 38px rgba(18, 48, 71, 0.12);
+    z-index: 20;
+    display: grid;
+    gap: 8px;
+}
+
+.facture-menu-link {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 12px;
+    color: #123047;
+    text-decoration: none;
+    background: #f5f9fc;
+    font-weight: 600;
+}
+
+.facture-menu-link:hover {
+    background: #e7f3ee;
+    color: #0f7b63;
+}
+</style>
 
 {% endblock %}

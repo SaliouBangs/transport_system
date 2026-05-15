@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>Paiement {{ depense.reference }}</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <table class="table summary-table">
+    <tr><th>Titre</th><td>{{ depense.titre }}</td></tr>
+    <tr><th>Montant engage</th><td>{{ depense.montant_engage }}</td></tr>
+    <tr><th>Mode decide par DG</th><td>{{ depense.get_mode_reglement_display }}</td></tr>
+    <tr><th>Fournisseur</th><td>{{ depense.fournisseur }}</td></tr>
+  </table>
+
+  <form method="post" class="app-form" style="margin-top:24px;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+      {% for error in form.non_field_errors %}
+      <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
+        {{ form.date_paiement }}
+        {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% if is_cheque_payment %}
+      <div class="field">
+        <label for="{{ form.reference_paiement.id_for_label }}">Reference paiement</label>
+        {{ form.reference_paiement }}
+        {% if form.reference_paiement.errors %}<p class="field-error">{{ form.reference_paiement.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.mode_paiement_effectif.id_for_label }}">Mode de paiement effectif</label>
+        {{ form.mode_paiement_effectif }}
+        {% if form.mode_paiement_effectif.errors %}<p class="field-error">{{ form.mode_paiement_effectif.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.date_cheque.id_for_label }}">Date cheque</label>
+        {{ form.date_cheque }}
+        {% if form.date_cheque.errors %}<p class="field-error">{{ form.date_cheque.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.numero_cheque.id_for_label }}">Numero cheque</label>
+        {{ form.numero_cheque }}
+        {% if form.numero_cheque.errors %}<p class="field-error">{{ form.numero_cheque.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.banque_cheque.id_for_label }}">Banque</label>
+        {{ form.banque_cheque }}
+        {% if form.banque_cheque.errors %}<p class="field-error">{{ form.banque_cheque.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.beneficiaire_cheque.id_for_label }}">Beneficiaire cheque</label>
+        {{ form.beneficiaire_cheque }}
+        {% if form.beneficiaire_cheque.errors %}<p class="field-error">{{ form.beneficiaire_cheque.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% endif %}
+      {% if is_espece_payment %}
+      <div class="field">
+        <label for="{{ form.receveur_nom.id_for_label }}">Nom du receveur</label>
+        {{ form.receveur_nom }}
+        {% if form.receveur_nom.errors %}<p class="field-error">{{ form.receveur_nom.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.receveur_fonction.id_for_label }}">Fonction du receveur</label>
+        {{ form.receveur_fonction }}
+        {% if form.receveur_fonction.errors %}<p class="field-error">{{ form.receveur_fonction.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.receveur_telephone.id_for_label }}">Numero de telephone</label>
+        {{ form.receveur_telephone }}
+        {% if form.receveur_telephone.errors %}<p class="field-error">{{ form.receveur_telephone.errors|join:", " }}</p>{% endif %}
+      </div>
+      {% endif %}
+      <div class="field field-full">
+        <label for="{{ form.paiement_observation.id_for_label }}">Observation paiement</label>
+        {{ form.paiement_observation }}
+        {% if form.paiement_observation.errors %}<p class="field-error">{{ form.paiement_observation.errors|join:", " }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/depenses/" class="btn-secondary">Retour</a>
+      <button type="submit" class="btn">Confirmer le paiement</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

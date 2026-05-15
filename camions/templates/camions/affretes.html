@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Administration flotte</p>
+<h1>Gestion des affretes</h1>
+<p class="page-subtitle">L'admin centralise ici les entreprises affretees, leurs camions et leurs chauffeurs avant mise a disposition de la logistique.</p>
+</div>
+<div class="table-actions">
+<a href="/camions/" class="btn-secondary">Retour aux camions</a>
+</div>
+</div>
+
+<section class="report-panel affrete-hero">
+    <div class="report-panel__header">
+        <p class="eyebrow">Administration</p>
+        <h2>Ajouter ou completer un affrete</h2>
+        <p>Choisissez d'abord le type d'operation, puis saisissez uniquement les informations utiles. Une seule zone reste visible a la fois.</p>
+    </div>
+
+    <div class="affrete-switch" role="tablist" aria-label="Mode de gestion des affretes">
+        <button type="button" class="affrete-switch__tab is-active" data-affrete-tab="new">Nouvel affrete</button>
+        <button type="button" class="affrete-switch__tab" data-affrete-tab="existing">Camion d'un affrete existant</button>
+    </div>
+
+    <div class="affrete-panel is-active" data-affrete-panel="new">
+        <form method="post" class="app-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="nouveau_affrete">
+
+            <div class="affrete-form-block">
+                <h3>Entreprise affretee</h3>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.entreprise_nom.id_for_label }}">Nom de l'entreprise</label>
+                        {{ nouveau_affrete_form.entreprise_nom }}
+                        {% if nouveau_affrete_form.entreprise_nom.errors %}<p class="field-error">{{ nouveau_affrete_form.entreprise_nom.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.entreprise_telephone.id_for_label }}">Telephone entreprise</label>
+                        {{ nouveau_affrete_form.entreprise_telephone }}
+                        {% if nouveau_affrete_form.entreprise_telephone.errors %}<p class="field-error">{{ nouveau_affrete_form.entreprise_telephone.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="affrete-form-block">
+                <h3>Camion et chauffeur</h3>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.numero_tracteur.id_for_label }}">Camion / tracteur</label>
+                        {{ nouveau_affrete_form.numero_tracteur }}
+                        {% if nouveau_affrete_form.numero_tracteur.errors %}<p class="field-error">{{ nouveau_affrete_form.numero_tracteur.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.numero_citerne.id_for_label }}">Citerne</label>
+                        {{ nouveau_affrete_form.numero_citerne }}
+                        {% if nouveau_affrete_form.numero_citerne.errors %}<p class="field-error">{{ nouveau_affrete_form.numero_citerne.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.capacite.id_for_label }}">Capacite</label>
+                        {{ nouveau_affrete_form.capacite }}
+                        {% if nouveau_affrete_form.capacite.errors %}<p class="field-error">{{ nouveau_affrete_form.capacite.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.chauffeur_nom.id_for_label }}">Nom du chauffeur</label>
+                        {{ nouveau_affrete_form.chauffeur_nom }}
+                        {% if nouveau_affrete_form.chauffeur_nom.errors %}<p class="field-error">{{ nouveau_affrete_form.chauffeur_nom.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ nouveau_affrete_form.chauffeur_telephone.id_for_label }}">Telephone chauffeur</label>
+                        {{ nouveau_affrete_form.chauffeur_telephone }}
+                        {% if nouveau_affrete_form.chauffeur_telephone.errors %}<p class="field-error">{{ nouveau_affrete_form.chauffeur_telephone.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Enregistrer l'affrete</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="affrete-panel" data-affrete-panel="existing">
+        <form method="post" class="app-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="camion_affrete">
+
+            <div class="affrete-form-block">
+                <h3>Entreprise affretee</h3>
+                <div class="form-grid">
+                    <div class="field field-span-2">
+                        <label for="{{ camion_affrete_form.transporteur.id_for_label }}">Affrete existant</label>
+                        {{ camion_affrete_form.transporteur }}
+                        {% if camion_affrete_form.transporteur.errors %}<p class="field-error">{{ camion_affrete_form.transporteur.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="affrete-form-block">
+                <h3>Nouveau camion et chauffeur</h3>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="{{ camion_affrete_form.numero_tracteur.id_for_label }}">Camion / tracteur</label>
+                        {{ camion_affrete_form.numero_tracteur }}
+                        {% if camion_affrete_form.numero_tracteur.errors %}<p class="field-error">{{ camion_affrete_form.numero_tracteur.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ camion_affrete_form.numero_citerne.id_for_label }}">Citerne</label>
+                        {{ camion_affrete_form.numero_citerne }}
+                        {% if camion_affrete_form.numero_citerne.errors %}<p class="field-error">{{ camion_affrete_form.numero_citerne.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ camion_affrete_form.capacite.id_for_label }}">Capacite</label>
+                        {{ camion_affrete_form.capacite }}
+                        {% if camion_affrete_form.capacite.errors %}<p class="field-error">{{ camion_affrete_form.capacite.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ camion_affrete_form.chauffeur_nom.id_for_label }}">Nom du chauffeur</label>
+                        {{ camion_affrete_form.chauffeur_nom }}
+                        {% if camion_affrete_form.chauffeur_nom.errors %}<p class="field-error">{{ camion_affrete_form.chauffeur_nom.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ camion_affrete_form.chauffeur_telephone.id_for_label }}">Telephone chauffeur</label>
+                        {{ camion_affrete_form.chauffeur_telephone }}
+                        {% if camion_affrete_form.chauffeur_telephone.errors %}<p class="field-error">{{ camion_affrete_form.chauffeur_telephone.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Ajouter le camion</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="report-panel">
+    <div class="report-panel__header">
+        <p class="eyebrow">Controle</p>
+        <h2>Affretes enregistres</h2>
+        <p>Vision rapide des entreprises affretees, de leurs camions et des chauffeurs associes.</p>
+    </div>
+
+    <div class="affrete-stats">
+        <div class="summary-card">
+            <span class="summary-card__label">Affretes</span>
+            <strong class="summary-card__value">{{ affretes|length }}</strong>
+        </div>
+        <div class="summary-card">
+            <span class="summary-card__label">Camions affretes</span>
+            <strong class="summary-card__value">{{ total_camions_affretes }}</strong>
+        </div>
+    </div>
+
+    <div class="table-shell">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Entreprise</th>
+                    <th>Contact</th>
+                    <th>Camions / capacite</th>
+                    <th>Chauffeurs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for affrete in affretes %}
+                <tr>
+                    <td>
+                        <strong>{{ affrete.nom }}</strong><br>
+                        <span class="muted-line">{{ affrete.camions.count }} camion(s) rattache(s)</span>
+                    </td>
+                    <td>{{ affrete.telephone|default:"-" }}</td>
+                    <td>
+                        {% for camion in affrete.camions.all %}
+                        <div class="stacked-line">
+                            <strong>{{ camion.numero_tracteur }}</strong>{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}
+                            <span>{{ camion.capacite }} L</span>
+                        </div>
+                        {% empty %}
+                        -
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for camion in affrete.camions.all %}
+                            {% with chauffeur=camion.chauffeur_set.first %}
+                            <div class="stacked-line">
+                                <strong>{{ chauffeur.nom|default:"-" }}</strong>
+                                <span>{{ chauffeur.telephone|default:"-" }}</span>
+                            </div>
+                            {% endwith %}
+                        {% empty %}
+                        -
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">Aucun affrete enregistre pour le moment.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<style>
+.affrete-hero {
+    margin-bottom: 20px;
+}
+
+.affrete-switch {
+    display: inline-flex;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(230, 242, 250, 0.95), rgba(244, 249, 253, 0.9));
+    border: 1px solid rgba(169, 205, 234, 0.85);
+    margin-bottom: 20px;
+}
+
+.affrete-switch__tab {
+    border: none;
+    background: transparent;
+    color: #21425b;
+    font-weight: 700;
+    border-radius: 14px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.affrete-switch__tab.is-active {
+    background: linear-gradient(135deg, #1fb689, #37b48b);
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(31, 182, 137, 0.22);
+}
+
+.affrete-panel {
+    display: none;
+}
+
+.affrete-panel.is-active {
+    display: block;
+}
+
+.affrete-form-block {
+    padding: 18px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(199, 220, 237, 0.95);
+    background: linear-gradient(180deg, rgba(247, 251, 254, 0.98), rgba(239, 247, 252, 0.95));
+    margin-bottom: 18px;
+}
+
+.affrete-form-block h3 {
+    margin: 0 0 14px;
+    font-size: 1.08rem;
+    color: #173b57;
+}
+
+.affrete-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 220px));
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.summary-card {
+    padding: 18px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(204, 224, 240, 0.9);
+    background: linear-gradient(180deg, rgba(247, 251, 254, 0.98), rgba(239, 247, 252, 0.95));
+}
+
+.summary-card__label {
+    display: block;
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6d8090;
+    margin-bottom: 8px;
+}
+
+.summary-card__value {
+    font-size: 1.8rem;
+    color: #163750;
+}
+
+.field-span-2 {
+    grid-column: span 2;
+}
+
+.stacked-line {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 10px;
+}
+
+.stacked-line span,
+.muted-line {
+    color: #6d8090;
+    font-size: 0.92rem;
+}
+
+@media (max-width: 1024px) {
+    .affrete-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .field-span-2 {
+        grid-column: span 1;
+    }
+}
+</style>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const affreteTabs = document.querySelectorAll("[data-affrete-tab]");
+const affretePanels = document.querySelectorAll("[data-affrete-panel]");
+
+function setAffreteMode(mode) {
+    affreteTabs.forEach((tab) => {
+        tab.classList.toggle("is-active", tab.dataset.affreteTab === mode);
+    });
+    affretePanels.forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.affretePanel === mode);
+    });
+}
+
+affreteTabs.forEach((tab) => {
+    tab.addEventListener("click", () => setAffreteMode(tab.dataset.affreteTab));
+});
+
+{% if camion_affrete_form.errors %}
+setAffreteMode("existing");
+{% elif nouveau_affrete_form.errors %}
+setAffreteMode("new");
+{% else %}
+setAffreteMode("new");
+{% endif %}
+</script>
+{% endblock %}

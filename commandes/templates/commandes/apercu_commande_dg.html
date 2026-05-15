@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load client_extras %}
 
 {% block content %}
 
@@ -30,6 +31,20 @@
 
 .commande-review-note p {
     margin: 0 0 10px;
+}
+
+.commande-review-alert {
+    padding: 18px 20px;
+    border-radius: 18px;
+    border: 1px solid #f3b0a1;
+    background: linear-gradient(135deg, #fff5f3, #fde9e5);
+    color: #9f3f2d;
+}
+
+.commande-review-alert strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #8a2f1e;
 }
 
 .commande-review-detail-grid {
@@ -115,6 +130,17 @@
 
 <div class="form-shell" style="max-width:1480px; width:100%;">
     <div class="commande-review-layout">
+        {% if dma_alert.depasse_dma %}
+        <div class="commande-review-wide">
+            <div class="commande-review-alert">
+                <strong>Client hors seuil DMA</strong>
+                Le risque projete de ce client atteint {{ dma_alert.risque_projete|gnf }} pour une DMA de
+                {{ dma_alert.plafond_dma|gnf }}. Le depassement estime est de
+                {{ dma_alert.depassement_dma|gnf }}. La decision finale DG doit tenir compte de ce depassement.
+            </div>
+        </div>
+        {% endif %}
+
         <div class="summary-card commande-review-card">
             <h3>Resume de la commande</h3>
             <div class="commande-review-note">

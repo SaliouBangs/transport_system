@@ -27,6 +27,12 @@
         {% endfor %}
     </div>
 
+    <div class="card" style="margin-top:18px; text-align:left;">
+        <h3>Valorisation automatique</h3>
+        <p id="stock-valuation-preview" style="margin:8px 0 0; color:#29527a;">Saisissez un prix et un conditionnement pour voir le prix unitaire calcule.</p>
+        <p id="stock-valuation-warning" style="display:none; margin:8px 0 0; color:#b45309; font-weight:700;">Attention : vous etes en train de saisir un prix sur l'unite principale. Si vous achetez un bidon, un fut ou un carton, indiquez ce conditionnement ici.</p>
+    </div>
+
     <div class="card" style="margin-top:24px; text-align:left;">
         <h3>Conversions d'unite</h3>
         <p style="color:#6d8090; margin-bottom:12px;">Exemple: <strong>Conditionnement = fut</strong> et <strong>Quantite equivalente = 1000</strong> si 1 fut = 1000 {{ article.unite }}.</p>
@@ -57,5 +63,104 @@
     </div>
 </form>
 </div>
+
+<script>
+(function() {
+    const unitePrincipale = document.getElementById("id_unite");
+    const uniteSaisie = document.getElementById("id_unite_stock_saisie");
+    const prixSaisi = document.getElementById("id_prix_achat_saisi");
+    const preview = document.getElementById("stock-valuation-preview");
+    const warning = document.getElementById("stock-valuation-warning");
+
+    function parseDecimal(value) {
+        const normalized = (value || "").replace(/\s/g, "").replace(",", ".");
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function getCoefficient() {
+        const principal = (unitePrincipale?.value || "").trim().toLowerCase();
+        const source = (uniteSaisie?.value || principal).trim().toLowerCase();
+        if (!source || source === principal) {
+            return 1;
+        }
+        const rows = Array.from(document.querySelectorAll("tbody tr"));
+        for (const row of rows) {
+            const conditionnementInput = row.querySelector('input[name$="-unite_source"]');
+            const equivalentInput = row.querySelector('input[name$="-quantite_equivalente"]');
+            if (!conditionnementInput || !equivalentInput) {
+                continue;
+            }
+            if ((conditionnementInput.value || "").trim().toLowerCase() === source) {
+                return parseDecimal(equivalentInput.value) || 1;
+            }
+        }
+        return 0;
+    }
+
+    function refreshUnitChoices() {
+        const currentValue = (uniteSaisie?.value || "").trim().toLowerCase();
+        const principal = (unitePrincipale?.value || "piece").trim().toLowerCase();
+        const choices = [];
+        const seen = new Set();
+
+        function addChoice(value) {
+            const key = (value || "").trim().toLowerCase();
+            if (!key || seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            choices.push(key);
+        }
+
+        addChoice(principal);
+        document.querySelectorAll("tbody tr input[name$='-unite_source']").forEach((input) => addChoice(input.value));
+
+        if (uniteSaisie) {
+            uniteSaisie.innerHTML = "";
+            choices.forEach((choice) => {
+                const option = document.createElement("option");
+                option.value = choice;
+                option.textContent = choice;
+                uniteSaisie.appendChild(option);
+            });
+            if (currentValue && seen.has(currentValue)) {
+                uniteSaisie.value = currentValue;
+            } else {
+                uniteSaisie.value = principal;
+            }
+        }
+    }
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value || 0);
+    }
+
+    function refreshPreview() {
+        const prix = parseDecimal(prixSaisi?.value);
+        const coefficient = getCoefficient();
+        const source = (uniteSaisie?.value || unitePrincipale?.value || "").trim().toLowerCase();
+        const principal = (unitePrincipale?.value || "").trim().toLowerCase();
+        const hasConversions = Array.from(document.querySelectorAll("tbody tr input[name$='-unite_source']")).some(input => (input.value || "").trim() !== "");
+        warning.style.display = hasConversions && source === principal ? "block" : "none";
+        if (!prix || !coefficient) {
+            preview.textContent = "Saisissez un prix et un conditionnement pour voir le prix unitaire calcule.";
+            return;
+        }
+        const prixUnitaire = prix / coefficient;
+        preview.textContent = `Prix saisi : ${formatNumber(prix)} GNF pour ${source || principal || "l'unite"} | Prix unitaire calcule : ${formatNumber(prixUnitaire)} GNF / ${principal || "unite"}`;
+    }
+
+    document.addEventListener("input", function(event) {
+        if (event.target.matches("#id_unite, #id_unite_stock_saisie, #id_prix_achat_saisi, input[name$='-unite_source'], input[name$='-quantite_equivalente']")) {
+            refreshUnitChoices();
+            refreshPreview();
+        }
+    });
+
+    refreshUnitChoices();
+    refreshPreview();
+})();
+</script>
 
 {% endblock %}

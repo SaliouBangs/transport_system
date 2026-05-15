@@ -27,14 +27,66 @@
 
 <form method="post" class="app-form">
     {% csrf_token %}
+    <div class="box" style="margin-bottom:18px;">
+        <strong>Mode de saisie conseille :</strong>
+        saisissez ici la <strong>quantite achetee dans son conditionnement reel</strong>
+        ainsi que le <strong>prix de ce conditionnement</strong>.
+        <br>
+        Exemple :
+        <strong>3 futs</strong> a <strong>1 000 000 GNF / fut</strong>,
+        ou <strong>5 bidons</strong> a <strong>120 000 GNF / bidon</strong>.
+        Le systeme convertit ensuite automatiquement en <strong>{{ article.unite }}</strong> et recalcule le <strong>CMP</strong>.
+    </div>
     <div class="form-grid">
         {% for field in form %}
+        {% if field.name == 'fournisseur' %}
+        <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="flex:1;">{{ field }}</div>
+                <button type="button" class="btn-secondary" id="open-fournisseur-modal">Nouveau fournisseur</button>
+            </div>
+            {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% else %}
         <div class="field {% if field.name == 'observation' %}field-full{% endif %}">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
             {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
         </div>
+        {% endif %}
         {% endfor %}
+    </div>
+    <div class="card" style="margin-top:18px; text-align:left;">
+        <h3>Calcul achat / CMP</h3>
+        <p style="margin:6px 0 16px; color:#6d8090;">Le système part du prix du conditionnement acheté, convertit dans l’unité principale, puis estime le nouveau CMP.</p>
+        <div id="cmp-preview-grid" style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+            <div class="card" style="margin:0; padding:14px 16px; background:#f6fbff;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#6d8090; margin:0 0 8px;">Montant brut</h3>
+                <p id="cmp-gross" style="margin:0; font-size:24px; font-weight:800; color:#18344a;">-</p>
+            </div>
+            <div class="card" style="margin:0; padding:14px 16px; background:#f6fbff;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#6d8090; margin:0 0 8px;">Montant net</h3>
+                <p id="cmp-net" style="margin:0; font-size:24px; font-weight:800; color:#18344a;">-</p>
+            </div>
+            <div class="card" style="margin:0; padding:14px 16px; background:#f6fbff;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#6d8090; margin:0 0 8px;">Quantité convertie</h3>
+                <p id="cmp-qty-principal" style="margin:0; font-size:24px; font-weight:800; color:#18344a;">-</p>
+            </div>
+            <div class="card" style="margin:0; padding:14px 16px; background:#f6fbff;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#6d8090; margin:0 0 8px;">Prix réel unitaire</h3>
+                <p id="cmp-unit-price" style="margin:0; font-size:24px; font-weight:800; color:#18344a;">-</p>
+            </div>
+            <div class="card" style="margin:0; padding:14px 16px; background:#f6fbff;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#6d8090; margin:0 0 8px;">CMP courant</h3>
+                <p id="cmp-current" style="margin:0; font-size:24px; font-weight:800; color:#18344a;">-</p>
+            </div>
+            <div class="card" style="margin:0; padding:14px 16px; background:#eef8f1;">
+                <h3 style="font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#5a7a64; margin:0 0 8px;">Nouveau CMP estimé</h3>
+                <p id="cmp-estimated" style="margin:0; font-size:24px; font-weight:800; color:#1f6c4d;">-</p>
+            </div>
+        </div>
+        <p id="cmp-preview-note" style="margin:14px 0 0; color:#29527a;">Saisissez la quantité, le conditionnement, le prix du conditionnement et la remise pour voir le calcul.</p>
     </div>
     <div class="form-actions">
         <a href="/maintenance/stock/" class="btn-secondary">Annuler</a>
@@ -42,5 +94,194 @@
     </div>
 </form>
 </div>
+
+<div id="fournisseur-modal" style="display:none; position:fixed; inset:0; background:rgba(9,18,26,.45); z-index:1000; padding:24px; align-items:center; justify-content:center;">
+    <div style="width:min(680px, 100%); background:#fff; border-radius:24px; box-shadow:0 25px 60px rgba(7, 27, 43, .18); padding:28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+            <div>
+                <p class="eyebrow" style="margin:0 0 8px;">Sous-formulaire</p>
+                <h2 style="margin:0;">Ajouter un fournisseur</h2>
+            </div>
+            <button type="button" id="close-fournisseur-modal" class="btn-secondary" style="min-width:auto; padding:10px 14px;">x</button>
+        </div>
+        <div id="fournisseur-modal-errors" class="form-alert" style="display:none;"></div>
+        <form id="fournisseur-modal-form" class="app-form">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="id_modal_nom_fournisseur">Nom</label>
+                    <input id="id_modal_nom_fournisseur" name="nom_fournisseur" type="text">
+                </div>
+                <div class="field">
+                    <label for="id_modal_entreprise">Entreprise</label>
+                    <input id="id_modal_entreprise" name="entreprise" type="text">
+                </div>
+                <div class="field">
+                    <label for="id_modal_numero_telephone">Telephone</label>
+                    <input id="id_modal_numero_telephone" name="numero_telephone" type="text">
+                </div>
+                <div class="field">
+                    <label for="id_modal_email">Email</label>
+                    <input id="id_modal_email" name="email" type="email">
+                </div>
+                <div class="field">
+                    <label for="id_modal_domaine_activite">Domaine d'activite</label>
+                    <input id="id_modal_domaine_activite" name="domaine_activite" type="text">
+                </div>
+                <div class="field">
+                    <label for="id_modal_mode_paiement">Mode de paiement</label>
+                    <input id="id_modal_mode_paiement" name="mode_paiement" type="text">
+                </div>
+            </div>
+            <div class="form-actions" style="margin-top:18px;">
+                <button type="button" class="btn-secondary" id="cancel-fournisseur-modal">Annuler</button>
+                <button type="submit" class="btn">Creer le fournisseur</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function() {
+    const typeInput = document.getElementById("id_type_mouvement");
+    const qtyInput = document.getElementById("id_quantite_saisie");
+    const unitInput = document.getElementById("id_unite_saisie");
+    const priceInput = document.getElementById("id_prix_conditionnement");
+    const remiseInput = document.getElementById("id_remise");
+    const grossOutput = document.getElementById("cmp-gross");
+    const netOutput = document.getElementById("cmp-net");
+    const qtyPrincipalOutput = document.getElementById("cmp-qty-principal");
+    const unitPriceOutput = document.getElementById("cmp-unit-price");
+    const currentCmpOutput = document.getElementById("cmp-current");
+    const estimatedCmpOutput = document.getElementById("cmp-estimated");
+    const previewNote = document.getElementById("cmp-preview-note");
+    const fournisseurSelect = document.getElementById("id_fournisseur");
+    const fournisseurModal = document.getElementById("fournisseur-modal");
+    const fournisseurForm = document.getElementById("fournisseur-modal-form");
+    const fournisseurErrors = document.getElementById("fournisseur-modal-errors");
+    const openFournisseurModalBtn = document.getElementById("open-fournisseur-modal");
+    const closeFournisseurModalBtn = document.getElementById("close-fournisseur-modal");
+    const cancelFournisseurModalBtn = document.getElementById("cancel-fournisseur-modal");
+    const principalUnit = "{{ article.unite|escapejs }}";
+    const currentStock = Number("{{ article.quantite_stock|default:0 }}".replace(",", ".")) || 0;
+    const currentCmp = Number("{{ article.prix_unitaire|default:0 }}".replace(",", ".")) || 0;
+    const conversionsMap = {{ article_conversions_json|safe }};
+
+    function parseDecimal(value) {
+        const normalized = (value || "").replace(/\s/g, "").replace(",", ".");
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value || 0);
+    }
+
+    function setPlaceholderState(message) {
+        grossOutput.textContent = "-";
+        netOutput.textContent = "-";
+        qtyPrincipalOutput.textContent = "-";
+        unitPriceOutput.textContent = "-";
+        currentCmpOutput.textContent = `${formatNumber(currentCmp)} GNF / ${principalUnit}`;
+        estimatedCmpOutput.textContent = "-";
+        previewNote.textContent = message;
+    }
+
+    function openFournisseurModal() {
+        fournisseurErrors.style.display = "none";
+        fournisseurErrors.innerHTML = "";
+        fournisseurModal.style.display = "flex";
+    }
+
+    function closeFournisseurModal() {
+        fournisseurModal.style.display = "none";
+        fournisseurForm.reset();
+        fournisseurErrors.style.display = "none";
+        fournisseurErrors.innerHTML = "";
+    }
+
+    async function submitFournisseurModal(event) {
+        event.preventDefault();
+        fournisseurErrors.style.display = "none";
+        fournisseurErrors.innerHTML = "";
+        const formData = new FormData(fournisseurForm);
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        const response = await fetch("/maintenance/fournisseurs/ajouter-modal/", {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken },
+            body: formData,
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            const errors = payload.errors || {"__all__": ["Impossible de creer le fournisseur."]};
+            fournisseurErrors.innerHTML = Object.entries(errors)
+                .map(([field, messages]) => `<p class="field-error">${messages.join(", ")}</p>`)
+                .join("");
+            fournisseurErrors.style.display = "block";
+            return;
+        }
+        const option = document.createElement("option");
+        option.value = payload.fournisseur.id;
+        option.textContent = payload.fournisseur.label;
+        option.selected = true;
+        fournisseurSelect.appendChild(option);
+        fournisseurSelect.value = payload.fournisseur.id;
+        closeFournisseurModal();
+    }
+
+    function getCoefficient() {
+        const source = (unitInput?.value || principalUnit).trim().toLowerCase();
+        return conversionsMap[source] || 0;
+    }
+
+    function refreshPreview() {
+        const type = typeInput?.value || "entree";
+        if (type !== "entree") {
+            setPlaceholderState(`Ce mouvement utilisera le CMP courant de ${formatNumber(currentCmp)} GNF / ${principalUnit}.`);
+            return;
+        }
+        const qty = parseDecimal(qtyInput?.value);
+        const price = parseDecimal(priceInput?.value);
+        const remise = parseDecimal(remiseInput?.value);
+        const coefficient = getCoefficient();
+        if (!qty || !price || !coefficient) {
+            setPlaceholderState("Saisissez la quantité, le conditionnement, le prix du conditionnement et la remise pour voir le calcul.");
+            return;
+        }
+        const gross = qty * price;
+        const net = gross - remise;
+        const qtyPrincipal = qty * coefficient;
+        const unitPrice = qtyPrincipal > 0 ? net / qtyPrincipal : 0;
+        const currentStockValue = currentStock * currentCmp;
+        const newStock = currentStock + qtyPrincipal;
+        const newStockValue = currentStockValue + net;
+        const estimatedCmp = newStock > 0 ? newStockValue / newStock : 0;
+
+        grossOutput.textContent = `${formatNumber(gross)} GNF`;
+        netOutput.textContent = `${formatNumber(net)} GNF`;
+        qtyPrincipalOutput.textContent = `${formatNumber(qtyPrincipal)} ${principalUnit}`;
+        unitPriceOutput.textContent = `${formatNumber(unitPrice)} GNF / ${principalUnit}`;
+        currentCmpOutput.textContent = `${formatNumber(currentCmp)} GNF / ${principalUnit}`;
+        estimatedCmpOutput.textContent = `${formatNumber(estimatedCmp)} GNF / ${principalUnit}`;
+        previewNote.textContent = `Base actuelle : ${formatNumber(currentStock)} ${principalUnit} en stock. Après cette entrée, le CMP estimé sera recalculé automatiquement.`;
+    }
+
+    document.addEventListener("input", function(event) {
+        if (event.target.matches("#id_type_mouvement, #id_quantite_saisie, #id_unite_saisie, #id_prix_conditionnement, #id_remise")) {
+            refreshPreview();
+        }
+    });
+    openFournisseurModalBtn?.addEventListener("click", openFournisseurModal);
+    closeFournisseurModalBtn?.addEventListener("click", closeFournisseurModal);
+    cancelFournisseurModalBtn?.addEventListener("click", closeFournisseurModal);
+    fournisseurForm?.addEventListener("submit", submitFournisseurModal);
+    fournisseurModal?.addEventListener("click", function(event) {
+        if (event.target === fournisseurModal) {
+            closeFournisseurModal();
+        }
+    });
+    refreshPreview();
+})();
+</script>
 
 {% endblock %}

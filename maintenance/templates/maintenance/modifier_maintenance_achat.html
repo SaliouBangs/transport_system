@@ -33,61 +33,6 @@
             <input type="text" value="{{ maintenance.reference }}" readonly>
         </div>
         <div class="field">
-            <label for="fournisseur-search-input">Fournisseur</label>
-            <div class="field-inline">
-                {{ form.fournisseur.as_hidden }}
-                <input
-                    type="text"
-                    id="fournisseur-search-input"
-                    list="fournisseurs-catalog"
-                    placeholder="Rechercher ou saisir un fournisseur"
-                    value="{% if form.fournisseur.value %}{% for fournisseur in fournisseurs_catalog %}{% if fournisseur.id|stringformat:'s' == form.fournisseur.value|stringformat:'s' %}{{ fournisseur.label }}{% endif %}{% endfor %}{% endif %}"
-                    autocomplete="off"
-                    {% if not can_edit_achat %}readonly{% endif %}
-                >
-                <datalist id="fournisseurs-catalog">
-                    {% for fournisseur in fournisseurs_catalog %}
-                    <option value="{{ fournisseur.label }}" data-id="{{ fournisseur.id }}"></option>
-                    {% endfor %}
-                </datalist>
-                {% if can_edit_achat %}
-                <button type="button" class="btn-secondary btn-inline" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
-                {% endif %}
-            </div>
-            {% if form.fournisseur.errors %}<p class="field-error">{{ form.fournisseur.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.numero_facture.id_for_label }}">Numero de facture</label>
-            {{ form.numero_facture }}
-            {% if form.numero_facture.errors %}<p class="field-error">{{ form.numero_facture.errors.0 }}</p>{% endif %}
-            {% if duplicate_facture_matches %}
-            <div class="form-alert" style="margin-top:10px; border-left:4px solid #d64545; background:rgba(214,69,69,0.08);">
-                <p class="field-error" style="margin:0; color:#b42318;">
-                    Une facture avec ce meme numero existe deja dans la base.
-                </p>
-                {% for item in duplicate_facture_matches %}
-                <div style="margin:8px 0 0; color:#7a2430; padding-top:8px; border-top:1px dashed rgba(122,36,48,0.25);">
-                    <strong>Reference {{ item.reference }}</strong>{% if item.camion %} - {{ item.camion.numero_tracteur }}{% if item.camion.numero_citerne %} / {{ item.camion.numero_citerne }}{% endif %}{% endif %}
-                    <div>Date creation : {{ item.date_creation|date:"d/m/Y H:i" }}</div>
-                    <div>Date entree garage : {{ item.date_debut|date:"d/m/Y H:i" }}</div>
-                    <div>Date sortie : {% if item.date_fin %}{{ item.date_fin|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
-                    <div>Date paiement : {% if item.date_paiement %}{{ item.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</div>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.facture_fichier.id_for_label }}">Fichier facture</label>
-            {{ form.facture_fichier }}
-            {% if form.facture_fichier.errors %}<p class="field-error">{{ form.facture_fichier.errors.0 }}</p>{% endif %}
-            {% if maintenance.facture_fichier %}
-            <p style="margin-top:8px;">
-                <a href="{{ maintenance.facture_fichier.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Ouvrir la facture actuelle</a>
-            </p>
-            {% endif %}
-        </div>
-        <div class="field">
             <label>Etat de la fiche</label>
             <input type="text" value="{{ maintenance.get_statut_display }}" readonly>
             {{ form.statut.as_hidden }}
@@ -122,6 +67,75 @@
             <label for="{{ form.observation.id_for_label }}">Observation achat</label>
             {{ form.observation }}
             {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="summary-panel" style="margin-top:16px;">
+        <div class="page-header" style="margin-bottom:12px;">
+            <div>
+                <p class="eyebrow">Achats</p>
+                <h2 style="margin:0;">Factures fournisseurs</h2>
+            </div>
+            {% if can_edit_achat %}
+            <div class="table-actions">
+                <button type="button" class="btn-secondary" data-modal-target="fournisseur-modal">Nouveau fournisseur</button>
+                <button type="button" class="btn" id="add-invoice-btn">Ajouter une facture</button>
+            </div>
+            {% endif %}
+        </div>
+        <p style="margin:0 0 14px; color:#62768a;">
+            Vous pouvez rattacher plusieurs factures a la meme fiche d'achat : fournisseur, numero de facture et fichier pour chaque ligne.
+        </p>
+
+        {{ invoice_formset.management_form }}
+        {% if invoice_formset.non_form_errors %}
+        <div class="form-alert" style="margin-bottom:14px;">
+            {% for error in invoice_formset.non_form_errors %}
+            <p class="field-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div id="invoice-lines">
+            {% for invoice_form in invoice_formset %}
+            <div class="invoice-line-card" style="padding:16px; border:1px solid #d7e4ef; border-radius:18px; background:#f8fbfd; margin-bottom:12px;">
+                {% for hidden in invoice_form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="form-grid" style="margin-bottom:0;">
+                    <div class="field">
+                        <label for="{{ invoice_form.fournisseur.id_for_label }}">Fournisseur</label>
+                        {{ invoice_form.fournisseur }}
+                        {% if invoice_form.fournisseur.errors %}<p class="field-error">{{ invoice_form.fournisseur.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ invoice_form.numero_facture.id_for_label }}">Numero de facture</label>
+                        {{ invoice_form.numero_facture }}
+                        {% if invoice_form.numero_facture.errors %}<p class="field-error">{{ invoice_form.numero_facture.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="field field-full">
+                        <label for="{{ invoice_form.facture_fichier.id_for_label }}">Fichier facture</label>
+                        {{ invoice_form.facture_fichier }}
+                        {% if invoice_form.facture_fichier.errors %}<p class="field-error">{{ invoice_form.facture_fichier.errors.0 }}</p>{% endif %}
+                        {% if invoice_form.instance.pk and invoice_form.instance.facture_fichier %}
+                        <p style="margin-top:8px;">
+                            <a href="{{ invoice_form.instance.facture_fichier.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Ouvrir le fichier actuel</a>
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if can_edit_achat %}
+                <div class="form-actions" style="margin-top:10px; padding-top:0;">
+                    {% if invoice_form.instance.pk %}
+                    <label style="display:flex; align-items:center; gap:8px; color:#6b7f92;">
+                        {{ invoice_form.DELETE }} Supprimer cette facture
+                    </label>
+                    {% else %}
+                    {{ invoice_form.DELETE.as_hidden }}
+                    <button type="button" class="btn-delete remove-invoice-btn">Retirer</button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -301,14 +315,38 @@
 </div>
 {% endif %}
 
+{% if can_edit_achat %}
+<template id="invoice-empty-form-template">
+    <div class="invoice-line-card" style="padding:16px; border:1px solid #d7e4ef; border-radius:18px; background:#f8fbfd; margin-bottom:12px;">
+        {% for hidden in invoice_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div class="form-grid" style="margin-bottom:0;">
+            <div class="field">
+                <label for="{{ invoice_formset.empty_form.fournisseur.id_for_label }}">Fournisseur</label>
+                {{ invoice_formset.empty_form.fournisseur }}
+            </div>
+            <div class="field">
+                <label for="{{ invoice_formset.empty_form.numero_facture.id_for_label }}">Numero de facture</label>
+                {{ invoice_formset.empty_form.numero_facture }}
+            </div>
+            <div class="field field-full">
+                <label for="{{ invoice_formset.empty_form.facture_fichier.id_for_label }}">Fichier facture</label>
+                {{ invoice_formset.empty_form.facture_fichier }}
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top:10px; padding-top:0;">
+            {{ invoice_formset.empty_form.DELETE.as_hidden }}
+            <button type="button" class="btn-delete remove-invoice-btn">Retirer</button>
+        </div>
+    </div>
+</template>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_scripts %}
 {% if can_edit_achat %}
 <script>
 const fournisseurModalForm = document.getElementById("fournisseur-modal-form");
-const fournisseurHiddenInput = document.getElementById("{{ form.fournisseur.id_for_label }}");
-const fournisseurSearchInput = document.getElementById("fournisseur-search-input");
 const fournisseurModalErrors = document.getElementById("fournisseur-modal-errors");
 const fournisseurCsrfInput = fournisseurModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
 const prestataireModalForm = document.getElementById("prestataire-modal-form");
@@ -316,17 +354,10 @@ const prestataireInput = document.getElementById("prestataire-search-input");
 const prestataireHiddenInput = document.getElementById("{{ form.prestataire.id_for_label }}");
 const prestataireModalErrors = document.getElementById("prestataire-modal-errors");
 const prestataireCsrfInput = prestataireModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
-
-function syncFournisseurSelection() {
-    const options = Array.from(document.querySelectorAll("#fournisseurs-catalog option"));
-    const match = options.find((option) => option.value === fournisseurSearchInput.value.trim());
-    if (fournisseurHiddenInput) {
-        fournisseurHiddenInput.value = match ? match.dataset.id : "";
-    }
-}
-
-fournisseurSearchInput?.addEventListener("input", syncFournisseurSelection);
-fournisseurSearchInput?.addEventListener("change", syncFournisseurSelection);
+const invoiceContainer = document.getElementById("invoice-lines");
+const invoiceAddBtn = document.getElementById("add-invoice-btn");
+const invoiceTemplate = document.getElementById("invoice-empty-form-template");
+const invoiceTotalInput = document.getElementById("id_factures-TOTAL_FORMS");
 
 prestataireInput?.addEventListener("input", () => {
     if (prestataireHiddenInput) {
@@ -375,16 +406,14 @@ fournisseurModalForm?.addEventListener("submit", async (event) => {
     }
 
     const datalist = document.getElementById("fournisseurs-catalog");
-    const option = document.createElement("option");
-    option.value = data.fournisseur.label;
-    option.dataset.id = data.fournisseur.id;
-    datalist?.appendChild(option);
-    if (fournisseurHiddenInput) {
-        fournisseurHiddenInput.value = data.fournisseur.id;
-    }
-    if (fournisseurSearchInput) {
-        fournisseurSearchInput.value = data.fournisseur.label;
-    }
+    document.querySelectorAll("select[name$='-fournisseur']").forEach((select) => {
+        const option = document.createElement("option");
+        option.value = data.fournisseur.id;
+        option.textContent = data.fournisseur.label;
+        option.selected = true;
+        select.appendChild(option);
+        select.value = data.fournisseur.id;
+    });
     fournisseurModalForm.reset();
     document.getElementById("fournisseur-modal")?.classList.remove("is-open");
 });
@@ -437,6 +466,31 @@ prestataireModalForm?.addEventListener("submit", async (event) => {
     prestataireModalForm.reset();
     document.getElementById("prestataire-modal")?.classList.remove("is-open");
 });
+
+function bindInvoiceRemoval(root = document) {
+    root.querySelectorAll(".remove-invoice-btn").forEach((button) => {
+        if (button.dataset.bound === "1") {
+            return;
+        }
+        button.dataset.bound = "1";
+        button.addEventListener("click", () => {
+            button.closest(".invoice-line-card")?.remove();
+        });
+    });
+}
+
+invoiceAddBtn?.addEventListener("click", () => {
+    if (!invoiceTemplate || !invoiceContainer || !invoiceTotalInput) {
+        return;
+    }
+    const formIndex = parseInt(invoiceTotalInput.value || "0", 10);
+    const html = invoiceTemplate.innerHTML.replace(/__prefix__/g, formIndex);
+    invoiceContainer.insertAdjacentHTML("beforeend", html);
+    invoiceTotalInput.value = String(formIndex + 1);
+    bindInvoiceRemoval(invoiceContainer);
+});
+
+bindInvoiceRemoval();
 </script>
 {% endif %}
 {% endblock %}

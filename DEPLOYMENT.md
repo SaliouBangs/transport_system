@@ -1,44 +1,83 @@
-# Mise En Ligne
+# Mise en ligne Railway
 
-## Stack de production recommandee
+## Stack retenue
 
-- Hebergement: Railway ou Render
-- Serveur Python: Gunicorn
-- Base de donnees: PostgreSQL
-- Fichiers statiques: WhiteNoise
+- Hebergement : Railway
+- Serveur Python : Gunicorn
+- Base de donnees : PostgreSQL Railway
+- Fichiers statiques : WhiteNoise
+- Build : `build.sh`
+- Runtime : `nixpacks.toml` + `Procfile`
 
-## Variables d'environnement a definir
+## Fichiers de deploiement deja presents
+
+- [Procfile](C:\Users\HP\transport_projet\transport_system\Procfile)
+- [build.sh](C:\Users\HP\transport_projet\transport_system\build.sh)
+- [nixpacks.toml](C:\Users\HP\transport_projet\transport_system\nixpacks.toml)
+- [requirements.txt](C:\Users\HP\transport_projet\transport_system\requirements.txt)
+
+## Variables Railway a definir
+
+Obligatoires :
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=False`
-- `DJANGO_ALLOWED_HOSTS=votre-domaine.railway.app,votre-domaine.onrender.com`
-- `DJANGO_CSRF_TRUSTED_ORIGINS=https://votre-domaine.railway.app,https://votre-domaine.onrender.com`
+- `DJANGO_ALLOWED_HOSTS=<votre-service>.up.railway.app`
+- `DJANGO_CSRF_TRUSTED_ORIGINS=https://<votre-service>.up.railway.app`
+- `DATABASE_URL` : fournie par le plugin PostgreSQL Railway
+
+Recommandees :
+
 - `DJANGO_TIME_ZONE=Africa/Conakry`
-- `DATABASE_URL=postgresql://...`
+- `DJANGO_SECURE_SSL_REDIRECT=True`
+- `DJANGO_SECURE_HSTS_SECONDS=3600`
+- `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True`
+- `DJANGO_SECURE_HSTS_PRELOAD=False`
 
-## Commandes de build
+## Ce que fait deja le projet
 
-### Railway
+- Build : installation dependances + `collectstatic`
+- Start : `migrate` puis demarrage Gunicorn
 
-- Build: `pip install -r requirements.txt`
-- Start: `gunicorn transport_system.wsgi --log-file -`
+En pratique, avec la configuration actuelle :
 
-### Render
+- `build.sh` lance `python manage.py collectstatic --noinput`
+- `nixpacks.toml` lance `pip install -r requirements.txt`
+- `Procfile` / start lance `python manage.py migrate && gunicorn transport_system.wsgi --log-file -`
 
-- Build Command: `pip install -r requirements.txt && bash build.sh`
-- Start Command: `gunicorn transport_system.wsgi --log-file -`
+## Checklist premiere mise en ligne
 
-## Premiere mise en ligne
+1. Pousser la branche a jour sur GitHub.
+2. Sur Railway, creer un nouveau service depuis ce depot.
+3. Verifier que le `Root Directory` pointe sur le dossier du projet Django si necessaire.
+4. Ajouter un service PostgreSQL Railway.
+5. Verifier que `DATABASE_URL` est bien injectee dans le service web.
+6. Ajouter les variables d'environnement listees ci-dessus.
+7. Lancer le deploiement.
+8. Verifier dans les logs que :
+   - les dependances s'installent
+   - `collectstatic` passe
+   - `migrate` passe
+   - Gunicorn demarre sans erreur
+9. Ouvrir l'URL publique Railway.
+10. Creer un superutilisateur :
+    - `python manage.py createsuperuser`
 
-1. Pousser le projet sur GitHub.
-2. Creer un service web Railway ou Render depuis le depot GitHub.
-3. Ajouter une base PostgreSQL.
-4. Renseigner les variables d'environnement.
-5. Lancer le deploiement.
-6. Creer un superutilisateur si necessaire avec une commande shell distante.
+## Verifications post-deploiement
 
-## Important
+Verifier au minimum :
+
+- connexion
+- dashboard
+- commandes
+- encaissements
+- detail client
+- logistique
+- maintenance
+
+## Notes importantes
 
 - Ne pas utiliser `db.sqlite3` en production.
-- Toujours faire les migrations avant les nouvelles versions.
-- Vous pourrez continuer a faire des mises a jour apres la mise en ligne en redeployant le projet.
+- Les donnees locales `db.sqlite3` et la base Railway ne sont pas liees.
+- Les camions / entretiens / depenses deja saisis localement ne monteront pas automatiquement sur Railway.
+- Si vous voulez ces donnees sur Railway, il faudra les ressaisir ou faire un import dedie.

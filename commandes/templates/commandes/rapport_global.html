@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Reporting transverse</p>
+        <h1>Rapport global des commandes</h1>
+        <p class="muted">Vision lecture seule du circuit complet : commande, BL, transit, logistique, dépenses et livraison.</p>
+    </div>
+    <div class="field-inline">
+        <a href="/commandes/rapport-global/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter Excel</a>
+        <a href="/commandes/rapport-global/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter PDF</a>
+    </div>
+</div>
+
+<section class="form-shell operation-shell rapport-shell">
+    <div class="rapport-active-filters">
+        <span class="rapport-active-filters__label">Rapport des :</span>
+        {% if selected_etat_labels %}
+            {% for label in selected_etat_labels %}
+            <span class="rapport-filter-chip">{{ label }}</span>
+            {% endfor %}
+        {% else %}
+            <span class="rapport-filter-chip rapport-filter-chip--muted">Tous les etats exacts</span>
+        {% endif %}
+    </div>
+
+    <form method="get" class="search-form rapport-search-form">
+        <input type="text" name="q" value="{{ query }}" placeholder="Recherche par commande, BL, client, produit, camion ou chauffeur">
+        <div class="rapport-multiselect" data-multiselect>
+            <button type="button" class="rapport-multiselect__toggle rapport-select" data-multiselect-toggle>
+                <span data-multiselect-label>
+                    {% if selected_etat_labels %}
+                        {{ selected_etat_labels|join:", " }}
+                    {% else %}
+                        Tous les etats exacts
+                    {% endif %}
+                </span>
+            </button>
+            <div class="rapport-multiselect__menu" data-multiselect-menu>
+                {% for value, label in status_choices %}
+                {% if value %}
+                <label class="rapport-multiselect__option">
+                    <input type="checkbox" name="etat" value="{{ value }}"{% if value in selected_etats %} checked{% endif %}>
+                    <span>{{ label }}</span>
+                </label>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <select name="client" class="rapport-select">
+            <option value="">Tous les clients</option>
+            {% for item in clients_filter %}
+            <option value="{{ item.id }}"{% if client_id == item.id|stringformat:"s" %} selected{% endif %}>{{ item.entreprise }}{% if item.nom %} - {{ item.nom }}{% endif %}</option>
+            {% endfor %}
+        </select>
+        <select name="produit" class="rapport-select">
+            <option value="">Tous les produits</option>
+            {% for produit in produits_filter %}
+            <option value="{{ produit.id }}"{% if produit_id == produit.id|stringformat:"s" %} selected{% endif %}>{{ produit.nom }}</option>
+            {% endfor %}
+        </select>
+        <select name="affrete" class="rapport-select">
+            <option value="">Tous les transporteurs</option>
+            <option value="sogefi"{% if affrete_id == "sogefi" %} selected{% endif %}>SOGEFI</option>
+            <option value="affretes"{% if affrete_id == "affretes" %} selected{% endif %}>Tous les affretes</option>
+            {% for affrete in affretes_filter %}
+            <option value="{{ affrete.id }}"{% if affrete_id == affrete.id|stringformat:"s" %} selected{% endif %}>{{ affrete.nom }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="date_debut" value="{{ date_debut }}">
+        <input type="date" name="date_fin" value="{{ date_fin }}">
+        <button type="submit" class="btn-secondary">Filtrer</button>
+        <a href="/commandes/rapport-global/" class="btn-secondary rapport-reset-btn">Reinitialiser</a>
+    </form>
+
+    <div class="cards rapport-cards">
+        <div class="card"><h3>Total commandes</h3><p>{{ stats.total_commandes }}</p></div>
+        <div class="card"><h3>Montant filtre</h3><p>{{ stats.total_montant|gnf }}</p></div>
+        <div class="card"><h3>Quantite totale</h3><p>{{ stats.total_quantite|floatformat:0 }} L</p></div>
+        <div class="card"><h3>BL crees</h3><p>{{ stats.total_bl }}</p></div>
+        <div class="card"><h3>Chargees</h3><p>{{ stats.total_chargees }}</p></div>
+        <div class="card"><h3>Livrees</h3><p>{{ stats.total_livrees }}</p></div>
+    </div>
+
+    <table class="table rapport-table">
+        <thead>
+            <tr>
+                <th>Commande</th>
+                <th>BL actuel</th>
+                <th>Client</th>
+                <th>Produit / quantite</th>
+                <th>Valorisation</th>
+                <th>Etat exact</th>
+                <th>Commercial</th>
+                <th>Camion / chauffeur</th>
+                <th>Dates cles</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for commande in commandes %}
+            <tr>
+                <td>
+                    <strong>{{ commande.reference }}</strong>
+                    <div class="rapport-subline">{{ commande.ville_depart|default:"-" }} -> {{ commande.ville_arrivee|default:"-" }}</div>
+                </td>
+                <td>
+                    <strong>{{ commande.current_bl }}</strong>
+                    {% if commande.latest_operation and commande.latest_operation.date_bl %}
+                    <div class="rapport-subline">BL du {{ commande.latest_operation.date_bl|date:"d/m/Y" }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ commande.client.entreprise }}</strong>
+                    {% if commande.client.nom %}<div class="rapport-subline">{{ commande.client.nom }}</div>{% endif %}
+                </td>
+                <td>
+                    <strong>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</strong>
+                    <div class="rapport-subline">{{ commande.quantite|floatformat:0 }} L</div>
+                </td>
+                <td>{{ commande.current_valorisation|gnf }}</td>
+                <td><span class="status-pill">{{ commande.exact_status_label }}</span></td>
+                <td>{% if commande.current_commercial %}{{ commande.current_commercial.username }}{% else %}-{% endif %}</td>
+                <td>
+                    <strong>{% if commande.current_camion %}{{ commande.current_camion.numero_tracteur }}{% else %}-{% endif %}</strong>
+                    <div class="rapport-subline">{% if commande.current_chauffeur %}{{ commande.current_chauffeur.nom }}{% else %}-{% endif %}</div>
+                    <div class="rapport-subline">
+                        {% if commande.current_affrete %}
+                            Affrete : {{ commande.current_transporteur_label }}
+                        {% else %}
+                            Transporteur : SOGEFI
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <strong>CDE : {{ commande.date_commande|date:"d/m/Y"|default:"-" }}</strong>
+                    <div class="rapport-subline">Date etat actuel : {{ commande.exact_status_date|date:"d/m/Y"|default:"-" }}</div>
+                    {% if commande.latest_operation and commande.latest_operation.date_bons_declares %}
+                    <div class="rapport-subline">Declare : {{ commande.latest_operation.date_bons_declares|date:"d/m/Y" }}</div>
+                    {% endif %}
+                    {% if commande.latest_operation and commande.latest_operation.date_bons_liquides %}
+                    <div class="rapport-subline">Liquide : {{ commande.latest_operation.date_bons_liquides|date:"d/m/Y" }}</div>
+                    {% endif %}
+                    {% if commande.latest_operation and commande.latest_operation.date_bons_charges %}
+                    <div class="rapport-subline">Charge : {{ commande.latest_operation.date_bons_charges|date:"d/m/Y" }}</div>
+                    {% endif %}
+                    {% if commande.latest_operation and commande.latest_operation.date_bons_livres %}
+                    <div class="rapport-subline">Livre : {{ commande.latest_operation.date_bons_livres|date:"d/m/Y" }}</div>
+                    {% endif %}
+                    {% if commande.latest_operation and commande.latest_operation.date_bon_retour %}
+                    <div class="rapport-subline">Bon retour : {{ commande.latest_operation.date_bon_retour|date:"d/m/Y" }}</div>
+                    {% endif %}
+                </td>
+                <td><a href="/commandes/rapport-global/{{ commande.id }}/" class="btn-secondary">Detail</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10">Aucune commande ne correspond aux filtres.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.rapport-shell{
+    max-width:none;
+    width:100%;
+    padding:24px 24px 28px;
+}
+
+.rapport-search-form{
+    display:grid;
+    grid-template-columns:minmax(260px, 2.4fr) repeat(4, minmax(170px, 1fr)) minmax(145px, 0.9fr) minmax(145px, 0.9fr) auto;
+    gap:14px;
+    align-items:center;
+    padding:18px;
+    border-radius:22px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(243,249,255,0.95) 100%);
+}
+
+.rapport-active-filters{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:0 0 14px 0;
+}
+
+.rapport-active-filters__label{
+    font-weight:700;
+    color:#17384f;
+}
+
+.rapport-filter-chip{
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    border-radius:999px;
+    background:#eef6ff;
+    color:#295e96;
+    font-size:0.86rem;
+    font-weight:700;
+}
+
+.rapport-filter-chip--muted{
+    background:#f3f7fb;
+    color:#64748b;
+}
+
+.rapport-search-form input,
+.rapport-search-form select{
+    min-width:0;
+    height:56px;
+    border-radius:16px;
+    font-weight:600;
+}
+
+.rapport-search-form input{
+    padding:0 18px;
+}
+
+.rapport-select{
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    padding:0 42px 0 16px !important;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #355d80 50%),
+        linear-gradient(135deg, #355d80 50%, transparent 50%),
+        linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+    background-position:
+        calc(100% - 18px) calc(50% - 3px),
+        calc(100% - 12px) calc(50% - 3px),
+        0 0;
+    background-size:6px 6px, 6px 6px, 100% 100%;
+    background-repeat:no-repeat;
+    border:1px solid #bdd0e2 !important;
+    box-shadow:inset 0 1px 2px rgba(18,48,71,0.05);
+    color:#17384f;
+}
+
+.rapport-multiselect{
+    position:relative;
+    width:100%;
+    min-width:0;
+}
+
+.rapport-multiselect__toggle{
+    width:100%;
+    min-width:0;
+    height:56px;
+    padding:0 18px !important;
+    text-align:left;
+    border:1px solid #bdd0e2;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    border-radius:16px;
+    background:linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+    box-shadow:inset 0 1px 2px rgba(18,48,71,0.05);
+    color:#17384f;
+    font-weight:600;
+}
+
+.rapport-multiselect__toggle::after{
+    content:"▾";
+    color:#355d80;
+    font-size:0.92rem;
+    margin-left:auto;
+    flex-shrink:0;
+}
+
+.rapport-multiselect__toggle span{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.rapport-multiselect__menu{
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    right:0;
+    z-index:15;
+    display:none;
+    max-height:260px;
+    overflow-y:auto;
+    padding:10px;
+    border:1px solid #cddcec;
+    border-radius:18px;
+    background:linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    box-shadow:0 20px 40px rgba(18,48,71,0.16);
+}
+
+.rapport-multiselect.is-open .rapport-multiselect__menu{
+    display:block;
+}
+
+.rapport-multiselect__option{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border-radius:12px;
+    cursor:pointer;
+    color:#17384f;
+    font-weight:600;
+}
+
+.rapport-multiselect__option:hover{
+    background:#f4f9ff;
+}
+
+.rapport-multiselect__option input{
+    width:18px !important;
+    height:18px !important;
+    min-width:18px;
+}
+
+.rapport-multiselect.is-open .rapport-multiselect__toggle{
+    border-color:#7fb6dd;
+    box-shadow:0 0 0 4px rgba(79,191,159,0.14);
+}
+
+.rapport-search-form .btn-secondary{
+    height:56px;
+    min-width:120px;
+    border-radius:16px;
+    font-weight:700;
+}
+
+.rapport-reset-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+}
+
+.rapport-search-form::after{
+    content:"Astuce : ouvrez Etat exact puis cochez plusieurs etats.";
+    grid-column:1 / -1;
+    margin-top:-4px;
+    color:#64748b;
+    font-size:0.82rem;
+}
+
+.rapport-cards{
+    margin-bottom:18px;
+}
+
+.rapport-table{
+    width:100%;
+}
+
+.rapport-table td{
+    vertical-align:top;
+}
+
+.rapport-table td strong{
+    display:block;
+    color:#12324a;
+}
+
+.rapport-subline{
+    margin-top:6px;
+    color:#64748b;
+    font-size:0.86rem;
+}
+
+@media (max-width: 1280px){
+    .rapport-search-form{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px){
+    .rapport-search-form{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<script>
+document.querySelectorAll("[data-multiselect]").forEach((wrapper) => {
+    const toggle = wrapper.querySelector("[data-multiselect-toggle]");
+    const label = wrapper.querySelector("[data-multiselect-label]");
+    const checkboxes = wrapper.querySelectorAll('input[type="checkbox"][name="etat"]');
+
+    const updateLabel = () => {
+        const selected = Array.from(checkboxes)
+            .filter((item) => item.checked)
+            .map((item) => item.nextElementSibling?.textContent?.trim())
+            .filter(Boolean);
+        label.textContent = selected.length ? selected.join(", ") : "Tous les etats exacts";
+    };
+
+    toggle?.addEventListener("click", () => {
+        wrapper.classList.toggle("is-open");
+    });
+
+    checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", updateLabel);
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target)) {
+            wrapper.classList.remove("is-open");
+        }
+    });
+
+    updateLabel();
+});
+</script>
+{% endblock %}

@@ -4,79 +4,849 @@
 
 {% include "operations/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Circuit administratif</p>
-<h1>Page transitaire</h1>
-</div>
-<div class="field-inline">
-<form method="get" class="search-form" id="transitaire-search-form">
-    <input type="text" name="q" id="transitaire-search-input" value="{{ query }}" placeholder="Recherche par BL, client, camion ou chauffeur">
-    <button type="submit" class="btn-secondary">Rechercher</button>
-</form>
-</div>
-</div>
+<style>
+.transitaire-hero{
+    display:grid;
+    grid-template-columns:1.25fr .95fr;
+    gap:20px;
+    margin-bottom:22px;
+}
+.transitaire-panel{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:24px;
+}
+.transitaire-hero-title{
+    margin:0 0 10px;
+    font-size:2.18rem;
+    line-height:1.08;
+}
+.transitaire-hero-copy{
+    margin:0;
+    color:#4d6678;
+    line-height:1.65;
+    max-width:760px;
+}
+.transitaire-badges{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+}
+.transitaire-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    padding:10px 14px;
+    font-weight:700;
+    font-size:.92rem;
+}
+.transitaire-badge-soft{
+    background:#e9f3ff;
+    color:#23506f;
+}
+.transitaire-badge-gold{
+    background:#fff3d8;
+    color:#966500;
+}
+.transitaire-kpis{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+}
+.transitaire-kpi{
+    border-radius:20px;
+    padding:16px 16px 14px;
+    background:#fff;
+    border:1px solid #dbe8f2;
+}
+.transitaire-kpi-label{
+    margin:0 0 8px;
+    color:#627a8d;
+    font-weight:700;
+    font-size:.84rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.transitaire-kpi-value{
+    margin:0;
+    font-size:1.9rem;
+    font-weight:800;
+    color:#123047;
+}
+.transitaire-kpi-note{
+    margin:8px 0 0;
+    color:#6c8191;
+    font-size:.88rem;
+}
+.transitaire-filter-shell{
+    margin-bottom:18px;
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:26px;
+    padding:16px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+}
+.transitaire-filter-tools{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+.transitaire-filter-grid{
+    display:grid;
+    grid-template-columns:minmax(200px,1.15fr) minmax(150px,.58fr) minmax(140px,.5fr) minmax(140px,.5fr) auto auto;
+    gap:12px;
+    align-items:end;
+}
+.transitaire-filter-field label{
+    display:block;
+    margin:0 0 8px;
+    font-size:.82rem;
+    font-weight:700;
+    color:#5d7688;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.transitaire-filter-field input,
+.transitaire-filter-field select{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 8px 18px rgba(18,48,71,.04);
+    transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.transitaire-filter-field input::placeholder{
+    color:#7890a1;
+    font-weight:500;
+}
+.transitaire-filter-field input:focus,
+.transitaire-filter-field select:focus{
+    outline:none;
+    border-color:#4fbf9f;
+    box-shadow:0 0 0 4px rgba(79,191,159,.18), 0 12px 24px rgba(18,48,71,.08);
+    transform:translateY(-1px);
+}
+.transitaire-filter-field select{
+    appearance:none;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95)),
+        linear-gradient(45deg, transparent 50%, #4d6678 50%),
+        linear-gradient(135deg, #4d6678 50%, transparent 50%);
+    background-repeat:no-repeat;
+    background-size:auto, 8px 8px, 8px 8px;
+    background-position:0 0, calc(100% - 22px) 23px, calc(100% - 16px) 23px;
+    padding-right:42px;
+}
+.transitaire-filter-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    min-width:unset;
+}
+.transitaire-filter-actions .btn,
+.transitaire-filter-actions .btn-secondary{
+    min-height:46px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 16px;
+    margin:0;
+    border-radius:16px;
+}
+.transitaire-card{
+    background:#fff;
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.07);
+    padding:22px 22px 16px;
+    margin-bottom:18px;
+}
+.transitaire-card-head{
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    margin-bottom:16px;
+}
+.transitaire-card-title{
+    margin:0;
+    font-size:1.05rem;
+}
+.transitaire-card-note{
+    margin:8px 0 0;
+    color:#5e7587;
+    line-height:1.55;
+}
+.transitaire-emphasis{
+    min-width:120px;
+    padding:14px 18px;
+    border-radius:20px;
+    background:linear-gradient(180deg, #123047, #1d4764);
+    color:#fff;
+    box-shadow:0 14px 30px rgba(18,48,71,.18);
+}
+.transitaire-emphasis small{
+    display:block;
+    opacity:.74;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:.72rem;
+}
+.transitaire-emphasis strong{
+    display:block;
+    margin-top:8px;
+    font-size:1.8rem;
+    line-height:1;
+}
+.transitaire-action-strip{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.transitaire-total-strip{
+    display:flex;
+    gap:10px;
+    align-items:stretch;
+    flex-wrap:nowrap;
+    justify-content:flex-end;
+}
+.transitaire-total-card{
+    min-width:132px;
+    padding:10px 12px;
+    border-radius:16px;
+    border:1px solid #dbe8f2;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(243,249,255,.95));
+}
+.transitaire-total-card--essence{
+    background:linear-gradient(180deg, rgba(255,247,225,.98), rgba(255,239,199,.94));
+    border-color:#f0d59a;
+}
+.transitaire-total-card--gasoil{
+    background:linear-gradient(180deg, rgba(231,246,239,.98), rgba(211,239,225,.94));
+    border-color:#a9dbc2;
+}
+.transitaire-total-card--all{
+    background:linear-gradient(180deg, rgba(233,242,255,.98), rgba(214,228,248,.94));
+    border-color:#bfd1ec;
+}
+.transitaire-total-card small{
+    display:block;
+    color:#627a8d;
+    font-size:.76rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.transitaire-total-card strong{
+    display:block;
+    margin-top:6px;
+    color:#123047;
+    font-size:1.1rem;
+    font-weight:800;
+}
+.transitaire-table{
+    overflow:auto;
+    border-radius:22px;
+}
+.transitaire-status{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:.84rem;
+    font-weight:700;
+    white-space:nowrap;
+}
+.transitaire-status-reception{
+    background:#fff3d7;
+    color:#946200;
+}
+.transitaire-status-progress{
+    background:#e8f2ff;
+    color:#1f5d96;
+}
+.transitaire-status-ok{
+    background:#e7f7ef;
+    color:#18794e;
+}
+.transitaire-subinfo{
+    margin-top:4px;
+    color:#6b8191;
+    font-size:.88rem;
+}
+.transitaire-subinfo-strong{
+    margin-top:4px;
+    color:#234860;
+    font-size:.88rem;
+    font-weight:700;
+}
+.transitaire-group-cell{
+    vertical-align:top;
+    background:linear-gradient(180deg, rgba(246,251,255,.96), rgba(238,247,255,.96));
+}
+.transitaire-group-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-top:8px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:#e8f2ff;
+    color:#1f5d96;
+    font-size:.78rem;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+@media (max-width: 1180px){
+    .transitaire-hero,
+    .transitaire-filter-grid{
+        grid-template-columns:1fr;
+    }
+    .transitaire-kpis{
+        grid-template-columns:1fr;
+    }
+    .transitaire-filter-actions{
+        justify-content:stretch;
+    }
+    .transitaire-filter-actions .btn,
+    .transitaire-filter-actions .btn-secondary{
+        flex:1 1 180px;
+    }
+    .transitaire-total-strip{
+        justify-content:flex-start;
+        flex-wrap:wrap;
+        margin-top:10px;
+    }
+}
+</style>
 
-<table class="table" id="transitaire-table">
-<thead>
-<tr>
-<th>BL</th>
-<th>Client</th>
-<th>Camion</th>
-<th>Chauffeur</th>
-<th>Etat</th>
-<th>Date declaration</th>
-<th>Date liquidation</th>
-<th>Actions transitaire</th>
-</tr>
-</thead>
-<tbody>
-{% for operation in operations %}
-<tr>
-<td>{{ operation.numero_bl }}</td>
-<td>{{ operation.client.entreprise }}</td>
-<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
-<td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
-<td>{{ operation.get_etat_bon_display }}</td>
-<td>{{ operation.date_transmission|default:"-" }}</td>
-<td>{{ operation.date_bons_liquides|default:"-" }}</td>
-<td>
-<div class="table-actions">
-<form method="post" action="/operations/transitaire/{{ operation.id }}/declare/">
-    {% csrf_token %}
-    <button type="submit" class="btn-secondary">Declare</button>
+<section class="transitaire-hero">
+    <div class="transitaire-panel">
+        <p class="eyebrow">Circuit administratif</p>
+        <h1 class="transitaire-hero-title">Page transitaire</h1>
+        <p class="transitaire-hero-copy">
+            Le transitaire prend le relais apres la secretaire : reception des BL transmis, declaration,
+            liquidation, puis orientation vers la logistique ou chargement direct. Cette page regroupe
+            tout le circuit utile, sans le bruit des autres modules.
+        </p>
+        <div class="transitaire-badges">
+            <span class="transitaire-badge transitaire-badge-soft">Reception et traitement sur une seule page</span>
+            <span class="transitaire-badge transitaire-badge-gold">Exports PDF / Excel sur la selection courante</span>
+        </div>
+    </div>
+
+    <div class="transitaire-panel">
+        <p class="eyebrow" style="margin-bottom:12px;">Vue d'ensemble</p>
+        <div class="transitaire-kpis">
+            <div class="transitaire-kpi">
+                <p class="transitaire-kpi-label">A receptionner</p>
+                <p class="transitaire-kpi-value">{{ total_pending_reception }}</p>
+                <p class="transitaire-kpi-note">BL transmis par la secretaire en attente de reception</p>
+            </div>
+            <div class="transitaire-kpi">
+                <p class="transitaire-kpi-label">A declarer</p>
+                <p class="transitaire-kpi-value">{{ total_to_declare }}</p>
+                <p class="transitaire-kpi-note">BL recus encore en attente de declaration</p>
+            </div>
+            <div class="transitaire-kpi">
+                <p class="transitaire-kpi-label">A liquider</p>
+                <p class="transitaire-kpi-value">{{ total_to_liquide }}</p>
+                <p class="transitaire-kpi-note">BL declares a liquider avant sortie du circuit</p>
+            </div>
+            <div class="transitaire-kpi">
+                <p class="transitaire-kpi-label">A orienter</p>
+                <p class="transitaire-kpi-value">{{ total_to_orient }}</p>
+                <p class="transitaire-kpi-note">BL liquides a transferer ou charger directement</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<form method="get" class="transitaire-filter-shell">
+    <div class="transitaire-filter-tools">
+        <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Filtres</p>
+            <strong style="font-size:1.05rem; color:#123047;">Rechercher, filtrer et exporter le circuit transitaire</strong>
+        </div>
+        <div class="table-actions">
+            <a href="/operations/transitaire/export/xls/?{{ current_filters }}" class="btn-secondary">Exporter Excel</a>
+            <a href="/operations/transitaire/export/pdf/?{{ current_filters }}" class="btn-secondary">Exporter PDF</a>
+        </div>
+    </div>
+    <div class="transitaire-filter-grid">
+        <div class="transitaire-filter-field">
+            <label for="id_q_transitaire">Recherche</label>
+            <input id="id_q_transitaire" type="text" name="q" value="{{ query }}" placeholder="BL, commande, client, camion ou chauffeur">
+        </div>
+        <div class="transitaire-filter-field">
+            <label for="id_etat_transitaire">Etat</label>
+            <select id="id_etat_transitaire" name="etat">
+                <option value="">Tous les etats</option>
+                <option value="attente_reception_transitaire" {% if etat == "attente_reception_transitaire" %}selected{% endif %}>BL secretaire</option>
+                <option value="transmis" {% if etat == "transmis" %}selected{% endif %}>Transmis</option>
+                <option value="declare" {% if etat == "declare" %}selected{% endif %}>Declare</option>
+                <option value="liquide" {% if etat == "liquide" %}selected{% endif %}>Liquide</option>
+                <option value="attente_reception_logistique" {% if etat == "attente_reception_logistique" %}selected{% endif %}>BL liquide transitaire</option>
+            </select>
+        </div>
+        <div class="transitaire-filter-field">
+            <label for="id_date_from_transitaire">Date debut</label>
+            <input id="id_date_from_transitaire" type="date" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="transitaire-filter-field">
+            <label for="id_date_to_transitaire">Date fin</label>
+            <input id="id_date_to_transitaire" type="date" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="transitaire-filter-actions">
+            <button type="submit" class="btn">Filtrer</button>
+        </div>
+        <div class="transitaire-filter-actions">
+            <a href="/operations/transitaire/" class="btn-secondary">Reinitialiser</a>
+        </div>
+        <div class="transitaire-total-strip">
+            <div class="transitaire-total-card transitaire-total-card--essence">
+                <small>Total ESS</small>
+                <strong>{{ total_essence_filtre }}</strong>
+            </div>
+            <div class="transitaire-total-card transitaire-total-card--gasoil">
+                <small>Total GASOIL</small>
+                <strong>{{ total_gasoil_filtre }}</strong>
+            </div>
+            <div class="transitaire-total-card transitaire-total-card--all">
+                <small>Total filtre</small>
+                <strong>{{ total_filtre }}</strong>
+            </div>
+        </div>
+    </div>
 </form>
-<form method="post" action="/operations/transitaire/{{ operation.id }}/liquide/">
-    {% csrf_token %}
-    <button type="submit" class="btn-secondary">Liquide</button>
-</form>
+
+<section class="transitaire-card">
+    <div class="transitaire-card-head">
+        <div>
+            <p class="eyebrow">Action groupee</p>
+            <h2 class="transitaire-card-title">Validation reception transitaire</h2>
+            <p class="transitaire-card-note">Selectionnez plusieurs BL secretaires pour leur appliquer une meme date de reception, comme chez la secretaire.</p>
+        </div>
+        <div class="transitaire-emphasis">
+            <small>Selection active</small>
+            <strong id="selected-transitaire-count-badge">0</strong>
+        </div>
+    </div>
+    <div class="transitaire-action-strip">
+        <button type="button" class="btn" id="open-transitaire-bulk" disabled>Valider la selection</button>
+        <span class="transitaire-subinfo">La date de reception est pre-remplie a aujourd'hui, mais reste modifiable.</span>
+    </div>
+</section>
+
+<section class="transitaire-card">
+    <div class="transitaire-card-head">
+        <div>
+            <p class="eyebrow">Reception</p>
+            <h2 class="transitaire-card-title">BL en attente de validation reception transitaire</h2>
+            <p class="transitaire-card-note">Ces BL ont ete transmis par la secretaire et attendent votre reception formelle avant declaration.</p>
+        </div>
+    </div>
+    <div class="transitaire-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width:48px;"><input type="checkbox" id="select-all-transitaire"></th>
+                    <th>BL</th>
+                    <th>Commande / client</th>
+                    <th>Quantite</th>
+                    <th>Camion</th>
+                    <th>Date transmission depot</th>
+                    <th>Etat</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations_pending_reception %}
+                <tr>
+                    <td><input type="checkbox" class="js-transitaire-select" value="{{ operation.id }}"></td>
+                    <td><strong>{{ operation.numero_bl }}</strong></td>
+                    {% if operation.commande_group_start %}
+                    <td rowspan="{{ operation.commande_group_rowspan }}" class="transitaire-group-cell">
+                        <strong>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</strong>
+                        <div class="transitaire-subinfo-strong">
+                            {% if operation.commande and operation.commande.produit %}{{ operation.commande.produit }}{% else %}Produit non renseigne{% endif %}
+                            ·
+                            {% if operation.commande and operation.commande.quantite != None %}{{ operation.commande.quantite }}{% else %}-{% endif %}
+                        </div>
+                        <div class="transitaire-subinfo">{{ operation.client.entreprise }}</div>
+                        {% if operation.commande_group_is_multi %}
+                        <div class="transitaire-group-chip">{{ operation.commande_group_count }} BL</div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td><strong>{{ operation.quantite|default:"-" }}</strong></td>
+                    <td>
+                        <strong>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</strong>
+                        <div class="transitaire-subinfo">{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</div>
+                    </td>
+                    <td>{{ operation.date_transmission_depot|date:"d/m/Y"|default:"-" }}</td>
+                    <td><span class="transitaire-status transitaire-status-reception">{{ operation.get_etat_bon_display }}</span></td>
+                    <td>
+                        {% if operation.can_validate_reception %}
+                        <button
+                            type="button"
+                            class="btn-secondary js-transitaire-action"
+                            data-action-url="/operations/transitaire/reception/"
+                            data-action-label="Date de reception transitaire"
+                            data-action-name="Valider reception"
+                            data-current-date="{% if operation.date_reception_transitaire %}{{ operation.date_reception_transitaire|date:'Y-m-d' }}{% endif %}"
+                            data-operation-id="{{ operation.id }}"
+                        >
+                            Valider reception
+                        </button>
+                        {% else %}
+                        <span class="muted">En attente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8">Aucun BL en attente de reception transitaire.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="transitaire-card">
+    <div class="transitaire-card-head">
+        <div>
+            <p class="eyebrow">Traitement</p>
+            <h2 class="transitaire-card-title">BL transmis a traiter</h2>
+            <p class="transitaire-card-note">Suivez ici la declaration, la liquidation et l’orientation vers la logistique des BL deja recus.</p>
+        </div>
+        <div class="transitaire-emphasis">
+            <small>Selection traitement</small>
+            <strong id="selected-transitaire-progress-count-badge">0</strong>
+        </div>
+    </div>
+    <div class="transitaire-action-strip" style="margin-bottom:16px;">
+        <div class="table-actions">
+            <button type="button" class="btn" id="bulk-declare-transitaire" disabled>Declarer la selection</button>
+            <button type="button" class="btn-secondary" id="bulk-liquide-transitaire" disabled>Liquider la selection</button>
+            <button type="button" class="btn-secondary" id="bulk-transfer-transitaire" disabled>Transmettre a la logistique</button>
+        </div>
+        <span class="transitaire-subinfo">Selectionnez plusieurs BL de meme etape pour leur appliquer une meme date d'action.</span>
+    </div>
+    <div class="transitaire-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width:48px;"><input type="checkbox" id="select-all-transitaire-progress"></th>
+                    <th>BL</th>
+                    <th>Commande / client</th>
+                    <th>Quantite</th>
+                    <th>Etat</th>
+                    <th>Transmission depot</th>
+                    <th>Reception transitaire</th>
+                    <th>Declaration</th>
+                    <th>Liquidation</th>
+                    <th>Actions transitaire</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations_in_progress %}
+                <tr>
+                    <td><input type="checkbox" class="js-transitaire-progress-select" value="{{ operation.id }}"></td>
+                    <td><strong>{{ operation.numero_bl }}</strong></td>
+                    {% if operation.commande_group_start %}
+                    <td rowspan="{{ operation.commande_group_rowspan }}" class="transitaire-group-cell">
+                        <strong>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</strong>
+                        <div class="transitaire-subinfo-strong">
+                            {% if operation.commande and operation.commande.produit %}{{ operation.commande.produit }}{% else %}Produit non renseigne{% endif %}
+                            ·
+                            {% if operation.commande and operation.commande.quantite != None %}{{ operation.commande.quantite }}{% else %}-{% endif %}
+                        </div>
+                        <div class="transitaire-subinfo">{{ operation.client.entreprise }}</div>
+                        {% if operation.commande_group_is_multi %}
+                        <div class="transitaire-group-chip">{{ operation.commande_group_count }} BL</div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td><strong>{{ operation.quantite|default:"-" }}</strong></td>
+                    <td>
+                        <span class="transitaire-status {% if operation.etat_bon == 'liquide' or operation.etat_bon == 'attente_reception_logistique' %}transitaire-status-ok{% else %}transitaire-status-progress{% endif %}">
+                            {{ operation.status_label }}
+                        </span>
+                    </td>
+                    <td>{{ operation.date_transmission_depot|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_reception_transitaire|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_bons_declares|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ operation.date_bons_liquides|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        <div class="table-actions">
+                            {% if operation.can_declare %}
+                            <button
+                                type="button"
+                                class="btn-secondary js-transitaire-action"
+                                data-action-url="/operations/transitaire/{{ operation.id }}/declare/"
+                                data-action-label="Date de declaration"
+                                data-action-name="Declarer"
+                                data-current-date="{% if operation.date_bons_declares %}{{ operation.date_bons_declares|date:'Y-m-d' }}{% endif %}"
+                                data-operation-id="{{ operation.id }}"
+                            >
+                                Declarer
+                            </button>
+                            {% endif %}
+
+                            {% if operation.can_liquide %}
+                            <button
+                                type="button"
+                                class="btn-secondary js-transitaire-action"
+                                data-action-url="/operations/transitaire/{{ operation.id }}/liquide/"
+                                data-action-label="Date de liquidation"
+                                data-action-name="Liquider"
+                                data-current-date="{% if operation.date_bons_liquides %}{{ operation.date_bons_liquides|date:'Y-m-d' }}{% endif %}"
+                                data-operation-id="{{ operation.id }}"
+                            >
+                                Liquider
+                            </button>
+                            {% endif %}
+
+                            {% if operation.can_transfer_logistique %}
+                            <button
+                                type="button"
+                                class="btn-secondary js-transitaire-action"
+                                data-action-url="/operations/transitaire/{{ operation.id }}/transferer-logistique/"
+                                data-action-label="Date de transfert au logisticien"
+                                data-action-name="Transferer logistique"
+                                data-current-date="{% if operation.date_transfert_logistique %}{{ operation.date_transfert_logistique|date:'Y-m-d' }}{% endif %}"
+                                data-operation-id="{{ operation.id }}"
+                            >
+                                Transferer logistique
+                            </button>
+                            {% endif %}
+
+                            {% if operation.can_charge_direct %}
+                            <button
+                                type="button"
+                                class="btn-secondary js-transitaire-action"
+                                data-action-url="/operations/transitaire/{{ operation.id }}/charger-direct/"
+                                data-action-label="Date de chargement"
+                                data-action-name="Charger auto"
+                                data-current-date="{% if operation.date_bons_charges %}{{ operation.date_bons_charges|date:'Y-m-d' }}{% endif %}"
+                                data-operation-id="{{ operation.id }}"
+                            >
+                                Charger auto
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10">Aucun BL transmis a traiter pour le moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal" id="transitaire-action-modal" aria-hidden="true">
+    <div class="modal-backdrop" id="transitaire-modal-backdrop"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2 id="transitaire-action-title">Saisir une date</h2>
+            </div>
+            <button type="button" class="modal-close" id="close-transitaire-modal">x</button>
+        </div>
+        <form method="post" id="transitaire-action-form" class="app-form modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="operation_id" id="transitaire-operation-id">
+            <div id="transitaire-selected-inputs"></div>
+            <div class="field">
+                <label for="transitaire-date-input" id="transitaire-date-label">Date</label>
+                <input type="date" id="transitaire-date-input" name="date_action" required>
+                <p class="field-help">Le circuit transitaire reste modifiable uniquement avant le chargement effectif du BL.</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="cancel-transitaire-modal">Annuler</button>
+                <button type="submit" class="btn" id="submit-transitaire-modal">Enregistrer</button>
+            </div>
+        </form>
+    </div>
 </div>
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="8">Aucune operation trouvee.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
 
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-const transitaireSearchInput = document.getElementById("transitaire-search-input");
-const transitaireTableRows = document.querySelectorAll("#transitaire-table tbody tr");
+const transitaireActionButtons = document.querySelectorAll(".js-transitaire-action");
+const transitaireModal = document.getElementById("transitaire-action-modal");
+const transitaireForm = document.getElementById("transitaire-action-form");
+const transitaireTitle = document.getElementById("transitaire-action-title");
+const transitaireDateLabel = document.getElementById("transitaire-date-label");
+const transitaireDateInput = document.getElementById("transitaire-date-input");
+const transitaireOperationId = document.getElementById("transitaire-operation-id");
+const transitaireSelectedInputs = document.getElementById("transitaire-selected-inputs");
+const transitaireSelectAll = document.getElementById("select-all-transitaire");
+const transitaireCheckboxes = document.querySelectorAll(".js-transitaire-select");
+const transitaireProgressSelectAll = document.getElementById("select-all-transitaire-progress");
+const transitaireProgressCheckboxes = document.querySelectorAll(".js-transitaire-progress-select");
+const openTransitaireBulk = document.getElementById("open-transitaire-bulk");
+const selectedTransitaireCountBadge = document.getElementById("selected-transitaire-count-badge");
+const selectedTransitaireProgressCountBadge = document.getElementById("selected-transitaire-progress-count-badge");
+const bulkDeclareTransitaire = document.getElementById("bulk-declare-transitaire");
+const bulkLiquideTransitaire = document.getElementById("bulk-liquide-transitaire");
+const bulkTransferTransitaire = document.getElementById("bulk-transfer-transitaire");
+const closeTransitaireModalButton = document.getElementById("close-transitaire-modal");
+const cancelTransitaireModalButton = document.getElementById("cancel-transitaire-modal");
+const submitTransitaireModalButton = document.getElementById("submit-transitaire-modal");
+let currentTransitaireActionUrl = "";
 
-function filterTransitaireTable() {
-    const query = (transitaireSearchInput?.value || "").trim().toLowerCase();
-    transitaireTableRows.forEach((row) => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = !query || text.includes(query) ? "" : "none";
-    });
+function fillTransitaireSelection(ids) {
+    transitaireSelectedInputs.innerHTML = ids.map((id) => `<input type="hidden" name="selected_operations" value="${id}">`).join("");
 }
 
-transitaireSearchInput?.addEventListener("input", filterTransitaireTable);
-filterTransitaireTable();
+function openTransitaireModal(button, ids = []) {
+    currentTransitaireActionUrl = button?.dataset.actionUrl || "/operations/transitaire/reception/";
+    transitaireForm.action = currentTransitaireActionUrl;
+    transitaireTitle.textContent = button?.dataset.actionName || "Saisir une date";
+    transitaireDateLabel.textContent = button?.dataset.actionLabel || "Date";
+    submitTransitaireModalButton.textContent = button?.dataset.actionName || "Enregistrer";
+    transitaireOperationId.value = ids.length ? "" : (button?.dataset.operationId || "");
+    fillTransitaireSelection(ids);
+    transitaireDateInput.value = button?.dataset.currentDate || new Date().toISOString().split("T")[0];
+    transitaireModal.classList.add("is-open");
+    transitaireModal.setAttribute("aria-hidden", "false");
+}
+
+function closeTransitaireModal() {
+    transitaireModal.classList.remove("is-open");
+    transitaireModal.setAttribute("aria-hidden", "true");
+}
+
+function refreshTransitaireBulkState() {
+    const checked = Array.from(transitaireCheckboxes).filter((checkbox) => checkbox.checked);
+    openTransitaireBulk.disabled = checked.length === 0;
+    if (selectedTransitaireCountBadge) {
+        selectedTransitaireCountBadge.textContent = checked.length;
+    }
+    if (transitaireSelectAll) {
+        transitaireSelectAll.checked = checked.length > 0 && checked.length === transitaireCheckboxes.length;
+    }
+}
+
+function refreshTransitaireProgressBulkState() {
+    const checked = Array.from(transitaireProgressCheckboxes).filter((checkbox) => checkbox.checked);
+    const hasSelection = checked.length > 0;
+    if (bulkDeclareTransitaire) bulkDeclareTransitaire.disabled = !hasSelection;
+    if (bulkLiquideTransitaire) bulkLiquideTransitaire.disabled = !hasSelection;
+    if (bulkTransferTransitaire) bulkTransferTransitaire.disabled = !hasSelection;
+    if (selectedTransitaireProgressCountBadge) {
+        selectedTransitaireProgressCountBadge.textContent = checked.length;
+    }
+    if (transitaireProgressSelectAll) {
+        transitaireProgressSelectAll.checked = hasSelection && checked.length === transitaireProgressCheckboxes.length;
+    }
+}
+
+transitaireForm?.addEventListener("submit", () => {
+    if (currentTransitaireActionUrl) {
+        transitaireForm.action = currentTransitaireActionUrl;
+    }
+});
+
+transitaireActionButtons.forEach((button) => {
+    button.addEventListener("click", () => openTransitaireModal(button));
+});
+
+openTransitaireBulk?.addEventListener("click", () => {
+    const ids = Array.from(transitaireCheckboxes).filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    if (ids.length) {
+        openTransitaireModal({
+            dataset: {
+                actionUrl: "/operations/transitaire/reception/",
+                actionLabel: "Date de reception transitaire",
+                actionName: "Valider reception",
+                currentDate: ""
+            }
+        }, ids);
+    }
+});
+
+transitaireSelectAll?.addEventListener("change", () => {
+    transitaireCheckboxes.forEach((checkbox) => {
+        checkbox.checked = transitaireSelectAll.checked;
+    });
+    refreshTransitaireBulkState();
+});
+
+transitaireCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", refreshTransitaireBulkState));
+transitaireProgressSelectAll?.addEventListener("change", () => {
+    transitaireProgressCheckboxes.forEach((checkbox) => {
+        checkbox.checked = transitaireProgressSelectAll.checked;
+    });
+    refreshTransitaireProgressBulkState();
+});
+transitaireProgressCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", refreshTransitaireProgressBulkState));
+
+bulkDeclareTransitaire?.addEventListener("click", () => {
+    const ids = Array.from(transitaireProgressCheckboxes).filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    if (!ids.length) return;
+    openTransitaireModal({
+        dataset: {
+            actionUrl: "/operations/transitaire/action-groupee/declare/",
+            actionLabel: "Date de declaration",
+            actionName: "Declarer la selection",
+            currentDate: ""
+        }
+    }, ids);
+});
+
+bulkLiquideTransitaire?.addEventListener("click", () => {
+    const ids = Array.from(transitaireProgressCheckboxes).filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    if (!ids.length) return;
+    openTransitaireModal({
+        dataset: {
+            actionUrl: "/operations/transitaire/action-groupee/liquide/",
+            actionLabel: "Date de liquidation",
+            actionName: "Liquider la selection",
+            currentDate: ""
+        }
+    }, ids);
+});
+
+bulkTransferTransitaire?.addEventListener("click", () => {
+    const ids = Array.from(transitaireProgressCheckboxes).filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    if (!ids.length) return;
+    openTransitaireModal({
+        dataset: {
+            actionUrl: "/operations/transitaire/action-groupee/transferer-logistique/",
+            actionLabel: "Date de transfert au logisticien",
+            actionName: "Transmettre a la logistique",
+            currentDate: ""
+        }
+    }, ids);
+});
+
+closeTransitaireModalButton?.addEventListener("click", closeTransitaireModal);
+cancelTransitaireModalButton?.addEventListener("click", closeTransitaireModal);
+document.getElementById("transitaire-modal-backdrop")?.addEventListener("click", closeTransitaireModal);
+refreshTransitaireBulkState();
+refreshTransitaireProgressBulkState();
 </script>
 {% endblock %}

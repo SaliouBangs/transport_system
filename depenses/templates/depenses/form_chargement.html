@@ -1,0 +1,748 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .chargement-page {
+    display: grid;
+    gap: 22px;
+  }
+  .form-shell.chargement-shell {
+    width: 100%;
+    max-width: none;
+  }
+  .chargement-shell {
+    padding: 30px 32px 34px;
+    border-radius: 30px;
+    background:
+      radial-gradient(circle at top right, rgba(83, 184, 150, 0.16), transparent 28%),
+      radial-gradient(circle at top left, rgba(44, 118, 180, 0.10), transparent 24%),
+      linear-gradient(180deg, rgba(255,255,255,0.99), rgba(246,251,255,0.99));
+    box-shadow: 0 24px 56px rgba(15, 47, 74, 0.12);
+    border: 1px solid rgba(188, 215, 236, 0.92);
+  }
+  .chargement-hero {
+    display: grid;
+    grid-template-columns: 1.25fr 0.9fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .chargement-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,250,255,0.90));
+    border: 1px solid #d5e5f4;
+    border-radius: 24px;
+    padding: 22px 24px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .chargement-card h2,
+  .chargement-card h3 {
+    margin: 0 0 8px;
+  }
+  .chargement-eyebrow {
+    margin: 0 0 10px;
+    color: #0b9271;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .chargement-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .chargement-grid > * {
+    min-width: 0;
+  }
+  .span-12 { grid-column: span 12; }
+  .span-8 { grid-column: span 8; }
+  .span-7 { grid-column: span 7; }
+  .span-6 { grid-column: span 6; }
+  .span-5 { grid-column: span 5; }
+  .span-4 { grid-column: span 4; }
+  .info-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .info-box {
+    padding: 15px 16px;
+    border-radius: 18px;
+    border: 1px solid #d7e6f5;
+    background: linear-gradient(180deg, #ffffff, #f6fbff);
+  }
+  .info-box strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    color: #6d8398;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .info-box span {
+    display: block;
+    color: #14344f;
+    font-weight: 700;
+  }
+  .tonal-note {
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(69, 184, 143, 0.18), rgba(69, 184, 143, 0.07));
+    border: 1px solid rgba(69, 184, 143, 0.30);
+    color: #165f49;
+  }
+  .scope-switch {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .scope-card {
+    display: grid;
+    gap: 8px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid #d5e5f4;
+    background: linear-gradient(180deg, #ffffff, #f7fbff);
+    color: #14344f;
+    text-decoration: none;
+    box-shadow: 0 10px 24px rgba(17, 58, 93, 0.05);
+  }
+  .scope-card strong {
+    font-size: 1rem;
+  }
+  .scope-card.active {
+    border-color: rgba(50, 181, 144, 0.42);
+    background: linear-gradient(135deg, rgba(50, 181, 144, 0.16), rgba(50, 181, 144, 0.05));
+  }
+  .scope-card__badge {
+    justify-self: start;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(18, 58, 87, 0.08);
+    color: #153e5c;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .scope-ops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .scope-ops span {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(21, 62, 92, 0.08);
+    color: #214b68;
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+  .bon-conso-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .form-section {
+    padding: 24px 26px;
+    border: 1px solid #d5e5f4;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(247,251,255,0.94));
+    box-shadow: 0 10px 24px rgba(17, 58, 93, 0.05);
+  }
+  .form-section + .form-section {
+    margin-top: 18px;
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .section-head p {
+    margin: 0;
+  }
+  .form-split-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .line-table-wrap {
+    border-radius: 22px;
+    border: 1px solid #d7e6f5;
+    overflow: hidden;
+    background: white;
+  }
+  .line-table-wrap .table {
+    margin: 0;
+  }
+  .line-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #d7e6f5;
+  }
+  .line-meta strong {
+    color: #163c59;
+  }
+  .chargement-headband {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 18px;
+  }
+  .chargement-banner {
+    border-radius: 24px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, #103654, #1a4c74 58%, #37b08f);
+    color: white;
+    box-shadow: 0 18px 40px rgba(16, 54, 84, 0.22);
+  }
+  .chargement-banner h2 {
+    margin: 0 0 8px;
+    color: white;
+  }
+  .chargement-banner p {
+    margin: 0;
+    color: rgba(255,255,255,0.88);
+  }
+  .chargement-banner-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .chargement-banner-stat {
+    border-radius: 18px;
+    padding: 14px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.16);
+  }
+  .chargement-banner-stat strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.74rem;
+    color: rgba(255,255,255,0.72);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .chargement-banner-stat span {
+    display: block;
+    color: white;
+    font-size: 1.08rem;
+    font-weight: 800;
+  }
+  .chargement-side-note {
+    border-radius: 24px;
+    padding: 22px 24px;
+    background: linear-gradient(180deg, rgba(236,248,243,0.96), rgba(250,255,252,0.96));
+    border: 1px solid #cfeadf;
+    color: #1b5f49;
+  }
+  .chargement-side-note h3 {
+    margin: 0 0 10px;
+  }
+  .chargement-side-note p {
+    margin: 0;
+  }
+  .chargement-side-note ul {
+    margin: 14px 0 0;
+    padding-left: 18px;
+  }
+  .chargement-side-note li + li {
+    margin-top: 8px;
+  }
+  .line-table-wrap thead th {
+    background: #163a57;
+    color: white;
+  }
+  .line-table-wrap tbody tr:nth-child(even) {
+    background: #f8fbff;
+  }
+  .chargement-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  @media (max-width: 1200px) {
+    .chargement-headband,
+    .chargement-hero,
+    .bon-conso-grid {
+      grid-template-columns: 1fr;
+    }
+    .span-8, .span-7, .span-6, .span-5, .span-4 {
+      grid-column: span 12;
+    }
+  }
+  @media (max-width: 820px) {
+    .chargement-shell {
+      padding: 20px;
+    }
+    .chargement-banner-stats {
+      grid-template-columns: 1fr;
+    }
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses / chargement</p>
+    <h1>{{ page_title }}</h1>
+  </div>
+</div>
+
+<div class="form-shell chargement-shell chargement-page">
+  <div class="chargement-headband">
+    <div class="chargement-banner">
+      <p class="chargement-eyebrow" style="color:rgba(255,255,255,0.76); margin-bottom:12px;">Processus de validation</p>
+      <h2>Bon unique de depenses camion</h2>
+      <p>Centralisez ici toutes les depenses de chargement du BL avant transmission au DGA, sans casser votre saisie en cours.</p>
+      <div class="chargement-banner-stats">
+        <div class="chargement-banner-stat">
+          <strong>BL</strong>
+          <span>{{ operation.numero_bl }}</span>
+        </div>
+        <div class="chargement-banner-stat">
+          <strong>Client</strong>
+          <span>{{ operation.client.entreprise }}</span>
+        </div>
+        <div class="chargement-banner-stat">
+          <strong>Bon</strong>
+          <span>{{ depense_maitre.reference|default:"Saisie en cours" }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="chargement-side-note">
+      <h3>Rappel utile</h3>
+      <p>Vous pouvez enregistrer plusieurs lignes successives sans perdre le bon en cours.</p>
+      <ul>
+        <li><strong>Enregistrer et ajouter une autre</strong> garde le BL ouvert pour continuer.</li>
+        <li><strong>Envoyer au DGA</strong> fonctionne des qu’au moins une ligne existe deja sur le bon.</li>
+        {% if editing_line_id %}
+        <li><strong>Modification en cours</strong> : les anciennes donnees de la ligne sont rechargees dans le formulaire.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="chargement-hero">
+    <section class="chargement-card">
+      <p class="chargement-eyebrow">BL rattache</p>
+      <h2 style="margin:0 0 16px;">Reference terrain du chargement</h2>
+      <div class="info-grid">
+        <div class="info-box"><strong>BL</strong><span>{{ operation.numero_bl }}</span></div>
+        <div class="info-box"><strong>Client</strong><span>{{ operation.client.entreprise }}</span></div>
+        <div class="info-box"><strong>Camion</strong><span>{{ operation.camion|default:"-" }}</span></div>
+        <div class="info-box"><strong>Chauffeur</strong><span>{{ operation.chauffeur|default:"-" }}</span></div>
+        <div class="info-box"><strong>Date charge</strong><span>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</span></div>
+        <div class="info-box"><strong>Reference du bon</strong><span>{{ depense_maitre.reference|default:"En cours de creation" }}</span></div>
+      </div>
+    </section>
+
+    <section class="chargement-card">
+      <div class="section-head" style="margin-bottom:14px;">
+        <div>
+          <p class="chargement-eyebrow">Carburant</p>
+          <h2 style="margin:0 0 6px;">Bon de consommation</h2>
+          <p class="muted">Ce resume s'active pour les lignes carburant du BL.</p>
+        </div>
+        <div class="form-split-actions">
+          <span class="status-badge status-info">{{ bon_conso_reference_preview }}</span>
+          {% if depense_maitre and can_print_bon_conso %}
+          <a href="/depenses/bon-consommation/{{ depense_maitre.id }}/" class="btn-secondary" target="_blank">Imprimer bon de conso</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="bon-conso-grid">
+        <div class="info-box"><strong>Date bon de conso</strong><span>{{ bon_conso_date_preview|date:"d/m/Y" }}</span></div>
+        <div class="info-box"><strong>Numero BL</strong><span>{{ operation.numero_bl }}</span></div>
+        <div class="info-box"><strong>Produit transporte</strong><span>{{ operation.commande.produit|default:"-" }}</span></div>
+        <div class="info-box"><strong>Quantite transportee</strong><span>{{ operation.quantite|default:"-" }}</span></div>
+        <div class="info-box"><strong>Ville de depart</strong><span>{{ operation.commande.ville_depart|default:"CONAKRY" }}</span></div>
+        <div class="info-box"><strong>Destination</strong><span>{{ operation.destination|default:"-" }}</span></div>
+      </div>
+      <div class="tonal-note" style="margin-top:16px;">
+        Signatures prevues : <strong>Logistique, DGA, DG, Chauffeur, Gerant</strong>.
+      </div>
+    </section>
+  </div>
+
+  <form method="post" class="app-form">
+    {% csrf_token %}
+    {{ form.titre }}
+    <input type="hidden" name="portee_chargement" value="{{ portee_chargement }}">
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+      {% for error in form.non_field_errors %}
+      <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <section class="form-section">
+      {% if commande_multi_bl %}
+      <div class="section-head">
+        <div>
+          <p class="chargement-eyebrow">Perimetre</p>
+          <h2 style="margin:0 0 6px;">Choisir le bon niveau d'affectation</h2>
+          <p class="muted">Pour une charge commune aux plusieurs BL d'une meme commande, utilise le mode commande. Le carburant reste volontairement au niveau BL.</p>
+        </div>
+      </div>
+      <div class="scope-switch" style="margin-bottom:20px;">
+        <a href="/depenses/chargement/{{ operation.id }}/ajouter/" class="scope-card {% if portee_chargement == 'bl' %}active{% endif %}">
+          <span class="scope-card__badge">BL uniquement</span>
+          <strong>{{ operation.numero_bl }}</strong>
+          <span>Depense specifique a ce BL uniquement.</span>
+        </a>
+        <a href="/depenses/chargement/{{ operation.id }}/ajouter/?scope=commande" class="scope-card {% if portee_chargement == 'commande' %}active{% endif %}">
+          <span class="scope-card__badge">Commande entiere</span>
+          <strong>{{ operation.commande.reference }}</strong>
+          <span>Depense partagee sur tous les BL issus de cette commande.</span>
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="section-head">
+        <div>
+          <p class="chargement-eyebrow">Nouvelle ligne</p>
+          <h2 style="margin:0 0 6px;">Saisie de la depense</h2>
+          <p class="muted">Ajoutez une ligne de depense puis decidez si vous continuez la saisie ou si vous transmettez le bon au DGA. Portee active : <strong>{{ scope_label }}</strong>.</p>
+        </div>
+      </div>
+
+      {% if scope_operations %}
+      <div class="tonal-note" style="margin-bottom:18px;">
+        {% if portee_chargement == "commande" %}
+        Cette depense sera visible sur tous les BL de la commande <strong>{{ operation.commande.reference }}</strong>.
+        {% else %}
+        Cette depense restera limitee au BL <strong>{{ operation.numero_bl }}</strong>.
+        {% endif %}
+        <div class="scope-ops">
+          {% for item in scope_operations %}
+          <span>{{ item.numero_bl }}{% if item.sommier_id %} | {{ item.sommier.reference_navire }}{% endif %}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="form-grid">
+      <div class="field field-full span-7">
+        <label for="id_type_depense_picker">Type de depense</label>
+        {{ form.type_depense }}
+        <input type="hidden" id="{{ form.type_depense_search.id_for_label }}" name="{{ form.type_depense_search.html_name }}" value="{{ form.type_depense_search.value|default:'' }}">
+        <select id="id_type_depense_picker">
+          <option value="">---------</option>
+          {% for item in form.type_depenses %}
+          <option value="{{ item.id }}" data-label="{{ item.libelle }}" data-montant="{{ item.montant_defaut_input }}" data-fuel="{{ item.is_carburant_type_input }}"{% if form.type_depense.value|stringformat:"s" == item.id|stringformat:"s" %} selected{% endif %}>{{ item.libelle }}</option>
+          {% endfor %}
+        </select>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+          <button type="button" class="btn-secondary" id="open-type-chargement-modal">Nouveau type</button>
+          {% if is_admin_user %}<a href="/depenses/types/" class="btn-secondary">Gerer les types</a>{% endif %}
+        </div>
+        {% if form.type_depense_search.errors %}<p class="field-error">{{ form.type_depense_search.errors|join:", " }}</p>{% endif %}
+      </div>
+
+      <div class="field field-full span-5">
+        <label for="{{ form.montant_estime.id_for_label }}">Montant de la depense</label>
+        {{ form.montant_estime }}
+        <p class="muted" id="montant-depense-help" style="margin:8px 0 0;">Pour une depense classique, le montant par defaut du type vient automatiquement et reste modifiable.</p>
+        {% if form.montant_estime.errors %}<p class="field-error">{{ form.montant_estime.errors|join:", " }}</p>{% endif %}
+      </div>
+
+      <div class="field field-full span-12" id="bon-conso-fields" hidden style="display:none;">
+        <label style="display:block; margin-bottom:8px;">Bon de consommation carburant</label>
+        <div class="form-grid">
+          <div class="field span-6">
+            <label for="{{ form.date_bon_conso.id_for_label }}">Date bon de conso</label>
+            {{ form.date_bon_conso }}
+            {% if form.date_bon_conso.errors %}<p class="field-error">{{ form.date_bon_conso.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="field span-6">
+            <label for="{{ form.quantite_a_consommer.id_for_label }}">Quantite a consommer</label>
+            {{ form.quantite_a_consommer }}
+            {% if form.quantite_a_consommer.errors %}<p class="field-error">{{ form.quantite_a_consommer.errors|join:", " }}</p>{% endif %}
+          </div>
+        </div>
+        <p class="muted" id="bon-conso-help" style="margin:8px 0 0;">Renseignez ce bloc uniquement pour une depense carburant. Le montant sera calcule automatiquement : quantite x 12000 GNF.</p>
+      </div>
+
+      <div class="field field-full span-12">
+        <label for="{{ form.description.id_for_label }}">Commentaire</label>
+        {{ form.description }}
+        {% if form.description.errors %}<p class="field-error">{{ form.description.errors|join:", " }}</p>{% endif %}
+      </div>
+      </div>
+
+      <div class="chargement-form-actions">
+        <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-secondary">Retour au suivi</a>
+        {% if not editing_line_id %}
+        <button type="submit" name="save_and_add_other" value="1" class="btn-secondary">Enregistrer et ajouter une autre</button>
+        <button type="submit" name="submit_to_dga" value="1" class="btn">Envoyer au DGA</button>
+        {% else %}
+        <a href="/depenses/chargement/{{ operation.id }}/ajouter/{% if portee_chargement == 'commande' %}?scope=commande{% endif %}" class="btn-secondary">Annuler la modification</a>
+        <button type="submit" class="btn">Enregistrer la modification</button>
+        {% endif %}
+      </div>
+    </section>
+  </form>
+
+  <section class="form-section">
+      <div class="section-head">
+        <div>
+          <p class="chargement-eyebrow">Bon en cours</p>
+          <h2 style="margin:0 0 6px;">Lignes deja rattachees a ce bon de validation</h2>
+          <p class="muted">Ajoutez plusieurs postes puis transmettez l'ensemble au DGA quand votre saisie est terminee. Portee courante : <strong>{{ scope_label }}</strong>.</p>
+        </div>
+        {% if depense_maitre %}
+        <span class="status-badge status-info">{{ depense_maitre.reference }}</span>
+      {% endif %}
+    </div>
+
+    <div class="line-table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Designation</th>
+            <th>Qte</th>
+            <th>Prix unitaire</th>
+            <th>Montant</th>
+            <th>Type</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for depense in depenses_existantes %}
+          <tr>
+            <td>{{ depense.designation }}</td>
+            <td>{{ depense.quantite_affiche }}</td>
+            <td>{{ depense.prix_unitaire_affiche }}</td>
+            <td>{{ depense.montant_affiche }}</td>
+            <td>{% if depense.is_fuel_related %}Carburant{% else %}Classique{% endif %}</td>
+            <td>
+              {% if depense_maitre and depense_maitre.statut == "attente_validation_chargement_dga" %}
+              <a href="/depenses/chargement/{{ operation.id }}/ligne/{{ depense.id }}/modifier/" class="btn-secondary" style="padding:8px 12px;">Modifier</a>
+              {% else %}
+              <span class="muted">Verrouillee</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">Aucune ligne de depense camion n'a encore ete enregistree pour ce BL.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="line-meta">
+      <span class="muted">Reference unique du bon de validation BL : <strong>{{ depense_maitre.reference|default:"En cours de creation" }}</strong></span>
+      <span class="muted">Statut courant : <strong>{% if depense_maitre %}{{ depense_maitre.get_statut_display|default:depense_maitre.statut }}{% else %}Aucune ligne enregistree{% endif %}</strong></span>
+    </div>
+  </section>
+</div>
+
+<dialog id="type-chargement-modal" class="app-dialog">
+  <form method="dialog" class="dialog-shell">
+    <div class="dialog-head">
+      <h3>Nouveau type de depense</h3>
+      <button type="button" class="icon-btn" data-close-dialog>&times;</button>
+    </div>
+    <div class="dialog-body">
+      <label for="id_type_chargement_libelle">Libelle</label>
+      <input type="text" id="id_type_chargement_libelle" name="libelle">
+      <label for="id_type_chargement_montant" style="margin-top:12px;">Montant par defaut</label>
+      <input type="number" id="id_type_chargement_montant" name="montant_defaut" step="0.01" min="0">
+      <p class="field-error" id="type-chargement-error" hidden></p>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-dialog>Annuler</button>
+      <button type="button" class="btn" id="save-type-chargement">Ajouter</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const typeSearch = document.getElementById("id_type_depense_search");
+const typeHidden = document.getElementById("id_type_depense");
+const typePicker = document.getElementById("id_type_depense_picker");
+const montantEstimeInput = document.getElementById("id_montant_estime");
+const bonConsoFields = document.getElementById("bon-conso-fields");
+const bonConsoHelp = document.getElementById("bon-conso-help");
+const bonConsoDateInput = document.getElementById("id_date_bon_conso");
+const quantiteBonConsoInput = document.getElementById("id_quantite_a_consommer");
+const montantDepenseHelp = document.getElementById("montant-depense-help");
+const typeModal = document.getElementById("type-chargement-modal");
+const typeError = document.getElementById("type-chargement-error");
+const CARBURANT_PRIX_UNITAIRE = 12000;
+const chargementForm = document.querySelector(".form-shell form.app-form");
+
+function parseFormattedNumber(value) {
+  const raw = String(value || "").trim().replace(/\s/g, "").replace(/\u202f/g, "").replace(/,/g, ".");
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function formatPrettyNumber(value, maximumFractionDigits = 2) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric)) {
+    return "";
+  }
+  return numeric.toLocaleString("fr-FR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+}
+
+function formatFuelAmount(value) {
+  return formatPrettyNumber(value, 2);
+}
+
+function setupFormattedNumberInput(input, maximumFractionDigits = 2) {
+  if (!input) return;
+  input.type = "text";
+  input.setAttribute("inputmode", "decimal");
+  const applyFormatting = () => {
+    if (!input.value) return;
+    input.value = formatPrettyNumber(parseFormattedNumber(input.value), maximumFractionDigits);
+  };
+  input.addEventListener("input", () => {
+    const cursorAtEnd = input.selectionStart === input.value.length;
+    const numeric = parseFormattedNumber(input.value);
+    if (input.value && cursorAtEnd) {
+      input.value = formatPrettyNumber(numeric, maximumFractionDigits);
+    }
+  });
+  input.addEventListener("blur", applyFormatting);
+  applyFormatting();
+}
+
+function updateFuelAmount(force = false) {
+  const selectedOption = typePicker?.selectedOptions?.[0];
+  const isFuel = selectedOption?.dataset?.fuel === "true";
+  if (!isFuel || !montantEstimeInput) {
+    return;
+  }
+  const quantite = parseFormattedNumber(quantiteBonConsoInput?.value || 0);
+  if (!quantite && !force) {
+    return;
+  }
+  montantEstimeInput.value = formatFuelAmount(quantite * CARBURANT_PRIX_UNITAIRE);
+}
+
+function syncTypeSelection() {
+  const selectedOption = typePicker?.selectedOptions?.[0];
+  const selectedId = selectedOption?.value || "";
+  const selectedLabel = selectedOption?.dataset?.label || "";
+  const isFuel = selectedOption?.dataset?.fuel === "true";
+  typeHidden.value = selectedId;
+  if (typeSearch) {
+    typeSearch.value = selectedLabel;
+  }
+  if (selectedId && montantEstimeInput) {
+    if (isFuel) {
+      if (bonConsoDateInput && !bonConsoDateInput.value) {
+        bonConsoDateInput.value = new Date().toISOString().split("T")[0];
+      }
+      updateFuelAmount(true);
+      montantEstimeInput.readOnly = true;
+    } else {
+      montantEstimeInput.value = formatPrettyNumber(selectedOption.dataset.montant || 0, 2);
+      montantEstimeInput.readOnly = false;
+    }
+  } else if (montantEstimeInput) {
+    montantEstimeInput.readOnly = false;
+  }
+
+  if (bonConsoFields && bonConsoHelp) {
+    bonConsoFields.hidden = !isFuel;
+    bonConsoFields.style.display = isFuel ? "" : "none";
+    bonConsoHelp.textContent = isFuel
+      ? "Depense carburant detectee : renseignez la date du bon et la quantite. Le montant est calcule automatiquement sur la base de 12000 GNF par unite."
+      : "Renseignez ce bloc uniquement si le type choisi concerne le carburant.";
+  }
+
+  if (montantDepenseHelp) {
+    montantDepenseHelp.textContent = isFuel
+      ? "Montant calcule automatiquement pour le carburant : quantite a consommer x 12000 GNF."
+      : "Pour une depense classique, le montant par defaut du type vient automatiquement et reste modifiable.";
+  }
+}
+
+typePicker?.addEventListener("change", syncTypeSelection);
+quantiteBonConsoInput?.addEventListener("input", () => updateFuelAmount(true));
+quantiteBonConsoInput?.addEventListener("change", () => updateFuelAmount(true));
+setupFormattedNumberInput(montantEstimeInput, 2);
+setupFormattedNumberInput(quantiteBonConsoInput, 2);
+syncTypeSelection();
+
+document.getElementById("open-type-chargement-modal")?.addEventListener("click", () => {
+  typeError.hidden = true;
+  typeError.textContent = "";
+  document.getElementById("id_type_chargement_libelle").value = "";
+  document.getElementById("id_type_chargement_montant").value = "";
+  typeModal.showModal();
+});
+
+document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+  button.addEventListener("click", () => button.closest("dialog")?.close());
+});
+
+document.getElementById("save-type-chargement")?.addEventListener("click", async () => {
+  const libelle = document.getElementById("id_type_chargement_libelle").value.trim();
+  const montantDefaut = document.getElementById("id_type_chargement_montant").value.trim();
+  if (!libelle) {
+    typeError.textContent = "Le libelle est obligatoire.";
+    typeError.hidden = false;
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("libelle", libelle);
+  formData.append("montant_defaut", montantDefaut || "0");
+  formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+
+  const response = await fetch("/depenses/types/ajouter-modal/", {
+    method: "POST",
+    body: formData,
+    headers: {"X-Requested-With": "XMLHttpRequest"},
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload.success) {
+    typeError.textContent = payload.errors?.libelle?.[0] || "Impossible d'ajouter ce type.";
+    typeError.hidden = false;
+    return;
+  }
+
+  const option = document.createElement("option");
+  option.value = payload.type_depense.id;
+  option.dataset.label = payload.type_depense.label;
+  option.dataset.montant = payload.type_depense.montant_defaut || "0";
+  option.dataset.fuel = payload.type_depense.is_carburant ? "true" : "false";
+  option.textContent = payload.type_depense.label;
+  typePicker.appendChild(option);
+  typePicker.value = String(payload.type_depense.id);
+  syncTypeSelection();
+  typeModal.close();
+});
+
+chargementForm?.addEventListener("submit", () => {
+  if (montantEstimeInput) {
+    montantEstimeInput.value = String(parseFormattedNumber(montantEstimeInput.value));
+  }
+  if (quantiteBonConsoInput) {
+    quantiteBonConsoInput.value = String(parseFormattedNumber(quantiteBonConsoInput.value));
+  }
+});
+</script>
+{% endblock %}

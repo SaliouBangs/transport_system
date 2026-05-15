@@ -3,13 +3,16 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, DecimalField, F, Q, Sum, Value, When
+from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.utils.safestring import mark_safe
+import json
 
 from chauffeurs.models import Chauffeur
 from camions.models import Camion
@@ -21,10 +24,12 @@ from .forms import (
     ArticleStockConversionFormSet,
     FournisseurForm,
     MaintenanceAchatForm,
+    MaintenanceFactureFormSet,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
     MaintenancePaiementForm,
     MouvementStockForm,
+    PanneCatalogueForm,
     PrestataireForm,
     TypeMaintenanceForm,
 )
@@ -32,6 +37,8 @@ from .models import (
     ArticleStock,
     Fournisseur,
     Maintenance,
+    MaintenanceFacture,
+    PanneCatalogue,
     MaintenanceSousLigne,
     MouvementStock,
     Prestataire,
@@ -41,6 +48,7 @@ from .models import (
 def _maintenance_queryset():
     _normalize_stock_only_workflow()
     return Maintenance.objects.select_related("camion", "fournisseur").prefetch_related(
+        "factures_achat__fournisseur",
         "lignes__type_maintenance",
         "lignes__sous_lignes__article_stock",
     )
@@ -331,9 +339,12 @@ def _get_duplicate_facture_matches(numero_facture, maintenance_id=None):
     numero_facture = (numero_facture or "").strip()
     if not numero_facture:
         return []
+    invoice_maintenance_ids = MaintenanceFacture.objects.filter(
+        numero_facture__iexact=numero_facture
+    ).values_list("maintenance_id", flat=True)
     queryset = (
         Maintenance.objects.exclude(numero_facture="")
-        .filter(numero_facture__iexact=numero_facture)
+        .filter(Q(numero_facture__iexact=numero_facture) | Q(id__in=invoice_maintenance_ids))
         .select_related("camion")
         .order_by("-date_creation")
     )
@@ -355,6 +366,7 @@ def _attach_subline_values(formset, request=None):
                     "libelle": labels[index] if index < len(labels) else "",
                     "quantite": quantities[index] if index < len(quantities) else "1",
                     "article_stock_id": article_ids[index] if index < len(article_ids) else "",
+                    "panne_catalogue_id": "",
                     "prix_unitaire": "0",
                     "montant": "0",
                 }
@@ -367,6 +379,7 @@ def _attach_subline_values(formset, request=None):
                         "id",
                         "article_stock_id",
                         "libelle",
+                        "panne_catalogue_id",
                         "quantite",
                         "prix_unitaire",
                         "montant",
@@ -379,6 +392,7 @@ def _attach_subline_values(formset, request=None):
             {
                 "id": "",
                 "article_stock_id": "",
+                "panne_catalogue_id": "",
                 "libelle": "",
                 "quantite": "1",
                 "prix_unitaire": "0",
@@ -390,12 +404,22 @@ def _attach_subline_values(formset, request=None):
         {
             "id": "",
             "article_stock_id": "",
+            "panne_catalogue_id": "",
             "libelle": "",
             "quantite": "1",
             "prix_unitaire": "0",
             "montant": "0",
         }
     ]
+
+
+def _resolve_panne_catalogue(ligne, label):
+    if not ligne.type_maintenance_id or not label:
+        return None
+    return PanneCatalogue.objects.filter(
+        type_maintenance=ligne.type_maintenance,
+        libelle__iexact=label.strip(),
+    ).first()
 
 
 def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
@@ -425,6 +449,7 @@ def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
             article = ArticleStock.objects.filter(pk=article_id).first() if article_id else None
             if article and not label:
                 label = article.libelle
+            panne_catalogue = _resolve_panne_catalogue(ligne, label)
 
             if not label:
                 continue
@@ -438,18 +463,23 @@ def _save_subline_items(request, formset, allow_create=True, allow_delete=True):
                     raise ValidationError(
                         f"La piece '{subline.libelle}' a deja ete sortie du stock. "
                         "Seul l'administrateur peut corriger ce mouvement manuellement."
-                    )
+                )
                 subline.article_stock = article
+                subline.panne_catalogue = panne_catalogue
                 subline.libelle = label
                 subline.quantite = quantity_raw or "1"
+                if article and not subline.mouvement_stock_id:
+                    subline.prix_unitaire = article.prix_unitaire or Decimal("0")
                 subline.save()
                 kept_ids.append(subline.id)
             elif allow_create:
                 subline = MaintenanceSousLigne.objects.create(
                     maintenance_ligne=ligne,
                     article_stock=article,
+                    panne_catalogue=panne_catalogue,
                     libelle=label,
                     quantite=quantity_raw or "1",
+                    prix_unitaire=(article.prix_unitaire or Decimal("0")) if article else Decimal("0"),
                 )
                 kept_ids.append(subline.id)
 
@@ -462,10 +492,56 @@ def _attach_achat_piece_rows(maintenance):
     for ligne in maintenance.lignes.select_related("type_maintenance").prefetch_related("sous_lignes"):
         pieces = list(ligne.sous_lignes.all())
         if pieces:
+            for piece in pieces:
+                piece.is_stock_information = bool(piece.article_stock_id)
             piece_rows.append({"ligne": ligne, "pieces": pieces})
         else:
             piece_rows.append({"ligne": ligne, "pieces": []})
     return piece_rows
+
+
+def _maintenance_invoice_rows(maintenance):
+    rows = list(maintenance.factures_achat.select_related("fournisseur").all())
+    if rows:
+        return rows
+    if maintenance.fournisseur_id or maintenance.numero_facture or maintenance.facture_fichier:
+        return [
+            {
+                "fournisseur": maintenance.fournisseur,
+                "numero_facture": maintenance.numero_facture,
+                "facture_fichier": maintenance.facture_fichier,
+                "is_legacy": True,
+            }
+        ]
+    return []
+
+
+def _sync_maintenance_invoice_snapshot(maintenance):
+    first_invoice = maintenance.factures_achat.select_related("fournisseur").order_by("id").first()
+    if first_invoice:
+        maintenance.fournisseur = first_invoice.fournisseur
+        maintenance.numero_facture = first_invoice.numero_facture
+        maintenance.facture_fichier = first_invoice.facture_fichier.name if first_invoice.facture_fichier else ""
+    else:
+        maintenance.fournisseur = None
+        maintenance.numero_facture = ""
+        maintenance.facture_fichier = ""
+    Maintenance.objects.filter(pk=maintenance.pk).update(
+        fournisseur=maintenance.fournisseur,
+        numero_facture=maintenance.numero_facture,
+        facture_fichier=maintenance.facture_fichier,
+    )
+
+
+def _build_pannes_catalog():
+    catalog = {}
+    for panne in PanneCatalogue.objects.select_related("type_maintenance").order_by(
+        "type_maintenance__libelle", "libelle"
+    ):
+        catalog.setdefault(str(panne.type_maintenance_id), []).append(
+            {"id": panne.id, "label": panne.libelle}
+        )
+    return catalog
 
 
 def _issue_stock_for_maintenance(maintenance, user):
@@ -501,7 +577,11 @@ def _issue_stock_for_maintenance(maintenance, user):
             date_mouvement=timezone.now(),
             created_by=user,
         )
-        MaintenanceSousLigne.objects.filter(pk=piece.pk).update(mouvement_stock=mouvement)
+        MaintenanceSousLigne.objects.filter(pk=piece.pk).update(
+            mouvement_stock=mouvement,
+            prix_unitaire=mouvement.prix_unitaire,
+            montant=mouvement.montant_net,
+        )
 
 
 def _save_achat_piece_prices(request, maintenance):
@@ -527,6 +607,206 @@ def _can_manage_stock(user):
     return is_admin_user(user) or get_user_role(user) in {"logistique", "directeur"}
 
 
+def _build_stock_report_context(request):
+    report_article = (request.GET.get("report_article") or "").strip()
+    report_camion = (request.GET.get("report_camion") or "").strip()
+    report_categorie = (request.GET.get("report_categorie") or "").strip()
+    report_panne = (request.GET.get("report_panne") or "").strip()
+    report_date_from = (request.GET.get("report_date_from") or "").strip()
+    report_date_to = (request.GET.get("report_date_to") or "").strip()
+
+    consommation_base_qs = MaintenanceSousLigne.objects.filter(
+        article_stock__isnull=False,
+        mouvement_stock__isnull=False,
+    ).select_related(
+        "article_stock",
+        "maintenance_ligne__maintenance__camion",
+        "mouvement_stock",
+    )
+    article_filter_choices = list(
+        consommation_base_qs.values("article_stock_id", "article_stock__libelle")
+        .distinct()
+        .order_by("article_stock__libelle")
+    )
+    camion_filter_choices = list(
+        consommation_base_qs.values(
+            "maintenance_ligne__maintenance__camion_id",
+            "maintenance_ligne__maintenance__camion__numero_tracteur",
+            "maintenance_ligne__maintenance__camion__numero_citerne",
+            "maintenance_ligne__maintenance__camion__code_camion",
+        )
+        .distinct()
+        .order_by("maintenance_ligne__maintenance__camion__numero_tracteur")
+    )
+    categorie_filter_choices = list(
+        MaintenanceSousLigne.objects.exclude(maintenance_ligne__type_maintenance__libelle="")
+        .values("maintenance_ligne__type_maintenance__libelle")
+        .distinct()
+        .order_by("maintenance_ligne__type_maintenance__libelle")
+    )
+    panne_filter_choices = list(
+        MaintenanceSousLigne.objects.exclude(libelle="")
+        .values("libelle")
+        .distinct()
+        .order_by("libelle")
+    )
+    consommation_qs = consommation_base_qs
+    if report_article:
+        consommation_qs = consommation_qs.filter(article_stock_id=report_article)
+    if report_camion:
+        consommation_qs = consommation_qs.filter(maintenance_ligne__maintenance__camion_id=report_camion)
+    if report_date_from:
+        consommation_qs = consommation_qs.filter(mouvement_stock__date_mouvement__date__gte=report_date_from)
+    if report_date_to:
+        consommation_qs = consommation_qs.filter(mouvement_stock__date_mouvement__date__lte=report_date_to)
+
+    report_total_quantite_raw = consommation_qs.aggregate(total=Sum("quantite")).get("total") or Decimal("0")
+    report_total_montant_raw = consommation_qs.aggregate(total=Sum("mouvement_stock__montant_net")).get("total") or Decimal("0")
+    report_total_passages = consommation_qs.count()
+    report_total_camions = consommation_qs.values("maintenance_ligne__maintenance__camion_id").distinct().count()
+    consommation_par_camion = list(
+        consommation_qs
+        .values(
+            "maintenance_ligne__maintenance__camion__code_camion",
+            "maintenance_ligne__maintenance__camion__numero_tracteur",
+            "maintenance_ligne__maintenance__camion__numero_citerne",
+            "article_stock__libelle",
+            "article_stock__unite",
+        )
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_maintenances=Count("maintenance_ligne__maintenance", distinct=True),
+            total_passages=Count("id"),
+            total_montant=Sum("mouvement_stock__montant_net"),
+        )
+        .order_by("-total_montant", "-total_quantite", "article_stock__libelle")
+    )
+    top_camions_consommation = list(
+        consommation_qs
+        .values(
+            "maintenance_ligne__maintenance__camion__code_camion",
+            "maintenance_ligne__maintenance__camion__numero_tracteur",
+            "maintenance_ligne__maintenance__camion__numero_citerne",
+        )
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_passages=Count("id"),
+            total_montant=Sum("mouvement_stock__montant_net"),
+        )
+        .order_by("-total_montant", "-total_quantite")[:5]
+    )
+    top_articles_consommation = list(
+        consommation_qs
+        .values(
+            "article_stock__libelle",
+            "article_stock__unite",
+        )
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_passages=Count("id"),
+            total_montant=Sum("mouvement_stock__montant_net"),
+        )
+        .order_by("-total_montant", "-total_quantite")[:5]
+    )
+
+    panne_base_qs = MaintenanceSousLigne.objects.filter(
+        maintenance_ligne__maintenance__isnull=False,
+    ).select_related(
+        "article_stock",
+        "panne_catalogue",
+        "maintenance_ligne__type_maintenance",
+        "maintenance_ligne__maintenance__camion",
+        "mouvement_stock",
+    )
+    if report_camion:
+        panne_base_qs = panne_base_qs.filter(maintenance_ligne__maintenance__camion_id=report_camion)
+    if report_date_from:
+        panne_base_qs = panne_base_qs.filter(maintenance_ligne__maintenance__date_debut__date__gte=report_date_from)
+    if report_date_to:
+        panne_base_qs = panne_base_qs.filter(maintenance_ligne__maintenance__date_debut__date__lte=report_date_to)
+    if report_categorie:
+        panne_base_qs = panne_base_qs.filter(maintenance_ligne__type_maintenance__libelle=report_categorie)
+    if report_panne:
+        panne_base_qs = panne_base_qs.filter(
+            Q(panne_catalogue__libelle__icontains=report_panne) | Q(libelle__icontains=report_panne)
+        )
+
+    cout_panne_expr = Case(
+        When(
+            article_stock__isnull=False,
+            then=Coalesce(F("mouvement_stock__montant_net"), Value(0)),
+        ),
+        default=Coalesce(F("montant"), Value(0)),
+        output_field=DecimalField(max_digits=14, decimal_places=2),
+    )
+    panne_rapport_qs = panne_base_qs.annotate(
+        categorie_panne=Coalesce(
+            F("maintenance_ligne__type_maintenance__libelle"),
+            Value("Sans categorie"),
+        ),
+        libelle_panne=Coalesce(
+            F("panne_catalogue__libelle"),
+            F("libelle"),
+            Value("Sans libelle"),
+        ),
+        cout_consomme=cout_panne_expr,
+    )
+    report_total_pannes = panne_rapport_qs.count()
+    report_total_montant_pannes_raw = (
+        panne_rapport_qs.aggregate(total=Sum("cout_consomme")).get("total") or Decimal("0")
+    )
+    report_total_categories = (
+        panne_rapport_qs.values("categorie_panne").distinct().count()
+    )
+    top_pannes_consommation = list(
+        panne_rapport_qs
+        .values("libelle_panne", "categorie_panne")
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_passages=Count("id"),
+            total_montant=Sum("cout_consomme"),
+        )
+        .order_by("-total_montant", "-total_quantite", "libelle_panne")[:5]
+    )
+    consommation_par_panne = list(
+        panne_rapport_qs
+        .values("categorie_panne", "libelle_panne")
+        .annotate(
+            total_quantite=Sum("quantite"),
+            total_maintenances=Count("maintenance_ligne__maintenance", distinct=True),
+            total_passages=Count("id"),
+            total_montant=Sum("cout_consomme"),
+        )
+        .order_by("categorie_panne", "-total_montant", "libelle_panne")
+    )
+    return {
+        "article_filter_choices": article_filter_choices,
+        "camion_filter_choices": camion_filter_choices,
+        "categorie_filter_choices": categorie_filter_choices,
+        "panne_filter_choices": panne_filter_choices,
+        "report_filter_values": {
+            "article": report_article,
+            "camion": report_camion,
+            "categorie": report_categorie,
+            "panne": report_panne,
+            "date_from": report_date_from,
+            "date_to": report_date_to,
+        },
+        "report_total_passages": report_total_passages,
+        "report_total_camions": report_total_camions,
+        "report_total_quantite": _format_amount(report_total_quantite_raw),
+        "report_total_montant": _format_amount(report_total_montant_raw),
+        "consommation_par_camion": consommation_par_camion,
+        "top_camions_consommation": top_camions_consommation,
+        "top_articles_consommation": top_articles_consommation,
+        "report_total_pannes": report_total_pannes,
+        "report_total_categories": report_total_categories,
+        "report_total_montant_pannes": _format_amount(report_total_montant_pannes_raw),
+        "top_pannes_consommation": top_pannes_consommation,
+        "consommation_par_panne": consommation_par_panne,
+    }
+
+
 def _build_conversion_map(article, formset, principal_unit):
     conversions = {}
     if formset is not None:
@@ -544,6 +824,14 @@ def _build_conversion_map(article, formset, principal_unit):
     return conversions
 
 
+def _map_stock_article_error_field(field_name):
+    field_map = {
+        "prix_conditionnement": "prix_achat_saisi",
+        "unite_prix_conditionnement": "unite_stock_saisie",
+    }
+    return field_map.get(field_name, field_name)
+
+
 def _convert_to_principal_unit(quantity, source_unit, principal_unit, conversion_map):
     quantity = Decimal(quantity or 0)
     source_unit = (source_unit or principal_unit or "").strip().lower()
@@ -555,6 +843,63 @@ def _convert_to_principal_unit(quantity, source_unit, principal_unit, conversion
     raise ValidationError(
         {"unite_stock_saisie": f"Aucune conversion definie entre {source_unit} et {principal_unit}."}
     )
+
+
+def _compute_display_purchase_price(article, source_unit):
+    if article is None:
+        return Decimal("0")
+    source_unit = (source_unit or article.unite or "").strip().lower()
+    coefficient = article.get_conversion_factor(source_unit)
+    return (article.prix_unitaire or Decimal("0")) * coefficient
+
+
+def _get_preferred_purchase_unit(article):
+    if article is None:
+        return "piece"
+    stored = (article.unite_prix_conditionnement or "").strip().lower()
+    principal = (article.unite or "").strip().lower() or "piece"
+    if stored and stored != principal:
+        return stored
+    first_conversion = article.conversions.order_by("id").first()
+    if first_conversion and first_conversion.unite_source:
+        return first_conversion.unite_source.strip().lower()
+    return principal
+
+
+def _build_stock_unit_choices(principal_unit, formset=None, article=None, post_data=None):
+    principal = (principal_unit or "").strip().lower() or "piece"
+    choices = [(principal, principal)]
+    seen = {principal}
+
+    if post_data is not None:
+        for key, value in post_data.items():
+            if key.endswith("-unite_source"):
+                unit = (value or "").strip().lower()
+                if unit and unit not in seen:
+                    seen.add(unit)
+                    choices.append((unit, unit))
+
+    if formset is not None:
+        for form in formset.forms:
+            unit = ""
+            if hasattr(form, "cleaned_data") and form.cleaned_data and not form.cleaned_data.get("DELETE"):
+                unit = (form.cleaned_data.get("unite_source") or "").strip().lower()
+            elif form.is_bound:
+                unit = (form.data.get(f"{form.prefix}-unite_source") or "").strip().lower()
+            else:
+                unit = (form.initial.get("unite_source") or "").strip().lower()
+            if unit and unit not in seen:
+                seen.add(unit)
+                choices.append((unit, unit))
+
+    if article is not None:
+        for conversion in article.conversions.all():
+            unit = (conversion.unite_source or "").strip().lower()
+            if unit and unit not in seen:
+                seen.add(unit)
+                choices.append((unit, unit))
+
+    return choices
 
 
 def _garage_camions_catalog():
@@ -571,7 +916,7 @@ def _garage_camions_catalog():
             "capacite": camion.capacite,
             "chauffeur": chauffeurs_by_camion.get(camion.id, ""),
         }
-        for camion in Camion.objects.order_by("numero_tracteur")
+        for camion in Camion.objects.filter(est_affrete=False).order_by("numero_tracteur")
     ]
 
 
@@ -591,6 +936,7 @@ def garage_maintenances(request):
     user_role = get_user_role(request.user)
     is_admin = is_admin_user(request.user)
     for maintenance in maintenances:
+        maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
         maintenance.pricing_complete = maintenance.is_pricing_complete()
         maintenance.can_terminate = False
         maintenance.can_reject_dga = (
@@ -680,6 +1026,7 @@ def achat_maintenances(request):
     maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
     maintenances = list(maintenances)
     for maintenance in maintenances:
+        maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
         maintenance.can_edit_prices = bool(
             can_edit_achat
             and maintenance.validation_dga_at is None
@@ -708,6 +1055,9 @@ def paiements_maintenances(request):
     else:
         maintenances = maintenances.filter(statut="attente_paiement")
     maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
+    maintenances = list(maintenances)
+    for maintenance in maintenances:
+        maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
     return render(
         request,
         "maintenance/paiements.html",
@@ -729,6 +1079,7 @@ def rapport_maintenances(request):
     date_from = (request.GET.get("date_from") or "").strip()
     date_to = (request.GET.get("date_to") or "").strip()
     statut = (request.GET.get("statut") or "").strip()
+    panne = (request.GET.get("panne") or "").strip()
 
     if q:
         maintenances_qs = maintenances_qs.filter(
@@ -747,17 +1098,27 @@ def rapport_maintenances(request):
         maintenances_qs = maintenances_qs.filter(date_paiement__lte=date_to)
     if statut:
         maintenances_qs = maintenances_qs.filter(statut=statut)
+    if panne:
+        maintenances_qs = maintenances_qs.filter(
+            Q(lignes__sous_lignes__panne_catalogue__libelle__icontains=panne)
+            | Q(lignes__sous_lignes__libelle__icontains=panne)
+        ).distinct()
 
     filter_values = {
         "q": q,
         "date_from": date_from,
         "date_to": date_to,
         "statut": statut,
+        "panne": panne,
     }
     maintenances = list(maintenances_qs)
+    panne_choices = list(
+        PanneCatalogue.objects.order_by("libelle").values_list("libelle", flat=True).distinct()
+    )
 
     total_situations = len(maintenances)
     total_montant = sum((maintenance.total_facture or Decimal("0")) for maintenance in maintenances)
+    total_cout_global = sum((maintenance.total_global_information or Decimal("0")) for maintenance in maintenances)
     total_payees = sum(1 for maintenance in maintenances if maintenance.statut == "payee")
     total_attente = sum(
         1
@@ -766,6 +1127,7 @@ def rapport_maintenances(request):
     )
 
     for maintenance in maintenances:
+        maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
         maintenance.chauffeur_nom = (
             Chauffeur.objects.filter(camion=maintenance.camion)
             .values_list("nom", flat=True)
@@ -780,6 +1142,8 @@ def rapport_maintenances(request):
                 diagnostic += f" ({', '.join(piece_labels)})"
             diagnostics.append(diagnostic)
         maintenance.diagnostics_resume = diagnostics
+        maintenance.cout_global_affiche = _format_amount(maintenance.total_global_information)
+        maintenance.stock_information_affiche = _format_amount(maintenance.total_information_stock)
 
     return render(
         request,
@@ -788,8 +1152,10 @@ def rapport_maintenances(request):
             "maintenances": maintenances,
             "filter_values": filter_values,
             "statut_choices": Maintenance.STATUT_CHOICES,
+            "panne_choices": panne_choices,
             "total_situations": total_situations,
             "total_montant": _format_amount(total_montant),
+            "total_cout_global": _format_amount(total_cout_global),
             "total_payees": total_payees,
             "total_attente": total_attente,
             "is_admin_maintenance": is_admin_user(request.user),
@@ -829,27 +1195,14 @@ def stock_maintenances(request):
                 mouvement.camion_display += f" / {maintenance.camion.numero_citerne}"
         else:
             mouvement.camion_display = "-"
-    consommation_par_camion = list(
-        MaintenanceSousLigne.objects.filter(
-            article_stock__isnull=False,
-            mouvement_stock__isnull=False,
-        )
-        .values(
-            "maintenance_ligne__maintenance__camion__code_camion",
-            "maintenance_ligne__maintenance__camion__numero_tracteur",
-            "maintenance_ligne__maintenance__camion__numero_citerne",
-            "article_stock__libelle",
-            "article_stock__unite",
-        )
-        .annotate(
-            total_quantite=Sum("quantite"),
-            total_maintenances=Count("maintenance_ligne__maintenance", distinct=True),
-        )
-        .order_by("-total_quantite", "article_stock__libelle")
-    )
     total_articles = len(articles)
     articles_en_alerte = sum(1 for article in articles if article.en_alerte)
     valeur_stock = sum((article.valeur_stock for article in articles), Decimal("0"))
+    for article in articles:
+        article.valeur_stock_affichee = f"{_format_amount(article.valeur_stock)} GNF"
+        article.prix_conditionnement_affiche = article.prix_conditionnement_display or "-"
+        article.prix_unitaire_affiche = article.prix_unitaire_display
+        article.prix_equivalent_affiche = article.prix_conditionnement_equivalent_display
     can_manage_stock = _can_manage_stock(request.user)
     return render(
         request,
@@ -862,17 +1215,203 @@ def stock_maintenances(request):
             "articles_en_alerte": articles_en_alerte,
             "valeur_stock": _format_amount(valeur_stock),
             "can_manage_stock": can_manage_stock,
-            "consommation_par_camion": consommation_par_camion,
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("stock"),
         },
     )
 
 
+def rapport_pannes_main_oeuvre(request):
+    q = (request.GET.get("q") or "").strip()
+    camion_id = (request.GET.get("camion") or "").strip()
+    categorie = (request.GET.get("categorie") or "").strip()
+    libelle = (request.GET.get("libelle") or "").strip()
+    source = (request.GET.get("source") or "").strip()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+
+    maintenances = list(
+        _maintenance_queryset().prefetch_related(
+            "lignes__type_maintenance",
+            "lignes__sous_lignes__article_stock",
+            "lignes__sous_lignes__panne_catalogue",
+        )
+    )
+
+    rows = []
+    for maintenance in maintenances:
+        camion = maintenance.camion
+        if camion_id and str(camion.id) != camion_id:
+            continue
+
+        maintenance_date = maintenance.date_fin or maintenance.date_debut
+        if date_from and maintenance_date and maintenance_date.date().isoformat() < date_from:
+            continue
+        if date_to and maintenance_date and maintenance_date.date().isoformat() > date_to:
+            continue
+
+        camion_label = camion.numero_tracteur
+        if camion.numero_citerne:
+            camion_label = f"{camion.numero_tracteur} / {camion.numero_citerne}"
+
+        fournisseur_label = str(maintenance.fournisseur) if maintenance.fournisseur_id else (maintenance.prestataire or "-")
+
+        for ligne in maintenance.lignes.all():
+            categorie_label = ligne.type_maintenance.libelle if ligne.type_maintenance_id else "-"
+
+            if (ligne.prix_unitaire or Decimal("0")) > 0 or (ligne.montant or Decimal("0")) > 0:
+                row = {
+                    "date": maintenance_date,
+                    "date_display": maintenance_date.strftime("%d/%m/%Y") if maintenance_date else "-",
+                    "reference": maintenance.reference,
+                    "camion_id": camion.id,
+                    "camion_label": camion_label,
+                    "categorie": categorie_label,
+                    "libelle": ligne.libelle or categorie_label,
+                    "source": "Main d'oeuvre",
+                    "quantite": ligne.quantite or Decimal("0"),
+                    "quantite_display": _format_amount(ligne.quantite or Decimal("0")),
+                    "prix_unitaire": ligne.prix_unitaire or Decimal("0"),
+                    "prix_unitaire_display": _format_amount(ligne.prix_unitaire or Decimal("0")),
+                    "montant": ligne.montant or Decimal("0"),
+                    "montant_display": _format_amount(ligne.montant or Decimal("0")),
+                    "fournisseur": fournisseur_label,
+                    "statut": maintenance.get_statut_display(),
+                }
+                rows.append(row)
+
+            for piece in ligne.sous_lignes.all():
+                row = {
+                    "date": maintenance_date,
+                    "date_display": maintenance_date.strftime("%d/%m/%Y") if maintenance_date else "-",
+                    "reference": maintenance.reference,
+                    "camion_id": camion.id,
+                    "camion_label": camion_label,
+                    "categorie": categorie_label,
+                    "libelle": piece.libelle or (piece.panne_catalogue.libelle if piece.panne_catalogue_id else "-"),
+                    "source": "Stock" if piece.article_stock_id else "Hors stock",
+                    "quantite": piece.quantite or Decimal("0"),
+                    "quantite_display": _format_amount(piece.quantite or Decimal("0")),
+                    "prix_unitaire": piece.prix_unitaire or Decimal("0"),
+                    "prix_unitaire_display": _format_amount(piece.prix_unitaire or Decimal("0")),
+                    "montant": piece.montant or Decimal("0"),
+                    "montant_display": _format_amount(piece.montant or Decimal("0")),
+                    "fournisseur": fournisseur_label,
+                    "statut": maintenance.get_statut_display(),
+                }
+                rows.append(row)
+
+    categories = sorted({row["categorie"] for row in rows if row["categorie"] and row["categorie"] != "-"})
+    libelles = sorted({row["libelle"] for row in rows if row["libelle"] and row["libelle"] != "-"})
+    camions = sorted(
+        {(
+            maintenance.camion.id,
+            f"{maintenance.camion.numero_tracteur}{' / ' + maintenance.camion.numero_citerne if maintenance.camion.numero_citerne else ''}",
+        ) for maintenance in maintenances},
+        key=lambda item: item[1],
+    )
+
+    filtered_rows = []
+    q_lower = q.lower()
+    libelle_lower = libelle.lower()
+    for row in rows:
+        if categorie and row["categorie"] != categorie:
+            continue
+        if source and row["source"] != source:
+            continue
+        if libelle and libelle_lower not in row["libelle"].lower():
+            continue
+        if q and not (
+            q_lower in row["reference"].lower()
+            or q_lower in row["camion_label"].lower()
+            or q_lower in row["categorie"].lower()
+            or q_lower in row["libelle"].lower()
+            or q_lower in row["fournisseur"].lower()
+        ):
+            continue
+        filtered_rows.append(row)
+
+    filtered_rows.sort(key=lambda item: (item["date"] or timezone.now(), item["reference"], item["libelle"]), reverse=True)
+
+    total_lignes = len(filtered_rows)
+    total_camions = len({row["camion_id"] for row in filtered_rows})
+    total_maintenances = len({row["reference"] for row in filtered_rows})
+    total_montant = sum((row["montant"] for row in filtered_rows), Decimal("0"))
+
+    grouped_camions = {}
+    grouped_libelles = {}
+    for row in filtered_rows:
+        camion_group = grouped_camions.setdefault(
+            row["camion_label"],
+            {"camion_label": row["camion_label"], "nb_fois": 0, "montant": Decimal("0")},
+        )
+        camion_group["nb_fois"] += 1
+        camion_group["montant"] += row["montant"]
+
+        libelle_group = grouped_libelles.setdefault(
+            (row["categorie"], row["libelle"]),
+            {"categorie": row["categorie"], "libelle": row["libelle"], "nb_fois": 0, "montant": Decimal("0")},
+        )
+        libelle_group["nb_fois"] += 1
+        libelle_group["montant"] += row["montant"]
+
+    top_camions = sorted(grouped_camions.values(), key=lambda item: (-item["montant"], -item["nb_fois"], item["camion_label"]))[:5]
+    top_libelles = sorted(grouped_libelles.values(), key=lambda item: (-item["montant"], -item["nb_fois"], item["libelle"]))[:5]
+
+    for item in top_camions:
+        item["montant_display"] = _format_amount(item["montant"])
+    for item in top_libelles:
+        item["montant_display"] = _format_amount(item["montant"])
+
+    return render(
+        request,
+        "maintenance/rapport_pannes.html",
+        {
+            "rows": filtered_rows,
+            "camion_choices": camions,
+            "categorie_choices": categories,
+            "libelle_choices": libelles,
+            "source_choices": ["Main d'oeuvre", "Stock", "Hors stock"],
+            "filter_values": {
+                "q": q,
+                "camion": camion_id,
+                "categorie": categorie,
+                "libelle": libelle,
+                "source": source,
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            "total_lignes": total_lignes,
+            "total_camions": total_camions,
+            "total_maintenances": total_maintenances,
+            "total_montant": _format_amount(total_montant),
+            "top_camions": top_camions,
+            "top_libelles": top_libelles,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("rapport_pannes"),
+        },
+    )
+
+
+def rapport_stock_maintenances(request):
+    report_context = _build_stock_report_context(request)
+    return render(
+        request,
+        "maintenance/rapport_stock.html",
+        {
+            **report_context,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("rapport_stock"),
+        },
+    )
+
+
 def ajouter_article_stock(request):
     if request.method == "POST":
-        form = ArticleStockForm(request.POST)
         formset = ArticleStockConversionFormSet(request.POST)
+        principal_unit = ((request.POST.get("unite") or "piece").strip().lower() or "piece")
+        unite_choices = _build_stock_unit_choices(principal_unit, formset=formset, post_data=request.POST)
+        form = ArticleStockForm(request.POST, unite_choices=unite_choices)
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
@@ -886,11 +1425,30 @@ def ajouter_article_stock(request):
                         principal_unit,
                         conversion_map,
                     )
+                    prix_achat_saisi = Decimal(form.cleaned_data.get("prix_achat_saisi") or 0)
+                    remise_globale = Decimal(form.cleaned_data.get("remise_globale") or 0)
+                    coefficient_prix = conversion_map.get(source_unit, Decimal("1"))
+                    montant_brut = (Decimal(form.cleaned_data.get("quantite_stock") or 0) * prix_achat_saisi)
+                    if remise_globale > montant_brut:
+                        raise ValidationError({"remise_globale": "La remise ne peut pas depasser le montant brut du stock initial."})
+                    montant_net = montant_brut - remise_globale
+                    article.prix_conditionnement = prix_achat_saisi
+                    article.unite_prix_conditionnement = source_unit
+                    article.prix_unitaire = (
+                        montant_net / article.quantite_stock if article.quantite_stock and montant_net > 0 else Decimal("0")
+                    )
                     article.save()
                     formset.instance = article
                     formset.save()
             except ValidationError as error:
-                form.add_error("unite_stock_saisie", error.message_dict.get("unite_stock_saisie", [str(error)])[0] if hasattr(error, "message_dict") else str(error))
+                if hasattr(error, "message_dict"):
+                    for field_name, field_errors in error.message_dict.items():
+                        form.add_error(
+                            _map_stock_article_error_field(field_name),
+                            field_errors[0] if field_errors else str(error),
+                        )
+                else:
+                    form.add_error("unite_stock_saisie", str(error))
             else:
                 journaliser_action(
                     request.user,
@@ -902,8 +1460,12 @@ def ajouter_article_stock(request):
                 messages.success(request, f"L'article {article.libelle} a ete ajoute au stock.")
                 return redirect("stock_maintenances")
     else:
-        form = ArticleStockForm(initial={"unite_stock_saisie": "piece"})
         formset = ArticleStockConversionFormSet()
+        unite_choices = _build_stock_unit_choices("piece", formset=formset)
+        form = ArticleStockForm(
+            initial={"unite_stock_saisie": "piece", "prix_achat_saisi": Decimal("0"), "remise_globale": Decimal("0")},
+            unite_choices=unite_choices,
+        )
     return render(
         request,
         "maintenance/ajouter_article_stock.html",
@@ -919,8 +1481,10 @@ def ajouter_article_stock(request):
 def modifier_article_stock(request, id):
     article = get_object_or_404(ArticleStock, id=id)
     if request.method == "POST":
-        form = ArticleStockForm(request.POST, instance=article)
         formset = ArticleStockConversionFormSet(request.POST, instance=article)
+        principal_unit = ((request.POST.get("unite") or article.unite).strip().lower() or article.unite)
+        unite_choices = _build_stock_unit_choices(principal_unit, formset=formset, article=article, post_data=request.POST)
+        form = ArticleStockForm(request.POST, instance=article, unite_choices=unite_choices)
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
@@ -934,10 +1498,29 @@ def modifier_article_stock(request, id):
                         principal_unit,
                         conversion_map,
                     )
+                    prix_achat_saisi = Decimal(form.cleaned_data.get("prix_achat_saisi") or 0)
+                    remise_globale = Decimal(form.cleaned_data.get("remise_globale") or 0)
+                    coefficient_prix = conversion_map.get(source_unit, Decimal("1"))
+                    montant_brut = (Decimal(form.cleaned_data.get("quantite_stock") or 0) * prix_achat_saisi)
+                    if remise_globale > montant_brut:
+                        raise ValidationError({"remise_globale": "La remise ne peut pas depasser le montant brut du stock initial."})
+                    montant_net = montant_brut - remise_globale
+                    article.prix_conditionnement = prix_achat_saisi
+                    article.unite_prix_conditionnement = source_unit
+                    article.prix_unitaire = (
+                        montant_net / article.quantite_stock if article.quantite_stock and montant_net > 0 else Decimal("0")
+                    )
                     article.save()
                     formset.save()
             except ValidationError as error:
-                form.add_error("unite_stock_saisie", error.message_dict.get("unite_stock_saisie", [str(error)])[0] if hasattr(error, "message_dict") else str(error))
+                if hasattr(error, "message_dict"):
+                    for field_name, field_errors in error.message_dict.items():
+                        form.add_error(
+                            _map_stock_article_error_field(field_name),
+                            field_errors[0] if field_errors else str(error),
+                        )
+                else:
+                    form.add_error("unite_stock_saisie", str(error))
             else:
                 journaliser_action(
                     request.user,
@@ -949,7 +1532,17 @@ def modifier_article_stock(request, id):
                 messages.success(request, f"L'article {article.libelle} a ete mis a jour.")
                 return redirect("stock_maintenances")
     else:
-        form = ArticleStockForm(instance=article, initial={"unite_stock_saisie": article.unite})
+        unite_choices = _build_stock_unit_choices(article.unite, article=article)
+        preferred_unit = _get_preferred_purchase_unit(article)
+        form = ArticleStockForm(
+            instance=article,
+            initial={
+                "unite_stock_saisie": preferred_unit,
+                "prix_achat_saisi": article.prix_conditionnement or _compute_display_purchase_price(article, preferred_unit),
+                "remise_globale": Decimal("0"),
+            },
+            unite_choices=unite_choices,
+        )
         formset = ArticleStockConversionFormSet(instance=article)
     return render(
         request,
@@ -993,6 +1586,11 @@ def supprimer_article_stock(request, id):
 
 def ajouter_mouvement_stock(request, article_id):
     article = get_object_or_404(ArticleStock, id=article_id)
+    conversions_map = {
+        conversion.unite_source.lower(): float(conversion.quantite_equivalente)
+        for conversion in article.conversions.all()
+    }
+    conversions_map[(article.unite or "").strip().lower()] = 1.0
     if request.method == "POST":
         form = MouvementStockForm(request.POST, article=article)
         form.instance.article = article
@@ -1015,6 +1613,9 @@ def ajouter_mouvement_stock(request, article_id):
             article=article,
             initial={
                 "unite_saisie": article.unite,
+                "prix_conditionnement": article.prix_conditionnement or Decimal("0"),
+                "remise": Decimal("0"),
+                "fournisseur": article.fournisseur_id,
             },
         )
     return render(
@@ -1023,6 +1624,7 @@ def ajouter_mouvement_stock(request, article_id):
         {
             "form": form,
             "article": article,
+            "article_conversions_json": mark_safe(json.dumps(conversions_map)),
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("stock"),
         },
@@ -1246,6 +1848,7 @@ def supprimer_fournisseur(request, id):
 
 def _render_garage_form(request, template_name, form, formset, **context):
     _attach_subline_values(formset, request=request)
+    pannes_catalog = _build_pannes_catalog()
     return render(
         request,
         template_name,
@@ -1253,8 +1856,10 @@ def _render_garage_form(request, template_name, form, formset, **context):
             "form": form,
             "formset": formset,
             "type_form": TypeMaintenanceForm(),
+            "panne_form": PanneCatalogueForm(),
             "camions_catalog": _garage_camions_catalog(),
             "articles_stock_catalog": ArticleStock.objects.order_by("libelle"),
+            "pannes_catalog_json": mark_safe(json.dumps(pannes_catalog)),
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("garage"),
             **context,
@@ -1280,15 +1885,13 @@ def _render_achat_form(request, template_name, form, **context):
         template_name,
         {
             "form": form,
+            "invoice_formset": context["invoice_formset"],
             "fournisseur_form": FournisseurForm(),
             "prestataire_form": PrestataireForm(),
             "piece_rows": _attach_achat_piece_rows(context["maintenance"]),
+            "invoice_rows": _maintenance_invoice_rows(context["maintenance"]),
             "fournisseurs_catalog": fournisseurs_catalog,
             "prestataires_catalog": prestataires_catalog,
-            "duplicate_facture_matches": _get_duplicate_facture_matches(
-                form["numero_facture"].value() if "numero_facture" in form.fields else context["maintenance"].numero_facture,
-                maintenance_id=context["maintenance"].id,
-            ),
             "is_admin_maintenance": is_admin_user(request.user),
             "can_edit_achat": context.get("can_edit_achat", False),
             **_maintenance_tabs_context("achat"),
@@ -1304,6 +1907,7 @@ def _render_paiement_form(request, template_name, form, **context):
         template_name,
         {
             "form": form,
+            "invoice_rows": _maintenance_invoice_rows(context["maintenance"]),
             "is_admin_maintenance": is_admin_user(request.user),
             **_maintenance_tabs_context("paiements"),
             **preview_context,
@@ -1415,8 +2019,11 @@ def _build_validation_preview_context(maintenance):
     return {
         "maintenance": maintenance,
         "piece_rows": _attach_achat_piece_rows(maintenance),
+        "invoice_rows": _maintenance_invoice_rows(maintenance),
         "montant_en_lettres": _amount_to_words(maintenance.total_facture),
         "montant_total_formatte": _format_amount(maintenance.total_facture),
+        "montant_stock_information_formatte": _format_amount(maintenance.total_information_stock),
+        "montant_global_information_formatte": _format_amount(maintenance.total_global_information),
         "chauffeur_nom": chauffeur or "-",
         "validation_steps": validation_steps,
     }
@@ -1571,11 +2178,20 @@ def modifier_maintenance_achat(request, id):
             post_data["statut"] = maintenance.statut
         post_data["prestataire"] = (post_data.get("prestataire_search") or post_data.get("prestataire") or "").strip()
         form = MaintenanceAchatForm(post_data, request.FILES, instance=maintenance)
-        if form.is_valid():
+        invoice_formset = MaintenanceFactureFormSet(
+            post_data,
+            request.FILES,
+            instance=maintenance,
+            prefix="factures",
+        )
+        if form.is_valid() and invoice_formset.is_valid():
             with transaction.atomic():
                 maintenance = form.save(commit=False)
                 maintenance.statut = maintenance.statut or "attente_prix"
                 maintenance.save()
+                invoice_formset.instance = maintenance
+                invoice_formset.save()
+                _sync_maintenance_invoice_snapshot(maintenance)
                 _save_achat_piece_prices(request, maintenance)
                 maintenance.refresh_total_facture()
                 maintenance.validation_logistique_at = timezone.now()
@@ -1603,14 +2219,28 @@ def modifier_maintenance_achat(request, id):
         )
     else:
         form = MaintenanceAchatForm(instance=maintenance)
+        invoice_formset = MaintenanceFactureFormSet(
+            instance=maintenance,
+            prefix="factures",
+            initial=(
+                []
+                if maintenance.factures_achat.exists() or not (maintenance.fournisseur_id or maintenance.numero_facture or maintenance.facture_fichier)
+                else [{
+                    "fournisseur": maintenance.fournisseur_id,
+                    "numero_facture": maintenance.numero_facture,
+                }]
+            ),
+        )
         if not can_edit_achat:
             _set_form_read_only(form)
+            _set_formset_read_only(invoice_formset)
 
     return _render_achat_form(
         request,
         "maintenance/modifier_maintenance_achat.html",
         form,
         maintenance=maintenance,
+        invoice_formset=invoice_formset,
         read_only=not can_edit_achat,
         can_edit_achat=can_edit_achat,
     )
@@ -1845,6 +2475,34 @@ def ajouter_type_maintenance_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def ajouter_panne_modal(request):
+    if request.method != "POST":
+        return JsonResponse(
+            {"success": False, "errors": {"__all__": ["Requete invalide."]}},
+            status=405,
+        )
+
+    form = PanneCatalogueForm(request.POST)
+    if form.is_valid():
+        panne = form.save()
+        return JsonResponse(
+            {
+                "success": True,
+                "panne": {
+                    "id": panne.id,
+                    "label": panne.libelle,
+                    "type_maintenance_id": panne.type_maintenance_id,
+                },
+            }
+        )
+
+    errors = {
+        field: [item["message"] for item in messages]
+        for field, messages in form.errors.get_json_data().items()
+    }
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
 def ajouter_fournisseur_modal(request):
     if request.method != "POST":
         return JsonResponse(
@@ -2012,6 +2670,7 @@ apercu_validation_maintenance = role_required("dga", "directeur")(apercu_validat
 imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "invite", "controleur")(imprimer_maintenance)
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
+ajouter_panne_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur")(ajouter_fournisseur_modal)
 ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)
 supprimer_fournisseur = role_required("logistique", "directeur")(supprimer_fournisseur)

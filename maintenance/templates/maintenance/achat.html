@@ -54,7 +54,23 @@
 <td>{{ maintenance.reference }}</td>
 <td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
 <td>{{ maintenance.kilometrage_entree|default:"-" }}{% if maintenance.kilometrage_sortie %} / {{ maintenance.kilometrage_sortie }}{% endif %}</td>
-<td>{% if maintenance.fournisseur %}{{ maintenance.fournisseur }}{% else %}{{ maintenance.prestataire|default:"-" }}{% endif %}{% if maintenance.numero_facture %}<br>{{ maintenance.numero_facture }}{% endif %}</td>
+<td>
+{% if maintenance.invoice_rows %}
+    {% for invoice in maintenance.invoice_rows %}
+    <div style="margin-bottom:8px;">
+        <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
+        {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
+        {% if invoice.facture_fichier %}
+        <div style="margin-top:4px;">
+            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    {{ maintenance.prestataire|default:"-" }}
+{% endif %}
+</td>
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
 <td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">{% if maintenance.is_stock_only %}Valider le stock{% else %}Saisir les prix{% endif %}</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>

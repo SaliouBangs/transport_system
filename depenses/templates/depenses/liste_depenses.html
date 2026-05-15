@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>Expression de besoin et engagements</h1>
+  </div>
+  <div style="display:flex; gap:12px; flex-wrap:wrap;">
+    {% if is_admin_user %}<a href="/depenses/types/" class="btn-secondary">Types de depense</a>{% endif %}
+    <a href="/depenses/ajouter/" class="btn">Nouvelle expression</a>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card"><h3>Total</h3><p>{{ counts.total }}</p></div>
+  <div class="card"><h3>Expressions a valider</h3><p>{{ counts.attente_expression }}</p></div>
+  <div class="card"><h3>Depenses chargement DGA</h3><p>{{ counts.attente_chargement_dga }}</p></div>
+  <div class="card"><h3>Depenses chargement DG</h3><p>{{ counts.attente_chargement_dg }}</p></div>
+  <div class="card"><h3>Engagements achat</h3><p>{{ counts.attente_engagement }}</p></div>
+  <div class="card"><h3>Attente DGA</h3><p>{{ counts.attente_dga }}</p></div>
+  <div class="card"><h3>Attente DG</h3><p>{{ counts.attente_dg }}</p></div>
+  <div class="card"><h3>En attente paiement</h3><p>{{ counts.attente_cheque|add:counts.attente_espece }}</p></div>
+</div>
+
+<form method="get" class="search-form" style="margin-top:20px;">
+  <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher par reference, titre, demandeur ou fournisseur">
+  <select name="statut">
+    <option value="">Tous les statuts</option>
+    {% for value, label in statut_choices %}
+    <option value="{{ value }}"{% if statut_filter == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Filtrer</button>
+</form>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Reference</th>
+      <th>Demandeur</th>
+      <th>Titre</th>
+      <th>Type</th>
+      <th>Fournisseur / BL</th>
+      <th>Montant</th>
+      <th>Statut / circuit</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for depense in depenses %}
+    <tr>
+      <td>{{ depense.reference }}</td>
+      <td>{{ depense.demandeur.username }}</td>
+      <td>{{ depense.titre }}</td>
+      <td>{% if depense.source_depense == "chargement" %}{{ depense.type_affiche|default:"Depenses camion" }}{% else %}{{ depense.type_depense|default:"-" }}{% endif %}</td>
+      <td>{% if depense.source_depense == "chargement" %}{{ depense.operation.numero_bl|default:"-" }}{% else %}{{ depense.fournisseur|default:"-" }}{% endif %}</td>
+      <td>{{ depense.montant_affiche }}</td>
+      <td>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <strong>
+            {% if depense.statut == "payee" %}
+            <span class="status-badge status-ok">{{ depense.get_statut_display }}</span>
+            {% else %}
+            {{ depense.get_statut_display }}
+            {% endif %}
+          </strong>
+          {% if depense.source_depense == "chargement" %}
+          <small>
+            Chargement:
+            {% if depense.expression_decision_dga == "validee" %}<span class="status-badge status-ok">DGA Validee</span>{% elif depense.expression_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA Rejetee</span>{% else %}<span class="status-badge status-danger">DGA en attente</span>{% endif %}
+            /
+            {% if depense.expression_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.expression_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
+          </small>
+          {% else %}
+          <small>
+            Expression:
+            {% if depense.expression_decision_dga == "validee" %}<span class="status-badge status-ok">DGA SOGEFI Validee</span>{% elif depense.expression_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA SOGEFI Rejetee</span>{% else %}<span class="status-badge status-danger">DGA SOGEFI en attente</span>{% endif %}
+            /
+            {% if depense.expression_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.expression_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
+          </small>
+          {% if depense.type_depense_id or depense.lieu_ou_projet or depense.fournisseur_id %}
+          <small>
+            Engagement:
+            {% if depense.engagement_decision_dga == "validee" %}<span class="status-badge status-ok">DGA SOGEFI Validee</span>{% elif depense.engagement_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA SOGEFI Rejetee</span>{% else %}<span class="status-badge status-danger">DGA SOGEFI en attente</span>{% endif %}
+            /
+            {% if depense.engagement_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.engagement_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
+          </small>
+          {% endif %}
+          {% endif %}
+        </div>
+      </td>
+      <td>
+        <div class="table-actions">
+          <a href="/depenses/apercu/{{ depense.id }}/" class="btn-secondary">Apercu</a>
+          {% if depense.demandeur_id == request.user.id and depense.statut == "attente_validation_expression" %}
+          <a href="/depenses/modifier/{{ depense.id }}/" class="btn-edit">Modifier</a>
+          {% endif %}
+          {% if user_role == "logistique" and depense.source_depense == "chargement" and depense.statut == "attente_validation_chargement_dga" and not depense.expression_decision_dga %}
+          <a href="/depenses/modifier/{{ depense.id }}/" class="btn-edit">Modifier</a>
+          {% endif %}
+
+          {% if can_validate_expression and depense.statut == "attente_validation_expression" %}
+          <span class="status-badge status-danger">Decision DGA attendue</span>
+          {% endif %}
+
+          {% if can_validate_expression and depense.statut == "attente_validation_expression_dg" %}
+          <span class="status-badge status-danger">Decision DG attendue</span>
+          {% endif %}
+
+          {% if can_validate_chargement_dga and depense.statut == "attente_validation_chargement_dga" %}
+          <span class="status-badge status-danger">Decision DGA attendue</span>
+          {% endif %}
+
+          {% if can_validate_dg and depense.statut == "attente_validation_chargement_dg" %}
+          <span class="status-badge status-danger">Decision DG attendue</span>
+          {% endif %}
+
+          {% if can_manage_engagement and depense.statut == "attente_engagement_achat" %}
+          <a href="/depenses/engagement/{{ depense.id }}/" class="btn">Saisir engagement</a>
+          {% endif %}
+
+          {% if can_validate_dga and depense.statut == "attente_validation_dga_engagement" %}
+          <span class="status-badge status-danger">Decision DGA SOGEFI attendue</span>
+          {% endif %}
+
+          {% if can_validate_dg and depense.statut == "attente_validation_dg_engagement" %}
+          <span class="status-badge status-danger">Decision DG attendue</span>
+          {% endif %}
+
+          {% if can_access_paiement and depense.statut == "attente_paiement_comptable" %}
+          <a href="/depenses/paiement/{{ depense.id }}/" class="btn">Paiement</a>
+          {% endif %}
+          {% if can_access_paiement and depense.statut == "attente_paiement_caissiere" %}
+          <a href="/depenses/paiement/{{ depense.id }}/" class="btn">Paiement</a>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8">Aucune depense pour le moment.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

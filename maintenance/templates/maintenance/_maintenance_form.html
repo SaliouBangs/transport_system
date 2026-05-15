@@ -109,6 +109,7 @@
             {% if not read_only and allow_structure_changes|default:True %}
             <div class="table-actions">
                 <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
+                <button type="button" class="btn-secondary" data-modal-target="panne-maintenance-modal" id="open-panne-modal-btn">Nouvelle panne</button>
                 <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>
             </div>
             {% endif %}
@@ -163,8 +164,9 @@
                                     <input type="number" name="subline-{{ ligne_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;" {% if read_only %}readonly{% endif %}>
                                 </div>
                                 <div>
-                                    <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
-                                    <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input" {% if read_only %}readonly{% endif %}>
+                                    <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle panne / piece</label>
+                                    <input type="text" name="subline-{{ ligne_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Joint de culasse, filtre a huile, courroie..." style="width:100%;" class="stock-label-input panne-label-input" list="panne-list-{{ ligne_form.prefix }}" {% if read_only %}readonly{% endif %}>
+                                    <datalist id="panne-list-{{ ligne_form.prefix }}" class="panne-datalist"></datalist>
                                 </div>
                                 {% if not read_only and allow_structure_changes|default:True %}
                                 <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
@@ -243,8 +245,9 @@
                         <input type="number" name="subline-{{ formset.empty_form.prefix }}-quantites" value="{{ value.quantite }}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;">
                     </div>
                     <div>
-                        <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
-                        <input type="text" name="subline-{{ formset.empty_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input">
+                        <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle panne / piece</label>
+                        <input type="text" name="subline-{{ formset.empty_form.prefix }}-labels" value="{{ value.libelle }}" placeholder="Ex: Joint de culasse, filtre a huile, courroie..." style="width:100%;" class="stock-label-input panne-label-input" list="panne-list-{{ formset.empty_form.prefix }}">
+                        <datalist id="panne-list-{{ formset.empty_form.prefix }}" class="panne-datalist"></datalist>
                     </div>
                     <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
                 </div>

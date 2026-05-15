@@ -116,7 +116,8 @@
 <table class="table summary-table">
 <tr><th>BL</th><td>{% if operation %}{{ operation.numero_bl }}{% else %}-{% endif %}</td></tr>
 <tr><th>Etat</th><td>{% if operation %}{{ operation.get_etat_bon_display }}{% else %}-{% endif %}</td></tr>
-<tr><th>Date declaration</th><td>{% if operation and operation.date_transmission %}{{ operation.date_transmission }}{% else %}-{% endif %}</td></tr>
+<tr><th>Date transmission depot</th><td>{% if operation and operation.date_transmission_depot %}{{ operation.date_transmission_depot }}{% else %}-{% endif %}</td></tr>
+<tr><th>Date declaration</th><td>{% if operation and operation.date_bons_declares %}{{ operation.date_bons_declares }}{% else %}-{% endif %}</td></tr>
 <tr><th>Date liquidation</th><td>{% if operation and operation.date_bons_liquides %}{{ operation.date_bons_liquides }}{% else %}-{% endif %}</td></tr>
 <tr><th>Client</th><td>{% if operation %}{{ operation.client.entreprise }}{% else %}-{% endif %}</td></tr>
 <tr><th>Destination</th><td>{% if operation %}{{ operation.destination }}{% else %}-{% endif %}</td></tr>

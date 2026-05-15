@@ -25,6 +25,8 @@ urlpatterns = [
     path("paiements/", views.paiements_maintenances, name="paiements_maintenances"),
     path("paiements/modifier/<int:id>/", views.modifier_maintenance_paiement, name="modifier_maintenance_paiement"),
     path("stock/", views.stock_maintenances, name="stock_maintenances"),
+    path("stock/rapports/", views.rapport_stock_maintenances, name="rapport_stock_maintenances"),
+    path("rapports/pannes/", views.rapport_pannes_main_oeuvre, name="rapport_pannes_main_oeuvre"),
     path("stock/ajouter/", views.ajouter_article_stock, name="ajouter_article_stock"),
     path("stock/modifier/<int:id>/", views.modifier_article_stock, name="modifier_article_stock"),
     path("stock/supprimer/<int:id>/", views.supprimer_article_stock, name="supprimer_article_stock"),
@@ -40,6 +42,11 @@ urlpatterns = [
         "types/ajouter-modal/",
         views.ajouter_type_maintenance_modal,
         name="ajouter_type_maintenance_modal",
+    ),
+    path(
+        "pannes/ajouter-modal/",
+        views.ajouter_panne_modal,
+        name="ajouter_panne_modal",
     ),
     path(
         "fournisseurs/ajouter-modal/",

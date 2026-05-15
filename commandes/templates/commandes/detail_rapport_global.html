@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Rapport global</p>
+        <h1>Detail complet {{ commande.reference }}</h1>
+        <p class="muted">{{ commande.client.entreprise }}{% if commande.client.nom %} - {{ commande.client.nom }}{% endif %}</p>
+    </div>
+    <div class="field-inline">
+        <a href="{{ return_url }}" class="btn-secondary">Retour</a>
+    </div>
+</div>
+
+<div class="commande-detail-layout">
+    <section class="form-shell">
+        <p class="eyebrow">Commande</p>
+        <h2 style="margin-top:0;">Informations generales</h2>
+        <table class="table summary-table">
+            <tbody>
+                <tr><th>Reference commande</th><td>{{ commande.reference }}</td></tr>
+                <tr><th>Client</th><td>{{ commande.client.entreprise }}</td></tr>
+                <tr><th>Contact client</th><td>{{ commande.client.nom|default:"-" }}</td></tr>
+                <tr><th>Produit</th><td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite commandee</th><td>{{ commande.quantite|floatformat:0 }}</td></tr>
+                <tr><th>Prix negocie</th><td>{{ commande.prix_negocie|gnf }}</td></tr>
+                <tr><th>Valorisation</th><td>{{ commande.montant_commande|gnf }}</td></tr>
+                <tr><th>Ville de depart</th><td>{{ commande.ville_depart|default:"-" }}</td></tr>
+                <tr><th>Destination</th><td>{{ commande.ville_arrivee|default:"-" }}</td></tr>
+                <tr><th>Date commande</th><td>{{ commande.date_commande|date:"d/m/Y"|default:"-" }}</td></tr>
+                <tr><th>Livraison prevue</th><td>{{ commande.date_livraison_prevue|date:"d/m/Y"|default:"-" }}</td></tr>
+                <tr><th>Echeance</th><td>{{ commande.date_echeance|date:"d/m/Y"|default:"-" }}</td></tr>
+                <tr><th>Etat exact</th><td>{{ commande.exact_status_label }}</td></tr>
+                <tr><th>Date de l'etat</th><td>{{ commande.exact_status_date|date:"d/m/Y"|default:"-" }}</td></tr>
+                <tr><th>Commentaire</th><td>{{ commande.description|default:"-" }}</td></tr>
+            </tbody>
+        </table>
+
+        <div class="form-shell detail-inner-shell">
+            <p class="eyebrow">Client</p>
+            <h3 style="margin-top:0;">Synthese client</h3>
+            <div class="decision-stats">
+                <div class="decision-card">
+                    <span class="decision-label">Contact</span>
+                    <strong>{{ client_payload.nom|default:"-" }}</strong>
+                    <small>{{ client_payload.fonction_contact|default:"-" }}</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Telephone / ville</span>
+                    <strong>{{ client_payload.telephone|default:"-" }}</strong>
+                    <small>{{ client_payload.ville|default:"-" }}</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Encours reel</span>
+                    <strong>{{ client_payload.encours_reel|gnf }}</strong>
+                    <small>Situation actuelle</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Risque net</span>
+                    <strong>{{ client_payload.risque_client|gnf }}</strong>
+                    <small>Encours + engagement - avances</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Creances livrees</span>
+                    <strong>{{ client_payload.creance_client|gnf }}</strong>
+                    <small>Restant du sur commandes deja livrees</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Paiements client</span>
+                    <strong>{{ client_payload.total_paiements|gnf }}</strong>
+                    <small>Encaissements enregistres</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Paiements anticipes</span>
+                    <strong>{{ client_payload.paiements_anticipes|gnf }}</strong>
+                    <small>Montants recus d'avance</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">DMA</span>
+                    <strong>{{ client_payload.decouvert_maximum_autorise|gnf }}</strong>
+                    <small>Decouvert maximum autorise</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Disponible avant decouvert</span>
+                    <strong>{{ client_payload.disponible_decouvert|gnf }}</strong>
+                    <small>Delai : {{ client_payload.delai_paiement_jours }} jour(s)</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-shell detail-inner-shell">
+            <p class="eyebrow">Validation</p>
+            <h3 style="margin-top:0;">Circuit de validation commande</h3>
+            <table class="table summary-table">
+                <tbody>
+                    <tr><th>Decision DGA</th><td>{{ commande.get_decision_dga_display|default:"-" }}</td></tr>
+                    <tr><th>Observation DGA</th><td>{{ commande.observation_dga|default:"-" }}</td></tr>
+                    <tr><th>Motif rejet DGA</th><td>{{ commande.motif_rejet_dga|default:"-" }}</td></tr>
+                    <tr><th>Date avis DGA</th><td>{{ commande.date_validation_dga|date:"d/m/Y"|default:"-" }}</td></tr>
+                    <tr><th>Decision DG</th><td>{{ commande.get_decision_dg_display|default:"-" }}</td></tr>
+                    <tr><th>Observation DG</th><td>{{ commande.observation_dg|default:"-" }}</td></tr>
+                    <tr><th>Motif rejet DG</th><td>{{ commande.motif_rejet_dg|default:"-" }}</td></tr>
+                    <tr><th>Date avis DG</th><td>{{ commande.date_validation_dg|date:"d/m/Y"|default:"-" }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <aside class="commande-detail-side">
+        <section class="form-shell sidebar-card">
+            <p class="eyebrow">BL</p>
+            <h2 style="margin-top:0;">Historique complet du circuit</h2>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>BL</th>
+                            <th>Etat</th>
+                            <th>Camion</th>
+                            <th>Chauffeur</th>
+                            <th>Transit / Logistique</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for operation in operations %}
+                        <tr>
+                            <td>
+                                <strong>{{ operation.numero_bl }}</strong>
+                                <small>{{ operation.date_bl|date:"d/m/Y"|default:"-" }}</small>
+                            </td>
+                            <td>{{ operation.get_etat_bon_display }}</td>
+                            <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                            <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                            <td>
+                                <small>Transmission depot : {{ operation.date_transmission_depot|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Reception transitaire : {{ operation.date_reception_transitaire|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Declaration : {{ operation.date_bons_declares|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Liquidation : {{ operation.date_bons_liquides|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Reception logistique : {{ operation.date_reception_logistique|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Remis a : {{ operation.remis_a_nom|default:"-" }}{% if operation.remis_a_telephone %} / {{ operation.remis_a_telephone }}{% endif %}</small><br>
+                                <small>Charge : {{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Livre : {{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</small><br>
+                                <small>Bon retour : {{ operation.date_bon_retour|date:"d/m/Y"|default:"-" }}</small>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5">Aucun BL cree pour cette commande.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="form-shell sidebar-card">
+            <p class="eyebrow">Depenses</p>
+            <h2 style="margin-top:0;">Depenses liees au BL</h2>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>BL</th>
+                            <th>Type</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for depense in depenses_liees %}
+                        <tr>
+                            <td>{{ depense.reference }}</td>
+                            <td>{% if depense.operation %}{{ depense.operation.numero_bl }}{% else %}-{% endif %}</td>
+                            <td>{{ depense.libelle_depense|default:"Depense" }}</td>
+                            <td>{{ depense.montant_estime|gnf }}</td>
+                            <td>{{ depense.get_statut_display }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5">Aucune depense rattachee a cette commande.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="form-shell sidebar-card">
+            <p class="eyebrow">Paiements client</p>
+            <h2 style="margin-top:0;">Encaissements</h2>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mode</th>
+                            <th>Reference</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in client_payload.derniers_encaissements %}
+                        <tr>
+                            <td>{{ item.date|default:"-" }}</td>
+                            <td>{{ item.mode|default:"-" }}</td>
+                            <td>{{ item.reference|default:"-" }}</td>
+                            <td>{{ item.montant|gnf }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4">Aucun paiement enregistre pour ce client.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.commande-detail-layout {
+    display:grid;
+    grid-template-columns:minmax(0, 1.2fr) minmax(360px, 0.9fr);
+    gap:22px;
+    align-items:start;
+}
+
+.commande-detail-side {
+    display:grid;
+    gap:22px;
+}
+
+.detail-inner-shell {
+    margin-top:20px;
+}
+
+.decision-stats {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:14px;
+}
+
+.decision-card {
+    padding:16px;
+    border-radius:18px;
+    border:1px solid #dbe7f3;
+    background:#fff;
+    min-height:104px;
+}
+
+.decision-card strong {
+    display:block;
+    margin-top:8px;
+    color:#12324a;
+    font-size:1.05rem;
+}
+
+.decision-card small {
+    display:block;
+    margin-top:8px;
+    color:#64748b;
+}
+
+.decision-label {
+    display:block;
+    color:#64748b;
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin-bottom:6px;
+}
+
+.sidebar-card h2 {
+    margin-bottom:12px;
+}
+
+.sidebar-table-wrap {
+    overflow-x:auto;
+}
+
+.sidebar-table {
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    font-size:0.9rem;
+    overflow:hidden;
+    border:1px solid #dbe7f3;
+    border-radius:16px;
+    background:#fff;
+}
+
+.sidebar-table th,
+.sidebar-table td {
+    padding:11px 10px;
+    border-bottom:1px solid #e7eef6;
+    text-align:left;
+    vertical-align:top;
+}
+
+.sidebar-table th {
+    background:#f7fbff;
+    color:#64748b;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+}
+
+.sidebar-table tbody tr:last-child td {
+    border-bottom:none;
+}
+
+.sidebar-table td strong {
+    display:block;
+    color:#12324a;
+    margin-bottom:4px;
+}
+
+.sidebar-table td small {
+    color:#64748b;
+}
+
+@media (max-width: 1280px) {
+    .commande-detail-layout {
+        grid-template-columns:1fr;
+    }
+}
+</style>
+{% endblock %}

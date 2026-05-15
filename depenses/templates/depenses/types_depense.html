@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>{% if type_en_cours %}Modifier un type de depense{% else %}Types de depense{% endif %}</h1>
+    <p class="muted">Gerez les libelles de depense et leur montant par defaut. La suppression est bloquee si le type est deja utilise.</p>
+  </div>
+  <a href="/depenses/" class="btn-secondary">Retour aux depenses</a>
+</div>
+
+<div class="form-shell" style="margin-bottom:24px;">
+  <h2 style="margin:0 0 18px;">{% if type_en_cours %}Formulaire de modification{% else %}Nouveau type{% endif %}</h2>
+  {% if type_en_cours %}
+  <div class="form-alert" style="margin-bottom:18px;">
+    <p style="margin:0;"><strong>Modification en cours :</strong> vous modifiez actuellement le type <strong>{{ type_en_cours.libelle }}</strong>.</p>
+  </div>
+  {% endif %}
+  <form method="post" class="app-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+      {% for error in form.non_field_errors %}
+      <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.libelle.id_for_label }}">Libelle</label>
+        {{ form.libelle }}
+        {% if form.libelle.errors %}<p class="field-error">{{ form.libelle.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.montant_defaut.id_for_label }}">Montant par defaut</label>
+        {{ form.montant_defaut }}
+        {% if form.montant_defaut.errors %}<p class="field-error">{{ form.montant_defaut.errors|join:", " }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      {% if type_en_cours %}<a href="/depenses/types/" class="btn-secondary">Annuler</a>{% endif %}
+      <button type="submit" class="btn">{% if type_en_cours %}Enregistrer la modification{% else %}Ajouter le type{% endif %}</button>
+    </div>
+  </form>
+</div>
+
+<div class="form-shell">
+  <h2 style="margin:0 0 18px;">Liste des types</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Libelle</th>
+        <th>Montant par defaut</th>
+        <th>Utilisations</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for type_depense in types_depense %}
+      <tr>
+        <td>{{ type_depense.libelle }}</td>
+        <td>{{ type_depense.montant_defaut_affiche }}</td>
+        <td>{{ type_depense.nb_depenses }}</td>
+        <td>
+          <div class="table-actions">
+            <a href="/depenses/types/{{ type_depense.id }}/modifier/" class="btn-edit">{% if type_en_cours and type_en_cours.id == type_depense.id %}En cours{% else %}Modifier{% endif %}</a>
+            <form method="post" action="/depenses/types/{{ type_depense.id }}/supprimer/" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn-secondary" {% if type_depense.nb_depenses %}disabled title="Type deja utilise"{% endif %}>Supprimer</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">Aucun type de depense enregistre.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

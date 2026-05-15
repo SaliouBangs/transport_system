@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Developpement commercial</p>
+<h1>Modifier le prospect</h1>
+</div>
+</div>
+
+<div class="form-shell">
+<form method="POST" class="app-form">
+
+{% csrf_token %}
+
+<div class="form-grid">
+{% if form.commercial.is_hidden %}
+{{ form.commercial }}
+{% else %}
+<div class="field">
+<label for="{{ form.commercial.id_for_label }}">Commercial responsable</label>
+{{ form.commercial }}
+{% if form.commercial.errors %}<p class="field-error">{{ form.commercial.errors.0 }}</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="field">
+<label for="{{ form.nom.id_for_label }}">Nom</label>
+{{ form.nom }}
+{% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.fonction.id_for_label }}">Fonction</label>
+{{ form.fonction }}
+{% if form.fonction.errors %}<p class="field-error">{{ form.fonction.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.telephone.id_for_label }}">Telephone</label>
+{{ form.telephone }}
+{% if form.telephone.errors %}<p class="field-error">{{ form.telephone.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.entreprise.id_for_label }}">Entreprise</label>
+{{ form.entreprise }}
+{% if form.entreprise.errors %}<p class="field-error">{{ form.entreprise.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.ville.id_for_label }}">Ville</label>
+{{ form.ville }}
+{% if form.ville.errors %}<p class="field-error">{{ form.ville.errors.0 }}</p>{% endif %}
+</div>
+</div>
+
+<div class="form-actions">
+<a href="/prospects/" class="btn-secondary">Retour</a>
+<button type="submit" class="btn">Mettre a jour</button>
+</div>
+
+</form>
+</div>
+
+{% endblock %}

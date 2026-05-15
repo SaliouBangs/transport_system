@@ -7,7 +7,10 @@
 <p class="eyebrow">Flotte</p>
 <h1>Gestion des camions</h1>
 </div>
+<div class="table-actions">
+{% if is_admin_user %}<a href="/camions/affretes/" class="btn-secondary">Gestion des affretes</a>{% endif %}
 {% if can_manage_logistique_assets %}<a href="/camions/ajouter/" class="btn">Ajouter un camion</a>{% endif %}
+</div>
 </div>
 
 <table class="table">
@@ -19,6 +22,7 @@
 <th>Capacite</th>
 <th>Km actuel</th>
 <th>Prochaine vidange</th>
+<th>Cout total</th>
 <th>Alerte</th>
 <th>Pannes</th>
 <th>Performance</th>
@@ -35,6 +39,7 @@
 <td>{{ camion.capacite }}</td>
 <td>{{ camion.kilometrage_actuel }}</td>
 <td>{{ camion.kilometrage_alerte_vidange|default:"-" }}</td>
+<td><strong>{{ camion.cout_total|floatformat:0 }}</strong><br><span style="color:#6d8090;">GNF cumules</span></td>
 <td>
 {% if camion.kilometrage_alerte_vidange and camion.kilometrage_actuel >= camion.kilometrage_alerte_vidange %}
 <span class="status-badge status-danger">Vidange due</span>
@@ -57,7 +62,7 @@
 <td>{{ camion.get_etat_display }}</td>
 <td>
 <div class="table-actions">
-<button type="button" class="btn-secondary" data-modal-target="camion-details-{{ camion.id }}">Details</button>
+<a href="/camions/detail/{{ camion.id }}/" class="btn-secondary">Details</a>
 {% if can_manage_logistique_assets %}
 <a href="/camions/modifier/{{ camion.id }}/" class="btn-edit">Modifier</a>
 <a href="/camions/supprimer/{{ camion.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce camion ?')">Supprimer</a>
@@ -67,49 +72,10 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="11">Aucun camion enregistre pour le moment.</td>
+<td colspan="12">Aucun camion enregistre pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
-
-{% for camion in camions %}
-<div class="modal" id="camion-details-{{ camion.id }}" aria-hidden="true">
-    <div class="modal-backdrop" data-modal-close="camion-details-{{ camion.id }}"></div>
-    <div class="modal-dialog">
-        <div class="modal-header">
-            <div>
-                <p class="eyebrow">Flotte</p>
-                <h2>Details du camion {{ camion.numero_tracteur }}</h2>
-            </div>
-            <button type="button" class="modal-close" data-modal-close="camion-details-{{ camion.id }}">x</button>
-        </div>
-
-        <div class="form-grid">
-            <div class="field"><label>Numero tracteur</label><input value="{{ camion.numero_tracteur }}" readonly></div>
-            <div class="field"><label>Numero citerne</label><input value="{{ camion.numero_citerne|default:'-' }}" readonly></div>
-            <div class="field"><label>Type</label><input value="{{ camion.get_type_camion_display }}" readonly></div>
-            <div class="field"><label>Marque</label><input value="{{ camion.marque|default:'-' }}" readonly></div>
-            <div class="field"><label>Modele</label><input value="{{ camion.modele|default:'-' }}" readonly></div>
-            <div class="field"><label>Annee</label><input value="{{ camion.annee|default:'-' }}" readonly></div>
-            <div class="field"><label>Carburant</label><input value="{{ camion.carburant|default:'-' }}" readonly></div>
-            <div class="field"><label>Transporteur</label><input value="{% if camion.transporteur %}{{ camion.transporteur.nom }}{% else %}-{% endif %}" readonly></div>
-            <div class="field"><label>Capacite</label><input value="{{ camion.capacite }}" readonly></div>
-            <div class="field"><label>Etat</label><input value="{{ camion.get_etat_display }}" readonly></div>
-            <div class="field"><label>Chassis</label><input value="{{ camion.chassis|default:'-' }}" readonly></div>
-            <div class="field"><label>IMSI</label><input value="{{ camion.imsi|default:'-' }}" readonly></div>
-            <div class="field"><label>Num SIM</label><input value="{{ camion.numero_sim|default:'-' }}" readonly></div>
-            <div class="field"><label>Num balise</label><input value="{{ camion.numero_balise|default:'-' }}" readonly></div>
-            <div class="field"><label>Longueur</label><input value="{{ camion.longueur|default:'-' }}" readonly></div>
-            <div class="field"><label>Largeur</label><input value="{{ camion.largeur|default:'-' }}" readonly></div>
-            <div class="field"><label>Hauteur</label><input value="{{ camion.hauteur|default:'-' }}" readonly></div>
-            <div class="field"><label>Kilometrage actuel</label><input value="{{ camion.kilometrage_actuel }}" readonly></div>
-            <div class="field"><label>Prochaine vidange</label><input value="{{ camion.kilometrage_alerte_vidange|default:'-' }}" readonly></div>
-            <div class="field"><label>Derniere vidange</label><input value="{{ camion.kilometrage_derniere_vidange|default:'-' }}" readonly></div>
-            <div class="field"><label>Nombre de pannes</label><input value="{{ camion.panne_count }}" readonly></div>
-        </div>
-    </div>
-</div>
-{% endfor %}
 
 {% endblock %}

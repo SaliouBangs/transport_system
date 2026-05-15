@@ -22,6 +22,7 @@
 
 <div class="cards" style="margin-bottom:24px;">
 <div class="card"><h3>Articles</h3><p>{{ total_articles }}</p></div>
+<div class="card"><h3>Valeur totale stock</h3><p>{{ valeur_stock }} GNF</p></div>
 <div class="card"><h3>Alertes stock</h3><p>{{ articles_en_alerte }}</p></div>
 </div>
 
@@ -34,6 +35,9 @@
 <th>Article</th>
 <th>Categorie</th>
 <th>Stock</th>
+<th>Dernier prix achat</th>
+<th>CMP / unite principale</th>
+<th>Valeur stock</th>
 <th>Seuil</th>
 <th>Fournisseur</th>
 <th>Actions</th>
@@ -52,6 +56,14 @@
     <div><span class="status-badge status-danger">Stock faible</span></div>
     {% endif %}
 </td>
+<td>
+    {{ article.prix_conditionnement_affiche }}
+    {% if article.prix_equivalent_affiche %}
+    <div><span style="color:#6d8090;">{{ article.prix_equivalent_affiche }}</span></div>
+    {% endif %}
+</td>
+<td>{{ article.prix_unitaire_affiche }}</td>
+<td>{{ article.valeur_stock_affichee }}</td>
 <td>{{ article.seuil_alerte }}</td>
 <td>{{ article.fournisseur|default:"-" }}</td>
 <td>
@@ -73,7 +85,7 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="7">Aucun article de stock enregistre pour le moment.</td>
+<td colspan="10">Aucun article de stock enregistre pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -91,6 +103,8 @@
 <th>Type</th>
 <th>Quantite saisie</th>
 <th>Equivalent stock</th>
+<th>Fournisseur</th>
+<th>Montant net</th>
 <th>Stock avant</th>
 <th>Stock apres</th>
 <th>Utilisateur</th>
@@ -106,6 +120,8 @@
 <td>{{ mouvement.get_type_mouvement_display }}</td>
 <td>{{ mouvement.quantite_saisie|default:mouvement.quantite }} {{ mouvement.unite_saisie|default:mouvement.article.unite }}</td>
 <td>{{ mouvement.quantite }} {{ mouvement.article.unite }}</td>
+<td>{{ mouvement.fournisseur|default:"-" }}</td>
+<td>{{ mouvement.montant_net|floatformat:2 }}</td>
 <td>{{ mouvement.stock_avant }}</td>
 <td>{{ mouvement.stock_apres }}</td>
 <td>{% if mouvement.created_by %}{{ mouvement.created_by.username }}{% else %}-{% endif %}</td>
@@ -113,41 +129,7 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="10">Aucun mouvement de stock enregistre.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-
-<div class="card" style="margin-top:24px; text-align:left;">
-<h3>Consommation par camion et par produit</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Camion</th>
-<th>Produit</th>
-<th>Qte totale</th>
-<th>Nb maintenances</th>
-</tr>
-</thead>
-<tbody>
-{% for row in consommation_par_camion %}
-<tr>
-<td>
-    {{ row.maintenance_ligne__maintenance__camion__numero_tracteur }}
-    {% if row.maintenance_ligne__maintenance__camion__numero_citerne %}
-    / {{ row.maintenance_ligne__maintenance__camion__numero_citerne }}
-    {% endif %}
-    <br><span style="color:#6d8090;">{{ row.maintenance_ligne__maintenance__camion__code_camion }}</span>
-</td>
-<td>{{ row.article_stock__libelle }}<br><span style="color:#6d8090;">{{ row.article_stock__unite }}</span></td>
-<td>{{ row.total_quantite }}</td>
-<td>{{ row.total_maintenances }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="4">Aucune consommation de stock n'a encore ete rattachee a une maintenance validee.</td>
+<td colspan="12">Aucun mouvement de stock enregistre.</td>
 </tr>
 {% endfor %}
 </tbody>

@@ -1,0 +1,533 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Etat camion {{ camion.numero_tracteur }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9.2px;
+            line-height: 1.28;
+            color: #17324a;
+            background: #ffffff;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 12px 0 8px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid #c9d8e6;
+            background: #ffffff;
+            color: #17324a;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            color: #ffffff;
+            background: #24a176;
+            border-color: #24a176;
+        }
+        .document {
+            border: 1px solid #d7e6f3;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .doc-header {
+            display: grid;
+            grid-template-columns: 92px 1fr 165px;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, #f8fbff 0%, #eef6fb 100%);
+            border-bottom: 1px solid #d7e6f3;
+        }
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .logo-wrap img {
+            max-width: 78px;
+            max-height: 56px;
+            object-fit: contain;
+        }
+        .brand-title {
+            margin: 0;
+            font-size: 17px;
+            line-height: 1.1;
+            letter-spacing: .04em;
+            font-weight: 900;
+            color: #12344d;
+        }
+        .brand-subtitle {
+            margin: 5px 0 0;
+            font-size: 10px;
+            color: #5f7689;
+        }
+        .meta-card {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #d7e6f3;
+            background: #ffffff;
+            text-align: right;
+        }
+        .meta-card span {
+            display: block;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #678095;
+        }
+        .meta-card strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .summary-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 10px 14px 0;
+        }
+        .summary-card {
+            border: 1px solid #d9e7f3;
+            border-radius: 12px;
+            padding: 9px 10px;
+            background: #f9fcff;
+            min-height: 62px;
+        }
+        .summary-card.primary {
+            background: linear-gradient(135deg, #13364f 0%, #1b4d70 100%);
+            border-color: transparent;
+        }
+        .summary-label {
+            display: block;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #698196;
+        }
+        .summary-card.primary .summary-label {
+            color: rgba(255,255,255,.78);
+        }
+        .summary-value {
+            display: block;
+            margin-top: 6px;
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1.2;
+            color: #17324a;
+        }
+        .summary-card.primary .summary-value {
+            color: #ffffff;
+        }
+        .sheet {
+            padding: 10px 14px 14px;
+        }
+        .section {
+            margin-top: 10px;
+            border: 1px solid #dbe8f4;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #f6fbff;
+            border-bottom: 1px solid #dbe8f4;
+        }
+        .section-head h2 {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 8px;
+            font-weight: 800;
+            color: #196749;
+            background: #e7f8ef;
+            white-space: nowrap;
+        }
+        .identity-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 10px;
+        }
+        .identity-card {
+            border: 1px solid #e2edf7;
+            border-radius: 10px;
+            padding: 8px 9px;
+            background: #ffffff;
+            min-height: 52px;
+        }
+        .identity-card span {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 7.6px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-weight: 800;
+            color: #6d8090;
+        }
+        .identity-card strong {
+            display: block;
+            font-size: 10px;
+            line-height: 1.3;
+            color: #17324a;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: 0.9fr 1.1fr;
+            gap: 10px;
+        }
+        .cost-list {
+            display: grid;
+            gap: 7px;
+            padding: 10px;
+        }
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: #fbfdff;
+            border: 1px solid #e2edf7;
+        }
+        .cost-row span {
+            font-weight: 700;
+            color: #536f85;
+        }
+        .cost-row strong {
+            font-weight: 900;
+            color: #17324a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead th {
+            padding: 7px 8px;
+            background: #17324a;
+            color: #ffffff;
+            text-align: left;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+        }
+        tbody td {
+            padding: 7px 8px;
+            border-top: 1px solid #e2edf7;
+            font-size: 9px;
+            vertical-align: top;
+        }
+        .muted {
+            color: #6d8090;
+        }
+        .empty {
+            padding: 14px 10px;
+            color: #6d8090;
+        }
+        .footer-note {
+            margin-top: 10px;
+            padding: 8px 2px 0;
+            border-top: 1px dashed #cfddea;
+            font-size: 8px;
+            color: #70879b;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        @media print {
+            .toolbar {
+                display: none;
+            }
+            .document {
+                border: none;
+                border-radius: 0;
+            }
+            .section,
+            .summary-card,
+            .identity-card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <a href="/camions/detail/{{ camion.id }}/" class="btn">Retour</a>
+        <a href="#" class="btn btn-primary" id="print-action">Imprimer</a>
+    </div>
+
+    <div class="document">
+        <div class="doc-header">
+            <div class="logo-wrap">
+                <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI" id="sogefi-logo">
+            </div>
+            <div>
+                <h1 class="brand-title">ETAT GENERAL CAMION {{ camion.numero_tracteur }}</h1>
+                <p class="brand-subtitle">Synthese complete de l'exploitation, des maintenances, des depenses et des couts rattaches a ce camion.</p>
+            </div>
+            <div class="meta-card">
+                <span>Date d'edition</span>
+                <strong id="print-date"></strong>
+                <span style="margin-top:6px;">Transporteur affiche : SOGEFI</span>
+            </div>
+        </div>
+
+        <div class="summary-bar">
+            <div class="summary-card primary">
+                <span class="summary-label">Cout total camion</span>
+                <strong class="summary-value">{{ cout_total|floatformat:0 }} GNF</strong>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Maintenances</span>
+                <strong class="summary-value">{{ maintenances|length }}</strong>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">BL transportes</span>
+                <strong class="summary-value">{{ operations|length }}</strong>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Qte transportee</span>
+                <strong class="summary-value">{{ quantite_transportee|floatformat:0 }}</strong>
+            </div>
+        </div>
+
+        <div class="sheet">
+            <section class="section">
+                <div class="section-head">
+                    <h2>Identification du camion</h2>
+                    <span class="pill">{{ camion.get_etat_display }}</span>
+                </div>
+                <div class="identity-grid">
+                    <div class="identity-card"><span>Tracteur</span><strong>{{ camion.numero_tracteur }}</strong></div>
+                    <div class="identity-card"><span>Citerne</span><strong>{{ camion.numero_citerne|default:"-" }}</strong></div>
+                    <div class="identity-card"><span>Type</span><strong>{{ camion.get_type_camion_display }}</strong></div>
+                    <div class="identity-card"><span>Capacite</span><strong>{{ camion.capacite }}</strong></div>
+                    <div class="identity-card"><span>Kilometrage actuel</span><strong>{{ camion.kilometrage_actuel }}</strong></div>
+                    <div class="identity-card"><span>Prochaine vidange</span><strong>{{ camion.kilometrage_alerte_vidange|default:"-" }}</strong></div>
+                    <div class="identity-card"><span>Entreprise affretee</span><strong>{% if camion.est_affrete and camion.transporteur %}{{ camion.transporteur.nom }}{% else %}-{% endif %}</strong></div>
+                    <div class="identity-card"><span>Structure porteuse</span><strong>SOGEFI</strong></div>
+                </div>
+            </section>
+
+            <div class="split">
+                <section class="section">
+                    <div class="section-head">
+                        <h2>Repartition des couts</h2>
+                    </div>
+                    <div class="cost-list">
+                        <div class="cost-row"><span>Maintenance payable</span><strong>{{ maintenance_payable_total|floatformat:0 }} GNF</strong></div>
+                        <div class="cost-row"><span>Valorisation stock maintenance</span><strong>{{ maintenance_total|floatformat:0 }} GNF</strong></div>
+                        <div class="cost-row"><span>Depenses chargement</span><strong>{{ depenses_total|floatformat:0 }} GNF</strong></div>
+                        <div class="cost-row"><span>Cout global cumule</span><strong>{{ cout_total|floatformat:0 }} GNF</strong></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="section-head">
+                        <h2>Pannes / pieces frequentes</h2>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Categorie</th>
+                                <th>Libelle</th>
+                                <th>Nb</th>
+                                <th>Prix moyen</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in panne_rows %}
+                            <tr>
+                                <td>{{ row.panne_catalogue__type_maintenance__libelle|default:"-" }}</td>
+                                <td>{{ row.libelle }}</td>
+                                <td>{{ row.total }}</td>
+                                <td>{{ row.prix_moyen|default:0|floatformat:0 }} GNF</td>
+                                <td>{{ row.montant_total|default:0|floatformat:0 }} GNF</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="empty">Aucune panne ou piece rattachee a ce camion.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>BL et activite transport</h2>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>BL</th>
+                            <th>Client</th>
+                            <th>Etat</th>
+                            <th>Produit / qte</th>
+                            <th>Dates cles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for operation in operations %}
+                        <tr>
+                            <td>
+                                <strong>{{ operation.numero_bl }}</strong><br>
+                                <span class="muted">{{ operation.commande.reference|default:"-" }}</span>
+                            </td>
+                            <td>{{ operation.client }}</td>
+                            <td>{{ operation.get_etat_bon_display }}</td>
+                            <td>
+                                {{ operation.produit|default:"-" }}<br>
+                                <span class="muted">{{ operation.quantite|floatformat:0 }}</span>
+                            </td>
+                            <td>
+                                BL : {{ operation.date_bl|date:"j M Y"|default:"-" }}<br>
+                                Charge : {{ operation.date_bons_charges|date:"j M Y"|default:"-" }}<br>
+                                Livre : {{ operation.date_bons_livres|date:"j M Y"|default:"-" }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="empty">Aucun BL rattache a ce camion.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Historique des maintenances</h2>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Date debut</th>
+                            <th>Statut</th>
+                            <th>Prestataire</th>
+                            <th>Montant payable</th>
+                            <th>Cout global</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for maintenance in maintenances %}
+                        <tr>
+                            <td>{{ maintenance.reference }}</td>
+                            <td>{{ maintenance.date_debut|date:"j M Y" }}</td>
+                            <td>{{ maintenance.get_statut_display }}</td>
+                            <td>{{ maintenance.prestataire|default:"-" }}</td>
+                            <td>{{ maintenance.total_facture|floatformat:0 }} GNF</td>
+                            <td>{{ maintenance.total_global_information|floatformat:0 }} GNF</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="empty">Aucune maintenance pour ce camion.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Depenses liees au chargement</h2>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>BL</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for depense in depenses %}
+                        <tr>
+                            <td>{{ depense.reference }}</td>
+                            <td>{{ depense.operation.numero_bl|default:"-" }}</td>
+                            <td>{{ depense.type_depense|default:"-" }}</td>
+                            <td>{{ depense.get_statut_display }}</td>
+                            <td>{{ depense.montant_total|floatformat:0 }} GNF</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="empty">Aucune depense de chargement pour ce camion.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <div class="footer-note">
+                <span>Document interne SOGEFI - rapport camion genere automatiquement depuis la plateforme.</span>
+                <span>Edition : <strong id="footer-date"></strong></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const nowText = new Intl.DateTimeFormat("fr-FR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+        }).format(new Date());
+        document.getElementById("print-date").textContent = nowText;
+        document.getElementById("footer-date").textContent = nowText;
+
+        const logo = document.getElementById("sogefi-logo");
+        if (logo) {
+            logo.addEventListener("error", function () {
+                this.onerror = null;
+                this.src = "{% static 'images/sogefi-logo.png' %}";
+            });
+        }
+
+        const printAction = document.getElementById("print-action");
+        if (printAction) {
+            printAction.addEventListener("click", function (event) {
+                event.preventDefault();
+                window.focus();
+                window.print();
+            });
+        }
+
+        window.addEventListener("load", function () {
+            setTimeout(function () {
+                window.print();
+            }, 250);
+        });
+    </script>
+</body>
+</html>

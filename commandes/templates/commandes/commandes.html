@@ -1,205 +1,975 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .commandes-page {
+    display: grid;
+    gap: 20px;
+  }
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Exploitation</p>
-<h1>
-{% if scope == "historique" %}
-Historique des commandes
-{% elif page_user_role == "logistique" %}
-Commandes a affecter
-{% elif page_user_role == "dga" %}
-Commandes a controler par le DGA
-{% elif page_user_role == "directeur" %}
-Commandes a valider par le DG
-{% else %}
-Nouvelles commandes
-{% endif %}
-</h1>
-</div>
-<div class="field-inline">
-<a href="/commandes/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter XLS</a>
-<a href="/commandes/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter PDF</a>
-{% if can_add_commandes %}
-<a href="/commandes/ajouter/" class="btn">Ajouter une commande</a>
-{% endif %}
-</div>
-</div>
+  .commandes-page--historique {
+    gap: 14px;
+  }
 
-<div class="field-inline" style="margin-bottom:18px;">
-<a href="/commandes/" class="{% if scope != 'historique' %}btn{% else %}btn-secondary{% endif %}">
-{% if page_user_role == "logistique" %}A affecter{% elif page_user_role == "dga" %}File DGA{% elif page_user_role == "directeur" %}File DG{% else %}Nouvelles commandes{% endif %}
-</a>
-<a href="/commandes/?scope=historique" class="{% if scope == 'historique' %}btn{% else %}btn-secondary{% endif %}">Historique</a>
-</div>
+  .commandes-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.95fr);
+    gap: 20px;
+    padding: 22px;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, rgba(79, 191, 159, 0.24), transparent 28%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(236, 245, 250, 0.95) 100%);
+    border: 1px solid rgba(214, 228, 238, 0.9);
+    box-shadow: 0 24px 48px rgba(18, 48, 71, 0.12);
+  }
 
-<div class="form-shell" style="margin-bottom:20px;">
-<form method="get" class="app-form">
-    <input type="hidden" name="scope" value="{{ scope }}">
-    <div class="form-grid">
-        <div class="field">
-            <label for="id_q">Recherche</label>
-            <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Reference, client, produit, trajet">
+  .commandes-hero--compact {
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+    gap: 16px;
+    padding: 16px 18px;
+    border-radius: 24px;
+  }
+
+  .commandes-hero::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -80px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79, 191, 159, 0.2), transparent 68%);
+    pointer-events: none;
+  }
+
+  .commandes-hero-main,
+  .commandes-hero-side {
+    position: relative;
+    z-index: 1;
+  }
+
+  .commandes-hero-main {
+    display: grid;
+    gap: 18px;
+  }
+
+  .commandes-hero--compact .commandes-hero-main {
+    gap: 12px;
+  }
+
+  .commandes-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .commandes-hero-title h3,
+  .commandes-hero-side h3,
+  .commandes-block-title {
+    margin: 6px 0 6px;
+    color: var(--navy);
+    font-size: 1.35rem;
+  }
+
+  .commandes-hero--compact .commandes-hero-title h3,
+  .commandes-hero--compact .commandes-hero-side h3 {
+    font-size: 1.1rem;
+    margin: 4px 0;
+  }
+
+  .commandes-hero-title p,
+  .commandes-hero-side p,
+  .commandes-muted {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .commandes-truck-badge {
+    min-width: 170px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.96), rgba(29, 73, 104, 0.92));
+    color: white;
+    box-shadow: 0 18px 34px rgba(18, 48, 71, 0.18);
+  }
+
+  .commandes-hero--compact .commandes-truck-badge {
+    min-width: 128px;
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-truck-badge span {
+    display: block;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(216, 231, 241, 0.86);
+  }
+
+  .commandes-truck-badge strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 2.1rem;
+    line-height: 1;
+  }
+
+  .commandes-hero--compact .commandes-truck-badge strong {
+    font-size: 1.55rem;
+  }
+
+  .commandes-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .commandes-hero--compact .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commandes-stat-card {
+    padding: 18px;
+    border-radius: 22px;
+    border: 1px solid rgba(214, 228, 238, 0.95);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 252, 0.95));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  .commandes-hero--compact .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-stat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .commandes-hero--compact .commandes-stat-head {
+    margin-bottom: 6px;
+  }
+
+  .commandes-stat-label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #0f8a66;
+  }
+
+  .commandes-stat-value {
+    font-size: 1.08rem;
+    font-weight: 800;
+    color: var(--navy);
+  }
+
+  .commandes-stat-body {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+  }
+
+  .commandes-hero--compact .commandes-stat-body {
+    gap: 10px;
+    align-items: center;
+  }
+
+  .commandes-barrel {
+    position: relative;
+    width: 84px;
+    height: 132px;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 3px solid #cad9e6;
+    background: linear-gradient(180deg, #eef5fb 0%, #d8e4ee 100%);
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.44);
+    flex-shrink: 0;
+  }
+
+  .commandes-hero--compact .commandes-barrel {
+    width: 52px;
+    height: 84px;
+    border-width: 2px;
+    border-radius: 18px;
+  }
+
+  .commandes-barrel-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .commandes-barrel-mark {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 10px;
+    border-top: 2px solid rgba(18, 48, 71, 0.12);
+    border-bottom: 2px solid rgba(18, 48, 71, 0.12);
+  }
+
+  .commandes-barrel-mark.top {
+    top: 18px;
+  }
+
+  .commandes-barrel-mark.bottom {
+    bottom: 18px;
+  }
+
+  .commandes-stat-figure {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1.04;
+  }
+
+  .commandes-hero--compact .commandes-stat-figure {
+    font-size: 1.4rem;
+  }
+
+  .commandes-empty-hero {
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(238, 244, 248, 0.96), rgba(247, 250, 252, 0.98));
+    border: 1px dashed #cfdae3;
+    color: var(--muted);
+  }
+
+  .commandes-hero-side {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #123047 0%, #163d58 100%);
+    color: white;
+    box-shadow: 0 20px 38px rgba(18, 48, 71, 0.2);
+  }
+
+  .commandes-hero--compact .commandes-hero-side {
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .commandes-summary-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .commandes-hero--compact .commandes-summary-grid {
+    gap: 8px;
+  }
+
+  .commandes-summary-card {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .commandes-hero--compact .commandes-summary-card {
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+
+  .commandes-summary-card span {
+    display: block;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b8d9eb;
+  }
+
+  .commandes-summary-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .commandes-hero--compact .commandes-summary-card strong {
+    margin-top: 6px;
+    font-size: 1.45rem;
+  }
+
+  .commandes-summary-card p {
+    margin-top: 6px;
+    color: #d8e7f1;
+  }
+
+  .commandes-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .commandes-page--historique .commandes-toolbar {
+    margin-top: -8px;
+  }
+
+  .commandes-page--historique .commandes-hero {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 24px;
+  }
+
+  .commandes-page--historique .commandes-hero::after {
+    width: 160px;
+    height: 160px;
+    right: -48px;
+    top: -58px;
+  }
+
+  .commandes-page--historique .commandes-hero-main {
+    gap: 10px;
+  }
+
+  .commandes-page--historique .commandes-hero-top {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .commandes-page--historique .commandes-hero-title h3,
+  .commandes-page--historique .commandes-hero-side h3 {
+    font-size: 1.08rem;
+    margin: 2px 0;
+  }
+
+  .commandes-page--historique .commandes-hero-title p,
+  .commandes-page--historique .commandes-hero-side p {
+    display: none;
+  }
+
+  .commandes-page--historique .commandes-truck-badge {
+    min-width: 122px;
+    padding: 9px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--historique .commandes-truck-badge strong {
+    margin-top: 4px;
+    font-size: 1.5rem;
+  }
+
+  .commandes-page--historique .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commandes-page--historique .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--historique .commandes-stat-head {
+    margin-bottom: 4px;
+  }
+
+  .commandes-page--historique .commandes-stat-body {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .commandes-page--historique .commandes-barrel {
+    display: none;
+  }
+
+  .commandes-page--historique .commandes-stat-figure {
+    font-size: 1.45rem;
+  }
+
+  .commandes-page--historique .commandes-empty-hero {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--historique .commandes-hero-side {
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .commandes-page--historique .commandes-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .commandes-page--historique .commandes-summary-card {
+    padding: 11px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--historique .commandes-summary-card strong {
+    margin-top: 5px;
+    font-size: 1.32rem;
+  }
+
+  .commandes-page--historique .commandes-summary-card p {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
+  .commandes-page--historique .commandes-filter-header {
+    padding: 12px 16px;
+  }
+
+  .commandes-page--historique .commandes-filter-body {
+    padding: 16px;
+  }
+
+  .commandes-page--historique .commandes-filter-header .commandes-block-title {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+
+  .commandes-page--historique .commandes-filter-header .commandes-muted {
+    font-size: 0.9rem;
+  }
+
+  .commandes-page--historique .commandes-table-top {
+    padding: 14px 16px 0;
+  }
+
+  .commandes-page--historique .commandes-table-top .commandes-block-title {
+    font-size: 1.15rem;
+    margin-top: 2px;
+  }
+
+  .commandes-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(214, 228, 238, 0.92);
+    box-shadow: 0 12px 24px rgba(18, 48, 71, 0.08);
+  }
+
+  .commandes-switcher .btn,
+  .commandes-switcher .btn-secondary {
+    margin: 0;
+  }
+
+  .commandes-shell {
+    max-width: none;
+    width: 100%;
+  }
+
+  .commandes-filter-shell {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .commandes-filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(217, 226, 232, 0.85);
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.04), rgba(79, 191, 159, 0.09));
+  }
+
+  .commandes-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(79, 191, 159, 0.14);
+    color: var(--mint-dark);
+    font-weight: 700;
+  }
+
+  .commandes-filter-body {
+    padding: 22px;
+  }
+
+  .commandes-filter-grid {
+    grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr;
+  }
+
+  .commandes-table-shell {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .commandes-table-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 20px 22px 0;
+  }
+
+  .commandes-table-wrap {
+    padding: 0 0 4px;
+  }
+
+  .commandes-table-wrap .table {
+    margin-top: 16px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .commandes-table-wrap .table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .commandes-table-wrap .table td {
+    vertical-align: top;
+  }
+
+  .commandes-highlight-row {
+    background: linear-gradient(135deg, #fff3e7, #fff8f1);
+  }
+
+  .commandes-cell-note {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+  }
+
+  .commandes-capacity {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--navy);
+    font-weight: 700;
+  }
+
+  .commandes-empty-table {
+    text-align: center;
+    padding: 26px 16px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 1180px) {
+    .commandes-hero {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 760px) {
+    .commandes-page {
+      gap: 16px;
+    }
+
+    .commandes-hero,
+    .commandes-filter-body,
+    .commandes-filter-header,
+    .commandes-table-top {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .commandes-filter-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-switcher {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .commandes-switcher .btn,
+    .commandes-switcher .btn-secondary {
+      flex: 1;
+      text-align: center;
+    }
+  }
+</style>
+
+<div class="commandes-page {% if scope == 'historique' %}commandes-page--historique{% endif %}">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Exploitation</p>
+      <h1>
+        {% if page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
+          {% if scope == "historique" %}
+          Suivi des commandes
+          {% else %}
+          Numeros Sage a renseigner
+          {% endif %}
+        {% elif scope == "historique" %}
+        Historique des commandes
+        {% elif page_user_role == "logistique" %}
+        Commandes a affecter
+        {% elif page_user_role == "dga" %}
+        Commandes a controler par le DGA
+        {% elif page_user_role == "directeur" %}
+        Commandes a valider par le DG
+        {% else %}
+        Nouvelles commandes
+        {% endif %}
+      </h1>
+    </div>
+    <div class="field-inline">
+      <a href="/commandes/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter XLS</a>
+      <a href="/commandes/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Exporter PDF</a>
+      {% if can_add_commandes %}
+      <a href="/commandes/ajouter/" class="btn">Ajouter une commande</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="commandes-hero {% if scope == 'historique' %}commandes-hero--compact{% endif %}">
+    <div class="commandes-hero-main">
+      <div class="commandes-hero-top">
+        <div class="commandes-hero-title">
+          <div class="section-label">Statistiques</div>
+          <h3>{{ commandes_stats.title }}</h3>
+          <p>{{ commandes_stats.period }}</p>
         </div>
+        <div class="commandes-truck-badge">
+          <span>Nombre de camions</span>
+          <strong>{{ commandes_stats.truck_count }}</strong>
+        </div>
+      </div>
 
-        <div class="field">
+      {% if commandes_stats.has_data %}
+      <div class="commandes-stats-grid">
+        {% for item in commandes_stats.product_stats %}
+        <article class="commandes-stat-card">
+          <div class="commandes-stat-head">
+            <div class="commandes-stat-label">{{ item.label }}</div>
+            <div class="commandes-stat-value">{{ item.display_quantity }} {{ item.unit }}</div>
+          </div>
+          <div class="commandes-stat-body">
+            <div class="commandes-barrel">
+              <div
+                class="commandes-barrel-fill"
+                style="height:{{ item.fill_percent }}%; background:{% if item.label == 'ESSENCE' %}linear-gradient(180deg, #ff9a74 0%, #d95c4f 100%){% else %}linear-gradient(180deg, #58d2ab 0%, #249274 100%){% endif %};"
+              ></div>
+              <div class="commandes-barrel-mark top"></div>
+              <div class="commandes-barrel-mark bottom"></div>
+            </div>
+            <div>
+              <div class="commandes-muted">Quantite totale</div>
+              <div class="commandes-stat-figure">{{ item.display_quantity }}</div>
+              <div class="commandes-muted" style="margin-top:6px;">
+                {% if scope == "historique" %}
+                {{ item.unit|default:"-" }} filtres
+                {% else %}
+                {{ item.unit|default:"-" }} sur la periode filtree
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="commandes-empty-hero">
+        Aucune quantite de commande a afficher pour ce filtre.
+      </div>
+      {% endif %}
+    </div>
+
+    <aside class="commandes-hero-side">
+      <div>
+        <div class="section-label" style="color:#8ce4c8;">Synthese</div>
+        <h3 style="color:white;">Vue rapide</h3>
+        <p>
+          {% if scope == "historique" %}
+          Resume rapide de la selection courante.
+          {% else %}
+          Une lecture immediate des volumes et de la couverture camion sur la selection courante.
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="commandes-summary-grid">
+        <div class="commandes-summary-card">
+          <span>Quantite totale</span>
+          <strong>{{ commandes_stats.display_total_quantity }}</strong>
+          <p>Somme des commandes visibles avec le filtre actuel.</p>
+        </div>
+        <div class="commandes-summary-card">
+          <span>Camions concernes</span>
+          <strong>{{ commandes_stats.truck_count }}</strong>
+          <p>Nombre de camions distincts sur les commandes affichees.</p>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="commandes-toolbar">
+    <div class="commandes-switcher">
+      <a href="/commandes/" class="{% if scope != 'historique' %}btn{% else %}btn-secondary{% endif %}">
+        {% if page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
+        Commandes a numeroter
+        {% elif page_user_role == "logistique" %}
+        A affecter
+        {% elif page_user_role == "dga" %}
+        File DGA
+        {% elif page_user_role == "directeur" %}
+        File DG
+        {% else %}
+        Nouvelles commandes
+        {% endif %}
+      </a>
+      <a href="/commandes/?scope=historique" class="{% if scope == 'historique' %}btn{% else %}btn-secondary{% endif %}">
+        {% if page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
+        Suivi commande
+        {% else %}
+        Historique
+        {% endif %}
+      </a>
+    </div>
+  </div>
+
+  <section class="form-shell commandes-shell commandes-filter-shell">
+    <div class="commandes-filter-header">
+      <div>
+        <div class="section-label">Recherche avancee</div>
+        <h3 class="commandes-block-title">Filtres de consultation</h3>
+        <p class="commandes-muted">Affinez la liste par reference, statut ou periode sans casser la lecture de la page.</p>
+      </div>
+      <div class="commandes-filter-chip">
+        <span>Scope actif :</span>
+        <strong>
+          {% if page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
+            {% if scope == "historique" %}Suivi commande{% else %}Commandes a numeroter{% endif %}
+          {% else %}
+            {% if scope == "historique" %}Historique{% else %}Courant{% endif %}
+          {% endif %}
+        </strong>
+      </div>
+    </div>
+
+    <div class="commandes-filter-body">
+      <form method="get" class="app-form">
+        <input type="hidden" name="scope" value="{{ scope }}">
+        <div class="form-grid commandes-filter-grid">
+          <div class="field">
+            <label for="id_q">Recherche</label>
+            <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Ref, BL, client, produit, destination">
+          </div>
+
+          <div class="field">
             <label for="id_statut">Statut</label>
             <select id="id_statut" name="statut">
-                <option value="">Tous les statuts</option>
-                {% for value, label in statut_choices %}
-                <option value="{{ value }}" {% if statut == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
+              <option value="">Tous les statuts</option>
+              {% for value, label in statut_choices %}
+              <option value="{{ value }}" {% if statut == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
             </select>
-        </div>
+          </div>
 
-        {% if page_user_role == "logistique" %}
-        <div class="field">
-            <label for="id_niveau_bon">Niveau du bon</label>
-            <select id="id_niveau_bon" name="niveau_bon">
-                <option value="">Tous les niveaux</option>
-                {% for value, label in niveau_bon_choices %}
-                <option value="{{ value }}" {% if niveau_bon == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
-
-        <div class="field">
+          <div class="field">
             <label for="id_date_debut">Date debut</label>
             <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
-        </div>
+          </div>
 
-        <div class="field">
+          <div class="field">
             <label for="id_date_fin">Date fin</label>
             <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+          </div>
         </div>
+
+        <div class="form-actions">
+          <a href="/commandes/" class="btn-secondary">Reinitialiser</a>
+          <button type="submit" class="btn">Filtrer</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="form-shell commandes-shell commandes-table-shell">
+    <div class="commandes-table-top">
+      <div>
+        <div class="section-label">Liste</div>
+        <h3 class="commandes-block-title" style="margin-bottom:4px;">Commandes visibles</h3>
+        <p class="commandes-muted">Suivi detaille des commandes, de leur affectation et du niveau d'avancement du BL.</p>
+      </div>
     </div>
 
-    <div class="form-actions">
-        <a href="/commandes/" class="btn-secondary">Reinitialiser</a>
-        <button type="submit" class="btn">Filtrer</button>
+    <div class="commandes-table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date CDE</th>
+            <th>Ref</th>
+            <th>N° BL</th>
+            <th>Client</th>
+            <th>Produit</th>
+            <th>Portefeuille</th>
+            <th>Destination finale</th>
+            <th>Affectation</th>
+            <th>Statut</th>
+            {% if report_status_label %}<th>{{ report_status_label }}</th>{% endif %}
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if page_user_role == "logistique" %}
+          {% for row in logistique_rows %}
+          <tr{% if row.has_reaffectation %} class="commandes-highlight-row"{% endif %}>
+            <td>{{ row.commande.date_commande|date:"Y-m-d" }}</td>
+            <td>{{ row.commande.reference_affichee }}</td>
+            <td>{% if row.operation %}{{ row.operation.numero_bl }}{% else %}-{% endif %}</td>
+            <td>{{ row.commande.client.entreprise }}</td>
+            <td>
+              {% if row.commande.produit %}{{ row.commande.produit.nom }}{% else %}-{% endif %}
+              <span class="commandes-cell-note">{{ row.commande.quantite|default:"-" }}</span>
+            </td>
+            <td>{% if row.commande.client.commercial %}{{ row.commande.client.commercial.get_full_name|default:row.commande.client.commercial.username }}{% else %}-{% endif %}</td>
+            <td>{{ row.commande.ville_arrivee }}</td>
+            <td>
+              {% if row.camion %}
+              {{ row.camion.numero_tracteur }}
+              {% if row.chauffeur %}<span class="commandes-cell-note">{{ row.chauffeur.nom }}</span>{% endif %}
+              {% if row.camion.capacite %}<span class="commandes-capacity">Capacite : {{ row.camion.capacite }}</span>{% endif %}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td>
+              <span class="status-badge {% if row.operation and row.operation.etat_bon == 'livre' %}status-ok{% elif row.operation and row.operation.etat_bon in 'declare,liquide,charge' %}status-danger{% endif %}">
+                {{ row.niveau_bon_label }}
+              </span>
+            </td>
+            {% if report_status_label %}
+            <td>
+              {% if statut == "declare" and row.operation and row.operation.date_bons_declares %}{{ row.operation.date_bons_declares|date:"Y-m-d" }}
+              {% elif statut == "liquide" and row.operation and row.operation.date_bons_liquides %}{{ row.operation.date_bons_liquides|date:"Y-m-d" }}
+              {% elif statut == "charge" and row.operation and row.operation.date_bons_charges %}{{ row.operation.date_bons_charges|date:"Y-m-d" }}
+              {% elif statut == "livre" and row.operation and row.operation.date_bons_livres %}{{ row.operation.date_bons_livres|date:"Y-m-d" }}
+              {% else %}-{% endif %}
+            </td>
+            {% endif %}
+            <td>
+              <div class="table-actions">
+                <a href="/commandes/detail/{{ row.commande.id }}/" class="btn-secondary">Detail</a>
+                {% if row.can_change_truck %}
+                <a href="/commandes/affecter-logistique/{{ row.commande.id }}/" class="btn-secondary">{{ row.button_label }}</a>
+                {% else %}
+                <span class="status-badge status-danger">{{ row.button_label }}</span>
+                {% endif %}
+                {% if row.latest_reaffectation %}
+                <a href="/operations/logistique/historique/{{ row.latest_reaffectation.id }}/" class="btn-secondary">Ancienne fiche</a>
+                {% endif %}
+              </div>
+              {% if row.has_reaffectation %}
+              <div style="margin-top:8px;">
+                <span class="status-badge status-danger">Camion change sur ce BL</span>
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if report_status_label %}11{% else %}10{% endif %}" class="commandes-empty-table">Aucune commande enregistree pour le moment.</td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          {% for commande in commandes %}
+          <tr>
+            <td>{{ commande.date_commande|date:"Y-m-d" }}</td>
+            <td>{{ commande.reference_affichee }}</td>
+            <td>{% if commande.latest_operation %}{{ commande.latest_operation.numero_bl }}{% else %}-{% endif %}</td>
+            <td>{{ commande.client.entreprise }}</td>
+            <td>
+              {% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}
+              <span class="commandes-cell-note">{{ commande.quantite|default:"-" }}</span>
+            </td>
+            <td>{% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}<span class="status-badge status-danger">Non affecte</span>{% endif %}</td>
+            <td>{{ commande.ville_arrivee }}</td>
+            <td>
+              {% if commande.camion %}
+              {{ commande.camion.numero_tracteur }}
+              {% if commande.chauffeur %}<span class="commandes-cell-note">{{ commande.chauffeur.nom }}</span>{% endif %}
+              {% if commande.camion.capacite %}<span class="commandes-capacity">Capacite : {{ commande.camion.capacite }}</span>{% endif %}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td>
+              {% if commande.latest_operation %}
+                {% if commande.latest_operation.etat_bon == "livre" %}
+                <span class="status-badge status-ok">{{ commande.latest_operation.get_etat_bon_display }}</span>
+                {% elif commande.latest_operation.etat_bon in "declare,liquide,charge" %}
+                <span class="status-badge status-danger">{{ commande.latest_operation.get_etat_bon_display }}</span>
+                {% else %}
+                <span class="status-badge">{{ commande.latest_operation.get_etat_bon_display }}</span>
+                {% endif %}
+              {% elif commande.statut == "attente_validation_dga" %}
+                <span class="status-badge status-danger">En attente validation DGA</span>
+              {% elif commande.statut == "attente_validation_dg" %}
+                {% if commande.decision_dga == "rejetee" %}
+                <span class="status-badge status-danger">Rejetee par DGA</span>
+                {% else %}
+                <span class="status-badge status-ok">Validee par DGA</span>
+                {% endif %}
+              {% elif commande.statut == "validee_dg" %}
+                {% if commande.requires_sage_number %}
+                <span class="status-badge status-danger">Validee DG - numero Sage attendu</span>
+                {% else %}
+                <span class="status-badge status-ok">Validee par DG</span>
+                {% endif %}
+              {% elif commande.statut == "rejetee_dg" %}
+                <span class="status-badge status-danger">Rejetee par DG</span>
+              {% else %}
+                <span class="status-badge">{{ commande.get_statut_display }}</span>
+              {% endif %}
+            </td>
+            {% if report_status_label %}
+            <td>{% if commande.report_status_date %}{{ commande.report_status_date|date:"Y-m-d" }}{% else %}-{% endif %}</td>
+            {% endif %}
+            <td>
+              <div class="table-actions">
+                <a href="/commandes/detail/{{ commande.id }}/" class="btn-secondary">Detail</a>
+                {% if user_role == "dga" and commande.statut == "attente_validation_dga" %}
+                <a href="/commandes/apercu-dga/{{ commande.id }}/" class="btn-secondary">Apercu DGA</a>
+                {% endif %}
+                {% if user_role == "directeur" and commande.statut == "attente_validation_dg" %}
+                <a href="/commandes/apercu-dg/{{ commande.id }}/" class="btn-secondary">Apercu DG</a>
+                {% endif %}
+                {% if can_edit_commandes and not commande.date_validation_dga and not commande.decision_dga %}
+                <a href="/commandes/modifier/{{ commande.id }}/" class="btn-edit">Modifier</a>
+                {% endif %}
+                {% if can_edit_commandes and commande.requires_sage_number %}
+                <a href="/commandes/numero/{{ commande.id }}/" class="btn-edit">Numero Sage</a>
+                {% endif %}
+                {% if is_admin_user or user_role == "directeur" %}
+                <a href="/commandes/supprimer/{{ commande.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette commande ?')">Supprimer</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if report_status_label %}11{% else %}10{% endif %}" class="commandes-empty-table">Aucune commande enregistree pour le moment.</td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
     </div>
-</form>
+  </section>
 </div>
-
-<table class="table">
-<thead>
-<tr>
-<th>Reference</th>
-<th>Client</th>
-<th>Produit</th>
-<th>Quantite</th>
-{% if page_user_role != "logistique" %}<th>Portefeuille</th>{% endif %}
-{% if page_user_role != "logistique" %}<th>Prix negocie</th>{% endif %}
-<th>Trajet</th>
-<th>Affectation</th>
-{% if page_user_role == "logistique" %}<th>Niveau du bon</th>{% endif %}
-<th>Date commande</th>
-<th>Livraison prevue</th>
-<th>Statut</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody>
-{% if page_user_role == "logistique" %}
-{% for row in logistique_rows %}
-<tr{% if row.has_reaffectation %} style="background:#fff0e3;"{% endif %}>
-<td>{{ row.commande.reference }}</td>
-<td>{{ row.commande.client.entreprise }}</td>
-<td>{% if row.commande.produit %}{{ row.commande.produit.nom }}{% else %}-{% endif %}</td>
-<td>{% if row.commande.quantite %}{{ row.commande.quantite }}{% else %}-{% endif %}</td>
-<td>{{ row.commande.ville_depart }} -> {{ row.commande.ville_arrivee }}</td>
-<td>
-{% if row.camion %}
-{{ row.camion.numero_tracteur }}
-{% if row.chauffeur %}<br><span style="color:#6b7c8f;">{{ row.chauffeur.nom }}</span>{% endif %}
-{% if row.camion.capacite %}<br><span style="color:#123047; font-weight:700;">Capacite : {{ row.camion.capacite }}</span>{% endif %}
-{% else %}
--
-{% endif %}
-</td>
-<td>
-<span class="status-badge {% if row.operation and row.operation.etat_bon == 'livre' %}status-ok{% elif row.operation and row.operation.etat_bon != 'initie' %}status-danger{% endif %}">
-    {{ row.niveau_bon_label }}
-</span>
-</td>
-<td>{{ row.commande.date_commande|date:"Y-m-d" }}</td>
-<td>{{ row.commande.date_livraison_prevue }}</td>
-<td>{{ row.commande.get_statut_display }}</td>
-<td>
-<div class="table-actions">
-<span class="status-badge status-ok">Lecture</span>
-{% if row.can_change_truck %}
-<a href="/commandes/affecter-logistique/{{ row.commande.id }}/" class="btn-secondary">{{ row.button_label }}</a>
-{% else %}
-<span class="status-badge status-danger">{{ row.button_label }}</span>
-{% endif %}
-{% if row.latest_reaffectation %}
-<a href="/operations/logistique/historique/{{ row.latest_reaffectation.id }}/" class="btn-secondary">Ancienne fiche</a>
-{% endif %}
-</div>
-{% if row.has_reaffectation %}
-<div style="margin-top:8px;">
-    <span class="status-badge status-danger">Camion change sur ce BL</span>
-</div>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="11">Aucune commande enregistree pour le moment.</td>
-</tr>
-{% endfor %}
-{% else %}
-{% for commande in commandes %}
-<tr>
-<td>{{ commande.reference }}</td>
-<td>{{ commande.client.entreprise }}</td>
-<td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
-<td>{% if commande.quantite %}{{ commande.quantite }}{% else %}-{% endif %}</td>
-<td>{% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}<span class="status-badge status-danger">Non affecte</span>{% endif %}</td>
-<td>{% if commande.prix_negocie %}{{ commande.prix_negocie }}{% else %}-{% endif %}</td>
-<td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
-<td>
-{% if commande.camion %}
-{{ commande.camion.numero_tracteur }}
-{% if commande.chauffeur %}<br><span style="color:#6b7c8f;">{{ commande.chauffeur.nom }}</span>{% endif %}
-{% if commande.camion.capacite %}
-<br><span style="color:#123047; font-weight:700;">Capacite : {{ commande.camion.capacite }}</span>
-{% endif %}
-{% else %}
--
-{% endif %}
-</td>
-<td>{{ commande.date_commande|date:"Y-m-d" }}</td>
-<td>{{ commande.date_livraison_prevue }}</td>
-<td>{{ commande.get_statut_display }}</td>
-<td>
-<div class="table-actions">
-{% if can_edit_commandes %}
-<a href="/commandes/modifier/{{ commande.id }}/" class="btn-edit">Modifier</a>
-<a href="/commandes/supprimer/{{ commande.id }}/" class="btn-delete" onclick="return confirm('Supprimer cette commande ?')">Supprimer</a>
-{% else %}
-<span class="status-badge status-ok">Lecture</span>
-{% endif %}
-{% if user_role == "dga" and commande.statut == "attente_validation_dga" %}
-<a href="/commandes/apercu-dga/{{ commande.id }}/" class="btn-secondary">Apercu DGA</a>
-{% endif %}
-{% if user_role == "directeur" and commande.statut == "attente_validation_dg" %}
-<a href="/commandes/apercu-dg/{{ commande.id }}/" class="btn-secondary">Apercu DG</a>
-{% endif %}
-</div>
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="12">Aucune commande enregistree pour le moment.</td>
-</tr>
-{% endfor %}
-{% endif %}
-</tbody>
-</table>
-
 {% endblock %}

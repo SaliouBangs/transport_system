@@ -9,28 +9,30 @@
 body{
     font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color:#163042;
-    margin:24px;
+    margin:12px;
     background:#f4f7fb;
+    font-size:12px;
+    line-height:1.3;
 }
 .sheet{
     max-width:1040px;
     margin:0 auto;
     background:#ffffff;
-    border-radius:24px;
-    padding:28px;
-    box-shadow:0 24px 60px rgba(18,48,71,0.08);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 18px 40px rgba(18,48,71,0.08);
 }
 .actions{
     display:flex;
     justify-content:flex-end;
-    margin-bottom:18px;
+    margin-bottom:10px;
 }
 .print-btn{
     border:none;
     background:#249274;
     color:white;
     border-radius:10px;
-    padding:10px 14px;
+    padding:8px 12px;
     cursor:pointer;
     font-weight:700;
 }
@@ -39,15 +41,15 @@ body{
     justify-content:space-between;
     gap:24px;
     align-items:flex-start;
-    margin-bottom:24px;
+    margin-bottom:14px;
 }
 .brand{
     display:flex;
     align-items:flex-start;
-    gap:16px;
+    gap:12px;
 }
 .brand img{
-    width:88px;
+    width:72px;
     height:auto;
     object-fit:contain;
 }
@@ -55,7 +57,7 @@ body{
     margin:0 0 6px 0;
     text-transform:uppercase;
     letter-spacing:0.14em;
-    font-size:0.78rem;
+    font-size:0.68rem;
     font-weight:700;
     color:#249274;
 }
@@ -63,32 +65,37 @@ h1,h2,h3,p{
     margin-top:0;
 }
 h1{
-    margin-bottom:8px;
+    margin-bottom:4px;
+    font-size:1.45rem;
+}
+h2{
+    font-size:1rem;
 }
 .muted{
     color:#5f7384;
+    font-size:0.84rem;
 }
 .grid{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:16px;
-    margin-bottom:24px;
+    gap:10px;
+    margin-bottom:14px;
 }
 .box{
     border:1px solid #d9e2e8;
-    border-radius:18px;
-    padding:14px 16px;
+    border-radius:14px;
+    padding:10px 12px;
     background:#f9fbfd;
 }
 .box strong{
     display:block;
-    margin-bottom:6px;
+    margin-bottom:4px;
 }
 .summary{
     display:grid;
     grid-template-columns:1.2fr 0.8fr;
-    gap:18px;
-    margin-bottom:24px;
+    gap:12px;
+    margin-bottom:14px;
 }
 .summary-table{
     width:100%;
@@ -96,62 +103,65 @@ h1{
 }
 .summary-table th,
 .summary-table td{
-    padding:8px 0;
+    padding:5px 0;
     text-align:left;
     vertical-align:top;
     border-bottom:1px solid #edf2f6;
+    font-size:0.9rem;
 }
 .summary-table th{
-    width:40%;
+    width:32%;
     color:#5f7384;
     font-weight:700;
 }
 table{
     width:100%;
     border-collapse:collapse;
-    margin-top:12px;
+    margin-top:8px;
 }
 th{
     background:#123047;
     color:white;
     text-align:left;
-    padding:10px 12px;
-    font-size:0.95rem;
+    padding:7px 9px;
+    font-size:0.78rem;
 }
 td{
     border:1px solid #d9e2e8;
-    padding:10px 12px;
+    padding:7px 9px;
     vertical-align:top;
+    font-size:0.82rem;
 }
 .amount-box{
     background:#123047;
     color:white;
-    border-radius:18px;
-    padding:18px;
+    border-radius:14px;
+    padding:14px;
 }
 .amount-box h2{
-    margin-bottom:14px;
+    margin-bottom:10px;
     font-size:1rem;
 }
 .amount-value{
-    font-size:2rem;
+    font-size:1.65rem;
     font-weight:800;
-    margin-bottom:8px;
+    margin-bottom:6px;
 }
 .amount-words{
     color:#d9edf1;
-    line-height:1.5;
+    line-height:1.35;
+    font-size:0.86rem;
 }
 .validation-list{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:14px;
-    margin-top:16px;
+    gap:10px;
+    margin-top:10px;
 }
 .validation-card{
     border:1px solid #d9e2e8;
-    border-radius:18px;
-    padding:14px 16px;
+    border-radius:14px;
+    padding:10px 12px;
     background:#fff;
 }
 .validation-head{
@@ -159,14 +169,14 @@ td{
     justify-content:space-between;
     gap:12px;
     align-items:center;
-    margin-bottom:10px;
+    margin-bottom:6px;
 }
 .badge{
     display:inline-flex;
     align-items:center;
     border-radius:999px;
-    padding:6px 10px;
-    font-size:0.78rem;
+    padding:5px 8px;
+    font-size:0.72rem;
     font-weight:700;
 }
 .badge-ok{
@@ -187,17 +197,22 @@ td{
 }
 .validation-meta{
     color:#5f7384;
-    font-size:0.92rem;
-    line-height:1.5;
+    font-size:0.8rem;
+    line-height:1.35;
 }
 .block-title{
-    margin:0 0 10px 0;
-    font-size:1.15rem;
+    margin:0 0 6px 0;
+    font-size:1rem;
 }
 @media print{
+    @page{
+        size:A4 portrait;
+        margin:9mm;
+    }
     body{
         margin:0;
         background:#fff;
+        font-size:11px;
     }
     .sheet{
         max-width:none;
@@ -207,6 +222,11 @@ td{
     }
     .actions{
         display:none;
+    }
+    .box,
+    .amount-box,
+    .validation-card{
+        break-inside:avoid;
     }
 }
 </style>
@@ -252,10 +272,8 @@ td{
             {% endif %}
         </div>
         <div class="box">
-            <strong>Prestataire / fournisseur</strong>
-            Prestataire : {{ maintenance.prestataire|default:"-" }}<br>
-            Fournisseur : {{ maintenance.fournisseur|default:"-" }}<br>
-            Facture : {{ maintenance.numero_facture|default:"-" }}
+            <strong>Prestataire</strong>
+            {{ maintenance.prestataire|default:"-" }}
         </div>
         <div class="box">
             <strong>Kilometrage</strong>
@@ -273,24 +291,41 @@ td{
                     <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
                     <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
                     <tr><th>Date paiement</th><td>{% if maintenance.date_paiement %}{{ maintenance.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</td></tr>
+                    <tr>
+                        <th>Factures fournisseurs</th>
+                        <td>
+                            {% if invoice_rows %}
+                                {% for invoice in invoice_rows %}
+                                <div style="margin-bottom:6px;">
+                                    <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
+                                    {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
         <div class="amount-box">
-            <h2>Montant total</h2>
+            <h2>Montant payable</h2>
             <div class="amount-value">{{ montant_total_formatte }} GNF</div>
             <div class="amount-words">{{ montant_en_lettres|capfirst }}</div>
+            <div class="amount-words" style="margin-top:10px;">Valorisation stock (info) : {{ montant_stock_information_formatte }} GNF</div>
+            <div class="amount-words">Cout global indicatif : {{ montant_global_information_formatte }} GNF</div>
         </div>
     </div>
 
     <div class="box" style="margin-bottom:24px;">
-        <h2 class="block-title">Lignes de diagnostic et de prix</h2>
+        <h2 class="block-title">Lignes de diagnostic, pannes et prix</h2>
         <table>
             <thead>
                 <tr>
                     <th>Type</th>
                     <th>Libelle</th>
-                    <th>Pieces / details</th>
+                    <th>Pannes / pieces</th>
                     <th>Qte</th>
                     <th>Prix unitaire</th>
                     <th>Montant</th>
@@ -304,7 +339,7 @@ td{
                     <td>
                         {% if row.pieces %}
                             {% for piece in row.pieces %}
-                            <div>{{ piece.libelle }}</div>
+                            <div>{{ piece.libelle }}{% if piece.is_stock_information %} (stock / info){% endif %}</div>
                             {% endfor %}
                         {% else %}
                             -

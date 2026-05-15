@@ -36,10 +36,30 @@
                 <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
                 <tr><th>Date entree</th><td>{{ maintenance.date_debut }}</td></tr>
                 <tr><th>Date sortie</th><td>{{ maintenance.date_fin|default:"-" }}</td></tr>
-                <tr><th>Fournisseur</th><td>{{ maintenance.fournisseur|default:"-" }}</td></tr>
                 <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
-                <tr><th>Numero facture</th><td>{{ maintenance.numero_facture|default:"-" }}</td></tr>
-                <tr><th>Montant total</th><td>{{ maintenance.total_facture }}</td></tr>
+                <tr>
+                    <th>Factures fournisseurs</th>
+                    <td>
+                        {% if invoice_rows %}
+                            {% for invoice in invoice_rows %}
+                            <div style="margin-bottom:10px;">
+                                <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
+                                {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
+                                {% if invoice.facture_fichier %}
+                                <div style="margin-top:4px;">
+                                    <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr><th>Montant payable</th><td>{{ montant_total_formatte }} GNF</td></tr>
+                <tr><th>Valorisation stock (info)</th><td>{{ montant_stock_information_formatte }} GNF</td></tr>
+                <tr><th>Cout global indicatif</th><td>{{ montant_global_information_formatte }} GNF</td></tr>
                 <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
                 <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
             </tbody>
@@ -53,7 +73,7 @@
                 <tr>
                     <th>Type</th>
                     <th>Libelle</th>
-                    <th>Pieces / details</th>
+                    <th>Pannes / pieces</th>
                     <th>Qte</th>
                     <th>Prix unitaire</th>
                     <th>Montant</th>
@@ -67,7 +87,7 @@
                     <td>
                         {% if row.pieces %}
                             {% for piece in row.pieces %}
-                            <div>{{ piece.libelle }}</div>
+                            <div>{{ piece.libelle }}{% if piece.is_stock_information %} <span class="status-badge status-ok">Stock / info</span>{% endif %}</div>
                             {% endfor %}
                         {% else %}
                             -

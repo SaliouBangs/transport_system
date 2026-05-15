@@ -3,6 +3,7 @@ from django.db import models
 
 class Transporteur(models.Model):
     nom = models.CharField(max_length=200, unique=True)
+    telephone = models.CharField(max_length=50, blank=True)
 
     class Meta:
         ordering = ["nom"]
@@ -45,6 +46,7 @@ class Camion(models.Model):
         blank=True,
         related_name="camions",
     )
+    est_affrete = models.BooleanField(default=False)
     capacite = models.IntegerField()
     kilometrage_actuel = models.PositiveIntegerField(default=0)
     kilometrage_alerte_vidange = models.PositiveIntegerField(null=True, blank=True)

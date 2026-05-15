@@ -1,0 +1,704 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Commande</p>
+<h1>Detail de la commande {{ commande.reference }}</h1>
+<p class="muted">{{ commande.client.entreprise }}{% if commande.client.nom %} - {{ commande.client.nom }}{% endif %}</p>
+</div>
+<div class="field-inline">
+<a href="/commandes/" class="btn-secondary">Retour</a>
+{% if is_admin_user or user_role == "directeur" %}
+<a href="/commandes/modifier/{{ commande.id }}/" class="btn-edit">Modifier</a>
+{% endif %}
+</div>
+</div>
+
+<div class="commande-detail-layout">
+    <section class="form-shell">
+        <p class="eyebrow">Decision</p>
+        <h2 style="margin-top:0;">Analyse client et commande</h2>
+
+        <div class="decision-panel" style="margin-top: 18px;">
+            <div class="decision-panel__header">
+                <div>
+                    <h3 style="margin:0;">Informations client</h3>
+                    <p class="muted">Aide a la decision avant validation de la commande.</p>
+                </div>
+                <div class="risk-chip risk-chip--{{ client_payload.niveau_risque }}">{{ client_payload.ratio_decouvert|floatformat:0 }}% du decouvert</div>
+            </div>
+
+            <div class="decision-stats">
+                <div class="decision-card">
+                    <span class="decision-label">Contact</span>
+                    <strong>{{ client_payload.nom|default:"-" }}</strong>
+                    <small>{{ client_payload.fonction_contact|default:"-" }}</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Telephone / ville</span>
+                    <strong>{{ client_payload.telephone|default:"-" }}</strong>
+                    <small>{{ client_payload.ville|default:"-" }}</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Solde initial</span>
+                    <strong>{{ client_payload.solde_initial|gnf }}</strong>
+                    <small>{% if client_payload.date_solde_initial %}Au {{ client_payload.date_solde_initial }}{% else %}-{% endif %}</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Encours reel</span>
+                    <strong>{{ client_payload.encours_reel|gnf }}</strong>
+                    <small>Avant nouvelle commande</small>
+                </div>
+                <div class="decision-card decision-card--{{ client_payload.niveau_risque }}">
+                    <span class="decision-label">Risque net</span>
+                    <strong>{{ client_payload.risque_client|gnf }}</strong>
+                    <small>Encours + engagement - avances</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Creances livrees</span>
+                    <strong>{{ client_payload.creance_client|gnf }}</strong>
+                    <small>Restant du sur commandes deja livrees</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Total paiements</span>
+                    <strong>{{ client_payload.total_paiements|gnf }}</strong>
+                    <small>Encaissements enregistres</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Paiements anticipes</span>
+                    <strong>{{ client_payload.paiements_anticipes|gnf }}</strong>
+                    <small>Montants recus d'avance</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">DMA</span>
+                    <strong>{{ client_payload.decouvert_maximum_autorise|gnf }}</strong>
+                    <small>Decouvert maximum autorise</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Disponible avant decouvert</span>
+                    <strong>{{ client_payload.disponible_decouvert|gnf }}</strong>
+                    <small>Delai par defaut : {{ client_payload.delai_paiement_jours }} jour(s)</small>
+                </div>
+                <div class="decision-card">
+                    <span class="decision-label">Engagement</span>
+                    <strong>{{ client_payload.engagement_total|gnf }}</strong>
+                    <small>Validees DG non encore livrees</small>
+                </div>
+                <div class="decision-card decision-card--visual">
+                    <span class="decision-label">Resume visuel</span>
+                    <div class="risk-donut-wrap">
+                        <div
+                            class="risk-donut"
+                            style="--risk-ratio: {{ client_payload.ratio_decouvert|floatformat:0 }}%;"
+                        >
+                            <div class="risk-donut__center">
+                                <strong>{{ client_payload.ratio_decouvert|floatformat:0 }}%</strong>
+                                <small>DMA utilisee</small>
+                            </div>
+                        </div>
+                        <div class="risk-donut-legend">
+                            <div><span class="legend-dot legend-dot--encours"></span>Encours reel<br><strong>{{ client_payload.encours_reel|gnf }}</strong></div>
+                            <div><span class="legend-dot legend-dot--engagement"></span>Engagement net<br><strong>{{ client_payload.engagement_net|gnf }}</strong></div>
+                            <div><span class="legend-dot legend-dot--disponible"></span>Disponible<br><strong>{{ client_payload.disponible_decouvert|gnf }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="risk-progress">
+                <div class="risk-progress__fill risk-progress__fill--{{ client_payload.niveau_risque }}" style="width: {{ client_payload.ratio_decouvert|floatformat:0 }}%;"></div>
+            </div>
+        </div>
+
+        <div class="form-shell detail-inner-shell">
+            <p class="eyebrow">Resume</p>
+            <h3 style="margin-top:0;">Informations generales</h3>
+            <table class="table summary-table">
+                <tbody>
+                    <tr><th>Date CDE</th><td>{{ commande.date_commande|date:"d/m/Y" }}</td></tr>
+                    <tr><th>Ref</th><td>{{ commande.reference }}</td></tr>
+                    <tr><th>N° BL</th><td>{% if commande.latest_operation %}{{ commande.latest_operation.numero_bl }}{% else %}-{% endif %}</td></tr>
+                    <tr><th>Client</th><td>{{ commande.client.entreprise }}</td></tr>
+                    <tr><th>Produit</th><td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td></tr>
+                    <tr><th>Quantite</th><td>{{ commande.quantite|default:"-" }}</td></tr>
+                    <tr><th>Prix negocie</th><td>{% if commande.prix_negocie %}{{ commande.prix_negocie|gnf }}{% else %}-{% endif %}</td></tr>
+                    <tr><th>Montant commande</th><td>{{ commande.montant_commande|gnf }}</td></tr>
+                    <tr><th>Ville de depart</th><td>{{ commande.ville_depart|default:"-" }}</td></tr>
+                    <tr><th>Destination finale</th><td>{{ commande.ville_arrivee|default:"-" }}</td></tr>
+                    <tr><th>Livraison prevue</th><td>{{ commande.date_livraison_prevue|date:"d/m/Y"|default:"-" }}</td></tr>
+                    <tr><th>Echeance</th><td>{{ commande.date_echeance|date:"d/m/Y"|default:"-" }}</td></tr>
+                    <tr><th>Commentaire</th><td>{{ commande.description|default:"-" }}</td></tr>
+                    <tr><th>Risque net</th><td>{{ client_payload.risque_client|gnf }}</td></tr>
+                    <tr><th>Paiements anticipes</th><td>{{ client_payload.paiements_anticipes|gnf }}</td></tr>
+                    <tr><th>Disponible avant decouvert</th><td>{{ client_payload.disponible_decouvert|gnf }}</td></tr>
+                    <tr><th>DMA</th><td>{{ client_payload.decouvert_maximum_autorise|gnf }}</td></tr>
+                    <tr><th>Statut</th><td>{{ commande.display_status }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-shell detail-inner-shell">
+            <h3 style="margin-top:0;">Historique BL</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>BL</th>
+                        <th>Etat</th>
+                        <th>Camion</th>
+                        <th>Chauffeur</th>
+                        <th>Date charge</th>
+                        <th>Date livre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for operation in operations %}
+                    <tr>
+                        <td>{{ operation.numero_bl }}</td>
+                        <td>{{ operation.get_etat_bon_display }}</td>
+                        <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                        <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                        <td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">Aucun BL cree pour cette commande.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <aside class="commande-detail-side">
+        <section class="form-shell sidebar-card">
+            <h2 style="margin-top:0;">Analyse client</h2>
+            <div class="sidebar-stats">
+                <div class="mini-stat">
+                    <span class="mini-stat__label">Nb commandes</span>
+                    <strong>{{ client_payload.nombre_commandes_filtrees }}</strong>
+                </div>
+                <div class="mini-stat">
+                    <span class="mini-stat__label">Quantite totale</span>
+                    <strong>{{ client_payload.total_quantite_filtre|floatformat:0 }} L</strong>
+                </div>
+                <div class="mini-stat">
+                    <span class="mini-stat__label">Montant total</span>
+                    <strong>{{ client_payload.total_montant_filtre|gnf }}</strong>
+                </div>
+                <div class="mini-stat">
+                    <span class="mini-stat__label">Paiements</span>
+                    <strong>{{ client_payload.total_paiements_filtres|gnf }}</strong>
+                </div>
+                <div class="mini-stat">
+                    <span class="mini-stat__label">Engagement</span>
+                    <strong>{{ client_payload.engagement_total|gnf }}</strong>
+                </div>
+            </div>
+
+            <h3 class="sidebar-section-title">Commandes du client</h3>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Paiement</th>
+                            <th>Solde</th>
+                            <th>Etat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in client_payload.dernieres_commandes %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.reference }}</strong>
+                                <small>{{ item.quantite|floatformat:0 }} L{% if item.produit %} / {{ item.produit }}{% endif %}</small>
+                            </td>
+                            <td>{{ item.date|default:"-" }}</td>
+                            <td>{{ item.montant|gnf }}</td>
+                            <td>{{ item.paiement|gnf }}</td>
+                            <td class="{% if item.solde|add:'0' > 0 %}sidebar-table__debt{% else %}sidebar-table__clear{% endif %}">{{ item.solde|gnf }}</td>
+                            <td><span class="status-pill">{{ item.statut }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6">Aucune commande pour ce client.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="sidebar-section-title">Commandes rejetees par DG</h3>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Paiement</th>
+                            <th>Solde</th>
+                            <th>Etat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in client_payload.commandes_rejetees_dg %}
+                        <tr class="sidebar-table__rejected">
+                            <td>
+                                <strong>{{ item.reference }}</strong>
+                                <small>{{ item.quantite|floatformat:0 }} L{% if item.produit %} / {{ item.produit }}{% endif %}</small>
+                            </td>
+                            <td>{{ item.date|default:"-" }}</td>
+                            <td>{{ item.montant|gnf }}</td>
+                            <td>{{ item.paiement|gnf }}</td>
+                            <td class="{% if item.solde|add:'0' > 0 %}sidebar-table__debt{% else %}sidebar-table__clear{% endif %}">{{ item.solde|gnf }}</td>
+                            <td><span class="status-pill status-pill--rejected">{{ item.statut }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6">Aucune commande rejetee par DG.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="form-shell sidebar-card">
+            <h2 style="margin-top:0;">Paiements client</h2>
+            <div class="sidebar-table-wrap">
+                <table class="sidebar-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mode</th>
+                            <th>Reference</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in client_payload.derniers_encaissements %}
+                        <tr>
+                            <td>{{ item.date|default:"-" }}</td>
+                            <td>{{ item.mode|default:"-" }}</td>
+                            <td>{{ item.reference|default:"-" }}</td>
+                            <td>{{ item.montant|gnf }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4">Aucun paiement enregistre pour ce client.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="form-shell sidebar-card">
+            <p class="eyebrow">Validation</p>
+            <h2 style="margin-top:0;">Circuit de validation</h2>
+
+            <table class="table summary-table" style="margin-bottom:18px;">
+                <tbody>
+                    <tr><th>Decision DGA</th><td>{{ commande.get_decision_dga_display|default:"-" }}</td></tr>
+                    <tr><th>Observation DGA</th><td>{{ commande.observation_dga|default:"-" }}</td></tr>
+                    <tr><th>Motif rejet DGA</th><td>{{ commande.motif_rejet_dga|default:"-" }}</td></tr>
+                    <tr><th>Date avis DGA</th><td>{{ commande.date_validation_dga|date:"d/m/Y"|default:"-" }}</td></tr>
+                    <tr><th>Decision DG</th><td>{{ commande.get_decision_dg_display|default:"-" }}</td></tr>
+                    <tr><th>Observation DG</th><td>{{ commande.observation_dg|default:"-" }}</td></tr>
+                    <tr><th>Motif rejet DG</th><td>{{ commande.motif_rejet_dg|default:"-" }}</td></tr>
+                    <tr><th>Date avis DG</th><td>{{ commande.date_validation_dg|date:"d/m/Y"|default:"-" }}</td></tr>
+                </tbody>
+            </table>
+
+            {% if can_validate_dga %}
+            <form method="post" action="/commandes/valider-dga/{{ commande.id }}/" class="app-form" style="margin-bottom:14px;">
+                {% csrf_token %}
+                <div class="field">
+                    <label for="observation_dga_ok">Observation DGA</label>
+                    <textarea id="observation_dga_ok" name="observation_dga" rows="3" placeholder="Observation de validation"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Valider la commande</button>
+                </div>
+            </form>
+
+            <form method="post" action="/commandes/rejeter-dga/{{ commande.id }}/" class="app-form">
+                {% csrf_token %}
+                <div class="field">
+                    <label for="observation_dga_rejet">Observation DGA</label>
+                    <textarea id="observation_dga_rejet" name="observation_dga" rows="3" placeholder="Observation generale"></textarea>
+                </div>
+                <div class="field">
+                    <label for="motif_rejet_dga">Motif de rejet</label>
+                    <textarea id="motif_rejet_dga" name="motif_rejet_dga" rows="3" placeholder="Motif detaille du rejet" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-delete">Rejeter la commande</button>
+                </div>
+            </form>
+            {% endif %}
+
+            {% if can_validate_dg %}
+            <form method="post" action="/commandes/valider-dg/{{ commande.id }}/" class="app-form" style="margin-bottom:14px;">
+                {% csrf_token %}
+                <div class="field">
+                    <label for="observation_dg_ok">Observation DG</label>
+                    <textarea id="observation_dg_ok" name="observation_dg" rows="3" placeholder="Observation de validation"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Valider la commande</button>
+                </div>
+            </form>
+
+            <form method="post" action="/commandes/rejeter-dg/{{ commande.id }}/" class="app-form">
+                {% csrf_token %}
+                <div class="field">
+                    <label for="observation_dg_rejet">Observation DG</label>
+                    <textarea id="observation_dg_rejet" name="observation_dg" rows="3" placeholder="Observation generale"></textarea>
+                </div>
+                <div class="field">
+                    <label for="motif_rejet_dg">Motif de rejet</label>
+                    <textarea id="motif_rejet_dg" name="motif_rejet_dg" rows="3" placeholder="Motif detaille du rejet" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-delete">Rejeter la commande</button>
+                </div>
+            </form>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.commande-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
+    gap: 22px;
+    align-items: start;
+}
+
+.commande-detail-side {
+    display: grid;
+    gap: 22px;
+}
+
+.detail-inner-shell {
+    margin-top: 20px;
+}
+
+.decision-panel {
+    padding: 18px;
+    border: 1px solid #dbe7f3;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #fafdff 0%, #f3f9ff 100%);
+}
+
+.decision-panel__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 16px;
+}
+
+.decision-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.decision-card {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #dbe7f3;
+    background: #fff;
+    min-height: 110px;
+}
+
+.decision-card strong {
+    display: block;
+    margin-top: 8px;
+    color: #12324a;
+    font-size: 1.1rem;
+}
+
+.decision-card small {
+    display: block;
+    margin-top: 8px;
+    color: #64748b;
+}
+
+.decision-card--ok {
+    background: linear-gradient(180deg, #ffffff 0%, #f4fbf7 100%);
+    border-color: #cfe8da;
+}
+
+.decision-card--alerte {
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ee 100%);
+    border-color: #f2d4aa;
+}
+
+.decision-card--critique {
+    background: linear-gradient(180deg, #ffffff 0%, #fff1f1 100%);
+    border-color: #efc4c4;
+}
+
+.decision-card--visual {
+    grid-column: span 2;
+}
+
+.decision-label,
+.mini-stat__label {
+    display: block;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+.risk-chip {
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    background: #eef6f1;
+    color: #2a7e54;
+}
+
+.risk-chip--alerte {
+    background: #fff2dd;
+    color: #b96a12;
+}
+
+.risk-chip--critique {
+    background: #fde7e7;
+    color: #c43d3d;
+}
+
+.sidebar-card h2,
+.sidebar-card h3 {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.sidebar-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.mini-stat {
+    padding: 12px 14px;
+    border: 1px solid #dbe7f3;
+    border-radius: 14px;
+    background: #f9fcff;
+}
+
+.sidebar-section-title {
+    margin: 18px 0 10px;
+}
+
+.risk-progress {
+    margin-top: 16px;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.risk-progress__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #22c55e 0%, #f59e0b 60%, #ef4444 100%);
+}
+
+.risk-progress__fill--ok {
+    background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+}
+
+.risk-progress__fill--alerte {
+    background: linear-gradient(90deg, #f59e0b 0%, #fb923c 100%);
+}
+
+.risk-progress__fill--critique {
+    background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+
+.sidebar-table-wrap {
+    overflow-x: auto;
+}
+
+.sidebar-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    overflow: hidden;
+    border: 1px solid #dbe7f3;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.sidebar-table th,
+.sidebar-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #e7eef6;
+    text-align: left;
+    vertical-align: top;
+}
+
+.sidebar-table th {
+    background: #f7fbff;
+    color: #64748b;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sidebar-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sidebar-table td strong {
+    display: block;
+    color: #12324a;
+    margin-bottom: 4px;
+}
+
+.sidebar-table td small {
+    color: #64748b;
+}
+
+.sidebar-table__debt {
+    color: #c2410c;
+    font-weight: 700;
+}
+
+.sidebar-table__clear {
+    color: #177245;
+    font-weight: 700;
+}
+
+.sidebar-table__rejected td {
+    background: #fff6f6;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #eef5ff;
+    color: #295e96;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-pill--rejected {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.risk-donut-wrap {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.risk-donut {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    position: relative;
+    background: conic-gradient(
+        #2f936c 0 35%,
+        #f59e0b 35% var(--risk-ratio),
+        #d9e5f2 var(--risk-ratio) 100%
+    );
+}
+
+.risk-donut::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.risk-donut__center {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.risk-donut__center strong {
+    font-size: 1.4rem;
+    color: #12324a;
+    line-height: 1;
+}
+
+.risk-donut__center small {
+    margin-top: 6px;
+    color: #64748b;
+}
+
+.risk-donut-legend {
+    display: grid;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #12324a;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.legend-dot--encours {
+    background: #2f936c;
+}
+
+.legend-dot--engagement {
+    background: #f59e0b;
+}
+
+.legend-dot--disponible {
+    background: #d9e5f2;
+}
+
+.summary-table th {
+    width: 34%;
+}
+
+@media (max-width: 1280px) {
+    .commande-detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .decision-card--visual {
+        grid-column: span 1;
+    }
+
+    .risk-donut-wrap {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

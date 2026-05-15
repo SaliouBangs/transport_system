@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2200" height="1450" viewBox="0 0 2200 1450">
+<rect width="100%" height="100%" fill="#f8fbfd"/>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L9,3 z" fill="#4f7aa0" />
+</marker>
+<filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+<feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#8aa8bf" flood-opacity="0.18"/>
+</filter>
+</defs>
+<text x="1100.0" y="50" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#123047">MCD - Application de Gestion Transport / Maintenance</text>
+<text x="1100.0" y="82" text-anchor="middle" font-family="Arial" font-size="14" fill="#4f7aa0">Vue conceptuelle des principales entites metier et de leurs relations</text>
+<rect x="70" y="150" rx="16" ry="16" width="250" height="150" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="70" y="150" rx="16" ry="16" width="250" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="195.0" y="178" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Prospect</text>
+<text x="86" y="218" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="86" y="236" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="86" y="254" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="86" y="272" font-family="Arial" font-size="13" fill="#17324d">ville</text>
+<rect x="380" y="150" rx="16" ry="16" width="250" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="380" y="150" rx="16" ry="16" width="250" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="505.0" y="178" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Client</text>
+<text x="396" y="218" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="396" y="236" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="396" y="254" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="396" y="272" font-family="Arial" font-size="13" fill="#17324d">ville</text>
+<text x="396" y="290" font-family="Arial" font-size="13" fill="#17324d">commercial</text>
+<rect x="700" y="150" rx="16" ry="16" width="270" height="210" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="700" y="150" rx="16" ry="16" width="270" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="835.0" y="178" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Commande</text>
+<text x="716" y="218" font-family="Arial" font-size="13" fill="#17324d">reference</text>
+<text x="716" y="236" font-family="Arial" font-size="13" fill="#17324d">produit</text>
+<text x="716" y="254" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="716" y="272" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="716" y="290" font-family="Arial" font-size="13" fill="#17324d">dates validation</text>
+<rect x="1040" y="150" rx="16" ry="16" width="250" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1040" y="150" rx="16" ry="16" width="250" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1165.0" y="178" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Livraison</text>
+<text x="1056" y="218" font-family="Arial" font-size="13" fill="#17324d">date depart</text>
+<text x="1056" y="236" font-family="Arial" font-size="13" fill="#17324d">date arrivee</text>
+<text x="1056" y="254" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="1056" y="272" font-family="Arial" font-size="13" fill="#17324d">observations</text>
+<rect x="1360" y="120" rx="16" ry="16" width="310" height="260" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1360" y="120" rx="16" ry="16" width="310" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1515.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Operation / BL</text>
+<text x="1376" y="188" font-family="Arial" font-size="13" fill="#17324d">numero BL</text>
+<text x="1376" y="206" font-family="Arial" font-size="13" fill="#17324d">etat bon</text>
+<text x="1376" y="224" font-family="Arial" font-size="13" fill="#17324d">dates charge / livre / retour</text>
+<text x="1376" y="242" font-family="Arial" font-size="13" fill="#17324d">camion</text>
+<text x="1376" y="260" font-family="Arial" font-size="13" fill="#17324d">chauffeur</text>
+<text x="1376" y="278" font-family="Arial" font-size="13" fill="#17324d">mouvement camion</text>
+<text x="1376" y="296" font-family="Arial" font-size="13" fill="#17324d">position GPS</text>
+<rect x="760" y="430" rx="16" ry="16" width="200" height="110" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="760" y="430" rx="16" ry="16" width="200" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="860.0" y="458" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Produit</text>
+<text x="776" y="498" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<rect x="1380" y="470" rx="16" ry="16" width="280" height="230" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1380" y="470" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1520.0" y="498" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Camion</text>
+<text x="1396" y="538" font-family="Arial" font-size="13" fill="#17324d">code camion</text>
+<text x="1396" y="556" font-family="Arial" font-size="13" fill="#17324d">numero tracteur</text>
+<text x="1396" y="574" font-family="Arial" font-size="13" fill="#17324d">type</text>
+<text x="1396" y="592" font-family="Arial" font-size="13" fill="#17324d">capacite</text>
+<text x="1396" y="610" font-family="Arial" font-size="13" fill="#17324d">etat</text>
+<text x="1396" y="628" font-family="Arial" font-size="13" fill="#17324d">kilometrage</text>
+<text x="1396" y="646" font-family="Arial" font-size="13" fill="#17324d">tracking</text>
+<rect x="1040" y="500" rx="16" ry="16" width="250" height="130" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1040" y="500" rx="16" ry="16" width="250" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1165.0" y="528" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Chauffeur</text>
+<text x="1056" y="568" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="1056" y="586" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="1056" y="604" font-family="Arial" font-size="13" fill="#17324d">camion</text>
+<rect x="1710" y="470" rx="16" ry="16" width="250" height="150" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1710" y="470" rx="16" ry="16" width="250" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1835.0" y="498" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Document</text>
+<text x="1726" y="538" font-family="Arial" font-size="13" fill="#17324d">type document</text>
+<text x="1726" y="556" font-family="Arial" font-size="13" fill="#17324d">numero</text>
+<text x="1726" y="574" font-family="Arial" font-size="13" fill="#17324d">date emission</text>
+<text x="1726" y="592" font-family="Arial" font-size="13" fill="#17324d">date expiration</text>
+<rect x="1320" y="770" rx="16" ry="16" width="360" height="270" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1320" y="770" rx="16" ry="16" width="360" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1500.0" y="798" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Maintenance / Diagnostic</text>
+<text x="1336" y="838" font-family="Arial" font-size="13" fill="#17324d">reference</text>
+<text x="1336" y="856" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="1336" y="874" font-family="Arial" font-size="13" fill="#17324d">dates entree / sortie</text>
+<text x="1336" y="892" font-family="Arial" font-size="13" fill="#17324d">validations logistique / DGA / DG</text>
+<text x="1336" y="910" font-family="Arial" font-size="13" fill="#17324d">paiement</text>
+<text x="1336" y="928" font-family="Arial" font-size="13" fill="#17324d">total facture</text>
+<rect x="900" y="860" rx="16" ry="16" width="260" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="900" y="860" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1030.0" y="888" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Fournisseur</text>
+<text x="916" y="928" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="916" y="946" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="916" y="964" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="916" y="982" font-family="Arial" font-size="13" fill="#17324d">email</text>
+<text x="916" y="1000" font-family="Arial" font-size="13" fill="#17324d">mode paiement</text>
+<rect x="900" y="1080" rx="16" ry="16" width="260" height="130" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="900" y="1080" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1030.0" y="1108" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Prestataire</text>
+<text x="916" y="1148" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="916" y="1166" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="916" y="1184" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<rect x="560" y="760" rx="16" ry="16" width="260" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="560" y="760" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="690.0" y="788" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Article de stock</text>
+<text x="576" y="828" font-family="Arial" font-size="13" fill="#17324d">code article</text>
+<text x="576" y="846" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<text x="576" y="864" font-family="Arial" font-size="13" fill="#17324d">stock</text>
+<text x="576" y="882" font-family="Arial" font-size="13" fill="#17324d">prix unitaire</text>
+<text x="576" y="900" font-family="Arial" font-size="13" fill="#17324d">seuil alerte</text>
+<rect x="520" y="1010" rx="16" ry="16" width="300" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="520" y="1010" rx="16" ry="16" width="300" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="670.0" y="1038" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Mouvement de stock</text>
+<text x="536" y="1078" font-family="Arial" font-size="13" fill="#17324d">type mouvement</text>
+<text x="536" y="1096" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="536" y="1114" font-family="Arial" font-size="13" fill="#17324d">unite</text>
+<text x="536" y="1132" font-family="Arial" font-size="13" fill="#17324d">reference piece</text>
+<rect x="1700" y="840" rx="16" ry="16" width="260" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1700" y="840" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1830.0" y="868" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Utilisateur / Role</text>
+<text x="1716" y="908" font-family="Arial" font-size="13" fill="#17324d">commercial</text>
+<text x="1716" y="926" font-family="Arial" font-size="13" fill="#17324d">logistique</text>
+<text x="1716" y="944" font-family="Arial" font-size="13" fill="#17324d">maintenancier</text>
+<text x="1716" y="962" font-family="Arial" font-size="13" fill="#17324d">DGA</text>
+<text x="1716" y="980" font-family="Arial" font-size="13" fill="#17324d">DG</text>
+<text x="1716" y="998" font-family="Arial" font-size="13" fill="#17324d">caissiere</text>
+<rect x="1700" y="1080" rx="16" ry="16" width="280" height="140" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1700" y="1080" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1840.0" y="1108" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">Historique action</text>
+<text x="1716" y="1148" font-family="Arial" font-size="13" fill="#17324d">module</text>
+<text x="1716" y="1166" font-family="Arial" font-size="13" fill="#17324d">action</text>
+<text x="1716" y="1184" font-family="Arial" font-size="13" fill="#17324d">cible</text>
+<text x="1716" y="1202" font-family="Arial" font-size="13" fill="#17324d">description</text>
+<line x1="320" y1="225" x2="630" y2="235" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="429.0" y="210.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="475.0" y="224.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">conversion</text>
+<line x1="380" y1="235" x2="970" y2="250" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="629.0" y="222.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="675.0" y="236.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">passe</text>
+<line x1="700" y1="250" x2="1290" y2="235" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="949.0" y="222.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="995.0" y="236.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">genere</text>
+<line x1="700" y1="250" x2="1360" y2="600" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="984.0" y="405.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1030.0" y="419.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">alimente</text>
+<line x1="860" y1="430" x2="970" y2="250" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="869.0" y="320.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="915.0" y="334.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">concerne</text>
+<line x1="860" y1="430" x2="1360" y2="600" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1064.0" y="495.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1110.0" y="509.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">transport de</text>
+<line x1="1520" y1="470" x2="1360" y2="600" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1394.0" y="515.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1440.0" y="529.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">affecte a</text>
+<line x1="1290" y1="560" x2="1360" y2="600" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1279.0" y="560.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1325.0" y="574.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">conduit</text>
+<line x1="1520" y1="470" x2="1040" y2="560" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1234.0" y="495.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1280.0" y="509.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">rattache</text>
+<line x1="1520" y1="470" x2="1710" y2="545" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1569.0" y="487.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1615.0" y="501.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">possede</text>
+<line x1="1520" y1="470" x2="1320" y2="905" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1374.0" y="667.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1420.0" y="681.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">subit</text>
+<line x1="1160" y1="930" x2="1320" y2="905" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1194.0" y="897.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1240.0" y="911.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">fournit</text>
+<line x1="1160" y1="1145" x2="1320" y2="905" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1194.0" y="1005.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1240.0" y="1019.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">intervient</text>
+<line x1="820" y1="845" x2="520" y2="1095" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="624.0" y="950.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="670.0" y="964.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">alimente</text>
+<line x1="820" y1="1095" x2="1320" y2="905" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1024.0" y="980.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1070.0" y="994.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">consommation</text>
+<line x1="1700" y1="925" x2="1320" y2="905" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1464.0" y="895.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1510.0" y="909.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">valide</text>
+<line x1="1700" y1="925" x2="1840" y2="1080" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1724.0" y="982.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1770.0" y="996.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">journalise</text>
+</svg>

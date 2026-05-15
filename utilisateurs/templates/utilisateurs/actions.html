@@ -10,6 +10,54 @@
 <a href="/comptes/parametres/" class="btn-secondary">Retour aux parametres</a>
 </div>
 
+<form method="get" class="historique-filters">
+<div class="historique-filter-grid">
+<div class="historique-field historique-field-search">
+<label for="id_q">Recherche</label>
+<input id="id_q" type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher par details, cible, utilisateur ou module">
+</div>
+<div class="historique-field">
+<label for="id_utilisateur">Utilisateur</label>
+<select id="id_utilisateur" name="utilisateur">
+<option value="">Tous les utilisateurs</option>
+{% for username in user_choices %}
+<option value="{{ username }}" {% if filter_values.utilisateur == username %}selected{% endif %}>{{ username }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="historique-field">
+<label for="id_module">Module</label>
+<select id="id_module" name="module">
+<option value="">Tous les modules</option>
+{% for module in module_choices %}
+<option value="{{ module }}" {% if filter_values.module == module %}selected{% endif %}>{{ module }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="historique-field">
+<label for="id_action">Action</label>
+<select id="id_action" name="action">
+<option value="">Toutes les actions</option>
+{% for action in action_choices %}
+<option value="{{ action }}" {% if filter_values.action == action %}selected{% endif %}>{{ action }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="historique-field">
+<label for="id_date_from">Date debut</label>
+<input id="id_date_from" type="date" name="date_from" value="{{ filter_values.date_from }}">
+</div>
+<div class="historique-field">
+<label for="id_date_to">Date fin</label>
+<input id="id_date_to" type="date" name="date_to" value="{{ filter_values.date_to }}">
+</div>
+</div>
+<div class="historique-filter-actions">
+<button type="submit" class="btn">Filtrer</button>
+<a href="/comptes/actions/" class="btn-secondary">Reinitialiser</a>
+</div>
+</form>
+
 <table class="table">
 <thead>
 <tr>
@@ -38,5 +86,71 @@
 {% endfor %}
 </tbody>
 </table>
+
+<style>
+.historique-filters{
+margin-bottom:18px;
+padding:16px;
+border:1px solid var(--border);
+border-radius:22px;
+background:rgba(255,255,255,0.92);
+box-shadow:var(--shadow);
+}
+.historique-filter-grid{
+display:grid;
+grid-template-columns:1.5fr repeat(3, minmax(180px, 1fr)) 170px 170px;
+gap:12px;
+align-items:end;
+}
+.historique-field{
+display:flex;
+flex-direction:column;
+gap:6px;
+min-width:0;
+}
+.historique-field label{
+font-size:12px;
+font-weight:800;
+letter-spacing:.05em;
+text-transform:uppercase;
+color:#6d8090;
+}
+.historique-field input,
+.historique-field select{
+width:100%;
+min-width:0;
+height:52px;
+padding:0 16px;
+border-radius:16px;
+border:1px solid #b7cade;
+background:linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+box-sizing:border-box;
+}
+.historique-filter-actions{
+display:flex;
+justify-content:flex-end;
+gap:12px;
+margin-top:14px;
+flex-wrap:wrap;
+}
+.historique-filter-actions .btn,
+.historique-filter-actions .btn-secondary{
+margin:0;
+height:52px;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+}
+@media (max-width: 1200px){
+.historique-filter-grid{
+grid-template-columns:repeat(2, minmax(0,1fr));
+}
+}
+@media (max-width: 720px){
+.historique-filter-grid{
+grid-template-columns:1fr;
+}
+}
+</style>
 
 {% endblock %}

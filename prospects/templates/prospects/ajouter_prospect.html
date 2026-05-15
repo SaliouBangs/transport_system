@@ -15,10 +15,26 @@
 {% csrf_token %}
 
 <div class="form-grid">
+{% if form.commercial.is_hidden %}
+{{ form.commercial }}
+{% else %}
+<div class="field">
+<label for="{{ form.commercial.id_for_label }}">Commercial responsable</label>
+{{ form.commercial }}
+{% if form.commercial.errors %}<p class="field-error">{{ form.commercial.errors.0 }}</p>{% endif %}
+</div>
+{% endif %}
+
 <div class="field">
 <label for="{{ form.nom.id_for_label }}">Nom</label>
 {{ form.nom }}
 {% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+</div>
+
+<div class="field">
+<label for="{{ form.fonction.id_for_label }}">Fonction</label>
+{{ form.fonction }}
+{% if form.fonction.errors %}<p class="field-error">{{ form.fonction.errors.0 }}</p>{% endif %}
 </div>
 
 <div class="field">

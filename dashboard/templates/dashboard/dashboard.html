@@ -2,557 +2,2156 @@
 {% load l10n %}
 
 {% block content %}
+<style>
+  .dashboard-page {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    gap: 24px;
+  }
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Pilotage</p>
-<h1>{% if user_role == "invite" %}Dashboard invite{% elif is_maintenancier %}Dashboard maintenance{% else %}Dashboard logistique{% endif %}</h1>
-</div>
-</div>
+  .dashboard-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr);
+    gap: 22px;
+    align-items: stretch;
+  }
 
-{% if user_role == "invite" %}
-<div class="card" style="margin-bottom:24px; text-align:center; padding:34px 24px; background:linear-gradient(135deg, #123047 0%, #1f5f8b 100%); color:white;">
-<p class="eyebrow" style="color:#d7f3e9; margin-bottom:10px;">Signature du projet</p>
-<h2 style="margin:0; font-size:2.1rem; line-height:1.2;">Cette plateforme est creee par Mohamed Saliou Bangoura The BOSS</h2>
-</div>
-{% endif %}
+  .dashboard-hero-main,
+  .dashboard-hero-side,
+  .dashboard-section,
+  .dashboard-card {
+    background:
+      radial-gradient(circle at top right, rgba(79, 179, 191, 0.12), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,250,253,0.98));
+    border: 1px solid rgba(191, 216, 236, 0.9);
+    border-radius: 28px;
+    box-shadow: 0 18px 46px rgba(18, 48, 71, 0.08);
+  }
 
-{% if action_alerts %}
-<div class="cards" style="margin-top:0; margin-bottom:22px;">
-{% for alert in action_alerts %}
-<div class="card" style="text-align:left; border-left:6px solid {% if alert.variant == 'danger' %}#d64545{% elif alert.variant == 'ok' %}#1f9d7a{% else %}#f0a83a{% endif %};">
-<p class="eyebrow" style="margin-bottom:8px;">Alerte</p>
-<h3 style="margin-bottom:8px;">{{ alert.title }}</h3>
-<p style="margin-bottom:14px; color:#5f7384;">{{ alert.message }}</p>
-<div class="table-actions">
-<a href="{{ alert.cta_url }}" class="{% if alert.variant == 'danger' %}btn-delete{% elif alert.variant == 'ok' %}btn{% else %}btn-secondary{% endif %}">{{ alert.cta_label }}</a>
-{% if alert.resolve_numero_facture %}
-<form method="post" action="/dashboard/alertes/factures/resoudre/">
-{% csrf_token %}
-<input type="hidden" name="numero_facture" value="{{ alert.resolve_numero_facture }}">
-<button type="submit" class="btn-secondary">Resolu</button>
-</form>
-{% endif %}
-</div>
-</div>
-{% endfor %}
-</div>
-{% endif %}
+  .dashboard-hero-main {
+    padding: 30px 32px;
+    display: grid;
+    gap: 18px;
+  }
 
-{% if is_maintenancier %}
-<div class="cards">
-<div class="card"><h3>Camions total</h3><p>{{ camions_total }}</p></div>
-<div class="card"><h3>Disponibles</h3><p>{{ camions_disponibles }}</p></div>
-<div class="card"><h3>Au garage</h3><p>{{ camions_maintenance }}</p></div>
-<div class="card"><h3>Vidanges dues</h3><p>{{ camions_vidange_due }}</p></div>
-<div class="card"><h3>Diagnostics</h3><p>{{ maintenances_total }}</p></div>
-<div class="card"><h3>En cours</h3><p>{{ maintenances_en_cours }}</p></div>
-<div class="card"><h3>Terminees</h3><p>{{ maintenances_terminees }}</p></div>
-</div>
+  .dashboard-hero-side {
+    padding: 26px 28px;
+    display: grid;
+    gap: 14px;
+    align-content: start;
+  }
 
-<div class="cards" style="margin-top:18px;">
-<div class="card"><h3>Refusees</h3><p>{{ maintenances_refusees }}</p></div>
-<div class="card"><h3>Annulees</h3><p>{{ maintenances_annulees }}</p></div>
-<div class="card"><h3>Cout maintenance</h3><p>{{ montant_maintenance_total }}</p></div>
-<div class="card"><h3>Articles stock</h3><p>{{ stock_total_articles }}</p></div>
-<div class="card"><h3>Alertes stock</h3><p>{{ stock_articles_alerte }}</p></div>
-<div class="card"><h3>Mouvements stock</h3><p>{{ stock_mouvements_recents }}</p></div>
-</div>
+  .dashboard-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 16px;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Resume du stock</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Article</th>
-<th>Stock</th>
-<th>Seuil</th>
-<th>Etat</th>
-</tr>
-</thead>
-<tbody>
-{% for article in stock_resume %}
-<tr>
-<td>{{ article.libelle }}</td>
-<td>
-{% if article.stock_equivalent_display %}
-<div style="color:#6d8090; font-size:0.92rem;">{{ article.stock_equivalent_display }}</div>
-{% endif %}
-<div>{{ article.quantite_stock }} {{ article.unite }}</div>
-</td>
-<td>{{ article.seuil_alerte }}</td>
-<td>
-{% if article.seuil_alerte > 0 and article.quantite_stock <= article.seuil_alerte %}
-<span class="status status-danger">A reapprovisionner</span>
-{% else %}
-<span class="status status-ok">Disponible</span>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="4">Aucun article de stock disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-<div class="card">
-<h3>Statistique du stock</h3>
-<div style="width:100%; margin-top:18px;">
-<canvas id="stockChart"></canvas>
-</div>
-</div>
-</div>
+  .dashboard-kpi {
+    padding: 20px 18px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(198, 220, 238, 0.95);
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Dernieres maintenances</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Reference</th>
-<th>Camion</th>
-<th>Statut</th>
-<th>Debut</th>
-</tr>
-</thead>
-<tbody>
-{% for maintenance in dernieres_maintenances %}
-<tr>
-<td>{{ maintenance.reference }}</td>
-<td>{{ maintenance.camion.numero_tracteur }}</td>
-<td>{{ maintenance.get_statut_display }}</td>
-<td>{{ maintenance.date_debut|date:"d/m/Y H:i" }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="4">Aucune maintenance recente.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+  .dashboard-kpi-label {
+    margin: 0 0 10px;
+    color: #6a7f92;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
 
-<div class="card" style="text-align:left;">
-<h3>Alertes maintenance</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Reference</th>
-<th>Camion</th>
-<th>Statut</th>
-<th>Observation</th>
-</tr>
-</thead>
-<tbody>
-{% for maintenance in alertes_maintenance %}
-<tr>
-<td>{{ maintenance.reference }}</td>
-<td>{{ maintenance.camion.numero_tracteur }}</td>
-<td>{{ maintenance.get_statut_display }}</td>
-<td>{{ maintenance.observation|default:"-"|truncatechars:60 }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="4">Aucune alerte maintenance pour le moment.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-</div>
+  .dashboard-kpi-value {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.05;
+    color: #123047;
+    font-weight: 800;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Performance des camions</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Camion</th>
-<th>Marque / capacite</th>
-<th>Pannes</th>
-<th>Performance</th>
-<th>Niveau</th>
-</tr>
-</thead>
-<tbody>
-{% for camion in performances_camions %}
-<tr>
-<td>
-{{ camion.numero_tracteur }}
-{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}
-</td>
-<td>
-{{ camion.marque|default:"-" }}{% if camion.capacite %} / {{ camion.capacite }} L{% endif %}
-</td>
-<td>{{ camion.panne_count }}</td>
-<td>{{ camion.performance_percent }}%</td>
-<td>
-{% if camion.performance_variant == "ok" %}
-<span class="status status-ok">{{ camion.performance_label }}</span>
-{% elif camion.performance_variant == "warning" %}
-<span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">{{ camion.performance_label }}</span>
-{% elif camion.performance_variant == "mid" %}
-<span class="status" style="background:rgba(230, 126, 34, 0.16); color:#c65d00;">{{ camion.performance_label }}</span>
-{% else %}
-<span class="status status-danger">{{ camion.performance_label }}</span>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="5">Aucune donnee de performance disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-</div>
-{% else %}
-<div class="cards">
-<div class="card"><h3>Camions total</h3><p>{{ camions_total }}</p></div>
-<div class="card"><h3>Disponibles</h3><p>{{ camions_disponibles }}</p></div>
-<div class="card"><h3>Au garage</h3><p>{{ camions_maintenance }}</p></div>
-<div class="card"><h3>Bons declares</h3><p>{{ bons_declares }}</p></div>
-<div class="card"><h3>Bons charges</h3><p>{{ bons_charges }}</p></div>
-<div class="card"><h3>Bons livres</h3><p>{{ bons_livres }}</p></div>
-<div class="card"><h3>Bons liquides</h3><p>{{ bons_liquides }}</p></div>
-</div>
+  .dashboard-kpi-value-money {
+    font-size: 1.45rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 
-<div class="cards" style="margin-top:18px;">
-<div class="card"><h3>Commandes</h3><p>{{ commandes_total }}</p></div>
-<div class="card"><h3>Bons en retard</h3><p>{{ bons_en_retard }}</p></div>
-<div class="card"><h3>Bons non retournes</h3><p>{{ bons_non_retournes }}</p></div>
-<div class="card"><h3>Montant facture</h3><p>{{ montant_facture_total }}</p></div>
-<div class="card"><h3>Articles stock</h3><p>{{ stock_total_articles }}</p></div>
-<div class="card"><h3>Alertes stock</h3><p>{{ stock_articles_alerte }}</p></div>
-</div>
+  .dashboard-kpi-note {
+    margin: 8px 0 0;
+    color: #6a7f92;
+    font-size: 0.93rem;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Suivi du stock</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Article</th>
-<th>Stock</th>
-<th>Seuil</th>
-<th>Etat</th>
-</tr>
-</thead>
-<tbody>
-{% for article in stock_resume %}
-<tr>
-<td>{{ article.libelle }}</td>
-<td>
-{% if article.stock_equivalent_display %}
-<div style="color:#6d8090; font-size:0.92rem;">{{ article.stock_equivalent_display }}</div>
-{% endif %}
-<div>{{ article.quantite_stock }} {{ article.unite }}</div>
-</td>
-<td>{{ article.seuil_alerte }}</td>
-<td>
-{% if article.seuil_alerte > 0 and article.quantite_stock <= article.seuil_alerte %}
-<span class="status status-danger">A reapprovisionner</span>
-{% else %}
-<span class="status status-ok">Disponible</span>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="4">Aucun article de stock disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-<div class="card">
-<h3>Statistique du stock</h3>
-<div style="width:100%; margin-top:18px;">
-<canvas id="stockChart"></canvas>
-</div>
-</div>
-</div>
+  .dashboard-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: rgba(31, 157, 122, 0.12);
+    color: #15785f;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Dernieres operations</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>BL</th>
-<th>Etat</th>
-<th>Client</th>
-<th>Produit</th>
-<th>Camion</th>
-<th>Date</th>
-</tr>
-</thead>
-<tbody>
-{% for operation in dernieres_operations %}
-<tr>
-<td>{{ operation.numero_bl }}</td>
-<td>{{ operation.get_etat_bon_display }}</td>
-<td>{{ operation.client.entreprise }}</td>
-<td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
-<td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
-<td>{{ operation.date_creation|date:"Y-m-d" }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="6">Aucune operation recente.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+  .dashboard-summary-list {
+    display: grid;
+    gap: 10px;
+  }
 
-<div class="card">
-<h3>Repartition essence / gasoil</h3>
-<div style="max-width:320px; margin:18px auto 0;">
-<canvas id="carburantChart"></canvas>
-</div>
-<p style="font-size:1rem; margin-top:14px;">Essence: {{ total_essence }} | Gasoil: {{ total_gasoil }}</p>
-</div>
-</div>
+  .dashboard-summary-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(208, 224, 238, 0.8);
+    color: #123047;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Alertes operations</h3>
-<p style="font-size:0.95rem; color:#6d8090;">Retard de livraison au-dela de {{ seuil_retard_jours }} jours ou bon non retourne.</p>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>BL</th>
-<th>Client</th>
-<th>Etat</th>
-<th>Date charge</th>
-<th>Date livre</th>
-</tr>
-</thead>
-<tbody>
-{% for operation in alertes_operations %}
-<tr>
-<td>{{ operation.numero_bl }}</td>
-<td>{{ operation.client.entreprise }}</td>
-<td>{{ operation.get_etat_bon_display }}</td>
-<td>{{ operation.date_bons_charges|default:"-" }}</td>
-<td>{{ operation.date_bons_livres|default:"-" }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="5">Aucune alerte pour le moment.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+  .dashboard-summary-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 
-<div class="card" style="text-align:left;">
-<h3>Top clients</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Client</th>
-<th>Total BL</th>
-<th>Quantite</th>
-</tr>
-</thead>
-<tbody>
-{% for item in top_clients %}
-<tr>
-<td>{{ item.client__entreprise }}</td>
-<td>{{ item.total_bons }}</td>
-<td>{{ item.total_quantite|default:"0" }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="3">Aucune statistique client disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-</div>
+  .dashboard-summary-item span:first-child {
+    color: #6a7f92;
+  }
 
-<div class="card" style="margin-top:24px; text-align:left;">
-<h3>Camions les plus utilises</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Camion</th>
-<th>Chauffeur</th>
-<th>Total BL</th>
-</tr>
-</thead>
-<tbody>
-{% for item in camions_plus_utilises %}
-<tr>
-<td>
-{{ item.numero_tracteur }}
-{% if item.numero_citerne %} / {{ item.numero_citerne }}{% endif %}
-</td>
-<td>{{ item.chauffeur__nom|default:"-" }}</td>
-<td>{{ item.total_bons }}</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="3">Aucune statistique camion disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+  .dashboard-alerts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
 
-<div class="cards" style="margin-top:24px; align-items:start;">
-<div class="card" style="text-align:left;">
-<h3>Performance des camions</h3>
-<table class="table" style="margin-top:16px;">
-<thead>
-<tr>
-<th>Camion</th>
-<th>Marque / capacite</th>
-<th>Pannes</th>
-<th>Performance</th>
-<th>Niveau</th>
-</tr>
-</thead>
-<tbody>
-{% for camion in performances_camions %}
-<tr>
-<td>
-{{ camion.numero_tracteur }}
-{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}
-</td>
-<td>
-{{ camion.marque|default:"-" }}{% if camion.capacite %} / {{ camion.capacite }} L{% endif %}
-</td>
-<td>{{ camion.panne_count }}</td>
-<td>{{ camion.performance_percent }}%</td>
-<td>
-{% if camion.performance_variant == "ok" %}
-<span class="status status-ok">{{ camion.performance_label }}</span>
-{% elif camion.performance_variant == "warning" %}
-<span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">{{ camion.performance_label }}</span>
-{% elif camion.performance_variant == "mid" %}
-<span class="status" style="background:rgba(230, 126, 34, 0.16); color:#c65d00;">{{ camion.performance_label }}</span>
-{% else %}
-<span class="status status-danger">{{ camion.performance_label }}</span>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="5">Aucune donnee de performance disponible.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+  .dashboard-alert {
+    padding: 20px 20px 18px;
+    border-radius: 22px;
+    border: 1px solid rgba(198, 220, 238, 0.95);
+    background: rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
+  }
 
-<div class="card" style="text-align:left;">
-<h3>Croissance des bons inities par jour</h3>
-<div style="width:100%; margin-top:18px;">
-<canvas id="bonsChart"></canvas>
+  .dashboard-alert::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border-radius: 0 6px 6px 0;
+    background: #f0a83a;
+  }
+
+  .dashboard-alert-danger::before { background: #d64545; }
+  .dashboard-alert-ok::before { background: #1f9d7a; }
+
+  .dashboard-alert p:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .dashboard-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.95fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .dashboard-stack {
+    display: grid;
+    gap: 24px;
+  }
+
+  .dashboard-section {
+    padding: 24px 24px 22px;
+    overflow: hidden;
+  }
+
+  .dashboard-section-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+
+  .dashboard-section-title {
+    margin: 0;
+    font-size: 1.45rem;
+    color: #123047;
+  }
+
+  .dashboard-section-subtitle {
+    margin: 8px 0 0;
+    color: #5f7384;
+    font-size: 0.96rem;
+    max-width: 760px;
+  }
+
+  .dashboard-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .dashboard-pill {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    background: rgba(63, 143, 214, 0.12);
+    color: #2c6b98;
+  }
+
+  .dashboard-pill.ok {
+    background: rgba(31, 157, 122, 0.12);
+    color: #15785f;
+  }
+
+  .dashboard-pill.warning {
+    background: rgba(240, 168, 58, 0.16);
+    color: #b87000;
+  }
+
+  .dashboard-pill.danger {
+    background: rgba(214, 69, 69, 0.12);
+    color: #b73838;
+  }
+
+  .dashboard-chart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .dashboard-chart-card,
+  .dashboard-mini-card {
+    border-radius: 22px;
+    border: 1px solid rgba(198, 220, 238, 0.95);
+    background: rgba(255, 255, 255, 0.85);
+    padding: 18px 18px 16px;
+  }
+
+  .dashboard-chart-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-chart-box {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    min-height: 320px;
+  }
+
+  .dashboard-chart-box.tall {
+    height: 360px;
+    min-height: 360px;
+  }
+
+  .dashboard-chart-box.compact {
+    height: 260px;
+    min-height: 260px;
+  }
+
+  .dashboard-chart-box canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .dashboard-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .dashboard-mini-card h4,
+  .dashboard-chart-card h4 {
+    margin: 0 0 12px;
+    color: #123047;
+    font-size: 1rem;
+  }
+
+  .dashboard-mini-card strong {
+    display: block;
+    font-size: 1.3rem;
+    color: #123047;
+    margin-bottom: 6px;
+  }
+
+  .dashboard-mini-card p {
+    margin: 0;
+    color: #6a7f92;
+    font-size: 0.92rem;
+  }
+
+  .dashboard-table-wrap {
+    overflow-x: auto;
+  }
+
+  .dashboard-table-wrap .table {
+    margin-top: 0;
+    min-width: 640px;
+  }
+
+  .dashboard-table-wrap .table td div + div {
+    margin-top: 4px;
+  }
+
+  .dashboard-split-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .dashboard-split-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(206, 223, 238, 0.9);
+  }
+
+  .dashboard-split-item strong {
+    color: #123047;
+  }
+
+  .dashboard-split-item span {
+    color: #6a7f92;
+  }
+
+  .dashboard-empty {
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(63, 143, 214, 0.08);
+    color: #5f7384;
+  }
+
+  @media (max-width: 1280px) {
+    .dashboard-hero,
+    .dashboard-layout,
+    .dashboard-chart-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-kpi-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 820px) {
+    .dashboard-kpi-grid,
+    .dashboard-mini-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .dashboard-hero-main,
+    .dashboard-hero-side,
+    .dashboard-section {
+      padding: 20px 18px;
+    }
+
+    .dashboard-kpi-grid,
+    .dashboard-mini-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-section-header {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<div class="dashboard-page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Pilotage transverse</p>
+      <h1>Dashboard de la plateforme</h1>
+    </div>
+  </div>
+
+  <section class="dashboard-hero">
+    <div class="dashboard-hero-main">
+      <div class="dashboard-section-header" style="margin-bottom:0;">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px;">Vision d'ensemble</p>
+          <h2 class="dashboard-section-title" style="font-size:2rem;">{% if user_role == "transitaire" %}Lecture rapide du circuit transitaire{% elif user_role == "chef_chauffeur" %}Lecture rapide du circuit chauffeur{% elif user_role == "logistique" %}Lecture rapide du pilotage logistique{% elif user_role == "commercial" or user_role == "responsable_commercial" %}Lecture rapide du pilotage commercial et comptable{% elif user_role == "comptable" %}Lecture rapide du pilotage comptable{% else %}Une lecture rapide du circuit complet{% endif %}</h2>
+          <p class="dashboard-section-subtitle">
+            {% if user_role == "commercial" or user_role == "responsable_commercial" %}
+            Cette vue synthetise le portefeuille clients, la prospection, les validations de commandes, la facturation et les encaissements.
+            L'objectif est de piloter l'activite commerciale sans se perdre dans les details logistiques.
+            {% elif user_role == "logistique" %}
+            Cette vue synthetise les affectations, la reception logistique, la remise chauffeur, le suivi des chargements, les bons retour et la maintenance utile au terrain.
+            L'objectif est de traiter vite ce qui bloque l'exploitation.
+            {% elif user_role == "comptable" %}
+            Cette vue synthetise la creation des BL, la facturation des livraisons, le suivi des montants emis et les encaissements clients.
+            L'objectif est de garder la comptabilite orientee sur les taches a traiter sans bruit inutile.
+            {% else %}
+            Ce tableau de bord résume l'état des commandes, BL, validations, transport, maintenance, stock et paiements.
+            L'objectif est de garder chaque acteur orienté, sans surcharger l'écran.
+            {% endif %}
+          </p>
+          {% if user_role == "transitaire" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Cette vue est recentree sur la reception, la declaration, la liquidation et l'orientation des BL.
+          </p>
+          {% elif user_role == "chef_chauffeur" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Cette vue est simplifiee autour de vos deux actions : charger puis livrer les BL qui vous sont remis.
+          </p>
+          {% elif user_role == "logistique" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : affecter, receptionner, remettre au chauffeur, suivre les charges et surveiller la maintenance.
+          </p>
+          {% elif user_role == "commercial" or user_role == "responsable_commercial" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : convertir, valider, facturer puis recouvrer.
+          </p>
+          {% elif user_role == "comptable" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : creer les BL, facturer les livraisons puis suivre les encaissements.
+          </p>
+          {% endif %}
+        </div>
+        <div class="dashboard-role-chip">
+          <span>Role actif</span>
+          <strong>
+            {% if user_role == "invite" %}Invite
+            {% elif user_role == "directeur" %}DG
+            {% elif user_role == "dga" %}DGA
+            {% elif user_role == "dga_sogefi" %}DGA SOGEFI
+            {% elif user_role == "comptable_sogefi" %}Comptable SOGEFI
+            {% elif user_role == "responsable_achat" %}Responsable achat
+            {% elif user_role == "responsable_commercial" %}Responsable commercial
+            {% elif user_role == "chef_chauffeur" %}Chef chauffeur
+            {% elif user_role == "secretaire" %}Secretaire BL
+            {% else %}{{ user_role|capfirst }}{% endif %}
+          </strong>
+        </div>
+      </div>
+
+      <div class="dashboard-kpi-grid">
+        {% if user_role == "transitaire" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a receptionner</p>
+          <p class="dashboard-kpi-value">{{ bons_secretaire }}</p>
+          <p class="dashboard-kpi-note">BL transmis par la secretaire</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a declarer</p>
+          <p class="dashboard-kpi-value">{{ bons_transmis }}</p>
+          <p class="dashboard-kpi-note">BL recus en attente de declaration</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a liquider</p>
+          <p class="dashboard-kpi-value">{{ bons_declares }}</p>
+          <p class="dashboard-kpi-note">BL declares avant liquidation</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a orienter</p>
+          <p class="dashboard-kpi-value">{{ bons_liquides }}</p>
+          <p class="dashboard-kpi-note">BL liquides a transferer ou charger</p>
+        </div>
+        {% elif user_role == "chef_chauffeur" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a charger</p>
+          <p class="dashboard-kpi-value">{{ bons_liquides_chauffeur }}</p>
+          <p class="dashboard-kpi-note">BL remis au chauffeur et en attente de chargement</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL charges</p>
+          <p class="dashboard-kpi-value">{{ bons_charges }}</p>
+          <p class="dashboard-kpi-note">BL deja charges, a livrer ensuite</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL livres</p>
+          <p class="dashboard-kpi-value">{{ bons_livres }}</p>
+          <p class="dashboard-kpi-note">BL deja livres sur le circuit chauffeur</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Bons retournes</p>
+          <p class="dashboard-kpi-value">{{ bons_retournes }}</p>
+          <p class="dashboard-kpi-note">Livraisons completement bouclees</p>
+        </div>
+        {% elif user_role == "logistique" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Commandes a affecter</p>
+          <p class="dashboard-kpi-value">{{ logistique_commandes_a_affecter }}</p>
+          <p class="dashboard-kpi-note">Commandes validees sans camion affecte</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">A receptionner</p>
+          <p class="dashboard-kpi-value">{{ bons_attente_reception_logistique }}</p>
+          <p class="dashboard-kpi-note">BL liquides transmis a la logistique</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">A remettre</p>
+          <p class="dashboard-kpi-value">{{ bons_liquides_logistique }}</p>
+          <p class="dashboard-kpi-note">BL recus en attente de remise chauffeur</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Charges</p>
+          <p class="dashboard-kpi-value">{{ bons_charges }}</p>
+          <p class="dashboard-kpi-note">BL deja charges encore a surveiller</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Bons retour attendus</p>
+          <p class="dashboard-kpi-value">{{ bons_non_retournes }}</p>
+          <p class="dashboard-kpi-note">BL livres sans bon retour</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Maintenance utile</p>
+          <p class="dashboard-kpi-value">{{ logistique_prix_a_saisir }}</p>
+          <p class="dashboard-kpi-note">{{ logistique_depenses_camion_en_cours }} depense(s) camion chez DGA</p>
+        </div>
+        {% elif user_role == "commercial" or user_role == "responsable_commercial" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Portefeuille clients</p>
+          <p class="dashboard-kpi-value">{{ commercial_clients_total }}</p>
+          <p class="dashboard-kpi-note">{{ commercial_prospects_total }} prospect(s) a convertir</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Commandes actives</p>
+          <p class="dashboard-kpi-value">{{ commercial_commandes_ouvertes }}</p>
+          <p class="dashboard-kpi-note">{{ commercial_commandes_numero_sage }} a numeroter / {{ commercial_commandes_livrees }} livrees</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">CA negocie</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ commercial_montant_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Montant cumule des commandes du portefeuille</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Creances clients</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ commercial_creances_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Montants livres encore a recouvrer</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Encaissements</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ commercial_encaissements_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Paiements deja enregistres sur le portefeuille</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Factures a emettre</p>
+          <p class="dashboard-kpi-value">{{ commercial_factures_a_emettre_total }}</p>
+          <p class="dashboard-kpi-note">{{ commercial_factures_emises_total }} facture(s) deja emise(s)</p>
+        </div>
+        {% elif user_role == "comptable" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL a creer</p>
+          <p class="dashboard-kpi-value">{{ comptable_commandes_pretes_total }}</p>
+          <p class="dashboard-kpi-note">Commandes planifiees encore sans BL</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL inities</p>
+          <p class="dashboard-kpi-value">{{ comptable_operations_initiees_total }}</p>
+          <p class="dashboard-kpi-note">Bons deja saisis et en attente de suite</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL livres</p>
+          <p class="dashboard-kpi-value">{{ comptable_operations_livrees_total }}</p>
+          <p class="dashboard-kpi-note">Livraisons disponibles pour la facturation</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Factures a emettre</p>
+          <p class="dashboard-kpi-value">{{ comptable_factures_a_emettre_total }}</p>
+          <p class="dashboard-kpi-note">BL livres sans numero de facture</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Montant facture</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ comptable_montant_facture_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">{{ comptable_factures_emises_total }} facture(s) deja emise(s)</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Encaissements</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ comptable_encaissements_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Paiements clients deja enregistres</p>
+        </div>
+        {% else %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Commandes</p>
+          <p class="dashboard-kpi-value">{{ commandes_total }}</p>
+          <p class="dashboard-kpi-note">Suivi commercial et validation</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">BL en circuit</p>
+          <p class="dashboard-kpi-value">{{ operations_total }}</p>
+          <p class="dashboard-kpi-note">Du BL initie a la livraison</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Camions</p>
+          <p class="dashboard-kpi-value">{{ camions_total }}</p>
+          <p class="dashboard-kpi-note">{{ camions_disponibles }} disponibles / {{ camions_maintenance }} au garage</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Facturation</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ montant_facture_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Montant facture cumule</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Stock</p>
+          <p class="dashboard-kpi-value">{{ stock_total_articles }}</p>
+          <p class="dashboard-kpi-note">{{ stock_articles_alerte }} article(s) en alerte</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Maintenance</p>
+          <p class="dashboard-kpi-value">{{ maintenances_total }}</p>
+          <p class="dashboard-kpi-note">{{ maintenances_en_cours }} en cours / {{ maintenances_terminees }} bouclees</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <aside class="dashboard-hero-side">
+      <p class="eyebrow" style="margin-bottom:0;">Synthese immediate</p>
+      <h3 class="dashboard-section-title" style="font-size:1.4rem; margin-top:-4px;">Points d'attention du jour</h3>
+      <div class="dashboard-summary-list">
+        {% if user_role == "transitaire" %}
+        <div class="dashboard-summary-item">
+          <span>BL secretaire</span>
+          <strong>{{ bons_secretaire }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL transmis</span>
+          <strong>{{ bons_transmis }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL declares</span>
+          <strong>{{ bons_declares }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL liquides</span>
+          <strong>{{ bons_liquides }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Attente logistique</span>
+          <strong>{{ bons_attente_reception_logistique }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Historique transitaire</span>
+          <strong>{{ bons_liquides_logistique|add:bons_liquides_chauffeur|add:bons_charges|add:bons_livres }}</strong>
+        </div>
+        {% elif user_role == "chef_chauffeur" %}
+        <div class="dashboard-summary-item">
+          <span>En attente de chargement</span>
+          <strong>{{ bons_liquides_chauffeur }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Charges a livrer</span>
+          <strong>{{ bons_charges }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Livres</span>
+          <strong>{{ bons_livres }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Bons retournes</span>
+          <strong>{{ bons_retournes }}</strong>
+        </div>
+        {% elif user_role == "logistique" %}
+        <div class="dashboard-summary-item">
+          <span>Commandes a affecter</span>
+          <strong>{{ logistique_commandes_a_affecter }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Reception logistique</span>
+          <strong>{{ bons_attente_reception_logistique }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Remise chauffeur</span>
+          <strong>{{ bons_liquides_logistique }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL charges a suivre</span>
+          <strong>{{ bons_charges }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Bons retour attendus</span>
+          <strong>{{ bons_non_retournes }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Prix maintenance a saisir</span>
+          <strong>{{ logistique_prix_a_saisir }}</strong>
+        </div>
+        {% elif user_role == "commercial" or user_role == "responsable_commercial" %}
+        <div class="dashboard-summary-item">
+          <span>Prospects en portefeuille</span>
+          <strong>{{ commercial_prospects_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Commandes a numeroter</span>
+          <strong>{{ commercial_commandes_numero_sage }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Clients DMA critique</span>
+          <strong>{{ commercial_clients_critique }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Clients DMA alerte</span>
+          <strong>{{ commercial_clients_alerte }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Encours portefeuille</span>
+          <strong>{{ commercial_encours_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Risque global clients</span>
+          <strong>{{ commercial_risque_total|floatformat:0 }} GNF</strong>
+        </div>
+        {% elif user_role == "comptable" %}
+        <div class="dashboard-summary-item">
+          <span>Commandes sans BL</span>
+          <strong>{{ comptable_commandes_pretes_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL inities</span>
+          <strong>{{ comptable_operations_initiees_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL livres</span>
+          <strong>{{ comptable_operations_livrees_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Factures a emettre</span>
+          <strong>{{ comptable_factures_a_emettre_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Factures emises</span>
+          <strong>{{ comptable_factures_emises_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Encaissements clients</span>
+          <strong>{{ comptable_encaissements_total|floatformat:0 }} GNF</strong>
+        </div>
+        {% else %}
+        <div class="dashboard-summary-item">
+          <span>Commandes attente DGA</span>
+          <strong>{{ commandes_attente_dga }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Commandes attente DG</span>
+          <strong>{{ commandes_attente_dg }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL en retard</span>
+          <strong>{{ bons_en_retard }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>BL livres sans bon retour</span>
+          <strong>{{ bons_non_retournes }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Depenses attente DGA / DG</span>
+          <strong>{{ depenses_attente_chargement_dga }} / {{ depenses_attente_chargement_dg }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Paiements en attente</span>
+          <strong>{{ depenses_attente_paiement }}</strong>
+        </div>
+        {% endif %}
+      </div>
+    </aside>
+  </section>
+
+  {% if user_role == "invite" %}
+    <section class="dashboard-section" style="background:linear-gradient(135deg, #123047, #2d759f); color:white;">
+      <p class="eyebrow" style="color:#cfeee2; margin-bottom:8px;">Signature du projet</p>
+      <h2 style="margin:0 0 10px; font-size:2rem;">Cette plateforme est creee par Mohamed Saliou Bangoura The BOSS</h2>
+      <p style="margin:0; max-width:820px; color:#eaf6ff;">
+        Le compte invite reste en lecture seule, mais conserve une vision claire de la maintenance, des camions,
+        des chauffeurs et des indicateurs essentiels.
+      </p>
+    </section>
+  {% endif %}
+
+  {% if action_alerts %}
+    <section class="dashboard-section">
+      <div class="dashboard-section-header">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px;">Workflow</p>
+          <h2 class="dashboard-section-title">Alertes d'action</h2>
+          <p class="dashboard-section-subtitle">Chaque carte vous amene directement vers le prochain travail a traiter.</p>
+        </div>
+      </div>
+      <div class="dashboard-alerts">
+        {% for alert in action_alerts %}
+          <article class="dashboard-alert {% if alert.variant == 'danger' %}dashboard-alert-danger{% elif alert.variant == 'ok' %}dashboard-alert-ok{% endif %}">
+            <p class="eyebrow" style="margin-bottom:8px;">Alerte</p>
+            <h3 style="margin:0 0 8px; color:#123047;">{{ alert.title }}</h3>
+            <p style="margin:0 0 16px; color:#5f7384;">{{ alert.message }}</p>
+            <div class="table-actions">
+              <a href="{{ alert.cta_url }}" class="{% if alert.variant == 'danger' %}btn-delete{% elif alert.variant == 'ok' %}btn{% else %}btn-secondary{% endif %}">{{ alert.cta_label }}</a>
+              {% if alert.resolve_numero_facture %}
+                <form method="post" action="/dashboard/alertes/factures/resoudre/">
+                  {% csrf_token %}
+                  <input type="hidden" name="numero_facture" value="{{ alert.resolve_numero_facture }}">
+                  <button type="submit" class="btn-secondary">Resolu</button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if user_role == "logistique" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Exploitation terrain</p>
+            <h2 class="dashboard-section-title">BL a piloter immediatement</h2>
+            <p class="dashboard-section-subtitle">
+              Cette vue recentre la logistique sur les BL a receptionner, remettre au chauffeur, suivre en charge puis cloturer avec le bon retour.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill warning">Reception : {{ bons_attente_reception_logistique }}</span>
+            <span class="dashboard-pill">Remise chauffeur : {{ bons_liquides_logistique }}</span>
+            <span class="dashboard-pill ok">Charges : {{ bons_charges }}</span>
+            <span class="dashboard-pill danger">Retour attendu : {{ bons_non_retournes }}</span>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>BL</th>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>Etat</th>
+                <th>Camion</th>
+                <th>Charge</th>
+                <th>Livre</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for operation in logistique_operations_dashboard %}
+                <tr>
+                  <td>{{ operation.numero_bl }}</td>
+                  <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.client %}{{ operation.client.entreprise }}{% else %}-{% endif %}</td>
+                  <td>{{ operation.get_etat_bon_display }}</td>
+                  <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.date_bons_charges %}{{ operation.date_bons_charges|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.date_bons_livres %}{{ operation.date_bons_livres|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="7">Aucun BL logistique recent a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Maintenance & atelier</p>
+            <h2 class="dashboard-section-title">Sujets maintenance utiles a l'exploitation</h2>
+            <p class="dashboard-section-subtitle">
+              On garde ici ce qui bloque vite le terrain : saisie des prix, dossiers atelier en cours et maintenance active par camion.
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          {% for maintenance in logistique_maintenance_dashboard %}
+            <div class="dashboard-split-item">
+              <div>
+                <strong>{{ maintenance.reference }}</strong>
+                <span>{{ maintenance.camion.numero_tracteur }} - {{ maintenance.get_statut_display }}</span>
+              </div>
+              <div style="text-align:right; color:#6a7f92;">
+                <div>{{ maintenance.date_creation|date:"d/m/Y" }}</div>
+                <div>{{ maintenance.type_maintenance|default:"Maintenance" }}</div>
+              </div>
+            </div>
+          {% empty %}
+            <p class="dashboard-empty">Aucune maintenance active a surveiller pour le moment.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">File d'action</p>
+            <h2 class="dashboard-section-title">Priorites logistiques</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Commandes a affecter</h4>
+            <strong>{{ logistique_commandes_a_affecter }}</strong>
+            <p>Commandes validees qui attendent encore camion et chauffeur.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Reception logistique</h4>
+            <strong>{{ bons_attente_reception_logistique }}</strong>
+            <p>BL a receptionner des leur sortie du transitaire.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Remise chauffeur</h4>
+            <strong>{{ bons_liquides_logistique }}</strong>
+            <p>BL recus, prets a etre remis pour chargement.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Depenses camion</h4>
+            <strong>{{ logistique_depenses_camion_en_cours }}</strong>
+            <p>Depenses de chargement encore en attente de validation DGA.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Volumes & flotte</p>
+            <h2 class="dashboard-section-title">Essence, gasoil et disponibilite</h2>
+          </div>
+        </div>
+        <div class="dashboard-chart-card" style="margin-bottom:16px;">
+          <h4>Repartition essence / gasoil</h4>
+          <div class="dashboard-chart-box compact">
+            <canvas id="carburantChart"></canvas>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Camions disponibles</h4>
+            <strong>{{ camions_disponibles }}</strong>
+            <p>{{ camions_mission }} en mission / {{ camions_maintenance }} au garage.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Stock en alerte</h4>
+            <strong>{{ stock_articles_alerte }}</strong>
+            <p>Articles stock a surveiller pour l'activite atelier.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Prix a saisir</h4>
+            <strong>{{ logistique_prix_a_saisir }}</strong>
+            <p>Fiches maintenance encore en attente de chiffrage.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Vidanges dues</h4>
+            <strong>{{ camions_vidange_due }}</strong>
+            <p>Camions a controler rapidement pour eviter les blocages.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">A surveiller</p>
+            <h2 class="dashboard-section-title">Retours et alertes terrain</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          {% for operation in alertes_operations %}
+            <div class="dashboard-split-item">
+              <div>
+                <strong>{{ operation.numero_bl }}</strong>
+                <div style="margin-top:4px; color:#6a7f92;">{{ operation.client.entreprise }} - {{ operation.get_etat_bon_display }}</div>
+              </div>
+              <div style="text-align:right; color:#6a7f92;">
+                <div>Charge: {{ operation.date_bons_charges|default:"-" }}</div>
+                <div>Livre: {{ operation.date_bons_livres|default:"-" }}</div>
+              </div>
+            </div>
+          {% empty %}
+            <p class="dashboard-empty">Aucune alerte logistique pour le moment.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+  {% elif user_role == "transitaire" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Circuit transitaire</p>
+            <h2 class="dashboard-section-title">BL a suivre immediatement</h2>
+            <p class="dashboard-section-subtitle">
+              Cette vue regroupe uniquement les BL qui passent par la reception, la declaration,
+              la liquidation puis l'orientation vers la logistique.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill warning">BL secretaire : {{ bons_secretaire }}</span>
+            <span class="dashboard-pill">Transmis : {{ bons_transmis }}</span>
+            <span class="dashboard-pill">Declares : {{ bons_declares }}</span>
+            <span class="dashboard-pill ok">Liquides : {{ bons_liquides }}</span>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>BL</th>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>Etat</th>
+                <th>Camion</th>
+                <th>Transmission</th>
+                <th>Reception</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for operation in transitaire_operations_dashboard %}
+                <tr>
+                  <td>{{ operation.numero_bl }}</td>
+                  <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.client %}{{ operation.client.entreprise }}{% else %}-{% endif %}</td>
+                  <td>{{ operation.get_etat_bon_display }}</td>
+                  <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.date_transmission_depot %}{{ operation.date_transmission_depot|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.date_reception_transitaire %}{{ operation.date_reception_transitaire|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="7">Aucun BL transitaire recent a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Aval du circuit</p>
+            <h2 class="dashboard-section-title">BL deja orientes ou sortis du transitaire</h2>
+            <p class="dashboard-section-subtitle">
+              Une vue simple des BL qui ont deja quitte le traitement transitaire pour la suite du workflow.
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Attente logistique</h4>
+            <strong>{{ bons_attente_reception_logistique }}</strong>
+            <p>BL liquides et transmis a la logistique.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>BL logistique</h4>
+            <strong>{{ bons_liquides_logistique }}</strong>
+            <p>Reception logistique validee.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>BL chauffeur</h4>
+            <strong>{{ bons_liquides_chauffeur }}</strong>
+            <p>Bons remis au chauffeur pour chargement.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Charges / livres</h4>
+            <strong>{{ bons_charges }} / {{ bons_livres }}</strong>
+            <p>Suivi utile jusqu'a la fin de la chaine.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Lecture rapide</p>
+            <h2 class="dashboard-section-title">Repartition des etapes</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Reception transitaire</strong>
+              <span>BL recus depuis la secretaire</span>
+            </div>
+            <strong>{{ bons_secretaire }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Declaration</strong>
+              <span>BL a declarer ou deja declares</span>
+            </div>
+            <strong>{{ bons_transmis }} / {{ bons_declares }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Liquidation</strong>
+              <span>BL liquides a orienter</span>
+            </div>
+            <strong>{{ bons_liquides }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Historique transitaire</strong>
+              <span>BL deja sortis du perimetre transitaire</span>
+            </div>
+            <strong>{{ bons_liquides_logistique|add:bons_liquides_chauffeur|add:bons_charges|add:bons_livres }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Cap important</p>
+            <h2 class="dashboard-section-title">Ce que le transitaire suit vraiment</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Documents recus</h4>
+            <strong>{{ bons_secretaire|add:bons_transmis }}</strong>
+            <p>BL arrives ou deja receptionnes.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Traitement en cours</h4>
+            <strong>{{ bons_declares|add:bons_liquides }}</strong>
+            <p>BL declares ou en liquidation.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Sortie vers logistique</h4>
+            <strong>{{ bons_attente_reception_logistique }}</strong>
+            <p>BL en attente de prise en charge logistique.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Historique boucle</h4>
+            <strong>{{ bons_livres }}</strong>
+            <p>BL livres en fin de chaine.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  {% elif user_role == "chef_chauffeur" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Chef chauffeur</p>
+            <h2 class="dashboard-section-title">BL a executer</h2>
+            <p class="dashboard-section-subtitle">
+              Une vue simple et directe des BL qui attendent votre action : d'abord le chargement,
+              puis la livraison. Une fois livres, ils quittent cette liste.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill warning">A charger : {{ bons_liquides_chauffeur }}</span>
+            <span class="dashboard-pill">Charges : {{ bons_charges }}</span>
+            <span class="dashboard-pill ok">Livres : {{ bons_livres }}</span>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>BL</th>
+                <th>Client</th>
+                <th>Camion</th>
+                <th>Chauffeur</th>
+                <th>Etat</th>
+                <th>Date charge</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for operation in chef_chauffeur_operations_dashboard %}
+                <tr>
+                  <td>{{ operation.numero_bl }}</td>
+                  <td>{% if operation.client %}{{ operation.client.entreprise }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                  <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                  <td>{{ operation.get_etat_bon_display }}</td>
+                  <td>{% if operation.date_bons_charges %}{{ operation.date_bons_charges|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6">Aucun BL chauffeur a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Priorites</p>
+            <h2 class="dashboard-section-title">Ce que vous suivez</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          <div class="dashboard-split-item">
+            <div>
+              <strong>En attente de chargement</strong>
+              <span>BL remis par la logistique</span>
+            </div>
+            <strong>{{ bons_liquides_chauffeur }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Charges a livrer</strong>
+              <span>BL deja charges, en attente de livraison</span>
+            </div>
+            <strong>{{ bons_charges }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Historique livre</strong>
+              <span>BL deja livres par le circuit chauffeur</span>
+            </div>
+            <strong>{{ bons_livres }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Bons retournes</strong>
+              <span>BL totalement boucles en aval</span>
+            </div>
+            <strong>{{ bons_retournes }}</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  {% elif user_role == "comptable" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Preparation BL</p>
+            <h2 class="dashboard-section-title">Commandes a transformer en BL</h2>
+            <p class="dashboard-section-subtitle">
+              Les commandes planifiees doivent passer rapidement en creation BL pour ne pas bloquer le reste du circuit.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill warning">Sans BL : {{ comptable_commandes_pretes_total }}</span>
+            <span class="dashboard-pill">BL inities : {{ comptable_operations_initiees_total }}</span>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>Produit</th>
+                <th>Destination</th>
+                <th>Date prevue</th>
+                <th>Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for commande in comptable_recent_commandes_pretes %}
+                <tr>
+                  <td>{{ commande.reference }}</td>
+                  <td>{{ commande.client.entreprise }}</td>
+                  <td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
+                  <td>{{ commande.ville_arrivee }}</td>
+                  <td>{{ commande.date_livraison_prevue|date:"d/m/Y" }}</td>
+                  <td>{{ commande.montant_commande|floatformat:0 }} GNF</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6">Aucune commande planifiee en attente de creation BL.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Facturation</p>
+            <h2 class="dashboard-section-title">Livraisons et statut de facture</h2>
+            <p class="dashboard-section-subtitle">
+              Une lecture simple des BL livres, deja factures ou encore en attente de numero de facture.
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>BL</th>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>Date livre</th>
+                <th>Facture</th>
+                <th>Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for operation in comptable_recent_facturation %}
+                <tr>
+                  <td>{{ operation.numero_bl }}</td>
+                  <td>{% if operation.commande %}{{ operation.commande.reference }}{% else %}-{% endif %}</td>
+                  <td>{{ operation.client.entreprise }}</td>
+                  <td>{% if operation.date_bons_livres %}{{ operation.date_bons_livres|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                  <td>
+                    {% if operation.numero_facture %}
+                      {{ operation.numero_facture }}
+                    {% else %}
+                      <span class="status status-danger">A facturer</span>
+                    {% endif %}
+                  </td>
+                  <td>{% if operation.montant_facture %}{{ operation.montant_facture|floatformat:0 }} GNF{% else %}-{% endif %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6">Aucune livraison recente a afficher pour la facturation.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Pipeline comptable</p>
+            <h2 class="dashboard-section-title">Creation, facturation et encaissement</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>BL a creer</h4>
+            <strong>{{ comptable_commandes_pretes_total }}</strong>
+            <p>Commandes planifiees sans BL en base.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>BL inities</h4>
+            <strong>{{ comptable_operations_initiees_total }}</strong>
+            <p>Bons saisis et en attente de progression.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>A facturer</h4>
+            <strong>{{ comptable_factures_a_emettre_total }}</strong>
+            <p>Livraisons terminees sans facture emise.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Factures emises</h4>
+            <strong>{{ comptable_factures_emises_total }}</strong>
+            <p>BL deja transformes en facture.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Encaissements</p>
+            <h2 class="dashboard-section-title">Derniers paiements clients</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          {% for encaissement in comptable_recent_encaissements %}
+            <div class="dashboard-split-item">
+              <div>
+                <strong>{{ encaissement.client.entreprise }}</strong>
+                <span>{{ encaissement.get_mode_paiement_display }}{% if encaissement.commande %} - {{ encaissement.commande.reference }}{% endif %}</span>
+              </div>
+              <div style="text-align:right;">
+                <strong>{{ encaissement.montant|floatformat:0 }} GNF</strong>
+                <span>{{ encaissement.date_encaissement|date:"d/m/Y" }}</span>
+              </div>
+            </div>
+          {% empty %}
+            <p class="dashboard-empty">Aucun encaissement recent enregistre.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Vue rapide</p>
+            <h2 class="dashboard-section-title">Repartition du pipeline comptable</h2>
+          </div>
+        </div>
+        <div class="dashboard-chart-card">
+          <h4>Etat du traitement comptable</h4>
+          <div class="dashboard-chart-box">
+            <canvas id="comptablePipelineChart"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  {% elif user_role == "commercial" or user_role == "responsable_commercial" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Portefeuille clients</p>
+            <h2 class="dashboard-section-title">Clients a suivre de pres</h2>
+            <p class="dashboard-section-subtitle">
+              Cette lecture met en avant les clients qui concentrent le plus de risque, de creance ou de tension DMA.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill warning">DMA critique : {{ commercial_clients_critique }}</span>
+            <span class="dashboard-pill">DMA alerte : {{ commercial_clients_alerte }}</span>
+            <span class="dashboard-pill">Sans plafond : {{ commercial_clients_sans_plafond }}</span>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Encours</th>
+                <th>Creance</th>
+                <th>Risque</th>
+                <th>DMA</th>
+                <th>Niveau</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for client in commercial_clients_focus %}
+                <tr>
+                  <td>{{ client.entreprise }}</td>
+                  <td>{{ client.encours_client|floatformat:0 }} GNF</td>
+                  <td>{{ client.creance_client|floatformat:0 }} GNF</td>
+                  <td>{{ client.risque_client|floatformat:0 }} GNF</td>
+                  <td>{{ client.ratio_decouvert|floatformat:0 }}%</td>
+                  <td>
+                    {% if client.niveau_risque == "critique" %}
+                      <span class="status status-danger">Critique</span>
+                    {% elif client.niveau_risque == "alerte" %}
+                      <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">Alerte</span>
+                    {% else %}
+                      <span class="status status-ok">OK</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6">Aucun client portefeuille a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Suivi commercial</p>
+            <h2 class="dashboard-section-title">Commandes recentes</h2>
+            <p class="dashboard-section-subtitle">
+              Les dernieres commandes aidees a la vente, a la validation ou au suivi de facturation.
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Client</th>
+                <th>Trajet</th>
+                <th>Statut</th>
+                <th>Echeance</th>
+                <th>Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for commande in commercial_recent_commandes %}
+                <tr>
+                  <td>{{ commande.reference }}</td>
+                  <td>{{ commande.client.entreprise }}</td>
+                  <td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
+                  <td>{{ commande.get_statut_display }}</td>
+                  <td>{% if commande.date_echeance %}{{ commande.date_echeance|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                  <td>{{ commande.montant_commande|floatformat:0 }} GNF</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6">Aucune commande recente a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Pipeline</p>
+            <h2 class="dashboard-section-title">Decisions et execution</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Attente DGA</h4>
+            <strong>{{ commercial_pipeline_totals.0 }}</strong>
+            <p>Commandes encore au premier niveau de validation.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Attente DG</h4>
+            <strong>{{ commercial_pipeline_totals.1 }}</strong>
+            <p>Commandes montees a l'arbitrage final.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Validees / en cours</h4>
+            <strong>{{ commercial_commandes_validees }}</strong>
+            <p>Commandes qui doivent se transformer en execution et livraison.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Factures a emettre</h4>
+            <strong>{{ commercial_factures_a_emettre_total }}</strong>
+            <p>Livraisons bouclees sans facture emise.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Recouvrement</p>
+            <h2 class="dashboard-section-title">Encaissements recents</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          {% for encaissement in commercial_recent_encaissements %}
+            <div class="dashboard-split-item">
+              <div>
+                <strong>{{ encaissement.client.entreprise }}</strong>
+                <span>{{ encaissement.get_mode_paiement_display }}{% if encaissement.commande %} - {{ encaissement.commande.reference }}{% endif %}</span>
+              </div>
+              <div style="text-align:right;">
+                <strong>{{ encaissement.montant|floatformat:0 }} GNF</strong>
+                <span>{{ encaissement.date_encaissement|date:"d/m/Y" }}</span>
+              </div>
+            </div>
+          {% empty %}
+            <p class="dashboard-empty">Aucun encaissement recent sur ce portefeuille.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Prospection</p>
+            <h2 class="dashboard-section-title">Derniers prospects et priorites</h2>
+          </div>
+        </div>
+        <div class="dashboard-chart-card" style="margin-bottom:16px;">
+          <h4>Repartition du pipeline</h4>
+          <div class="dashboard-chart-box compact">
+            <canvas id="commercialPipelineChart"></canvas>
+          </div>
+        </div>
+        <div class="dashboard-chart-card">
+          <h4>Prospects recents</h4>
+          <div class="dashboard-split-list">
+            {% for prospect in commercial_recent_prospects %}
+              <div class="dashboard-split-item">
+                <div>
+                  <strong>{{ prospect.entreprise }}</strong>
+                  <span>{{ prospect.nom }}{% if prospect.fonction %} - {{ prospect.fonction }}{% endif %}</span>
+                </div>
+                <div style="text-align:right; color:#6a7f92;">
+                  <div>{{ prospect.ville }}</div>
+                  <div>{{ prospect.date_creation|date:"d/m/Y" }}</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="dashboard-empty">Aucun prospect recent pour le moment.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  {% else %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Pilotage BL</p>
+            <h2 class="dashboard-section-title">Circuit du bon de livraison</h2>
+            <p class="dashboard-section-subtitle">
+              Une synthese du passage du BL entre comptabilite, secretaire, transitaire, logistique, chef chauffeur et retour.
+            </p>
+          </div>
+          <div class="dashboard-pill-row">
+            <span class="dashboard-pill">Initie: {{ bons_inities }}</span>
+            <span class="dashboard-pill warning">BL secretaire: {{ bons_secretaire }}</span>
+            <span class="dashboard-pill">Transmis: {{ bons_transmis }}</span>
+            <span class="dashboard-pill">Declare: {{ bons_declares }}</span>
+            <span class="dashboard-pill ok">Charge: {{ bons_charges }}</span>
+            <span class="dashboard-pill ok">Livre: {{ bons_livres }}</span>
+          </div>
+        </div>
+
+        <div class="dashboard-chart-grid">
+          <div class="dashboard-chart-card">
+            <h4>Vue workflow</h4>
+            <div class="dashboard-chart-box tall">
+              <canvas id="workflowChart"></canvas>
+            </div>
+          </div>
+          <div class="dashboard-mini-grid">
+            <div class="dashboard-mini-card">
+              <h4>Phase transitaire</h4>
+              <strong>{{ bons_transmis|add:bons_declares|add:bons_liquides }}</strong>
+              <p>BL recus, declares ou liquides chez le transitaire.</p>
+            </div>
+            <div class="dashboard-mini-card">
+              <h4>Phase logistique</h4>
+              <strong>{{ bons_attente_reception_logistique|add:bons_liquides_logistique|add:bons_liquides_chauffeur }}</strong>
+              <p>BL en reception, remise ou attente du chauffeur.</p>
+            </div>
+            <div class="dashboard-mini-card">
+              <h4>Bons retournes</h4>
+              <strong>{{ bons_retournes }}</strong>
+              <p>BL completement boucles avec bon retour enregistre.</p>
+            </div>
+            <div class="dashboard-mini-card">
+              <h4>BL non retournes</h4>
+              <strong>{{ bons_non_retournes }}</strong>
+              <p>Livraisons terminees qui attendent encore le bon retour.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Activite recente</p>
+            <h2 class="dashboard-section-title">{% if is_maintenancier %}Dernieres maintenances{% else %}Dernieres operations terrain{% endif %}</h2>
+            <p class="dashboard-section-subtitle">
+              {% if is_maintenancier %}
+                Les diagnostics et passages atelier les plus recents, pour garder une vue simple sur les fiches actives.
+              {% else %}
+                Les derniers BL manipules sur la plateforme, avec leur client, produit, camion et date.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          {% if is_maintenancier %}
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Camion</th>
+                  <th>Statut</th>
+                  <th>Debut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for maintenance in dernieres_maintenances %}
+                  <tr>
+                    <td>{{ maintenance.reference }}</td>
+                    <td>{{ maintenance.camion.numero_tracteur }}</td>
+                    <td>{{ maintenance.get_statut_display }}</td>
+                    <td>{{ maintenance.date_debut|date:"d/m/Y H:i" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4">Aucune maintenance recente.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>BL</th>
+                  <th>Etat</th>
+                  <th>Client</th>
+                  <th>Produit</th>
+                  <th>Camion</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for operation in dernieres_operations %}
+                  <tr>
+                    <td>{{ operation.numero_bl }}</td>
+                    <td>{{ operation.get_etat_bon_display }}</td>
+                    <td>{{ operation.client.entreprise }}</td>
+                    <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
+                    <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                    <td>{{ operation.date_creation|date:"d/m/Y" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="6">Aucune operation recente.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Stock & flotte</p>
+            <h2 class="dashboard-section-title">Niveaux critiques et usage des moyens</h2>
+            <p class="dashboard-section-subtitle">
+              On garde ici les informations utiles au quotidien: stock, clients actifs et camions les plus sollicites.
+            </p>
+          </div>
+        </div>
+
+        <div class="dashboard-chart-grid">
+          <div class="dashboard-chart-card">
+            <h4>Statistique du stock</h4>
+            <div class="dashboard-chart-box">
+              <canvas id="stockChart"></canvas>
+            </div>
+          </div>
+          <div class="dashboard-chart-card">
+            <h4>{% if is_maintenancier %}Performance des camions{% else %}Top clients du moment{% endif %}</h4>
+            <div class="dashboard-split-list">
+              {% if is_maintenancier %}
+                {% for camion in performances_camions|slice:":5" %}
+                  <div class="dashboard-split-item">
+                    <div>
+                      <strong>{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}</strong>
+                      <div style="margin-top:4px; color:#6a7f92;">{{ camion.marque|default:"-" }}{% if camion.capacite %} / {{ camion.capacite }} L{% endif %}</div>
+                    </div>
+                    <div style="text-align:right;">
+                      <strong>{{ camion.performance_percent }}%</strong>
+                      <div style="margin-top:4px;">
+                        {% if camion.performance_variant == "ok" %}
+                          <span class="status status-ok">{{ camion.performance_label }}</span>
+                        {% elif camion.performance_variant == "warning" %}
+                          <span class="status" style="background:rgba(240, 168, 58, 0.16); color:#b87000;">{{ camion.performance_label }}</span>
+                        {% elif camion.performance_variant == "mid" %}
+                          <span class="status" style="background:rgba(230, 126, 34, 0.16); color:#c65d00;">{{ camion.performance_label }}</span>
+                        {% else %}
+                          <span class="status status-danger">{{ camion.performance_label }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% empty %}
+                  <p class="dashboard-empty">Aucune donnee de performance disponible.</p>
+                {% endfor %}
+              {% else %}
+                {% for item in top_clients %}
+                  <div class="dashboard-split-item">
+                    <div>
+                      <strong>{{ item.client__entreprise }}</strong>
+                      <span>{{ item.total_bons }} BL</span>
+                    </div>
+                    <div style="text-align:right;">
+                      <strong>{{ item.total_quantite|default:"0" }}</strong>
+                      <span>Quantite livree / transportee</span>
+                    </div>
+                  </div>
+                {% empty %}
+                  <p class="dashboard-empty">Aucune statistique client disponible.</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Commandes & validations</p>
+            <h2 class="dashboard-section-title">File de decisions</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Attente DGA</h4>
+            <strong>{{ commandes_attente_dga }}</strong>
+            <p>Commandes a arbitrer au premier niveau.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Attente DG</h4>
+            <strong>{{ commandes_attente_dg }}</strong>
+            <p>Commandes montees a la validation finale.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Planifiees</h4>
+            <strong>{{ commandes_planifiees }}</strong>
+            <p>Commandes validees, pretes a entrer en execution.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Paiements depenses</h4>
+            <strong>{{ depenses_attente_paiement }}</strong>
+            <p>Depenses bouclees sur le fond, mais pas encore reglees.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Carburant & volumes</p>
+            <h2 class="dashboard-section-title">{% if is_maintenancier %}Cout et charge atelier{% else %}Essence, gasoil et tendance journaliere{% endif %}</h2>
+          </div>
+        </div>
+        <div class="dashboard-chart-card" style="margin-bottom:16px;">
+          <h4>{% if is_maintenancier %}Repartition maintenance{% else %}Repartition essence / gasoil{% endif %}</h4>
+          <div class="dashboard-chart-box compact">
+            <canvas id="{% if is_maintenancier %}maintenanceChart{% else %}carburantChart{% endif %}"></canvas>
+          </div>
+        </div>
+        <div class="dashboard-chart-card">
+          <h4>{% if is_maintenancier %}Charge maintenance par statut{% else %}Croissance journaliere des BL inities{% endif %}</h4>
+          <div class="dashboard-chart-box">
+            <canvas id="bonsChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">A surveiller</p>
+            <h2 class="dashboard-section-title">{% if is_maintenancier %}Alertes maintenance{% else %}Retards et ecarts de parcours{% endif %}</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          {% if is_maintenancier %}
+            {% for maintenance in alertes_maintenance %}
+              <div class="dashboard-split-item">
+                <div>
+                  <strong>{{ maintenance.reference }}</strong>
+                  <div style="margin-top:4px; color:#6a7f92;">{{ maintenance.camion.numero_tracteur }} - {{ maintenance.get_statut_display }}</div>
+                </div>
+                <div style="text-align:right; color:#6a7f92;">{{ maintenance.observation|default:"-"|truncatechars:52 }}</div>
+              </div>
+            {% empty %}
+              <p class="dashboard-empty">Aucune alerte maintenance pour le moment.</p>
+            {% endfor %}
+          {% else %}
+            {% for operation in alertes_operations %}
+              <div class="dashboard-split-item">
+                <div>
+                  <strong>{{ operation.numero_bl }}</strong>
+                  <div style="margin-top:4px; color:#6a7f92;">{{ operation.client.entreprise }} - {{ operation.get_etat_bon_display }}</div>
+                </div>
+                <div style="text-align:right; color:#6a7f92;">
+                  <div>Charge: {{ operation.date_bons_charges|default:"-" }}</div>
+                  <div>Livre: {{ operation.date_bons_livres|default:"-" }}</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="dashboard-empty">Aucune alerte operationnelle pour le moment.</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+  {% endif %}
 </div>
-</div>
-</div>
-{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-{% if not is_maintenancier %}
-const carburantCtx = document.getElementById("carburantChart");
-if (carburantCtx) {
-    new Chart(carburantCtx, {
-        type: "doughnut",
-        data: {
-            labels: ["Essence", "Gasoil"],
-            datasets: [{
-                data: [{{ total_essence|unlocalize }}, {{ total_gasoil|unlocalize }}],
-                backgroundColor: ["#1f9d7a", "#f0a83a"],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: "bottom"
-                }
-            }
-        }
-    });
-}
-{% endif %}
+  const chartText = {
+    primary: "#123047",
+    muted: "#6a7f92",
+    line: "rgba(186, 206, 223, 0.7)",
+    green: "#1f9d7a",
+    blue: "#3f8fd6",
+    orange: "#f0a83a",
+    red: "#d64545",
+    dark: "#123047",
+    pale: "#dbe8f4",
+  };
 
-const bonsCtx = document.getElementById("bonsChart");
-if (bonsCtx) {
-    new Chart(bonsCtx, {
-        type: "line",
-        data: {
-            labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-            datasets: [{
-                label: "Bons inities",
-                data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                borderColor: "#3f8fd6",
-                backgroundColor: "rgba(63, 143, 214, 0.16)",
-                fill: true,
-                tension: 0.35,
-                pointRadius: 4,
-                pointBackgroundColor: "#123047"
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: true
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            }
-        }
-    });
-}
+  Chart.defaults.color = chartText.muted;
+  Chart.defaults.font.family = "Segoe UI, sans-serif";
+  Chart.defaults.borderColor = chartText.line;
 
-const stockCtx = document.getElementById("stockChart");
-if (stockCtx) {
+  const workflowCtx = document.getElementById("workflowChart");
+  if (workflowCtx) {
+    new Chart(workflowCtx, {
+      type: "bar",
+      data: {
+        labels: [
+          "Initie",
+          "BL secretaire",
+          "Transmis",
+          "Declare",
+          "Liquide",
+          "Att. reception log",
+          "BL logistique",
+          "BL chauffeur",
+          "Charge",
+          "Livre",
+          "Bon retour",
+        ],
+        datasets: [{
+          label: "Nombre de BL",
+          data: [
+            {{ bons_inities|unlocalize }},
+            {{ bons_secretaire|unlocalize }},
+            {{ bons_transmis|unlocalize }},
+            {{ bons_declares|unlocalize }},
+            {{ bons_liquides|unlocalize }},
+            {{ bons_attente_reception_logistique|unlocalize }},
+            {{ bons_liquides_logistique|unlocalize }},
+            {{ bons_liquides_chauffeur|unlocalize }},
+            {{ bons_charges|unlocalize }},
+            {{ bons_livres|unlocalize }},
+            {{ bons_retournes|unlocalize }}
+          ],
+          backgroundColor: [
+            chartText.blue,
+            "#5d9fcb",
+            "#6fae93",
+            "#87b86d",
+            chartText.orange,
+            "#e9a648",
+            "#c48f35",
+            "#ae7d2f",
+            chartText.green,
+            "#138964",
+            chartText.dark
+          ],
+          borderRadius: 12,
+          maxBarThickness: 28
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: { maxRotation: 0, minRotation: 0, autoSkip: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        }
+      }
+    });
+  }
+
+  const stockCtx = document.getElementById("stockChart");
+  if (stockCtx) {
     new Chart(stockCtx, {
+      type: "bar",
+      data: {
+        labels: [{% for label in stock_chart_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+          label: "Quantite en stock",
+          data: [{% for quantity in stock_chart_quantities %}{{ quantity|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+          backgroundColor: [{% for color in stock_chart_colors %}"{{ color }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          borderRadius: 12,
+          maxBarThickness: 34
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  {% if user_role == "comptable" %}
+    const comptablePipelineCtx = document.getElementById("comptablePipelineChart");
+    if (comptablePipelineCtx) {
+      new Chart(comptablePipelineCtx, {
         type: "bar",
         data: {
-            labels: [{% for label in stock_chart_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-            datasets: [{
-                label: "Quantite en stock",
-                data: [{% for quantity in stock_chart_quantities %}{{ quantity|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                backgroundColor: [{% for color in stock_chart_colors %}"{{ color }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-                borderRadius: 10
-            }]
+          labels: [{% for label in comptable_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          datasets: [{
+            label: "Volume",
+            data: [{% for total in comptable_pipeline_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [chartText.orange, chartText.blue, chartText.green, chartText.red, chartText.dark],
+            borderRadius: 12,
+            maxBarThickness: 42
+          }]
         },
         options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
         }
-    });
-}
-</script>
+      });
+    }
+  {% elif user_role == "commercial" or user_role == "responsable_commercial" %}
+    const commercialPipelineCtx = document.getElementById("commercialPipelineChart");
+    if (commercialPipelineCtx) {
+      new Chart(commercialPipelineCtx, {
+        type: "bar",
+        data: {
+          labels: [{% for label in commercial_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          datasets: [{
+            label: "Commandes",
+            data: [{% for total in commercial_pipeline_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [chartText.orange, chartText.red, chartText.green, chartText.blue, chartText.dark],
+            borderRadius: 12,
+            maxBarThickness: 42
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  {% elif is_maintenancier %}
+    const maintenanceCtx = document.getElementById("maintenanceChart");
+    if (maintenanceCtx) {
+      new Chart(maintenanceCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["En cours", "Terminees", "Refusees", "Annulees"],
+          datasets: [{
+            data: [
+              {{ maintenances_en_cours|unlocalize }},
+              {{ maintenances_terminees|unlocalize }},
+              {{ maintenances_refusees|unlocalize }},
+              {{ maintenances_annulees|unlocalize }}
+            ],
+            backgroundColor: [chartText.orange, chartText.green, chartText.red, chartText.dark],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom" }
+          }
+        }
+      });
+    }
 
+    const bonsCtx = document.getElementById("bonsChart");
+    if (bonsCtx) {
+      new Chart(bonsCtx, {
+        type: "bar",
+        data: {
+          labels: ["Diagnostics", "En cours", "Terminees", "Articles stock", "Alertes stock", "Mouvements"],
+          datasets: [{
+            label: "Volume",
+            data: [
+              {{ maintenances_total|unlocalize }},
+              {{ maintenances_en_cours|unlocalize }},
+              {{ maintenances_terminees|unlocalize }},
+              {{ stock_total_articles|unlocalize }},
+              {{ stock_articles_alerte|unlocalize }},
+              {{ stock_mouvements_recents|unlocalize }}
+            ],
+            backgroundColor: [chartText.blue, chartText.orange, chartText.green, chartText.dark, chartText.red, "#4fb3bf"],
+            borderRadius: 12,
+            maxBarThickness: 36
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  {% else %}
+    const carburantCtx = document.getElementById("carburantChart");
+    if (carburantCtx) {
+      new Chart(carburantCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Essence", "Gasoil"],
+          datasets: [{
+            data: [{{ total_essence|unlocalize }}, {{ total_gasoil|unlocalize }}],
+            backgroundColor: [chartText.green, chartText.orange],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom" }
+          }
+        }
+      });
+    }
+
+    const bonsCtx = document.getElementById("bonsChart");
+    if (bonsCtx) {
+      new Chart(bonsCtx, {
+        type: "line",
+        data: {
+          labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          datasets: [{
+            label: "Bons inities",
+            data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: chartText.blue,
+            backgroundColor: "rgba(63, 143, 214, 0.12)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: chartText.dark
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  {% endif %}
+</script>
 {% endblock %}

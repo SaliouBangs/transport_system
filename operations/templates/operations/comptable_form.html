@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block content %}
 
@@ -10,6 +11,162 @@
 <h1>{{ page_title }}</h1>
 </div>
 </div>
+
+<style>
+.allocation-shell {
+    margin-top: 22px;
+    padding: 20px;
+    border-radius: 22px;
+    border: 1px solid #d9e7f2;
+    background: linear-gradient(135deg, #f7fbfd 0%, #eef7fb 100%);
+}
+
+.allocation-shell h2 {
+    margin: 6px 0 8px;
+    color: #123047;
+    font-size: 1.3rem;
+}
+
+.allocation-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.allocation-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.allocation-kpi {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid #d9e7f2;
+}
+
+.allocation-kpi span {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7c8f;
+}
+
+.allocation-kpi strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 1.6rem;
+    color: #123047;
+}
+
+.allocation-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.allocation-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(160px, 0.8fr) minmax(200px, 1fr) auto;
+    grid-template-areas:
+        "sommier quantite numero actions"
+        "meta meta meta meta";
+    gap: 12px;
+    align-items: start;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #d9e7f2;
+}
+
+.allocation-field {
+    min-width: 0;
+}
+
+.allocation-field--sommier {
+    grid-area: sommier;
+}
+
+.allocation-field--quantite {
+    grid-area: quantite;
+}
+
+.allocation-field--numero {
+    grid-area: numero;
+}
+
+.allocation-actions {
+    grid-area: actions;
+    align-self: end;
+}
+
+.allocation-row label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    color: #123047;
+}
+
+.allocation-row select,
+.allocation-row input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid #cfdce8;
+    background: #fbfdff;
+    font-size: 0.97rem;
+}
+
+.allocation-row button {
+    margin: 0;
+}
+
+.allocation-meta {
+    grid-area: meta;
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #6b7c8f;
+}
+
+.allocation-meta.is-warning {
+    color: #b45309;
+    font-weight: 600;
+}
+
+.allocation-quantite.is-missing {
+    border-color: #f59e0b;
+    background: #fff8eb;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+}
+
+.allocation-error {
+    margin-top: 10px;
+    color: #b53d32;
+    font-weight: 600;
+}
+
+@media (max-width: 960px) {
+    .allocation-row {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "sommier"
+            "meta"
+            "quantite"
+            "numero"
+            "actions";
+    }
+
+    .allocation-actions {
+        justify-self: start;
+    }
+}
+</style>
 
 <div class="form-shell operation-shell">
 <form method="post" class="app-form">
@@ -24,11 +181,15 @@
     {% endif %}
 
     <div class="form-grid operation-grid">
+        {% if form.instance.pk and not multi_allocation_mode %}
         <div class="field">
             <label for="{{ form.numero_bl.id_for_label }}">Numero BL</label>
             {{ form.numero_bl }}
             {% for error in form.numero_bl.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+        {% else %}
+        <input type="hidden" name="numero_bl" value="{{ form.numero_bl.value|default:'' }}">
+        {% endif %}
         <div class="field">
             <label for="{{ form.commande.id_for_label }}">Bon de commande</label>
             {{ form.commande }}
@@ -50,6 +211,7 @@
             </div>
             {% for error in form.depot.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+        {% if form.instance.pk and not multi_allocation_mode %}
         <div class="field">
             <label for="{{ form.sommier.id_for_label }}">Navire / Sommier</label>
             {{ form.sommier }}
@@ -62,6 +224,11 @@
             </p>
             {% for error in form.sommier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+        {% else %}
+        <div class="field field-full" style="display:none;" aria-hidden="true">
+            {{ form.sommier }}
+        </div>
+        {% endif %}
         <div class="field">
             <label for="{{ form.client.id_for_label }}">Client</label>
             {{ form.client }}
@@ -78,13 +245,26 @@
                 {{ form.produit }}
                 <button type="button" class="btn-secondary btn-inline" data-modal-target="produit-modal">Ajouter produit</button>
             </div>
+            <p class="field-help" id="regime-produit-warning" hidden></p>
             {% for error in form.produit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+        {% if form.instance.pk %}
+        {% if not multi_allocation_mode %}
         <div class="field">
             <label for="{{ form.quantite.id_for_label }}">Quantite</label>
             {{ form.quantite }}
             {% for error in form.quantite.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
         </div>
+        {% else %}
+        <div class="field" hidden>
+            <input type="hidden" name="quantite" id="id_quantite" value="{% if allocation_target_total != None %}{{ allocation_target_total|unlocalize }}{% else %}{{ form.instance.quantite|unlocalize }}{% endif %}">
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="field" hidden>
+            {{ form.quantite }}
+        </div>
+        {% endif %}
         <div class="field">
             <label for="{{ form.date_bl.id_for_label }}">Date BL</label>
             {{ form.date_bl }}
@@ -97,18 +277,51 @@
         </div>
     </div>
 
+    {% if not form.instance.pk or multi_allocation_mode %}
+    <div class="allocation-shell">
+        <div class="allocation-toolbar">
+            <div>
+                <p class="eyebrow" style="margin-bottom:6px;">Repartition multi-BL</p>
+                <h2>{% if multi_allocation_mode %}Modifier la repartition des BL{% else %}Allouer la commande sur plusieurs sommiers{% endif %}</h2>
+                <p class="field-help" style="margin:0;">
+                    {% if multi_allocation_mode %}Retrouve ici toutes les lignes de BL de cette commande. Tu peux reajuster les sommiers, quantites et numeros avant validation transitaire.{% else %}Saisis d'abord le premier BL. Si le sommier ne couvre pas toute la commande, tu pourras ajouter une autre ligne.{% endif %}
+                </p>
+            </div>
+            <button type="button" class="btn-secondary" id="add-allocation-row" disabled>Ajouter une ligne</button>
+        </div>
+
+        <div class="allocation-kpis">
+            <div class="allocation-kpi">
+                <span>Quantite commande</span>
+                <strong id="allocation-commande-total">0</strong>
+            </div>
+            <div class="allocation-kpi">
+                <span>Total alloue</span>
+                <strong id="allocation-total">0</strong>
+            </div>
+            <div class="allocation-kpi">
+                <span>Reste a couvrir</span>
+                <strong id="allocation-restant">0</strong>
+            </div>
+        </div>
+
+        <div class="allocation-grid" id="allocation-grid"></div>
+        <div class="allocation-error" id="allocation-live-error"></div>
+    </div>
+    {% endif %}
+
     <div class="summary-panel">
-        <h2>Resume du BL</h2>
+        <h2>{% if multi_allocation_mode %}Resume de la repartition{% elif form.instance.pk %}Resume du BL{% else %}Resume de la creation{% endif %}</h2>
         <table class="table summary-table">
             <tbody>
                 <tr><th>Commande</th><td id="commande-resume">{% if form.instance.commande %}{{ form.instance.commande.reference }}{% elif commande_initiale %}{{ commande_initiale.reference }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Regime</th><td id="regime-resume">{% if form.instance.regime_douanier %}{{ form.instance.regime_douanier.libelle }} ({{ form.instance.regime_douanier.code_regime }}){% else %}-{% endif %}</td></tr>
                 <tr><th>Depot</th><td id="depot-resume">{% if form.instance.depot %}{{ form.instance.depot.nom }}{% else %}-{% endif %}</td></tr>
-                <tr><th>Navire</th><td id="sommier-resume">{% if form.instance.sommier %}{{ form.instance.sommier.reference_navire }} - {{ form.instance.sommier.quantite_disponible }} dispo{% else %}-{% endif %}</td></tr>
+                <tr><th>Navire</th><td id="sommier-resume">{% if multi_allocation_mode or not form.instance.pk %}Allocation multiple par sommier{% elif form.instance.sommier %}{{ form.instance.sommier.reference_navire }} - {{ form.instance.sommier.quantite_disponible }} dispo{% else %}-{% endif %}</td></tr>
                 <tr><th>Client</th><td id="client-resume">{% if form.instance.client %}{{ form.instance.client.entreprise }}{% elif commande_initiale %}{{ commande_initiale.client.entreprise }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Destination</th><td id="destination-resume">{% if form.instance.destination %}{{ form.instance.destination }}{% elif commande_initiale %}{{ commande_initiale.ville_arrivee }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Produit</th><td id="produit-resume">{% if form.instance.produit %}{{ form.instance.produit.nom }}{% elif commande_initiale and commande_initiale.produit %}{{ commande_initiale.produit.nom }}{% else %}-{% endif %}</td></tr>
-                <tr><th>Quantite</th><td id="quantite-resume">{% if form.instance.quantite %}{{ form.instance.quantite }}{% elif commande_initiale %}{{ commande_initiale.quantite|default:"-" }}{% else %}-{% endif %}</td></tr>
+                <tr><th>Quantite</th><td id="quantite-resume">{% if allocation_target_total != None %}{{ allocation_target_total|localize }}{% elif form.instance.quantite %}{{ form.instance.quantite|localize }}{% elif quantite_restante_commande != None %}{{ quantite_restante_commande|localize }}{% elif commande_initiale %}{{ commande_initiale.quantite|localize|default:"-" }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Camion affecte</th><td id="camion-resume">{% if form.instance.camion %}{{ form.instance.camion.numero_tracteur }}{% elif commande_initiale and commande_initiale.camion %}{{ commande_initiale.camion.numero_tracteur }}{% else %}-{% endif %}</td></tr>
                 <tr><th>Chauffeur affecte</th><td id="chauffeur-resume">{% if form.instance.chauffeur %}{{ form.instance.chauffeur.nom }}{% elif commande_initiale and commande_initiale.chauffeur %}{{ commande_initiale.chauffeur.nom }}{% else %}-{% endif %}</td></tr>
             </tbody>
@@ -215,6 +428,7 @@ const clientSelect = document.getElementById("id_client");
 const destinationInput = document.getElementById("id_destination");
 const produitSelect = document.getElementById("id_produit");
 const quantiteInput = document.getElementById("id_quantite");
+const regimeProduitWarning = document.getElementById("regime-produit-warning");
 const produitModalForm = document.getElementById("produit-modal-form");
 const produitModalErrors = document.getElementById("produit-modal-errors");
 const produitCsrfInput = produitModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
@@ -235,6 +449,386 @@ const produitResume = document.getElementById("produit-resume");
 const quantiteResume = document.getElementById("quantite-resume");
 const camionResume = document.getElementById("camion-resume");
 const chauffeurResume = document.getElementById("chauffeur-resume");
+const allocationGrid = document.getElementById("allocation-grid");
+const addAllocationRowButton = document.getElementById("add-allocation-row");
+const allocationCommandeTotal = document.getElementById("allocation-commande-total");
+const allocationTotal = document.getElementById("allocation-total");
+const allocationRestant = document.getElementById("allocation-restant");
+const allocationLiveError = document.getElementById("allocation-live-error");
+
+function parseNumber(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) {
+        return 0;
+    }
+
+    let normalized = raw.replace(/\s+/g, "");
+    const hasComma = normalized.includes(",");
+    const hasDot = normalized.includes(".");
+
+    if (hasComma && hasDot) {
+        if (normalized.lastIndexOf(",") > normalized.lastIndexOf(".")) {
+            normalized = normalized.replace(/\./g, "").replace(",", ".");
+        } else {
+            normalized = normalized.replace(/,/g, "");
+        }
+    } else if (hasComma) {
+        normalized = normalized.replace(",", ".");
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeNumberInputValue(value) {
+    const numericValue = parseNumber(value);
+    return numericValue ? String(numericValue) : "";
+}
+
+function formatQuantity(value) {
+    const number = parseNumber(value);
+    return number.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function formatAllocationQuantityField(field, { preserveEmpty = true } = {}) {
+    if (!field) {
+        return;
+    }
+    const raw = String(field.value ?? "").trim();
+    if (!raw) {
+        if (!preserveEmpty) {
+            field.value = "";
+        }
+        return;
+    }
+    field.value = formatQuantity(raw);
+}
+
+function buildSommierOptionsHtml() {
+    if (!sommierSelect) {
+        return "";
+    }
+    return Array.from(sommierSelect.options).map((option) => {
+        const produitId = option.dataset.produitId || "";
+        const stockQty = option.dataset.stockQty || "";
+        const navire = option.dataset.referenceNavire || "";
+        const stockLabel = option.dataset.stockLabel || option.textContent || "";
+        const optionText = option.value
+            ? `${stockLabel.split(" - ").slice(0, 3).join(" - ")} - ${formatQuantity(stockQty)} dispo`
+            : option.textContent;
+        const selected = option.selected ? " selected" : "";
+        return `<option value="${option.value}" data-produit-id="${produitId}" data-stock-qty="${stockQty}" data-reference-navire="${navire}" data-stock-label="${stockLabel.replace(/"/g, "&quot;")}"${selected}>${optionText}</option>`;
+    }).join("");
+}
+
+function getAllocationRows() {
+    if (!allocationGrid) {
+        return [];
+    }
+    return Array.from(allocationGrid.querySelectorAll(".allocation-row"));
+}
+
+function autofillSingleAllocationRow() {
+    const rows = getAllocationRows();
+    if (rows.length !== 1) {
+        return;
+    }
+
+    const row = rows[0];
+    const sommierField = row.querySelector(".allocation-sommier");
+    const quantiteField = row.querySelector(".allocation-quantite");
+    if (!sommierField || !quantiteField || !sommierField.value) {
+        return;
+    }
+
+    const currentQty = parseNumber(quantiteField.value);
+    const commandeQty = parseNumber(quantiteInput?.value);
+    const selectedOption = sommierField.options[sommierField.selectedIndex];
+    const sommierStock = parseNumber(selectedOption?.dataset.stockQty);
+    const suggestedQty = Math.min(commandeQty, sommierStock);
+
+    if (suggestedQty <= 0) {
+        return;
+    }
+
+    if (currentQty <= 0) {
+        quantiteField.value = String(suggestedQty);
+        formatAllocationQuantityField(quantiteField);
+        return;
+    }
+
+    if (currentQty > suggestedQty) {
+        quantiteField.value = String(suggestedQty);
+        formatAllocationQuantityField(quantiteField);
+    }
+}
+
+function createAllocationRow(data = {}) {
+    if (!allocationGrid) {
+        return;
+    }
+    const row = document.createElement("div");
+    row.className = "allocation-row";
+    row.innerHTML = `
+        <div class="allocation-field allocation-field--sommier">
+            <label>Sommier</label>
+            <select name="allocation_sommier" class="allocation-sommier">${buildSommierOptionsHtml()}</select>
+            <div class="allocation-meta allocation-sommier-meta">Choisis un sommier pour voir le disponible reel.</div>
+        </div>
+        <div class="allocation-field allocation-field--quantite">
+            <label>Quantite prise</label>
+            <input type="text" name="allocation_quantite" class="allocation-quantite" inputmode="decimal" placeholder="Saisir la quantite prise">
+        </div>
+        <div class="allocation-field allocation-field--numero">
+            <label>Numero BL</label>
+            <input type="text" name="allocation_numero_bl" class="allocation-numero-bl" placeholder="Numero BL">
+        </div>
+        <div class="allocation-actions">
+            <button type="button" class="btn-delete allocation-remove">Retirer</button>
+        </div>
+    `;
+    allocationGrid.appendChild(row);
+
+    const sommierField = row.querySelector(".allocation-sommier");
+    const quantiteField = row.querySelector(".allocation-quantite");
+    const numeroField = row.querySelector(".allocation-numero-bl");
+    if (data.sommier) {
+        sommierField.value = String(data.sommier);
+    }
+    if (data.quantite) {
+        quantiteField.value = normalizeNumberInputValue(data.quantite);
+        formatAllocationQuantityField(quantiteField);
+    }
+    if (data.numero_bl) {
+        numeroField.value = data.numero_bl;
+    }
+
+    row.querySelector(".allocation-remove")?.addEventListener("click", () => {
+        row.remove();
+        recalculateAllocations();
+    });
+
+    [sommierField, quantiteField, numeroField].forEach((field) => {
+        field?.addEventListener("change", recalculateAllocations);
+        field?.addEventListener("input", recalculateAllocations);
+    });
+    quantiteField?.addEventListener("focus", () => {
+        quantiteField.value = normalizeNumberInputValue(quantiteField.value);
+    });
+    quantiteField?.addEventListener("blur", () => {
+        formatAllocationQuantityField(quantiteField);
+        recalculateAllocations();
+    });
+
+    recalculateAllocations();
+}
+
+function filterAllocationSommiers() {
+    if (!allocationGrid || !produitSelect) {
+        return;
+    }
+
+    const produitId = produitSelect.value || "";
+    const usagesAvantLigne = {};
+
+    getAllocationRows().forEach((row) => {
+        const selectElement = row.querySelector(".allocation-sommier");
+        const quantiteField = row.querySelector(".allocation-quantite");
+        if (!selectElement) {
+            return;
+        }
+
+        let selectedStillVisible = false;
+        Array.from(selectElement.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                option.disabled = false;
+                return;
+            }
+
+            const shouldMatchProduit = !produitId || (option.dataset.produitId || "") === produitId;
+            const stockInitial = parseNumber(option.dataset.stockQty);
+            const dejaUtilise = usagesAvantLigne[option.value] || 0;
+            const disponibleAvantLigne = Math.max(stockInitial - dejaUtilise, 0);
+            const shouldShow = shouldMatchProduit && disponibleAvantLigne > 0;
+
+            option.hidden = !shouldShow;
+            option.disabled = !shouldShow;
+
+            if (shouldShow && option.selected) {
+                selectedStillVisible = true;
+            }
+
+            if (option.value === selectElement.value && quantiteField) {
+                quantiteField.max = disponibleAvantLigne > 0 ? String(disponibleAvantLigne) : "";
+            }
+        });
+
+        if (!selectedStillVisible) {
+            selectElement.value = "";
+            if (quantiteField) {
+                quantiteField.value = "";
+                quantiteField.removeAttribute("max");
+            }
+        }
+
+        const sommierId = selectElement.value || "";
+        const quantite = parseNumber(quantiteField?.value);
+        if (sommierId) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const stockInitial = parseNumber(selectedOption?.dataset.stockQty);
+            if (quantite > 0) {
+                usagesAvantLigne[sommierId] = (usagesAvantLigne[sommierId] || 0) + quantite;
+            } else {
+                usagesAvantLigne[sommierId] = stockInitial;
+            }
+        }
+    });
+}
+
+function recalculateAllocations() {
+    if (!allocationGrid) {
+        return;
+    }
+
+    autofillSingleAllocationRow();
+    filterAllocationSommiers();
+
+    const commandeQty = parseNumber(quantiteInput?.value);
+    const usages = {};
+    let totalAllocated = 0;
+    let lignesSansQuantite = 0;
+    let lignesIncompletes = 0;
+
+    const rows = getAllocationRows();
+    rows.forEach((row) => {
+        const sommierField = row.querySelector(".allocation-sommier");
+        const quantiteField = row.querySelector(".allocation-quantite");
+        const numeroField = row.querySelector(".allocation-numero-bl");
+        const meta = row.querySelector(".allocation-sommier-meta");
+        const selectedOption = sommierField?.options[sommierField.selectedIndex];
+        const quantite = parseNumber(quantiteField?.value);
+        const sommierId = sommierField?.value || "";
+        const numeroValue = (numeroField?.value || "").trim();
+        const baseStock = parseNumber(selectedOption?.dataset.stockQty);
+        const dejaUtiliseAvantLigne = sommierId ? (usages[sommierId] || 0) : 0;
+        const disponibleAvantLigne = Math.max(baseStock - dejaUtiliseAvantLigne, 0);
+
+        if (sommierId || quantite > 0 || numeroValue) {
+            if (!sommierId || quantite <= 0 || !numeroValue) {
+                lignesIncompletes += 1;
+            }
+        }
+
+        totalAllocated += quantite;
+
+        if (sommierId) {
+            usages[sommierId] = (usages[sommierId] || 0) + quantite;
+        }
+
+        if (!selectedOption || !selectedOption.value) {
+            meta.classList.remove("is-warning");
+            quantiteField?.classList.remove("is-missing");
+            meta.textContent = "Choisis un sommier pour voir le disponible reel.";
+            return;
+        }
+
+        if (quantite <= 0) {
+            lignesSansQuantite += 1;
+            meta.classList.add("is-warning");
+            quantiteField?.classList.add("is-missing");
+            meta.textContent = "Sommier choisi, mais quantite non saisie. Cette ligne n'est pas encore prise en compte dans le total alloue.";
+            return;
+        }
+
+        meta.classList.remove("is-warning");
+        quantiteField?.classList.remove("is-missing");
+        const usedOnThisSommier = usages[sommierId] || 0;
+        const remaining = Math.max(baseStock - usedOnThisSommier, 0);
+        meta.textContent = `${selectedOption.dataset.referenceNavire || selectedOption.textContent} | dispo avant cette ligne: ${formatQuantity(disponibleAvantLigne)} | reste apres cette ligne: ${formatQuantity(remaining)}`;
+    });
+
+    const restant = commandeQty - totalAllocated;
+    if (allocationCommandeTotal) {
+        allocationCommandeTotal.textContent = formatQuantity(commandeQty);
+    }
+    if (allocationTotal) {
+        allocationTotal.textContent = formatQuantity(totalAllocated);
+    }
+    if (allocationRestant) {
+        allocationRestant.textContent = formatQuantity(restant);
+    }
+
+    if (allocationLiveError) {
+        if (lignesSansQuantite > 0) {
+            allocationLiveError.textContent = `${lignesSansQuantite} ligne(s) ont un sommier selectionne sans quantite prise. Elles ne sont pas comptabilisees dans le total alloue.`;
+        } else if (restant > 0) {
+            allocationLiveError.textContent = `Il reste ${formatQuantity(restant)} a repartir pour couvrir la commande.`;
+        } else if (restant < 0) {
+            allocationLiveError.textContent = `La repartition depasse la commande de ${formatQuantity(Math.abs(restant))}.`;
+        } else {
+            allocationLiveError.textContent = "La commande est completement repartie.";
+        }
+    }
+
+    if (addAllocationRowButton) {
+        const canAddRow = restant > 0 && rows.length > 0 && lignesIncompletes === 0;
+        addAllocationRowButton.disabled = !canAddRow;
+        addAllocationRowButton.hidden = !(restant > 0);
+        if (canAddRow) {
+            addAllocationRowButton.title = "";
+        } else if (restant <= 0) {
+            addAllocationRowButton.title = "Aucune ligne supplementaire n'est necessaire : la commande est deja couverte.";
+        } else {
+            addAllocationRowButton.title = "Complete d'abord la ligne en cours avec le sommier, la quantite prise et le numero BL.";
+        }
+    }
+}
+
+function selectedProduitIsGasoil() {
+    const label = selectedText(produitSelect).toLowerCase();
+    return label.includes("gasoil");
+}
+
+function applyRegimeProduitRule() {
+    if (!produitSelect || !regimeSelect) {
+        return;
+    }
+
+    const isGasoil = selectedProduitIsGasoil();
+    let selectedStillVisible = false;
+
+    Array.from(regimeSelect.options).forEach((option) => {
+        if (!option.value) {
+            option.hidden = false;
+            option.disabled = false;
+            return;
+        }
+
+        const optionLabel = (option.textContent || "").toLowerCase();
+        const isMarcheMinier = optionLabel.includes("minier");
+        const shouldHide = isMarcheMinier && !isGasoil;
+        option.hidden = shouldHide;
+        option.disabled = shouldHide;
+        if (!shouldHide && option.selected) {
+            selectedStillVisible = true;
+        }
+    });
+
+    if (!selectedStillVisible) {
+        regimeSelect.value = "";
+    }
+
+    if (!isGasoil) {
+        if (regimeProduitWarning) {
+            regimeProduitWarning.hidden = false;
+            regimeProduitWarning.textContent = "Le regime Marche minier n'est disponible que pour le produit GASOIL.";
+        }
+    } else if (regimeProduitWarning) {
+        regimeProduitWarning.hidden = true;
+        regimeProduitWarning.textContent = "";
+    }
+}
 
 function selectedText(selectElement) {
     return selectElement?.options[selectElement.selectedIndex]?.text || "-";
@@ -250,6 +844,48 @@ function refreshSommierInfo() {
         return;
     }
     sommierStockInfo.textContent = option.textContent;
+}
+
+function filterSommiersByProduit() {
+    if (!sommierSelect || !produitSelect) {
+        return;
+    }
+
+    const produitId = produitSelect.value || "";
+    let hasVisibleOption = false;
+    let selectedStillVisible = false;
+
+    Array.from(sommierSelect.options).forEach((option) => {
+        if (!option.value) {
+            option.hidden = false;
+            option.disabled = false;
+            return;
+        }
+
+        const optionProduitId = option.dataset.produitId || "";
+        const shouldShow = !produitId || optionProduitId === produitId;
+        option.hidden = !shouldShow;
+        option.disabled = !shouldShow;
+
+        if (shouldShow) {
+            hasVisibleOption = true;
+            if (option.selected) {
+                selectedStillVisible = true;
+            }
+        }
+    });
+
+    if (!selectedStillVisible) {
+        sommierSelect.value = "";
+    }
+
+    if (!hasVisibleOption && produitId) {
+        sommierStockInfo.textContent = "Aucun sommier disponible pour ce produit.";
+    } else {
+        refreshSommierInfo();
+    }
+    filterAllocationSommiers();
+    recalculateAllocations();
 }
 
 function refreshResume() {
@@ -306,7 +942,7 @@ async function syncCommandeInfos() {
             produitSelect.value = String(data.commande.produit_id);
         }
         if (quantiteInput) {
-            quantiteInput.value = data.commande.quantite || "";
+            quantiteInput.value = data.commande.quantite_restante || data.commande.quantite || "";
         }
         if (camionResume) {
             camionResume.textContent = data.commande.camion || "-";
@@ -314,7 +950,9 @@ async function syncCommandeInfos() {
         if (chauffeurResume) {
             chauffeurResume.textContent = data.commande.chauffeur || "-";
         }
+        filterSommiersByProduit();
         refreshResume();
+        recalculateAllocations();
     } catch (error) {
     }
 }
@@ -325,7 +963,31 @@ async function syncCommandeInfos() {
 });
 
 commandeSelect?.addEventListener("change", syncCommandeInfos);
+produitSelect?.addEventListener("change", filterSommiersByProduit);
+produitSelect?.addEventListener("input", filterSommiersByProduit);
+regimeSelect?.addEventListener("change", applyRegimeProduitRule);
+regimeSelect?.addEventListener("input", applyRegimeProduitRule);
+produitSelect?.addEventListener("change", applyRegimeProduitRule);
+produitSelect?.addEventListener("input", applyRegimeProduitRule);
+applyRegimeProduitRule();
+filterSommiersByProduit();
 refreshResume();
+{% if allocation_rows %}
+const initialAllocationRows = [
+    {% for row in allocation_rows %}
+    {
+        numero_bl: "{{ row.numero_bl|default:''|escapejs }}",
+        sommier: "{{ row.sommier|default:''|escapejs }}",
+        quantite: "{{ row.quantite|default:''|unlocalize|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+initialAllocationRows.forEach((row) => createAllocationRow(row));
+{% else %}
+createAllocationRow();
+{% endif %}
+addAllocationRowButton?.addEventListener("click", () => createAllocationRow());
+recalculateAllocations();
 
 produitModalForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -411,6 +1073,7 @@ regimeModalForm?.addEventListener("submit", async (event) => {
     regimeSelect.add(option);
     regimeSelect.value = data.regime.id;
     regimeModalForm.reset();
+    applyRegimeProduitRule();
     refreshResume();
     document.getElementById("regime-modal")?.classList.remove("is-open");
 });

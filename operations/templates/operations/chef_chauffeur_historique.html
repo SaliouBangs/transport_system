@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "operations/_tabs.html" %}
+
+<style>
+.chef-history-shell{
+    display:grid;
+    gap:20px;
+}
+.chef-history-head,
+.chef-history-filter,
+.chef-history-table{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d8e8f3;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+}
+.chef-history-head{
+    padding:24px 26px;
+    display:grid;
+    grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);
+    gap:18px;
+    align-items:start;
+}
+.chef-history-copy{
+    margin:10px 0 0;
+    color:#567082;
+    line-height:1.65;
+}
+.chef-history-kpis{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:12px;
+}
+.chef-history-kpi{
+    background:#fff;
+    border:1px solid #dce9f3;
+    border-radius:22px;
+    padding:16px;
+}
+.chef-history-kpi-label{
+    margin:0;
+    color:#667d8f;
+    font-size:.82rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.chef-history-kpi-value{
+    margin:8px 0 0;
+    color:#123047;
+    font-size:2rem;
+    font-weight:800;
+}
+.chef-history-filter{
+    padding:16px;
+}
+.chef-history-filter-grid{
+    display:grid;
+    grid-template-columns:minmax(260px,1.4fr) minmax(170px,.6fr) minmax(160px,.5fr) minmax(160px,.5fr) auto;
+    gap:12px;
+    align-items:end;
+}
+.chef-history-filter label{
+    display:block;
+    margin:0 0 8px;
+    color:#5f7789;
+    font-size:.82rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.chef-history-filter input,
+.chef-history-filter select{
+    width:100%;
+    min-height:54px;
+    box-sizing:border-box;
+    padding:0 18px;
+    border-radius:18px;
+    border:1px solid #cddfee;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95));
+    color:#173449;
+    font-size:.98rem;
+    font-weight:600;
+}
+.chef-history-filter select{
+    appearance:none;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.98), rgba(246,251,255,.95)),
+        linear-gradient(45deg, transparent 50%, #4d6678 50%),
+        linear-gradient(135deg, #4d6678 50%, transparent 50%);
+    background-repeat:no-repeat;
+    background-size:auto, 8px 8px, 8px 8px;
+    background-position:0 0, calc(100% - 22px) 23px, calc(100% - 16px) 23px;
+    padding-right:42px;
+}
+.chef-history-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+}
+.chef-history-actions .btn,
+.chef-history-actions .btn-secondary{
+    min-height:54px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 20px;
+    margin:0;
+    border-radius:18px;
+}
+.chef-history-table{
+    padding:20px;
+}
+.chef-history-table .table{
+    margin-top:0;
+}
+@media (max-width: 1180px){
+    .chef-history-head,
+    .chef-history-filter-grid{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<div class="chef-history-shell">
+    <section class="chef-history-head">
+        <div>
+            <p class="eyebrow">Exploitation</p>
+            <h1 style="margin:0;">Historique chauffeur</h1>
+            <p class="chef-history-copy">
+                Les BL livres disparaissent du tableau d'action et se retrouvent ici pour garder une lecture simple
+                du travail deja boucle par le chef chauffeur.
+            </p>
+        </div>
+        <div class="chef-history-kpis">
+            <article class="chef-history-kpi">
+                <p class="chef-history-kpi-label">Livres</p>
+                <p class="chef-history-kpi-value">{{ total_delivered }}</p>
+            </article>
+            <article class="chef-history-kpi">
+                <p class="chef-history-kpi-label">Bons retournes</p>
+                <p class="chef-history-kpi-value">{{ total_returned }}</p>
+            </article>
+        </div>
+    </section>
+
+    <form method="get" class="chef-history-filter">
+        <div class="chef-history-filter-grid">
+            <div>
+                <label for="id_chef_history_query">Recherche</label>
+                <input id="id_chef_history_query" type="text" name="q" value="{{ query }}" placeholder="BL, client, camion, chauffeur ou commande">
+            </div>
+            <div>
+                <label for="id_chef_history_etat">Etat</label>
+                <select id="id_chef_history_etat" name="etat">
+                    <option value="">Tous les etats</option>
+                    <option value="livre"{% if etat == "livre" %} selected{% endif %}>Livre</option>
+                </select>
+            </div>
+            <div>
+                <label for="id_chef_history_date_from">Date debut</label>
+                <input id="id_chef_history_date_from" type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div>
+                <label for="id_chef_history_date_to">Date fin</label>
+                <input id="id_chef_history_date_to" type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <div class="chef-history-actions">
+                <button type="submit" class="btn">Filtrer</button>
+                <a href="/operations/chef-chauffeur/historique/" class="btn-secondary">Reinitialiser</a>
+            </div>
+        </div>
+    </form>
+
+    <section class="chef-history-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>BL</th>
+                    <th>Client</th>
+                    <th>Camion</th>
+                    <th>Chauffeur</th>
+                    <th>Qte commandee</th>
+                    <th>Date charge</th>
+                    <th>Date livre</th>
+                    <th>Bon retour</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for operation in operations %}
+                <tr>
+                    <td><strong>{{ operation.numero_bl }}</strong></td>
+                    <td>{{ operation.client.entreprise }}</td>
+                    <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                    <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                    <td>{{ operation.quantite|default:"-" }}</td>
+                    <td>{{ operation.date_bons_charges|default:"-" }}</td>
+                    <td>{{ operation.date_bons_livres|default:"-" }}</td>
+                    <td>{{ operation.date_bon_retour|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">Aucun BL livre dans l'historique chauffeur.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+{% endblock %}

@@ -47,6 +47,7 @@
 <th>Entree / sortie</th>
 <th>Kilometrage</th>
 <th>Diagnostics</th>
+<th>Factures fournisseurs</th>
 <th>Statut</th>
 <th>Validations</th>
 <th>Total</th>
@@ -81,6 +82,23 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 {% empty %}
 -
 {% endfor %}
+</td>
+<td>
+{% if maintenance.invoice_rows %}
+    {% for invoice in maintenance.invoice_rows %}
+    <div style="margin-bottom:10px;">
+        <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
+        {% if invoice.numero_facture %}<div style="color:#6d8090;">{{ invoice.numero_facture }}</div>{% endif %}
+        {% if invoice.facture_fichier %}
+        <div style="margin-top:4px;">
+            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    -
+{% endif %}
 </td>
 <td>{{ maintenance.get_statut_display }}</td>
 <td>
@@ -142,7 +160,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
 </tr>
 {% empty %}
 <tr>
-<td colspan="9">{% if historique %}Aucune fiche finalisee dans l'historique.{% else %}Aucune maintenance enregistree pour le moment.{% endif %}</td>
+<td colspan="10">{% if historique %}Aucune fiche finalisee dans l'historique.{% else %}Aucune maintenance enregistree pour le moment.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

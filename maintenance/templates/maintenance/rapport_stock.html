@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Rapports stock</h1>
+<p style="margin:6px 0 0; color:#6d8090;">Vue compacte des consommations stock par camion, article et type de panne.</p>
+</div>
+</div>
+
+<div class="card" id="analyse-stock" style="text-align:left; padding:22px; overflow:hidden;">
+    <form method="get" action="/maintenance/stock/rapports/#analyse-stock" class="stock-report-filters">
+        <div class="filter-field">
+            <label for="id_report_article">Article</label>
+            <select id="id_report_article" name="report_article">
+                <option value="">Tous les articles</option>
+                {% for item in article_filter_choices %}
+                <option value="{{ item.article_stock_id }}" {% if report_filter_values.article == item.article_stock_id|stringformat:"s" %}selected{% endif %}>{{ item.article_stock__libelle }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_report_camion">Camion</label>
+            <select id="id_report_camion" name="report_camion">
+                <option value="">Tous les camions</option>
+                {% for item in camion_filter_choices %}
+                <option value="{{ item.maintenance_ligne__maintenance__camion_id }}" {% if report_filter_values.camion == item.maintenance_ligne__maintenance__camion_id|stringformat:"s" %}selected{% endif %}>
+                    {{ item.maintenance_ligne__maintenance__camion__numero_tracteur }}{% if item.maintenance_ligne__maintenance__camion__numero_citerne %} / {{ item.maintenance_ligne__maintenance__camion__numero_citerne }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_report_categorie">Categorie panne</label>
+            <select id="id_report_categorie" name="report_categorie">
+                <option value="">Toutes les categories</option>
+                {% for item in categorie_filter_choices %}
+                <option value="{{ item.maintenance_ligne__type_maintenance__libelle }}" {% if report_filter_values.categorie == item.maintenance_ligne__type_maintenance__libelle %}selected{% endif %}>
+                    {{ item.maintenance_ligne__type_maintenance__libelle }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="id_report_panne">Libelle panne / piece</label>
+            <input id="id_report_panne" type="text" name="report_panne" list="report-panne-options" value="{{ report_filter_values.panne }}" placeholder="Ex: Filtre a gasoil">
+            <datalist id="report-panne-options">
+                {% for item in panne_filter_choices %}
+                <option value="{{ item.libelle }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="filter-field">
+            <label for="id_report_date_from">Date debut</label>
+            <input id="id_report_date_from" type="date" name="report_date_from" value="{{ report_filter_values.date_from }}">
+        </div>
+        <div class="filter-field">
+            <label for="id_report_date_to">Date fin</label>
+            <input id="id_report_date_to" type="date" name="report_date_to" value="{{ report_filter_values.date_to }}">
+        </div>
+        <button type="submit" class="btn filter-btn">Filtrer</button>
+        <a href="/maintenance/stock/rapports/" class="btn-secondary filter-btn">Reinitialiser</a>
+    </form>
+
+    <div class="stock-kpis">
+        <div class="stock-kpi kpi-blue">
+            <div class="kpi-chip"></div>
+            <h3>Consommations</h3>
+            <p>{{ report_total_passages }}</p>
+            <span>Nombre total de sorties ou usages filtres</span>
+        </div>
+        <div class="stock-kpi kpi-green">
+            <div class="kpi-chip"></div>
+            <h3>Camions</h3>
+            <p>{{ report_total_camions }}</p>
+            <span>Camions concernes sur la periode</span>
+        </div>
+        <div class="stock-kpi kpi-amber">
+            <div class="kpi-chip"></div>
+            <h3>Quantite totale</h3>
+            <p>{{ report_total_quantite }}</p>
+            <span>Volume ou quantite cumulee</span>
+        </div>
+        <div class="stock-kpi kpi-red">
+            <div class="kpi-chip"></div>
+            <h3>Montant</h3>
+            <p>{{ report_total_montant }} GNF</p>
+            <span>Valeur consommee sur le filtre</span>
+        </div>
+    </div>
+
+    <div class="stock-panels">
+        <div class="card stock-panel" style="margin:0; text-align:left;">
+            <div class="panel-head">
+                <h3 style="margin:0;">Top 5 camions consommateurs</h3>
+                <span class="panel-badge">Usage terrain</span>
+            </div>
+            <div style="overflow:auto;">
+                <table class="table" style="margin:0;">
+                    <thead>
+                        <tr>
+                            <th>Camion</th>
+                            <th>Nb fois</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in top_camions_consommation %}
+                        <tr>
+                            <td>
+                                <strong>{{ row.maintenance_ligne__maintenance__camion__numero_tracteur }}</strong>
+                                {% if row.maintenance_ligne__maintenance__camion__numero_citerne %}
+                                / {{ row.maintenance_ligne__maintenance__camion__numero_citerne }}
+                                {% endif %}
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill blue" style="width:{% widthratio row.total_passages report_total_passages 100 %}%"></div>
+                                </div>
+                            </td>
+                            <td>{{ row.total_passages }}</td>
+                            <td>{{ row.total_montant|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Aucune consommation sur ce filtre.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card stock-panel" style="margin:0; text-align:left;">
+            <div class="panel-head">
+                <h3 style="margin:0;">Top 5 pannes / pieces</h3>
+                <span class="panel-badge">Pieces critiques</span>
+            </div>
+            <div style="overflow:auto;">
+                <table class="table" style="margin:0;">
+                    <thead>
+                        <tr>
+                            <th>Libelle</th>
+                            <th>Categorie</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in top_pannes_consommation %}
+                        <tr>
+                            <td>
+                                <strong>{{ row.libelle_panne }}</strong>
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill amber" style="width:{% widthratio row.total_montant report_total_montant_pannes 100 %}%"></div>
+                                </div>
+                            </td>
+                            <td>{{ row.categorie_panne }}</td>
+                            <td>{{ row.total_montant|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Aucune panne / piece sur ce filtre.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card stock-panel" style="margin:0; text-align:left;">
+        <div class="panel-head">
+            <h3 style="margin:0;">Detail synthétique</h3>
+            <span class="panel-badge">Lecture rapide</span>
+        </div>
+        <div style="overflow:auto;">
+            <table class="table" style="margin:0; min-width:980px;">
+                <thead>
+                    <tr>
+                        <th>Camion</th>
+                        <th>Article</th>
+                        <th>Categorie panne</th>
+                        <th>Libelle panne / piece</th>
+                        <th>Qte</th>
+                        <th>Nb fois</th>
+                        <th>Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in consommation_par_camion %}
+                    <tr>
+                        <td>
+                            {{ row.maintenance_ligne__maintenance__camion__numero_tracteur }}
+                            {% if row.maintenance_ligne__maintenance__camion__numero_citerne %}
+                            / {{ row.maintenance_ligne__maintenance__camion__numero_citerne }}
+                            {% endif %}
+                        </td>
+                        <td>{{ row.article_stock__libelle }}</td>
+                        <td>
+                            {% for panne_row in consommation_par_panne %}
+                                {% if panne_row.libelle_panne == row.article_stock__libelle %}
+                                    {{ panne_row.categorie_panne }}
+                                {% endif %}
+                            {% empty %}-{% endfor %}
+                        </td>
+                        <td>
+                            {% for panne_row in consommation_par_panne %}
+                                {% if panne_row.libelle_panne == row.article_stock__libelle %}
+                                    {{ panne_row.libelle_panne }}
+                                {% endif %}
+                            {% empty %}-{% endfor %}
+                        </td>
+                        <td>{{ row.total_quantite }}</td>
+                        <td>{{ row.total_passages }}</td>
+                        <td>{{ row.total_montant|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">Aucune consommation de stock ne correspond aux filtres selectionnes.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.stock-report-filters {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1.2fr 170px 170px auto auto;
+    gap:12px;
+    align-items:end;
+    margin-bottom:18px;
+    padding:16px;
+    border:1px solid #d8e8f7;
+    border-radius:20px;
+    background:linear-gradient(180deg, #fbfdff 0%, #f4faff 100%);
+}
+.filter-field label {
+    display:block;
+    margin-bottom:6px;
+    color:#6d8090;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+}
+.stock-report-filters select,
+.stock-report-filters input {
+    width:100%;
+    min-height:48px;
+    border-radius:16px;
+}
+.filter-btn {
+    min-height:48px;
+}
+.stock-kpis {
+    display:grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap:16px;
+    margin-bottom:18px;
+}
+.stock-kpi {
+    position:relative;
+    overflow:hidden;
+    border:1px solid #d8e8f7;
+    border-radius:22px;
+    padding:18px 18px 16px;
+    background:linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+}
+.stock-kpi::after {
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    height:6px;
+    border-radius:0 0 22px 22px;
+    opacity:.9;
+}
+.stock-kpi h3 {
+    margin:0 0 10px;
+    font-size:12px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:#6d8090;
+}
+.stock-kpi p {
+    margin:0 0 8px;
+    font-size:20px;
+    font-weight:900;
+    color:#18344a;
+}
+.stock-kpi span {
+    display:block;
+    font-size:12px;
+    color:#6d8090;
+    line-height:1.4;
+}
+.kpi-chip {
+    width:12px;
+    height:12px;
+    border-radius:999px;
+    margin-bottom:12px;
+}
+.kpi-blue .kpi-chip, .mini-bar-fill.blue, .kpi-blue::after { background:#3b82f6; }
+.kpi-green .kpi-chip, .kpi-green::after { background:#18a871; }
+.kpi-amber .kpi-chip, .mini-bar-fill.amber, .kpi-amber::after { background:#f59e0b; }
+.kpi-red .kpi-chip, .kpi-red::after { background:#ef4444; }
+.stock-panels {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:18px;
+    margin-bottom:18px;
+}
+.stock-panel {
+    border:1px solid #d8e8f7;
+    border-radius:24px;
+    background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+.panel-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:12px;
+}
+.panel-badge {
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+    color:#31597a;
+    background:#eef6ff;
+}
+.mini-bar-track {
+    margin-top:8px;
+    height:7px;
+    border-radius:999px;
+    background:#e7f0f8;
+    overflow:hidden;
+}
+.mini-bar-fill {
+    height:100%;
+    border-radius:999px;
+    min-width:6px;
+}
+.table thead th {
+    white-space:nowrap;
+}
+@media (max-width: 1500px) {
+    .stock-report-filters {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+@media (max-width: 980px) {
+    .stock-report-filters,
+    .stock-kpis,
+    .stock-panels { grid-template-columns: 1fr !important; }
+}
+</style>
+
+{% endblock %}

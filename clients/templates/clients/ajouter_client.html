@@ -12,6 +12,7 @@
 <div class="form-shell">
 <form method="post" class="app-form">
     {% csrf_token %}
+    {{ destination_formset.management_form }}
 
     <div class="form-grid">
         {% if form.commercial.is_hidden %}
@@ -37,13 +38,31 @@
         </div>
 
         <div class="field">
+            <label for="{{ form.fonction_contact.id_for_label }}">Fonction du contact</label>
+            {{ form.fonction_contact }}
+            {% if form.fonction_contact.errors %}<p class="field-error">{{ form.fonction_contact.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
             <label for="{{ form.telephone.id_for_label }}">Telephone</label>
             {{ form.telephone }}
             {% if form.telephone.errors %}<p class="field-error">{{ form.telephone.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">
-            <label for="{{ form.entreprise.id_for_label }}">Entreprise</label>
+            <label for="{{ form.solde_initial.id_for_label }}">Solde initial</label>
+            {{ form.solde_initial }}
+            {% if form.solde_initial.errors %}<p class="field-error">{{ form.solde_initial.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.date_solde_initial.id_for_label }}">Date de solde initial</label>
+            {{ form.date_solde_initial }}
+            {% if form.date_solde_initial.errors %}<p class="field-error">{{ form.date_solde_initial.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.entreprise.id_for_label }}">Client</label>
             {{ form.entreprise }}
             {% if form.entreprise.errors %}<p class="field-error">{{ form.entreprise.errors.0 }}</p>{% endif %}
         </div>
@@ -54,10 +73,46 @@
             {% if form.ville.errors %}<p class="field-error">{{ form.ville.errors.0 }}</p>{% endif %}
         </div>
 
+        <div class="field">
+            <label for="{{ form.delai_paiement_jours.id_for_label }}">Delai de paiement (jours)</label>
+            {{ form.delai_paiement_jours }}
+            {% if form.delai_paiement_jours.errors %}<p class="field-error">{{ form.delai_paiement_jours.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.decouvert_maximum_autorise.id_for_label }}">Decouvert maximum autorise</label>
+            {{ form.decouvert_maximum_autorise }}
+            {% if form.decouvert_maximum_autorise.errors %}<p class="field-error">{{ form.decouvert_maximum_autorise.errors.0 }}</p>{% endif %}
+        </div>
+
         <div class="field field-full">
-            <label for="{{ form.adresse.id_for_label }}">Adresse</label>
+            <label>Encours du client</label>
+            <input type="text" value="Calcule automatiquement apres enregistrement" readonly>
+        </div>
+
+        <div class="field field-full">
+            <label for="{{ form.adresse.id_for_label }}">Siege du client</label>
             {{ form.adresse }}
             {% if form.adresse.errors %}<p class="field-error">{{ form.adresse.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field field-full">
+            <label>Adresses de destination</label>
+            <div id="destinations-formset">
+                {% for destination_form in destination_formset %}
+                <div class="destination-row">
+                    {{ destination_form.id }}
+                    <div class="destination-row__input">
+                        {{ destination_form.adresse }}
+                        {% if destination_form.adresse.errors %}<p class="field-error">{{ destination_form.adresse.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="destination-row__delete">
+                        {% if destination_formset.can_delete %}{{ destination_form.DELETE }} <span>Supprimer</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn-secondary" id="add-destination-row">Ajouter une adresse de destination</button>
         </div>
 
         <div class="field field-full">
@@ -80,9 +135,14 @@
 <script>
 const prospectSelect = document.getElementById("id_prospect");
 const clientNomInput = document.getElementById("id_nom");
+const clientFonctionInput = document.getElementById("id_fonction_contact");
 const clientTelephoneInput = document.getElementById("id_telephone");
 const clientEntrepriseInput = document.getElementById("id_entreprise");
 const clientVilleInput = document.getElementById("id_ville");
+const clientCommercialSelect = document.getElementById("id_commercial");
+const destinationContainer = document.getElementById("destinations-formset");
+const addDestinationButton = document.getElementById("add-destination-row");
+const destinationTotalInput = document.getElementById("id_destinations-TOTAL_FORMS");
 
 async function syncClientFromProspect() {
     const prospectId = prospectSelect?.value;
@@ -102,6 +162,9 @@ async function syncClientFromProspect() {
         if (clientNomInput) {
             clientNomInput.value = data.prospect.nom || "";
         }
+        if (clientFonctionInput) {
+            clientFonctionInput.value = data.prospect.fonction || "";
+        }
         if (clientTelephoneInput) {
             clientTelephoneInput.value = data.prospect.telephone || "";
         }
@@ -111,10 +174,51 @@ async function syncClientFromProspect() {
         if (clientVilleInput) {
             clientVilleInput.value = data.prospect.ville || "";
         }
+        if (clientCommercialSelect && data.prospect.commercial_id) {
+            clientCommercialSelect.value = String(data.prospect.commercial_id);
+        }
     } catch (error) {
     }
 }
 
 prospectSelect?.addEventListener("change", syncClientFromProspect);
+
+addDestinationButton?.addEventListener("click", () => {
+    if (!destinationContainer || !destinationTotalInput) {
+        return;
+    }
+
+    const index = Number(destinationTotalInput.value);
+    const row = document.createElement("div");
+    row.className = "destination-row";
+    row.innerHTML = `
+        <div class="destination-row__input">
+            <input type="text" name="destinations-${index}-adresse" placeholder="Adresse de destination" maxlength="255" id="id_destinations-${index}-adresse">
+        </div>
+        <div class="destination-row__delete">
+            <input type="checkbox" name="destinations-${index}-DELETE" id="id_destinations-${index}-DELETE">
+            <span>Supprimer</span>
+        </div>
+    `;
+    destinationContainer.appendChild(row);
+    destinationTotalInput.value = index + 1;
+});
 </script>
+<style>
+.destination-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px;
+    gap: 12px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.destination-row__delete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #5f7384;
+    font-size: 0.95rem;
+}
+</style>
 {% endblock %}

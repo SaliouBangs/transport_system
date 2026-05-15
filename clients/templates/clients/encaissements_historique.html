@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block title %}Historique des encaissements{% endblock %}
+
+{% block content %}
+<style>
+.page-shell{display:grid;gap:18px}
+.hero-card,.content-card{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d7e8f2;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:22px;
+}
+.hero-card{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.hero-card h1,.content-card h2{margin:4px 0 8px;color:#123047}
+.hero-card p,.section-note{margin:0;color:#5b7487;line-height:1.55}
+.eyebrow{margin:0;color:#118061;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.encaissement-filter-bar{display:grid;grid-template-columns:minmax(280px,2fr) minmax(200px,1fr) minmax(280px,1.1fr) auto auto;gap:12px;align-items:end}
+.encaissement-filter-card{padding:12px 14px;border:1px solid #deebf5;border-radius:18px;background:#fff}
+.encaissement-filter-inline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.encaissement-filter-actions{display:flex;align-items:end}
+.section-head{margin-bottom:16px}
+.encaissement-history-table{overflow:auto}
+.encaissement-type-chip{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:.8rem;font-weight:700}
+.encaissement-type-commande{background:#e9f2ff;color:#2456a8}
+.encaissement-type-multi{background:#fff3d8;color:#9b6700}
+.encaissement-type-avance{background:#efe9ff;color:#6743b0}
+.encaissement-type-solde{background:#e8f6ef;color:#19724a}
+.transitaire-subinfo,.encaissement-advance-note{margin-top:4px;color:#5c7487;font-size:.82rem}
+.table-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width: 1200px){
+    .encaissement-filter-bar{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+<div class="page-shell">
+    <section class="hero-card">
+        <div class="hero-copy">
+            <p class="eyebrow">Suivi comptable</p>
+            <h1>Historique des encaissements</h1>
+            <p>
+                Retrouvez ici les paiements enregistres, qu'ils soient rattaches a une commande, repartis sur plusieurs
+                commandes ou conserves en avance client.
+            </p>
+        </div>
+        <div class="hero-actions">
+            <a href="/clients/encaissements/" class="btn">Saisir un encaissement</a>
+        </div>
+    </section>
+
+    <section class="content-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Filtres</p>
+                <h2>Relire les encaissements</h2>
+            </div>
+        </div>
+        <form method="get" class="app-form">
+            <div class="encaissement-filter-bar">
+                <div class="encaissement-filter-card">
+                    <div class="field">
+                        <label for="id_q">Recherche</label>
+                        <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Client, banque, reference, commande, BL ou deposant">
+                    </div>
+                </div>
+                <div class="encaissement-filter-card">
+                    <div class="field">
+                        <label for="id_mode_paiement">Mode</label>
+                        <select id="id_mode_paiement" name="mode_paiement">
+                            <option value="">Tous les modes</option>
+                            {% for value, label in mode_paiement_choices %}
+                            <option value="{{ value }}" {% if mode_paiement == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="encaissement-filter-card">
+                    <div class="field">
+                        <label for="id_date_debut">Periode</label>
+                        <div class="encaissement-filter-inline">
+                            <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
+                            <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="encaissement-filter-actions">
+                    <button type="submit" class="btn-secondary">Filtrer</button>
+                </div>
+                <div class="encaissement-filter-actions">
+                    <a href="/clients/encaissements/historique/" class="btn-secondary">Reinitialiser</a>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <section class="content-card">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Historique</p>
+                <h2>Encaissements enregistres</h2>
+                <p class="section-note">La colonne commandes montre soit la commande directe, soit le resume des affectations.</p>
+            </div>
+        </div>
+        <div class="encaissement-history-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Client</th>
+                        <th>Montant</th>
+                        <th>Mode</th>
+                        <th>Type</th>
+                        <th>Commandes</th>
+                        <th>Reference</th>
+                        <th>Banque</th>
+                        <th>Deposant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for encaissement in encaissements %}
+                    <tr>
+                        <td>{{ encaissement.date_encaissement|date:"d/m/Y" }}</td>
+                        <td>{{ encaissement.client.entreprise }}</td>
+                        <td><strong>{{ encaissement.montant|gnf }}</strong></td>
+                        <td>{{ encaissement.get_mode_paiement_display }}</td>
+                        <td>
+                            <span class="encaissement-type-chip {% if encaissement.type_encaissement == 'commande' %}encaissement-type-commande{% elif encaissement.type_encaissement == 'multi_commandes' %}encaissement-type-multi{% elif encaissement.type_encaissement == 'avance_client' %}encaissement-type-avance{% else %}encaissement-type-solde{% endif %}">
+                                {{ encaissement.get_type_encaissement_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ encaissement.commandes_resume }}</strong>
+                            {% if encaissement.type_encaissement == 'multi_commandes' %}
+                            <div class="transitaire-subinfo">Affecte: {{ encaissement.montant_affecte_total|gnf }}</div>
+                            {% elif encaissement.type_encaissement == 'avance_client' %}
+                            <div class="transitaire-subinfo encaissement-advance-note">Disponible: {{ encaissement.montant_non_affecte|gnf }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ encaissement.reference|default:"-" }}</td>
+                        <td>{{ encaissement.banque|default:"-" }}</td>
+                        <td>
+                            {{ encaissement.nom_deposant|default:"-" }}
+                            {% if encaissement.fonction_deposant %}<br><small>{{ encaissement.fonction_deposant }}</small>{% endif %}
+                            {% if encaissement.numero_deposant %}<br><small>{{ encaissement.numero_deposant }}</small>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">Aucun encaissement enregistre pour le moment.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

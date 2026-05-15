@@ -1,0 +1,1619 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+
+<style>
+.encaissements-page{
+    display:grid;
+    gap:18px;
+}
+.encaissements-panel{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,249,255,.96));
+    border:1px solid #d7e8f2;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:20px 22px;
+}
+.encaissements-topbar{
+    display:grid;
+    grid-template-columns:minmax(0, 1.2fr) auto;
+    gap:18px;
+    align-items:start;
+}
+.encaissements-title{
+    margin:4px 0 8px;
+    font-size:1.95rem;
+    line-height:1.08;
+    color:#123047;
+}
+.encaissements-copy{
+    margin:0;
+    max-width:840px;
+    color:#557082;
+    line-height:1.55;
+}
+.encaissements-badges{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+.encaissements-badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:8px 12px;
+    font-weight:700;
+    font-size:.86rem;
+}
+.encaissements-badge-main{
+    background:#e8f6ef;
+    color:#19724a;
+}
+.encaissements-badge-gold{
+    background:#fff3d8;
+    color:#9b6700;
+}
+.encaissements-topstats{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(140px, 1fr));
+    gap:10px;
+}
+.encaissements-kpi{
+    padding:14px 16px;
+    border-radius:18px;
+    background:#fff;
+    border:1px solid #dbe8f2;
+}
+.encaissements-kpi-label{
+    margin:0 0 8px;
+    color:#627a8d;
+    font-weight:700;
+    font-size:.82rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+.encaissements-kpi-value{
+    margin:0;
+    font-size:1.35rem;
+    font-weight:800;
+    color:#123047;
+}
+.encaissements-kpi-note{
+    margin:6px 0 0;
+    color:#6c8191;
+    font-size:.82rem;
+}
+.encaissement-shell{
+    background:#fff;
+    border:1px solid #d7e8f2;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:22px;
+}
+.encaissement-workbench{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:16px;
+    align-items:start;
+}
+.encaissement-form-pane{
+    min-width:0;
+}
+.client-focus-pane{
+    padding:18px;
+    border-radius:24px;
+    border:1px solid #dbe8f2;
+    background:linear-gradient(180deg, rgba(244,250,255,.98), rgba(255,255,255,.99));
+}
+.client-focus-head{
+    margin-bottom:14px;
+}
+.client-focus-head h3{
+    margin:4px 0 6px;
+    color:#123047;
+}
+.client-focus-note{
+    margin:0;
+    color:#60788a;
+    font-size:.92rem;
+    line-height:1.5;
+}
+.client-focus-period{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) auto;
+    gap:10px;
+    align-items:end;
+    margin:12px 0 14px;
+    padding:12px;
+    border-radius:18px;
+    border:1px solid #dce9f4;
+    background:linear-gradient(180deg, #f7fbff, #eef6fd);
+}
+.client-focus-period .field{
+    margin:0;
+}
+.client-focus-period .field label{
+    font-size:.72rem;
+    color:#537185;
+    margin-bottom:5px;
+}
+.client-focus-period input{
+    background:#fff;
+    border-color:#c9dceb;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.75);
+}
+.client-focus-period-reset{
+    height:42px;
+    white-space:nowrap;
+    align-self:end;
+}
+.client-focus-stats{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:10px;
+    margin-bottom:14px;
+}
+.client-focus-stat{
+    padding:12px 14px;
+    border-radius:16px;
+    background:#fff;
+    border:1px solid #dfebf4;
+}
+.client-focus-stat--global{
+    grid-column:1 / -1;
+    padding:14px 16px;
+}
+.client-focus-stat--encours{
+    background:linear-gradient(180deg, #fff8f2, #fff0e3);
+    border-color:#ffd7b8;
+}
+.client-focus-stat--reste{
+    background:linear-gradient(180deg, #fff4f2, #ffe7e3);
+    border-color:#ffc8bf;
+}
+.client-focus-stat--avance{
+    background:linear-gradient(180deg, #f1fbf5, #e4f7eb);
+    border-color:#c7ead3;
+}
+.client-focus-stat--commande{
+    background:linear-gradient(180deg, #fff8e8, #ffefc7);
+    border-color:#f4d78f;
+}
+.client-focus-stat--facture{
+    background:linear-gradient(180deg, #f3f7fb, #e7eef6);
+    border-color:#cfddeb;
+}
+.client-focus-stat--paiement{
+    background:linear-gradient(180deg, #eef6ff, #deedff);
+    border-color:#c6dbf5;
+}
+.client-focus-stat span{
+    display:block;
+    color:#6d8292;
+    font-size:.75rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+}
+.client-focus-stat strong{
+    display:block;
+    margin-top:6px;
+    color:#123047;
+    font-size:1.05rem;
+}
+.client-focus-stat--global strong{
+    font-size:1.65rem;
+    line-height:1.1;
+}
+.client-focus-breakdown{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:8px 12px;
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed rgba(18, 48, 71, .14);
+}
+.client-focus-breakdown small{
+    display:block;
+    color:#5f7688;
+    font-size:.82rem;
+    line-height:1.4;
+}
+.client-focus-breakdown small strong{
+    display:inline;
+    margin:0;
+    font-size:.92rem;
+    color:#123047;
+}
+.client-focus-card{
+    border:1px solid #dfebf4;
+    border-radius:18px;
+    background:#fff;
+    overflow:hidden;
+    margin-top:12px;
+}
+.client-focus-alert{
+    margin-bottom:12px;
+    padding:12px 14px;
+    border-radius:16px;
+    border:1px solid #d7eadf;
+    background:linear-gradient(180deg, #eef9f2, #f8fffb);
+    color:#205f40;
+}
+.client-focus-alert[hidden]{
+    display:none !important;
+}
+.client-focus-alert strong{
+    display:block;
+    margin-bottom:4px;
+}
+.client-focus-alert p{
+    margin:0;
+    color:#4d6f60;
+    font-size:.9rem;
+}
+.client-focus-card h4{
+    margin:0;
+    padding:12px 14px;
+    border-bottom:1px solid #e9f1f7;
+    color:#123047;
+    font-size:.97rem;
+}
+.client-focus-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:.9rem;
+}
+.client-focus-table th,
+.client-focus-table td{
+    padding:10px 12px;
+    border-bottom:1px solid #edf3f8;
+    text-align:left;
+    vertical-align:top;
+}
+.client-focus-table th{
+    font-size:.76rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:#698091;
+    background:#f8fbfe;
+}
+.client-focus-table tr:last-child td{
+    border-bottom:none;
+}
+.client-focus-table small{
+    display:block;
+    margin-top:2px;
+    color:#7d8f9d;
+}
+.client-focus-empty{
+    padding:14px;
+    color:#688091;
+    font-size:.92rem;
+}
+.encaissement-shell-head{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    align-items:flex-start;
+    margin-bottom:18px;
+}
+.encaissement-shell-title{
+    margin:0;
+    font-size:1.1rem;
+    color:#123047;
+}
+.encaissement-shell-note{
+    margin:8px 0 0;
+    color:#5c7587;
+    line-height:1.55;
+}
+.encaissement-state{
+    min-width:170px;
+    padding:14px 18px;
+    border-radius:20px;
+    background:linear-gradient(180deg, #123047, #1e4a67);
+    color:#fff;
+}
+.encaissement-state small{
+    display:block;
+    opacity:.74;
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+}
+.encaissement-state strong{
+    display:block;
+    margin-top:8px;
+    font-size:1.45rem;
+}
+.encaissement-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+}
+.encaissement-grid .field-full{
+    grid-column:1 / -1;
+}
+.encaissement-grid .field-span-2{
+    grid-column:span 2;
+}
+.encaissement-grid input,
+.encaissement-grid select,
+.encaissement-grid textarea{
+    width:100%;
+    box-sizing:border-box;
+}
+.field-card{
+    padding:12px 14px;
+    border-radius:18px;
+    border:1px solid #e0edf5;
+    background:linear-gradient(180deg, rgba(248,252,255,.96), rgba(255,255,255,.98));
+}
+.field-card .field{
+    margin:0;
+}
+.field-card .field label{
+    margin-bottom:8px;
+}
+.field-inline-tight{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+.field-inline-tight > *:first-child{
+    flex:1;
+}
+.helper-strip{
+    margin-top:10px;
+    border-radius:16px;
+    padding:12px 14px;
+    background:#f5fbff;
+    border:1px solid #d9ebf5;
+    color:#527082;
+    font-size:.92rem;
+}
+.allocation-shell{
+    margin-top:20px;
+    padding:18px;
+    border-radius:24px;
+    border:1px solid #d7e8f2;
+    background:linear-gradient(145deg, #f8fcff 0%, #eef8fb 100%);
+}
+.allocation-shell[hidden]{
+    display:none !important;
+}
+.allocation-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+    margin-bottom:14px;
+}
+.allocation-kpis{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:12px;
+    margin-bottom:14px;
+}
+.allocation-kpi{
+    padding:14px 16px;
+    border-radius:18px;
+    background:#fff;
+    border:1px solid #d9e7f2;
+}
+.allocation-kpi span{
+    display:block;
+    color:#698091;
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+}
+.allocation-kpi strong{
+    display:block;
+    margin-top:8px;
+    font-size:1.55rem;
+    color:#123047;
+}
+.allocation-grid{
+    display:grid;
+    gap:12px;
+}
+.allocation-row{
+    display:grid;
+    grid-template-columns:minmax(0, 1.5fr) minmax(200px, .9fr) auto;
+    grid-template-areas:
+        "commande montant actions"
+        "meta meta meta";
+    gap:12px;
+    align-items:start;
+    padding:14px;
+    border-radius:18px;
+    background:rgba(255,255,255,.96);
+    border:1px solid #d9e7f2;
+}
+.allocation-field--commande{grid-area:commande;}
+.allocation-field--montant{grid-area:montant;}
+.allocation-actions{grid-area:actions; align-self:end;}
+.allocation-meta{
+    grid-area:meta;
+    margin-top:6px;
+    color:#6b8091;
+    font-size:.9rem;
+}
+.allocation-error{
+    margin-top:12px;
+    color:#b53d32;
+    font-weight:700;
+}
+.encaissement-history-table{
+    overflow:auto;
+    border-radius:22px;
+}
+.encaissement-table-card{
+    background:#fff;
+    border:1px solid #d7e8f2;
+    border-radius:28px;
+    box-shadow:0 18px 44px rgba(18,48,71,.08);
+    padding:20px;
+}
+.encaissement-table-head{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    align-items:flex-start;
+    margin-bottom:16px;
+}
+.encaissement-filter-bar{
+    display:grid;
+    grid-template-columns:minmax(320px, 1.8fr) minmax(170px, .9fr) minmax(260px, 1.1fr) auto auto;
+    gap:12px;
+    align-items:end;
+}
+.encaissement-filter-card{
+    padding:12px 14px;
+    border-radius:18px;
+    border:1px solid #e0edf5;
+    background:linear-gradient(180deg, rgba(248,252,255,.96), rgba(255,255,255,.98));
+}
+.encaissement-filter-card .field{
+    margin:0;
+}
+.encaissement-filter-card .field label{
+    margin-bottom:6px;
+    font-size:.88rem;
+}
+.encaissement-filter-inline{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:8px;
+}
+.encaissement-filter-actions{
+    display:flex;
+    justify-content:flex-end;
+    align-items:end;
+}
+.encaissement-filter-actions .btn-secondary{
+    white-space:nowrap;
+}
+.encaissement-chip{
+    display:inline-flex;
+    align-items:center;
+    padding:7px 12px;
+    border-radius:999px;
+    background:#e9f3ff;
+    color:#255573;
+    font-weight:700;
+    font-size:.84rem;
+}
+.encaissement-type-chip{
+    display:inline-flex;
+    align-items:center;
+    padding:7px 12px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:.82rem;
+    white-space:nowrap;
+}
+.encaissement-type-commande{background:#e8f6ef;color:#19724a;}
+.encaissement-type-multi{background:#fff4d8;color:#9b6700;}
+.encaissement-type-avance{background:#eef0ff;color:#4859b5;}
+.encaissement-type-solde{background:#f4ecff;color:#7440a1;}
+.encaissement-advance-note{
+    color:#4859b5;
+    font-weight:700;
+}
+@media (max-width: 1180px){
+    .encaissements-topbar,
+    .encaissement-workbench,
+    .allocation-kpis{
+        grid-template-columns:1fr;
+    }
+    .encaissement-filter-bar{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+    .encaissement-filter-actions{
+        justify-content:flex-start;
+    }
+}
+@media (max-width: 900px){
+    .encaissement-shell-head,
+    .allocation-head,
+    .encaissement-table-head{
+        flex-direction:column;
+    }
+    .allocation-row{
+        grid-template-columns:1fr;
+        grid-template-areas:
+            "commande"
+            "montant"
+            "actions"
+            "meta";
+    }
+    .encaissement-grid,
+    .client-focus-stats{
+        grid-template-columns:1fr;
+    }
+    .client-focus-period,
+    .encaissement-filter-bar,
+    .encaissement-filter-inline{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<div class="encaissements-page">
+    <section class="encaissements-topbar encaissements-panel">
+        <div>
+            <p class="eyebrow">Suivi client</p>
+            <h1 class="encaissements-title">{% if editing_encaissement %}Modifier l'encaissement client{% else %}Encaissements clients{% endif %}</h1>
+            <p class="encaissements-copy">
+                Cette page couvre maintenant les trois cas reels de la comptabilite client : paiement sur une commande,
+                paiement reparti sur plusieurs commandes et avance client avant commande. Le but est de garder une trace
+                claire du flux de tresorerie, sans perdre le lien avec les commandes quand il existe.
+            </p>
+            <div class="encaissements-badges">
+                <span class="encaissements-badge encaissements-badge-main">Avances client possibles avant ou sans commande</span>
+                <span class="encaissements-badge encaissements-badge-gold">Repartition multi-commandes prise en charge</span>
+            </div>
+        </div>
+        <div class="encaissements-topstats">
+                <div class="encaissements-kpi">
+                    <p class="encaissements-kpi-label">Lignes visibles</p>
+                    <p class="encaissements-kpi-value">{{ encaissements|length }}</p>
+                    <p class="encaissements-kpi-note">historique filtre courant</p>
+                </div>
+                <div class="encaissements-kpi">
+                    <p class="encaissements-kpi-label">Mode ouvert</p>
+                    <p class="encaissements-kpi-value" id="type-kpi-value">Commande</p>
+                    <p class="encaissements-kpi-note">le formulaire suit ce choix</p>
+                </div>
+                <div class="encaissements-kpi">
+                    <p class="encaissements-kpi-label">Banques</p>
+                    <p class="encaissements-kpi-value">{{ banques|length }}</p>
+                    <p class="encaissements-kpi-note">liste disponible</p>
+                </div>
+        </div>
+    </section>
+
+    <section class="encaissement-shell">
+        <div class="encaissement-shell-head">
+            <div>
+                <h2 class="encaissement-shell-title">{% if editing_encaissement %}Reprendre et corriger l'encaissement{% else %}Saisir un encaissement client{% endif %}</h2>
+                <p class="encaissement-shell-note">
+                    Si le client paye une seule commande, utilisez le mode simple. S'il regle plusieurs commandes avec un meme paiement,
+                    passez en repartition. Si le versement arrive avant toute commande, utilisez l'avance client.
+                </p>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+                <a href="/clients/encaissements/historique/" class="btn-secondary">Historique des encaissements</a>
+                <div class="encaissement-state">
+                    <small>Mode actuel</small>
+                    <strong id="encaissement-state-label">Commande</strong>
+                </div>
+            </div>
+        </div>
+        <div class="encaissement-workbench">
+        <div class="encaissement-form-pane">
+        <form method="post" class="app-form" id="encaissement-form">
+            {% csrf_token %}
+            {{ form.client }}
+            {{ form.commande }}
+            {{ form.banque }}
+            <datalist id="clients-encaissement-list">
+                {% for client in clients %}
+                <option value="{{ client.entreprise }}" data-id="{{ client.id }}" data-solde-initial-restant="{{ client.solde_initial_restant }}">{{ client.nom }}</option>
+                {% endfor %}
+            </datalist>
+            <datalist id="commandes-encaissement-list"></datalist>
+            <datalist id="banques-encaissement-list">
+                {% for banque_item in banques %}
+                <option value="{{ banque_item.nom }}">{{ banque_item.code }}</option>
+                {% endfor %}
+            </datalist>
+
+            {% if form.non_field_errors %}
+            <div class="form-alert">
+                {% for error in form.non_field_errors %}
+                <p class="field-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="encaissement-grid">
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.client_recherche.id_for_label }}">Client</label>
+                        {{ form.client_recherche }}
+                        {% if form.client_recherche.errors %}<p class="field-error">{{ form.client_recherche.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.type_encaissement.id_for_label }}">Nature de l'encaissement</label>
+                        {{ form.type_encaissement }}
+                        {% if form.type_encaissement.errors %}<p class="field-error">{{ form.type_encaissement.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card field-span-2" id="single-commande-card">
+                    <div class="field">
+                        <label for="{{ form.commande_recherche.id_for_label }}">Commande</label>
+                        {{ form.commande_recherche }}
+                        <p class="helper-strip" id="commande-help-text">Choisissez une commande si le paiement la concerne directement.</p>
+                        <p class="helper-strip" id="solde-initial-help-text" hidden></p>
+                        {% if form.commande_recherche.errors %}<p class="field-error">{{ form.commande_recherche.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.date_encaissement.id_for_label }}">Date d'encaissement</label>
+                        {{ form.date_encaissement }}
+                        {% if form.date_encaissement.errors %}<p class="field-error">{{ form.date_encaissement.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.montant.id_for_label }}">Montant</label>
+                        {{ form.montant }}
+                        {% if form.montant.errors %}<p class="field-error">{{ form.montant.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.mode_paiement.id_for_label }}">Mode de paiement</label>
+                        {{ form.mode_paiement }}
+                        {% if form.mode_paiement.errors %}<p class="field-error">{{ form.mode_paiement.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.reference.id_for_label }}">Reference</label>
+                        {{ form.reference }}
+                        {% if form.reference.errors %}<p class="field-error">{{ form.reference.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card field-span-2">
+                    <div class="field">
+                        <label for="{{ form.banque_recherche.id_for_label }}">Banque</label>
+                        <div class="field-inline-tight">
+                            {{ form.banque_recherche }}
+                            <button type="button" class="btn-secondary" data-modal-target="banque-modal">Ajouter banque</button>
+                        </div>
+                        {% if form.banque_recherche.errors %}<p class="field-error">{{ form.banque_recherche.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.nom_deposant.id_for_label }}">Nom du deposant</label>
+                        {{ form.nom_deposant }}
+                        {% if form.nom_deposant.errors %}<p class="field-error">{{ form.nom_deposant.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.fonction_deposant.id_for_label }}">Fonction du deposant</label>
+                        {{ form.fonction_deposant }}
+                        {% if form.fonction_deposant.errors %}<p class="field-error">{{ form.fonction_deposant.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card">
+                    <div class="field">
+                        <label for="{{ form.numero_deposant.id_for_label }}">Numero du deposant</label>
+                        {{ form.numero_deposant }}
+                        {% if form.numero_deposant.errors %}<p class="field-error">{{ form.numero_deposant.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="field-card field-full">
+                    <div class="field">
+                        <label for="{{ form.observation.id_for_label }}">Observation</label>
+                        {{ form.observation }}
+                        {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="allocation-shell" id="multi-allocation-shell" hidden>
+                <div class="allocation-head">
+                    <div>
+                        <p class="eyebrow" style="margin-bottom:6px;">Repartition du paiement</p>
+                        <h3 style="margin:0; color:#123047;">Affecter le paiement sur plusieurs commandes</h3>
+                        <p class="encaissement-shell-note" style="margin-top:8px;">Le total affecte doit etre exactement egal au montant de l'encaissement.</p>
+                    </div>
+                    <button type="button" class="btn-secondary" id="add-allocation-row">Ajouter une ligne</button>
+                </div>
+                <div class="allocation-kpis">
+                    <div class="allocation-kpi">
+                        <span>Montant encaisse</span>
+                        <strong id="allocation-target-total">0</strong>
+                    </div>
+                    <div class="allocation-kpi">
+                        <span>Total reparti</span>
+                        <strong id="allocation-current-total">0</strong>
+                    </div>
+                    <div class="allocation-kpi">
+                        <span>Reste a affecter</span>
+                        <strong id="allocation-remaining-total">0</strong>
+                    </div>
+                </div>
+                <div class="allocation-grid" id="allocation-grid"></div>
+                <div class="allocation-error" id="allocation-live-error"></div>
+            </div>
+
+            <div class="form-actions">
+                <a href="/clients/" class="btn-secondary">Retour</a>
+                {% if editing_encaissement %}
+                <a href="/clients/encaissements/" class="btn-secondary">Annuler</a>
+                <button type="submit" class="btn">Mettre a jour l'encaissement</button>
+                {% else %}
+                <button type="submit" class="btn">Enregistrer l'encaissement</button>
+                {% endif %}
+            </div>
+        </form>
+        </div>
+
+        <aside class="client-focus-pane">
+            <div class="client-focus-head">
+                <p class="eyebrow">Synthese client</p>
+                <h3>Situation du client selectionne</h3>
+                <p class="client-focus-note">Choisissez un client pour afficher rapidement son etat commandes / paiements sans quitter la saisie.</p>
+            </div>
+            <div class="client-focus-period">
+                <div class="field">
+                    <label for="client-focus-date-debut">Date debut</label>
+                    <input type="date" id="client-focus-date-debut">
+                </div>
+                <div class="field">
+                    <label for="client-focus-date-fin">Date fin</label>
+                    <input type="date" id="client-focus-date-fin">
+                </div>
+                <button type="button" class="btn-secondary client-focus-period-reset" id="client-focus-date-reset">Reinitialiser</button>
+            </div>
+            <div class="client-focus-alert" id="client-avance-alert" hidden>
+                <strong id="client-avance-alert-title"></strong>
+                <p id="client-avance-alert-copy"></p>
+            </div>
+            <div class="client-focus-stats">
+                <div class="client-focus-stat client-focus-stat--encours client-focus-stat--global">
+                    <span>Encours global client</span>
+                    <strong id="client-focus-encours-global">-</strong>
+                    <div class="client-focus-breakdown">
+                        <small>Solde initial restant : <strong id="client-focus-solde-initial">-</strong></small>
+                        <small>Encours commande reel : <strong id="client-focus-encours-client">-</strong></small>
+                    </div>
+                </div>
+                <div class="client-focus-stat client-focus-stat--reste">
+                    <span>Engagements valides non livres</span>
+                    <strong id="client-focus-engagements">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--avance">
+                    <span>Risque potentiel</span>
+                    <strong id="client-focus-risque-potentiel">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--avance">
+                    <span>Avances disponibles</span>
+                    <strong id="client-focus-avances">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--commande">
+                    <span>Total facture</span>
+                    <strong id="client-focus-facture-totale">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--facture">
+                    <span>Total paye commandes</span>
+                    <strong id="client-focus-paye-commandes">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--paiement">
+                    <span>Total paye solde initial</span>
+                    <strong id="client-focus-paye-solde-initial">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--paiement">
+                    <span>Total paye global</span>
+                    <strong id="client-focus-paiements-total">-</strong>
+                </div>
+                <div class="client-focus-stat client-focus-stat--reste">
+                    <span>Exposition client totale</span>
+                    <strong id="client-focus-exposition">-</strong>
+                </div>
+            </div>
+            <div class="client-focus-card">
+                <h4>Commandes du client</h4>
+                <div id="client-commandes-summary" class="client-focus-empty">Selectionnez un client pour voir l'etat de ses commandes.</div>
+            </div>
+            <div class="client-focus-card">
+                <h4>Paiements du client</h4>
+                <div id="client-paiements-summary" class="client-focus-empty">Les derniers encaissements apparaitront ici.</div>
+            </div>
+        </aside>
+        </div>
+    </section>
+
+</div>
+
+<div class="modal" id="banque-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="banque-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Sous-formulaire</p>
+                <h2>Ajouter une banque</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="banque-modal">x</button>
+        </div>
+        <form id="banque-modal-form" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="field">
+                <label for="id_banque_nom">Nom de la banque</label>
+                {{ banque_form.nom }}
+            </div>
+            <div class="field">
+                <label for="id_banque_code">Code banque</label>
+                {{ banque_form.code }}
+            </div>
+            <div class="field-error" id="banque-modal-errors" hidden></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="banque-modal">Annuler</button>
+                <button type="submit" class="btn">Creer la banque</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="avance-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close="avance-modal"></div>
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div>
+                <p class="eyebrow">Affectation d'avance</p>
+                <h2>Imputer une avance client</h2>
+            </div>
+            <button type="button" class="modal-close" data-modal-close="avance-modal">x</button>
+        </div>
+        <form id="avance-modal-form" method="post" class="app-form modal-form">
+            {% csrf_token %}
+            <div class="field">
+                <label>Client</label>
+                <input type="text" id="avance-client-label" readonly>
+            </div>
+            <div class="field">
+                <label>Commande</label>
+                <select id="avance-commande-id" name="commande_id" required>
+                    <option value="">Selectionnez une commande</option>
+                </select>
+                <small id="avance-commande-meta" class="transitaire-subinfo">Choisissez la commande a couvrir avec l'avance.</small>
+            </div>
+            <div class="field">
+                <label for="avance-montant-affecte">Montant a imputer</label>
+                <input type="text" id="avance-montant-affecte" name="montant_affecte" inputmode="decimal" placeholder="Ex : 250 000 000" required>
+                <small id="avance-disponible-meta" class="transitaire-subinfo"></small>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-modal-close="avance-modal">Annuler</button>
+                <button type="submit" class="btn">Imputer l'avance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const clientInput = document.getElementById("{{ form.client_recherche.id_for_label }}");
+    const clientHidden = document.getElementById("{{ form.client.id_for_label }}");
+    const commandeInput = document.getElementById("{{ form.commande_recherche.id_for_label }}");
+    const commandeHidden = document.getElementById("{{ form.commande.id_for_label }}");
+    const typeInput = document.getElementById("{{ form.type_encaissement.id_for_label }}");
+    const montantInput = document.getElementById("{{ form.montant.id_for_label }}");
+    const banqueInput = document.getElementById("{{ form.banque_recherche.id_for_label }}");
+    const banqueHidden = document.getElementById("{{ form.banque.id_for_label }}");
+    const commandeHelpText = document.getElementById("commande-help-text");
+    const soldeInitialHelpText = document.getElementById("solde-initial-help-text");
+    const typeKpiValue = document.getElementById("type-kpi-value");
+    const stateLabel = document.getElementById("encaissement-state-label");
+    const singleCommandeCard = document.getElementById("single-commande-card");
+    const multiAllocationShell = document.getElementById("multi-allocation-shell");
+    const allocationGrid = document.getElementById("allocation-grid");
+    const addAllocationRowButton = document.getElementById("add-allocation-row");
+    const allocationTargetTotal = document.getElementById("allocation-target-total");
+    const allocationCurrentTotal = document.getElementById("allocation-current-total");
+    const allocationRemainingTotal = document.getElementById("allocation-remaining-total");
+    const allocationLiveError = document.getElementById("allocation-live-error");
+    const avanceModal = document.getElementById("avance-modal");
+    const avanceModalForm = document.getElementById("avance-modal-form");
+    const avanceClientLabel = document.getElementById("avance-client-label");
+    const avanceCommandeSelect = document.getElementById("avance-commande-id");
+    const avanceCommandeMeta = document.getElementById("avance-commande-meta");
+    const avanceMontantInput = document.getElementById("avance-montant-affecte");
+    const avanceDisponibleMeta = document.getElementById("avance-disponible-meta");
+    const clientFocusEncoursGlobal = document.getElementById("client-focus-encours-global");
+    const clientFocusSoldeInitial = document.getElementById("client-focus-solde-initial");
+    const clientFocusEncoursClient = document.getElementById("client-focus-encours-client");
+    const clientFocusAvances = document.getElementById("client-focus-avances");
+    const clientFocusEngagements = document.getElementById("client-focus-engagements");
+    const clientFocusRisquePotentiel = document.getElementById("client-focus-risque-potentiel");
+    const clientFocusPayeCommandes = document.getElementById("client-focus-paye-commandes");
+    const clientFocusPayeSoldeInitial = document.getElementById("client-focus-paye-solde-initial");
+    const clientFocusPaiementsTotal = document.getElementById("client-focus-paiements-total");
+    const clientFocusFactureTotale = document.getElementById("client-focus-facture-totale");
+    const clientFocusExposition = document.getElementById("client-focus-exposition");
+    const clientFocusDateDebut = document.getElementById("client-focus-date-debut");
+    const clientFocusDateFin = document.getElementById("client-focus-date-fin");
+    const clientFocusDateReset = document.getElementById("client-focus-date-reset");
+    const clientCommandesSummary = document.getElementById("client-commandes-summary");
+    const clientPaiementsSummary = document.getElementById("client-paiements-summary");
+    const clientAvanceAlert = document.getElementById("client-avance-alert");
+    const clientAvanceAlertTitle = document.getElementById("client-avance-alert-title");
+    const clientAvanceAlertCopy = document.getElementById("client-avance-alert-copy");
+    const clientOptions = Array.from(document.querySelectorAll("#clients-encaissement-list option"));
+    let commandeOptions = [];
+    let avanceContext = { available: 0, clientId: "", commandes: [] };
+    let clientSummaryContext = { avancesDisponibles: [], suggestionsAvance: [] };
+
+    function parseNumber(value) {
+        const raw = String(value ?? "").trim();
+        if (!raw) return 0;
+        let normalized = raw.replace(/\s+/g, "");
+        const hasComma = normalized.includes(",");
+        const hasDot = normalized.includes(".");
+        if (hasComma && hasDot) {
+            if (normalized.lastIndexOf(",") > normalized.lastIndexOf(".")) {
+                normalized = normalized.replace(/\./g, "").replace(",", ".");
+            } else {
+                normalized = normalized.replace(/,/g, "");
+            }
+        } else if (hasComma) {
+            normalized = normalized.replace(",", ".");
+        }
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatNumber(value) {
+        return parseNumber(value).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function normalizeNumberValue(value) {
+        const numericValue = parseNumber(value);
+        return numericValue ? String(numericValue) : "";
+    }
+
+    function formatDateValue(value) {
+        if (!value) return "-";
+        const [year, month, day] = String(value).split("-");
+        if (!year || !month || !day) return value;
+        return `${day}/${month}/${year}`;
+    }
+
+    function buildClientSummaryQuery(clientId) {
+        const params = new URLSearchParams({ client_id: clientId });
+        const dateDebut = clientFocusDateDebut?.value?.trim();
+        const dateFin = clientFocusDateFin?.value?.trim();
+        if (dateDebut) params.set("date_debut", dateDebut);
+        if (dateFin) params.set("date_fin", dateFin);
+        return params.toString();
+    }
+
+    function openModal(modalId) {
+        document.getElementById(modalId)?.classList.add("is-open");
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId)?.classList.remove("is-open");
+    }
+
+    function syncClientSelection() {
+        const selected = getSelectedClientOption();
+        clientHidden.value = selected ? selected.dataset.id : "";
+        if (clientHidden.value) {
+            loadCommandes(clientHidden.value);
+        } else {
+            commandeOptions = [];
+            document.getElementById("commandes-encaissement-list").innerHTML = "";
+            commandeInput.value = "";
+            commandeHidden.value = "";
+            if (allocationGrid) {
+                allocationGrid.innerHTML = "";
+                createAllocationRow();
+            }
+            clearClientSummary();
+        }
+        toggleTypeSections();
+    }
+
+    function syncCommandeSelection() {
+        const selected = commandeOptions.find((option) => option.value === commandeInput.value);
+        commandeHidden.value = selected ? selected.dataset.id : "";
+    }
+
+    function syncBanqueSelection() {
+        banqueHidden.value = banqueInput?.value?.trim() || "";
+    }
+
+    function getSelectedClientOption() {
+        return clientOptions.find((option) => option.value === clientInput.value) || null;
+    }
+
+    function getSelectedClientSoldeInitialRestant() {
+        return parseNumber(getSelectedClientOption()?.dataset?.soldeInitialRestant || 0);
+    }
+
+    function renderClientCommandesSummary(commandes = []) {
+        if (!clientCommandesSummary) return;
+        if (!commandes.length) {
+            clientCommandesSummary.innerHTML = `<div class="client-focus-empty">Aucune commande a afficher pour ce client.</div>`;
+            return;
+        }
+        clientCommandesSummary.innerHTML = `
+            <table class="client-focus-table">
+                <thead>
+                    <tr>
+                        <th>Commande</th>
+                        <th>Etat</th>
+                        <th>Montant</th>
+                        <th>Paye</th>
+                        <th>Solde</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${commandes.map((commande) => `
+                        <tr>
+                            <td>
+                                <strong>${commande.reference}</strong>
+                                ${commande.livree && !commande.soldee && clientSummaryContext.avancesDisponibles.length
+                                    ? `<small><button type="button" class="btn-secondary js-suggest-avance" data-commande-id="${commande.id}" data-commande-solde="${commande.solde}" style="margin-top:6px;">Imputer l'avance</button></small>`
+                                    : ""}
+                            </td>
+                            <td>
+                                <strong>${commande.etat_affiche || commande.statut || "-"}</strong>
+                                <small>${commande.soldee ? "Commande soldee" : "Suivi en cours"}</small>
+                            </td>
+                            <td>${formatNumber(commande.montant)} GNF</td>
+                            <td>
+                                ${formatNumber(commande.total_paye)} GNF
+                                ${commande.paiement_reference ? `<small>${commande.paiement_type || "Paiement"}${commande.paiement_mode ? ` - ${commande.paiement_mode}` : ""} - Ref ${commande.paiement_reference}</small>` : ""}
+                            </td>
+                            <td>${commande.soldee ? "0 GNF" : `${formatNumber(commande.solde)} GNF`}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+        clientCommandesSummary.querySelectorAll(".js-suggest-avance").forEach((button) => {
+            button.addEventListener("click", () => openSuggestedAvance(button));
+        });
+    }
+
+    function renderClientPaiementsSummary(encaissements = []) {
+        if (!clientPaiementsSummary) return;
+        if (!encaissements.length) {
+            clientPaiementsSummary.innerHTML = `<div class="client-focus-empty">Aucun paiement enregistre pour ce client.</div>`;
+            return;
+        }
+        clientPaiementsSummary.innerHTML = `
+            <table class="client-focus-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Montant</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${encaissements.map((encaissement) => `
+                        <tr>
+                            <td>${formatDateValue(encaissement.date)}</td>
+                            <td>
+                                <strong>${encaissement.type}</strong>
+                                <small>${encaissement.mode || "-"}</small>
+                            </td>
+                            <td>${formatNumber(encaissement.montant)} GNF</td>
+                            <td>${encaissement.reference || "-"}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function clearClientSummary() {
+        if (clientFocusEncoursGlobal) clientFocusEncoursGlobal.textContent = "-";
+        if (clientFocusSoldeInitial) clientFocusSoldeInitial.textContent = "-";
+        if (clientFocusEncoursClient) clientFocusEncoursClient.textContent = "-";
+        if (clientFocusAvances) clientFocusAvances.textContent = "-";
+        if (clientFocusEngagements) clientFocusEngagements.textContent = "-";
+        if (clientFocusRisquePotentiel) clientFocusRisquePotentiel.textContent = "-";
+        if (clientFocusPayeCommandes) clientFocusPayeCommandes.textContent = "-";
+        if (clientFocusPayeSoldeInitial) clientFocusPayeSoldeInitial.textContent = "-";
+        if (clientFocusPaiementsTotal) clientFocusPaiementsTotal.textContent = "-";
+        if (clientFocusFactureTotale) clientFocusFactureTotale.textContent = "-";
+        if (clientFocusExposition) clientFocusExposition.textContent = "-";
+        if (clientAvanceAlert) clientAvanceAlert.hidden = true;
+        if (clientAvanceAlertTitle) clientAvanceAlertTitle.textContent = "";
+        if (clientAvanceAlertCopy) clientAvanceAlertCopy.textContent = "";
+        clientSummaryContext = { avancesDisponibles: [], suggestionsAvance: [] };
+        renderClientCommandesSummary([]);
+        renderClientPaiementsSummary([]);
+    }
+
+    function fillClientSummary(data = {}) {
+        const resume = data.client_resume || {};
+        const encoursGlobal = parseNumber(resume.solde_initial_restant) + parseNumber(resume.encours_client);
+        clientSummaryContext = {
+            avancesDisponibles: data.avances_disponibles || [],
+            suggestionsAvance: data.suggestions_avance || [],
+        };
+        if (clientFocusEncoursGlobal) clientFocusEncoursGlobal.textContent = `${formatNumber(encoursGlobal)} GNF`;
+        if (clientFocusSoldeInitial) clientFocusSoldeInitial.textContent = `${formatNumber(resume.solde_initial_restant)} GNF`;
+        if (clientFocusEncoursClient) clientFocusEncoursClient.textContent = `${formatNumber(resume.encours_client)} GNF`;
+        if (clientFocusAvances) clientFocusAvances.textContent = `${formatNumber(resume.paiements_anticipes)} GNF`;
+        if (clientFocusEngagements) clientFocusEngagements.textContent = `${formatNumber(resume.engagements)} GNF`;
+        if (clientFocusRisquePotentiel) clientFocusRisquePotentiel.textContent = `${formatNumber(resume.risque_potentiel)} GNF`;
+        if (clientFocusFactureTotale) clientFocusFactureTotale.textContent = `${formatNumber(resume.total_facture)} GNF`;
+        if (clientFocusPayeCommandes) clientFocusPayeCommandes.textContent = `${formatNumber(resume.total_paye_commandes)} GNF`;
+        if (clientFocusPayeSoldeInitial) clientFocusPayeSoldeInitial.textContent = `${formatNumber(resume.total_paye_solde_initial)} GNF`;
+        if (clientFocusPaiementsTotal) clientFocusPaiementsTotal.textContent = `${formatNumber(resume.total_paye_global)} GNF`;
+        if (clientFocusExposition) clientFocusExposition.textContent = `${formatNumber(resume.exposition_client_totale)} GNF`;
+        if (clientAvanceAlert && clientAvanceAlertTitle && clientAvanceAlertCopy) {
+            const hasAdvance = clientSummaryContext.avancesDisponibles.length > 0;
+            const hasSuggestion = clientSummaryContext.suggestionsAvance.length > 0;
+            clientAvanceAlert.hidden = !(hasAdvance && hasSuggestion);
+            if (hasAdvance && hasSuggestion) {
+                clientAvanceAlertTitle.textContent = "Avance disponible a imputer";
+                clientAvanceAlertCopy.textContent = `${clientSummaryContext.suggestionsAvance.length} commande(s) livree(s) non soldee(s) peuvent etre couvertes avec ${formatNumber(resume.paiements_anticipes)} GNF d'avance disponible.`;
+            } else {
+                clientAvanceAlertTitle.textContent = "";
+                clientAvanceAlertCopy.textContent = "";
+            }
+        }
+        renderClientCommandesSummary(data.commandes || []);
+        renderClientPaiementsSummary(data.encaissements || []);
+    }
+
+    function chooseSuggestedAdvance() {
+        if (!clientSummaryContext.avancesDisponibles.length) return null;
+        return [...clientSummaryContext.avancesDisponibles]
+            .sort((a, b) => parseNumber(b.montant_disponible) - parseNumber(a.montant_disponible))[0];
+    }
+
+    async function openSuggestedAvance(button) {
+        const selectedAdvance = chooseSuggestedAdvance();
+        if (!selectedAdvance) return;
+        const commandId = button.dataset.commandeId;
+        const commandSolde = parseNumber(button.dataset.commandeSolde);
+        await openAvanceModal(
+            {
+                dataset: {
+                    encaissementId: selectedAdvance.id,
+                    clientId: clientHidden.value,
+                    clientLabel: clientInput.value,
+                    available: selectedAdvance.montant_disponible,
+                }
+            },
+            commandId,
+            commandSolde,
+        );
+    }
+
+    function typeLabel(value) {
+        if (value === "multi_commandes") return "Multi-commandes";
+        if (value === "avance_client") return "Avance client";
+        if (value === "solde_initial") return "Solde initial";
+        return "Commande";
+    }
+
+    function getFilteredCommandeOptions() {
+        if (typeInput?.value === "commande" || typeInput?.value === "multi_commandes") {
+            return commandeOptions.filter((item) => item.dataset.livree === "1");
+        }
+        return commandeOptions;
+    }
+
+    function getAllocationOptions() {
+        const options = [];
+        const selectedClientOption = getSelectedClientOption();
+        const soldeInitialRestant = parseNumber(selectedClientOption?.dataset?.soldeInitialRestant || 0);
+        if (soldeInitialRestant > 0) {
+            options.push({
+                value: "solde_initial",
+                label: `Solde initial restant - ${formatNumber(soldeInitialRestant)}`,
+                solde: soldeInitialRestant,
+                type: "solde_initial",
+            });
+        }
+        getFilteredCommandeOptions().forEach((item) => {
+            options.push({
+                value: `commande:${item.dataset.id}`,
+                label: `${item.dataset.reference} - solde ${formatNumber(item.dataset.solde)}`,
+                solde: parseNumber(item.dataset.solde),
+                type: "commande",
+                reference: item.dataset.reference,
+            });
+        });
+        options.push({
+            value: "avance_client",
+            label: "Avance client",
+            solde: null,
+            type: "avance_client",
+        });
+        return options;
+    }
+
+    function refreshCommandeChoices() {
+        const filteredOptions = getFilteredCommandeOptions();
+        const datalist = document.getElementById("commandes-encaissement-list");
+        if (datalist) {
+            datalist.innerHTML = "";
+            filteredOptions.forEach((option) => datalist.appendChild(option.cloneNode(true)));
+        }
+        const selected = filteredOptions.find((option) => option.value === commandeInput?.value);
+        if (commandeInput && commandeInput.value && !selected) {
+            commandeInput.value = "";
+            commandeHidden.value = "";
+        }
+        rebuildAllocationCommandes();
+    }
+
+    function toggleTypeSections() {
+        const value = typeInput.value;
+        const isCommande = value === "commande";
+        const isMulti = value === "multi_commandes";
+        commandeInput.disabled = !isCommande;
+        if (!isCommande) {
+            commandeInput.value = "";
+            commandeHidden.value = "";
+        }
+        singleCommandeCard.hidden = !isCommande;
+        multiAllocationShell.hidden = !isMulti;
+        if (isMulti && !allocationGrid.children.length) {
+            createAllocationRow();
+        }
+        if (value === "avance_client") {
+            commandeHelpText.textContent = "Cette avance restera disponible pour les futures commandes du client.";
+        } else if (value === "solde_initial") {
+            commandeHelpText.textContent = "Ce paiement sera affecte au solde initial du client.";
+        } else if (isMulti) {
+            commandeHelpText.textContent = "Le montant sera reparti dans le bloc multi-commandes ci-dessous.";
+        } else {
+            commandeHelpText.textContent = "Choisissez une commande si le paiement la concerne directement.";
+        }
+        if (soldeInitialHelpText) {
+            if (value === "solde_initial") {
+                const restant = getSelectedClientSoldeInitialRestant();
+                soldeInitialHelpText.hidden = false;
+                soldeInitialHelpText.textContent = restant > 0
+                    ? `Solde initial restant : ${formatNumber(restant)} GNF.`
+                    : "Solde initial restant : 0 GNF. Ce type de paiement est bloque pour ce client.";
+            } else {
+                soldeInitialHelpText.hidden = true;
+                soldeInitialHelpText.textContent = "";
+            }
+        }
+        const label = typeLabel(value);
+        stateLabel.textContent = label;
+        typeKpiValue.textContent = label;
+        refreshCommandeChoices();
+        recalculateAllocations();
+    }
+
+    async function loadCommandes(clientId) {
+        const response = await fetch(`/clients/commandes-infos/?${buildClientSummaryQuery(clientId)}`, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
+        });
+        if (!response.ok) {
+            clearClientSummary();
+            return [];
+        }
+        const data = await response.json();
+        if (!data.success) {
+            clearClientSummary();
+            return [];
+        }
+        const datalist = document.getElementById("commandes-encaissement-list");
+        datalist.innerHTML = "";
+        commandeOptions = data.commandes.map((item) => {
+            const option = document.createElement("option");
+            option.value = `${item.reference} - solde ${formatNumber(item.solde)}`;
+            option.dataset.id = item.id;
+            option.dataset.reference = item.reference;
+            option.dataset.solde = item.solde;
+            option.dataset.livree = item.livree ? "1" : "0";
+            return option;
+        });
+        refreshCommandeChoices();
+        fillClientSummary(data);
+        return data.commandes || [];
+    }
+
+    function buildCommandeOptionsHtml(selectedValue = "") {
+        const defaultOption = `<option value="">Selectionnez une commande</option>`;
+        const options = getFilteredCommandeOptions().map((item) => {
+            const label = `${item.dataset.reference} - solde ${formatNumber(item.dataset.solde)}`;
+            const isSelected = selectedValue && String(selectedValue) === String(item.dataset.id);
+            return `<option value="${item.dataset.id}" data-solde="${item.dataset.solde}" ${isSelected ? "selected" : ""}>${label}</option>`;
+        });
+        return defaultOption + options.join("");
+    }
+
+    function buildAllocationOptionsHtml(selectedValue = "") {
+        const defaultOption = `<option value="">Selectionnez une affectation</option>`;
+        const options = getAllocationOptions().map((item) => {
+            const isSelected = selectedValue && String(selectedValue) === String(item.value);
+            const dataSolde = item.solde === null ? "" : ` data-solde="${item.solde}"`;
+            const dataType = ` data-type="${item.type}"`;
+            return `<option value="${item.value}"${dataSolde}${dataType} ${isSelected ? "selected" : ""}>${item.label}</option>`;
+        });
+        return defaultOption + options.join("");
+    }
+
+    function createAllocationRow(data = {}) {
+        if (!allocationGrid) return;
+        const row = document.createElement("div");
+        row.className = "allocation-row";
+        row.innerHTML = `
+            <div class="allocation-field allocation-field--commande">
+                <label>Affectation</label>
+                <select name="allocation_cible" class="allocation-cible">${buildAllocationOptionsHtml(data.cible || "")}</select>
+            </div>
+            <div class="allocation-field allocation-field--montant">
+                <label>Montant affecte</label>
+                <input type="text" name="allocation_montant" class="allocation-montant" inputmode="decimal" placeholder="Ex : 250 000 000">
+            </div>
+            <div class="allocation-actions">
+                <button type="button" class="btn-delete allocation-remove">Retirer</button>
+            </div>
+            <div class="allocation-meta allocation-row-meta">Selectionnez une commande et le montant a lui affecter.</div>
+        `;
+        allocationGrid.appendChild(row);
+
+        const cibleField = row.querySelector(".allocation-cible");
+        const montantField = row.querySelector(".allocation-montant");
+        if (data.cible) cibleField.value = String(data.cible);
+        if (data.montant) montantField.value = formatNumber(data.montant);
+
+        row.querySelector(".allocation-remove")?.addEventListener("click", () => {
+            row.remove();
+            recalculateAllocations();
+        });
+        cibleField?.addEventListener("change", recalculateAllocations);
+        montantField?.addEventListener("input", recalculateAllocations);
+        montantField?.addEventListener("focus", () => {
+            montantField.value = normalizeNumberValue(montantField.value);
+        });
+        montantField?.addEventListener("blur", () => {
+            montantField.value = montantField.value ? formatNumber(montantField.value) : "";
+            recalculateAllocations();
+        });
+        recalculateAllocations();
+    }
+
+    function rebuildAllocationCommandes() {
+        if (!allocationGrid) return;
+        allocationGrid.querySelectorAll(".allocation-cible").forEach((selectElement) => {
+            const current = selectElement.value;
+            selectElement.innerHTML = buildAllocationOptionsHtml(current);
+        });
+    }
+
+    function recalculateAllocations() {
+        const target = parseNumber(montantInput?.value);
+        let total = 0;
+        allocationGrid?.querySelectorAll(".allocation-row").forEach((row) => {
+            const cibleField = row.querySelector(".allocation-cible");
+            const montantField = row.querySelector(".allocation-montant");
+            const meta = row.querySelector(".allocation-row-meta");
+            const montant = parseNumber(montantField?.value);
+            total += montant;
+            const selectedOption = cibleField?.options[cibleField.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                meta.textContent = "Selectionnez une affectation et le montant a lui affecter.";
+                return;
+            }
+            if (selectedOption.dataset.type === "solde_initial") {
+                meta.textContent = `Le montant affecte diminuera directement le solde initial restant (${formatNumber(selectedOption.dataset.solde)} GNF).`;
+            } else if (selectedOption.dataset.type === "avance_client") {
+                meta.textContent = "Le montant affecte sera conserve comme avance client disponible.";
+            } else {
+                meta.textContent = `Solde indique pour cette commande : ${formatNumber(selectedOption.dataset.solde)} GNF.`;
+            }
+        });
+        const remaining = target - total;
+        if (allocationTargetTotal) allocationTargetTotal.textContent = formatNumber(target);
+        if (allocationCurrentTotal) allocationCurrentTotal.textContent = formatNumber(total);
+        if (allocationRemainingTotal) allocationRemainingTotal.textContent = formatNumber(remaining);
+        if (allocationLiveError) {
+            if (typeInput.value !== "multi_commandes") {
+                allocationLiveError.textContent = "";
+            } else if (remaining > 0) {
+                allocationLiveError.textContent = `Il reste ${formatNumber(remaining)} GNF a affecter.`;
+            } else if (remaining < 0) {
+                allocationLiveError.textContent = `La repartition depasse le montant total de ${formatNumber(Math.abs(remaining))} GNF.`;
+            } else {
+                allocationLiveError.textContent = "Le paiement est totalement reparti sur les affectations selectionnees.";
+            }
+        }
+    }
+
+    function fillAvanceCommandeOptions(commandes) {
+        if (!avanceCommandeSelect) return;
+        avanceCommandeSelect.innerHTML = `<option value="">Selectionnez une commande</option>`;
+        commandes.forEach((commande) => {
+            const option = document.createElement("option");
+            option.value = commande.id;
+            option.textContent = `${commande.reference} - solde ${formatNumber(commande.solde)}`;
+            option.dataset.solde = commande.solde;
+            avanceCommandeSelect.appendChild(option);
+        });
+    }
+
+    function refreshAvanceSuggestion() {
+        if (!avanceCommandeSelect || !avanceMontantInput) return;
+        const selectedOption = avanceCommandeSelect.options[avanceCommandeSelect.selectedIndex];
+        const soldeCommande = parseNumber(selectedOption?.dataset?.solde);
+        const available = parseNumber(avanceContext.available);
+        if (!selectedOption || !selectedOption.value) {
+            avanceCommandeMeta.textContent = "Choisissez la commande a couvrir avec l'avance.";
+            avanceDisponibleMeta.textContent = `Disponible sur cette avance : ${formatNumber(available)} GNF.`;
+            return;
+        }
+        const suggestion = Math.min(available, soldeCommande);
+        avanceCommandeMeta.textContent = `Solde restant sur cette commande : ${formatNumber(soldeCommande)} GNF.`;
+        avanceDisponibleMeta.textContent = `Disponible sur cette avance : ${formatNumber(available)} GNF.`;
+        avanceMontantInput.value = suggestion ? formatNumber(suggestion) : "";
+    }
+
+    async function openAvanceModal(button, preferredCommandeId = "", preferredSolde = 0) {
+        const encaissementId = button.dataset.encaissementId;
+        const clientId = button.dataset.clientId;
+        const available = button.dataset.available;
+        const clientLabel = button.dataset.clientLabel;
+        avanceContext = { available, clientId, commandes: [] };
+        if (avanceClientLabel) avanceClientLabel.value = clientLabel || "";
+        if (avanceDisponibleMeta) {
+            avanceDisponibleMeta.textContent = `Disponible sur cette avance : ${formatNumber(available)} GNF.`;
+        }
+        if (avanceCommandeMeta) {
+            avanceCommandeMeta.textContent = "Chargement des commandes du client...";
+        }
+        if (avanceMontantInput) avanceMontantInput.value = "";
+        if (avanceModalForm) {
+            avanceModalForm.action = `/clients/encaissements/imputer-avance/${encaissementId}/`;
+        }
+        const commandes = await loadCommandes(clientId);
+        avanceContext.commandes = commandes;
+        fillAvanceCommandeOptions(commandes);
+        if (preferredCommandeId && avanceCommandeSelect) {
+            avanceCommandeSelect.value = String(preferredCommandeId);
+            if (avanceMontantInput) {
+                const suggestion = Math.min(parseNumber(available), Number(preferredSolde || 0));
+                avanceMontantInput.value = suggestion ? formatNumber(suggestion) : "";
+            }
+        }
+        refreshAvanceSuggestion();
+        openModal("avance-modal");
+    }
+
+    clientInput?.addEventListener("input", syncClientSelection);
+    clientInput?.addEventListener("change", syncClientSelection);
+    commandeInput?.addEventListener("input", syncCommandeSelection);
+    commandeInput?.addEventListener("change", syncCommandeSelection);
+    banqueInput?.addEventListener("input", syncBanqueSelection);
+    banqueInput?.addEventListener("change", syncBanqueSelection);
+    typeInput?.addEventListener("change", toggleTypeSections);
+    montantInput?.addEventListener("input", recalculateAllocations);
+    montantInput?.addEventListener("blur", () => {
+        montantInput.value = montantInput.value ? formatNumber(montantInput.value) : "";
+        recalculateAllocations();
+    });
+    montantInput?.addEventListener("focus", () => {
+        montantInput.value = normalizeNumberValue(montantInput.value);
+    });
+    addAllocationRowButton?.addEventListener("click", () => createAllocationRow());
+    avanceCommandeSelect?.addEventListener("change", refreshAvanceSuggestion);
+    avanceMontantInput?.addEventListener("focus", () => {
+        avanceMontantInput.value = normalizeNumberValue(avanceMontantInput.value);
+    });
+    avanceMontantInput?.addEventListener("blur", () => {
+        avanceMontantInput.value = avanceMontantInput.value ? formatNumber(avanceMontantInput.value) : "";
+    });
+    document.querySelectorAll(".js-open-avance-modal").forEach((button) => {
+        button.addEventListener("click", () => openAvanceModal(button));
+    });
+    document.querySelectorAll("[data-modal-close='avance-modal']").forEach((button) => {
+        button.addEventListener("click", () => closeModal("avance-modal"));
+    });
+    clientFocusDateDebut?.addEventListener("change", () => {
+        if (clientHidden.value) {
+            loadCommandes(clientHidden.value);
+        }
+    });
+    clientFocusDateFin?.addEventListener("change", () => {
+        if (clientHidden.value) {
+            loadCommandes(clientHidden.value);
+        }
+    });
+    clientFocusDateReset?.addEventListener("click", () => {
+        if (clientFocusDateDebut) clientFocusDateDebut.value = "";
+        if (clientFocusDateFin) clientFocusDateFin.value = "";
+        if (clientHidden.value) {
+            loadCommandes(clientHidden.value);
+        } else {
+            clearClientSummary();
+        }
+    });
+
+    const initialRows = [
+        {% for row in allocation_rows %}
+        { cible: "{{ row.cible|default:''|escapejs }}", montant: "{{ row.montant|default:''|escapejs }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    if (initialRows.length) {
+        initialRows.forEach((row) => createAllocationRow(row));
+    }
+
+    syncClientSelection();
+    syncBanqueSelection();
+    toggleTypeSections();
+
+    const banqueModalForm = document.getElementById("banque-modal-form");
+    const banqueModalErrors = document.getElementById("banque-modal-errors");
+    const banqueCsrfInput = banqueModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
+    banqueModalForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        banqueModalErrors.hidden = true;
+        banqueModalErrors.textContent = "";
+        let response = null;
+        let data = null;
+        try {
+            response = await fetch("/clients/banques/ajouter-modal/", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": banqueCsrfInput?.value || "",
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: new FormData(banqueModalForm),
+                credentials: "same-origin"
+            });
+            data = await response.json();
+        } catch (error) {
+            data = { success: false, errors: { "__all__": ["Impossible d'ajouter la banque pour le moment."] } };
+        }
+        if (!response || !response.ok || !data.success) {
+            const messages = [];
+            Object.keys(data.errors || {}).forEach((key) => messages.push(...data.errors[key]));
+            banqueModalErrors.textContent = messages.join(" ");
+            banqueModalErrors.hidden = false;
+            return;
+        }
+        const datalist = document.getElementById("banques-encaissement-list");
+        const option = document.createElement("option");
+        option.value = data.banque.label;
+        datalist.appendChild(option);
+        banqueInput.value = data.banque.label;
+        banqueHidden.value = data.banque.label;
+        banqueModalForm.reset();
+        closeModal("banque-modal");
+    });
+});
+</script>
+
+{% endblock %}

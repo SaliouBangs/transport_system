@@ -34,6 +34,7 @@
 <th>Chauffeur</th>
 <th>Produit</th>
 <th>Quantite</th>
+<th>Etat BL</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -48,12 +49,32 @@
 <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
 <td>{{ operation.quantite|default:"-" }}</td>
 <td>
+    {% if operation.comptable_can_edit %}
+    <span class="status-badge" style="background:#e7f7ef;color:#0f7b46;">Modifiable</span>
+    {% else %}
+    <span class="status-badge" style="background:#fce8e6;color:#b42318;">Verrouille</span>
+    {% endif %}
+</td>
+<td>
 <div class="table-actions">
-<a href="/operations/comptable/{{ operation.id }}/modifier/" class="btn-edit">Ouvrir</a>
+{% if operation.comptable_can_edit %}
+<a href="/operations/comptable/{{ operation.id }}/modifier/" class="btn-edit">Modifier</a>
+<form method="post" action="/operations/comptable/{{ operation.id }}/supprimer/" style="display:inline;" onsubmit="return confirm('Supprimer ce BL tant qu\\'il n\\'a pas encore ete recu par le transitaire ?');">
+{% csrf_token %}
+<button type="submit" class="btn-delete">Supprimer</button>
+</form>
+{% else %}
+<a href="/operations/comptable/{{ operation.id }}/modifier/" class="btn-secondary">Voir</a>
+{% endif %}
 {% if operation.camion %}
 <a href="/operations/comptable/{{ operation.id }}/bon-livraison/" class="btn-secondary">Imprimer BL</a>
 {% endif %}
 </div>
+{% if not operation.comptable_can_edit %}
+<div style="margin-top:8px; color:#6b7c8f; font-size:0.88rem;">
+    Reception transitaire deja validee : modification comptable desactivee.
+</div>
+{% endif %}
 {% if operation.remplace_par_id or operation.anciennes_versions.all %}
 <div style="margin-top:8px;">
     {% if operation.remplace_par_id %}
@@ -68,7 +89,7 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucun BL deja cree pour le moment.</td>
+<td colspan="9">Aucun BL deja cree pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -83,6 +104,7 @@
 <th>Chauffeur</th>
 <th>Produit</th>
 <th>Quantite</th>
+<th>Reste a couvrir</th>
 <th>Trajet</th>
 <th>Actions</th>
 </tr>
@@ -96,6 +118,7 @@
 <td>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</td>
 <td>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</td>
 <td>{{ commande.quantite|default:"-" }}</td>
+<td>{{ commande.quantite_restante|default:"-" }}</td>
 <td>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</td>
 <td>
 <div class="table-actions">
@@ -105,7 +128,7 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucune commande affectee disponible pour la comptabilite.</td>
+<td colspan="9">Aucune commande affectee disponible pour la comptabilite.</td>
 </tr>
 {% endfor %}
 </tbody>

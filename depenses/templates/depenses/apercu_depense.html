@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+<div>
+<p class="eyebrow">Depenses / etat recapitulatif</p>
+<h1>Etat {{ depense.reference }}</h1>
+</div>
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+  {% if can_print_bon_conso %}
+  <a href="/depenses/bon-consommation/{{ depense.id }}/" class="btn-secondary" target="_blank">Bon de conso</a>
+  {% endif %}
+  <a href="/depenses/imprimer/{{ depense.id }}/" class="btn" target="_blank">Imprimer</a>
+</div>
+</div>
+
+<div class="form-shell operation-shell">
+  <div class="cards" style="margin-top:0;">
+    <div class="card" style="text-align:left;">
+      <h3>Statut actuel</h3>
+      <p style="font-size:1.05rem; margin-top:12px;">{{ depense.get_statut_display }}</p>
+      <small>Creation : {{ depense.date_creation|date:"d/m/Y H:i" }}</small>
+    </div>
+    <div class="card" style="text-align:left;">
+      <h3>Montant total</h3>
+      <p style="font-size:2rem;">{{ montant_total_affiche }}</p>
+      <small>Quantite totale : {{ quantite_totale_affiche }}</small>
+    </div>
+  </div>
+
+  <div class="summary-panel">
+    <h2>{% if is_charge_related %}Recap de la depense camion{% else %}Recap de l'expression{% endif %}</h2>
+    <table class="table summary-table">
+      {% if is_charge_related %}
+      <tr><th>BL</th><td>{{ depense.operation.numero_bl }}</td></tr>
+      <tr><th>Camion</th><td>{{ depense.operation.camion|default:"-" }}</td></tr>
+      <tr><th>Chauffeur</th><td>{{ depense.operation.chauffeur|default:"-" }}</td></tr>
+      <tr><th>Date charge</th><td>{{ depense.operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td></tr>
+      <tr><th>Libelle</th><td>{{ depense.libelle_depense|default:"-" }}</td></tr>
+      {% endif %}
+      <tr><th>Demandeur</th><td>{{ depense.demandeur.username }}</td></tr>
+      <tr><th>Titre</th><td>{{ depense.titre }}</td></tr>
+      <tr><th>Description</th><td>{{ depense.description }}</td></tr>
+      <tr><th>Montant estime</th><td>{{ depense.montant_estime|default:"-" }}</td></tr>
+    </table>
+  </div>
+
+  {% if not is_charge_related %}
+  <div class="summary-panel">
+    <h2>Recap de l'engagement</h2>
+    <table class="table summary-table">
+      <tr><th>Type de depense</th><td>{{ depense.type_depense|default:"-" }}</td></tr>
+      <tr><th>Lieu / projet</th><td>{{ depense.lieu_ou_projet|default:"-" }}</td></tr>
+      <tr><th>Fournisseur</th><td>{{ depense.fournisseur|default:"-" }}</td></tr>
+      <tr><th>Numero facture</th><td>{{ depense.numero_facture|default:"-" }}</td></tr>
+      <tr><th>Piece justificative</th><td>{% if depense.piece_justificative %}<a href="{{ depense.piece_justificative.url }}" target="_blank">Voir la piece</a>{% else %}-{% endif %}</td></tr>
+      <tr><th>Observation achat</th><td>{{ depense.engagement_observation|default:"-" }}</td></tr>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="summary-panel">
+    <h2>{% if is_charge_related %}Lignes / detail de la depense{% else %}Lignes d'engagement{% endif %}</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Designation</th>
+          <th>Qte</th>
+          <th>Prix unitaire</th>
+          <th>Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+        <tr>
+          <td>{{ ligne.designation }}</td>
+          <td>{{ ligne.quantite_affiche }}</td>
+          <td>{{ ligne.prix_unitaire_affiche }}</td>
+          <td>{{ ligne.montant_affiche }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Aucune ligne d'engagement pour le moment.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="summary-panel">
+    <h2>Circuit de validation</h2>
+    <div class="cards">
+      <div class="card" style="text-align:left;">
+        <h3>{% if is_charge_related %}Expression DGA{% else %}Expression DGA SOGEFI{% endif %}</h3>
+        <p style="font-size:1rem;">
+          {% if depense.expression_decision_dga %}
+            {{ depense.get_expression_decision_dga_display }}
+          {% else %}
+            En attente
+          {% endif %}
+        </p>
+        <small>Utilisateur : {{ depense.expression_decision_dga_par.username|default:"-" }}</small><br>
+        <small>Date : {{ depense.expression_decision_dga_le|date:"d/m/Y H:i"|default:"-" }}</small><br>
+        {% if depense.expression_decision_dga_motif %}<small>Motif : {{ depense.expression_decision_dga_motif }}</small>{% endif %}
+      </div>
+      <div class="card" style="text-align:left;">
+        <h3>Expression DG</h3>
+        <p style="font-size:1rem;">
+          {% if depense.expression_decision_dg %}
+            {{ depense.get_expression_decision_dg_display }}
+          {% else %}
+            En attente
+          {% endif %}
+        </p>
+        <small>Utilisateur : {{ depense.expression_decision_dg_par.username|default:"-" }}</small><br>
+        <small>Date : {{ depense.expression_decision_dg_le|date:"d/m/Y H:i"|default:"-" }}</small><br>
+        {% if depense.expression_decision_dg_motif %}<small>Motif : {{ depense.expression_decision_dg_motif }}</small>{% endif %}
+      </div>
+      <div class="card" style="text-align:left;">
+        <h3>{% if is_charge_related %}Engagement DGA{% else %}Engagement DGA SOGEFI{% endif %}</h3>
+        <p style="font-size:1rem;">
+          {% if depense.engagement_decision_dga %}
+            {{ depense.get_engagement_decision_dga_display }}
+          {% else %}
+            En attente
+          {% endif %}
+        </p>
+        <small>Utilisateur : {{ depense.validation_dga_par.username|default:"-" }}</small><br>
+        <small>Date : {{ depense.validation_dga_le|date:"d/m/Y H:i"|default:"-" }}</small><br>
+        {% if depense.motif_rejet_dga %}<small>Motif : {{ depense.motif_rejet_dga }}</small>{% endif %}
+      </div>
+      <div class="card" style="text-align:left;">
+        <h3>Engagement DG</h3>
+        <p style="font-size:1rem;">
+          {% if depense.engagement_decision_dg %}
+            {{ depense.get_engagement_decision_dg_display }}
+          {% else %}
+            En attente
+          {% endif %}
+        </p>
+        <small>Utilisateur : {{ depense.validation_dg_par.username|default:"-" }}</small><br>
+        <small>Date : {{ depense.validation_dg_le|date:"d/m/Y H:i"|default:"-" }}</small><br>
+        {% if depense.motif_rejet_dg %}<small>Motif : {{ depense.motif_rejet_dg }}</small>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ return_url }}" class="btn-secondary">Retour</a>
+
+    {% if can_decide_expression_dga %}
+    <form method="post" action="/depenses/expression/valider/{{ depense.id }}/">
+      {% csrf_token %}
+      <button type="submit" class="btn">Valider expression DGA</button>
+    </form>
+    <form method="post" action="/depenses/expression/rejeter/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+
+    {% if can_decide_chargement_dga %}
+    <form method="post" action="/depenses/chargement/valider-dga/{{ depense.id }}/">
+      {% csrf_token %}
+      <button type="submit" class="btn">Valider depense camion DGA</button>
+    </form>
+    <form method="post" action="/depenses/chargement/rejeter-dga/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+
+    {% if can_decide_expression_dg %}
+    <form method="post" action="/depenses/expression/valider-dg/{{ depense.id }}/">
+      {% csrf_token %}
+      <button type="submit" class="btn">Valider expression DG</button>
+    </form>
+    <form method="post" action="/depenses/expression/rejeter-dg/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+
+    {% if can_decide_chargement_dg %}
+    <form method="post" action="/depenses/chargement/valider-dg/{{ depense.id }}/">
+      {% csrf_token %}
+      <button type="submit" class="btn">Valider depense camion DG</button>
+    </form>
+    <form method="post" action="/depenses/chargement/rejeter-dg/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+
+    {% if can_decide_engagement_dga %}
+    <form method="post" action="/depenses/engagement/valider-dga/{{ depense.id }}/">
+      {% csrf_token %}
+      <button type="submit" class="btn">Valider engagement DGA SOGEFI</button>
+    </form>
+    <form method="post" action="/depenses/engagement/rejeter-dga/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+
+    {% if can_decide_engagement_dg %}
+    <a href="/depenses/engagement/valider-dg/{{ depense.id }}/" class="btn">Decision DG</a>
+    <form method="post" action="/depenses/engagement/rejeter-dg/{{ depense.id }}/">
+      {% csrf_token %}
+      <input type="text" name="motif_rejet" placeholder="Motif du rejet" required style="margin-right:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+      <button type="submit" class="btn-delete">Rejeter</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

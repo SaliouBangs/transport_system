@@ -1,0 +1,731 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block content %}
+
+<div class="financial-report-shell">
+    <div class="financial-hero">
+        <div>
+            <p class="eyebrow">Analyse financiere</p>
+            <h1>Rapport financier - {{ client.entreprise }}</h1>
+            <p class="financial-subtitle">
+                Lecture consolidee de l'exposition client, des paiements, des commandes et du rythme d'encaissement.
+            </p>
+        </div>
+        <div class="financial-actions">
+            <a href="/clients/detail/{{ client.id }}/" class="btn-secondary">Retour fiche client</a>
+        </div>
+    </div>
+
+    <div class="financial-filter-card">
+        <form method="get" class="app-form">
+            <div class="financial-filter-grid">
+                <div class="field">
+                    <label for="id_date_debut">Date debut</label>
+                    <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
+                </div>
+                <div class="field">
+                    <label for="id_date_fin">Date fin</label>
+                    <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="/clients/rapport-financier/{{ client.id }}/" class="btn-secondary">Reinitialiser</a>
+                <button type="submit" class="btn">Actualiser</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="financial-kpi-grid">
+        <div class="financial-kpi financial-kpi--danger">
+            <span>Risque net</span>
+            <strong>{{ risque_net|gnf }}</strong>
+            <small>Exposition nette du client</small>
+        </div>
+        <div class="financial-kpi financial-kpi--alert">
+            <span>Reste a encaisser</span>
+            <strong>{{ reste_a_encaisser|gnf }}</strong>
+            <small>Solde net encore a couvrir</small>
+        </div>
+        <div class="financial-kpi financial-kpi--green">
+            <span>Paiements anticipes</span>
+            <strong>{{ paiements_anticipes|gnf }}</strong>
+            <small>Avances disponibles</small>
+        </div>
+        <div class="financial-kpi financial-kpi--blue">
+            <span>Total encaisse</span>
+            <strong>{{ total_encaissements|gnf }}</strong>
+            <small>Tous paiements sur la periode</small>
+        </div>
+        <div class="financial-kpi financial-kpi--slate">
+            <span>Total commandes</span>
+            <strong>{{ total_commandes|gnf }}</strong>
+            <small>Commandes valorisees</small>
+        </div>
+        <div class="financial-kpi financial-kpi--violet">
+            <span>Total livre</span>
+            <strong>{{ total_livre|gnf }}</strong>
+            <small>Base deja livree</small>
+        </div>
+    </div>
+
+    <div class="financial-main-grid">
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">DMA</p>
+                    <h2>Couverture et seuil client</h2>
+                </div>
+            </div>
+            <div class="dma-grid">
+                <div class="dma-gauge-card">
+                    <div class="dma-gauge" style="--ratio: {% if ratio_dma > 100 %}100{% else %}{{ ratio_dma|floatformat:0 }}{% endif %};">
+                        <div class="dma-gauge__center">
+                            <strong>{{ ratio_dma|floatformat:0 }}%</strong>
+                            <small>DMA utilisee</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="dma-metrics">
+                    <div class="mini-metric">
+                        <span>DMA</span>
+                        <strong>{{ dma|gnf }}</strong>
+                    </div>
+                    <div class="mini-metric">
+                        <span>Disponible</span>
+                        <strong class="{% if disponible < 0 %}text-danger{% endif %}">{{ disponible|gnf }}</strong>
+                    </div>
+                    <div class="mini-metric">
+                        <span>Operations BL suivies</span>
+                        <strong>{{ operations_count }}</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Produits</p>
+                    <h2>Mix essence / gasoil</h2>
+                </div>
+            </div>
+            <div class="product-mix">
+                <div class="mix-track">
+                    <div class="mix-bar mix-bar--essence" style="width: {{ essence_percent }}%;"></div>
+                    <div class="mix-bar mix-bar--gasoil" style="width: {{ gasoil_percent }}%;"></div>
+                </div>
+                <div class="mix-legend">
+                    <div class="mix-item">
+                        <span class="mix-dot mix-dot--essence"></span>
+                        <div>
+                            <strong>Essence</strong>
+                            <small>{{ total_essence|gnf }}{% if essence_percent %} - {{ essence_percent }}%{% endif %}</small>
+                        </div>
+                    </div>
+                    <div class="mix-item">
+                        <span class="mix-dot mix-dot--gasoil"></span>
+                        <div>
+                            <strong>Gasoil</strong>
+                            <small>{{ total_gasoil|gnf }}{% if gasoil_percent %} - {{ gasoil_percent }}%{% endif %}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="financial-main-grid">
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Graphique</p>
+                    <h2>Encaissements vs commandes livrees</h2>
+                </div>
+            </div>
+            <div class="line-chart-card">
+                <div class="line-chart-svg-wrap">
+                    <svg viewBox="0 0 {{ cashflow_chart.width }} {{ cashflow_chart.height }}" class="line-chart-svg" aria-hidden="true">
+                        {% for tick in cashflow_chart.y_ticks %}
+                        <line x1="{{ cashflow_chart.left_pad }}" y1="{{ tick.y }}" x2="{{ cashflow_chart.plot_right }}" y2="{{ tick.y }}" class="line-chart-grid"></line>
+                        <text x="8" y="{{ tick.y|add:4 }}" class="line-chart-ylabel">{{ tick.label|gnf }}</text>
+                        {% endfor %}
+                        <line x1="{{ cashflow_chart.left_pad }}" y1="{{ cashflow_chart.top_pad }}" x2="{{ cashflow_chart.left_pad }}" y2="{{ cashflow_chart.plot_bottom }}" class="line-chart-axis"></line>
+                        <line x1="{{ cashflow_chart.left_pad }}" y1="{{ cashflow_chart.plot_bottom }}" x2="{{ cashflow_chart.plot_right }}" y2="{{ cashflow_chart.plot_bottom }}" class="line-chart-axis"></line>
+                        {% for point in cashflow_chart.x_points %}
+                        <line x1="{{ point.x }}" y1="{{ cashflow_chart.plot_bottom }}" x2="{{ point.x }}" y2="{{ cashflow_chart.plot_bottom|add:6 }}" class="line-chart-axis"></line>
+                        {% endfor %}
+                        {% for serie in cashflow_chart.series %}
+                        <polyline points="{{ serie.points }}" fill="none" stroke="{{ serie.color }}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                        {% for dot in serie.dots %}
+                        <circle cx="{{ dot.x }}" cy="{{ dot.y }}" r="4.3" fill="{{ serie.color }}"></circle>
+                        {% endfor %}
+                        {% endfor %}
+                    </svg>
+                </div>
+                <div class="line-chart-xlabels" style="grid-template-columns: repeat({{ cashflow_chart.x_points|length }}, minmax(0, 1fr));">
+                    {% for point in cashflow_chart.x_points %}
+                    <span>{{ point.label }}</span>
+                    {% endfor %}
+                </div>
+                <div class="line-chart-legend">
+                    {% for serie in cashflow_chart.series %}
+                    <div class="line-chart-legend-item">
+                        <span class="line-chart-legend-dot" style="background: {{ serie.color }};"></span>
+                        <strong>{{ serie.name }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Tendance</p>
+                    <h2>Essence vs gasoil par mois</h2>
+                </div>
+            </div>
+            <div class="line-chart-card">
+                <div class="line-chart-svg-wrap">
+                    <svg viewBox="0 0 {{ product_line_chart.width }} {{ product_line_chart.height }}" class="line-chart-svg" aria-hidden="true">
+                        {% for tick in product_line_chart.y_ticks %}
+                        <line x1="{{ product_line_chart.left_pad }}" y1="{{ tick.y }}" x2="{{ product_line_chart.plot_right }}" y2="{{ tick.y }}" class="line-chart-grid"></line>
+                        <text x="8" y="{{ tick.y|add:4 }}" class="line-chart-ylabel">{{ tick.label|gnf }}</text>
+                        {% endfor %}
+                        <line x1="{{ product_line_chart.left_pad }}" y1="{{ product_line_chart.top_pad }}" x2="{{ product_line_chart.left_pad }}" y2="{{ product_line_chart.plot_bottom }}" class="line-chart-axis"></line>
+                        <line x1="{{ product_line_chart.left_pad }}" y1="{{ product_line_chart.plot_bottom }}" x2="{{ product_line_chart.plot_right }}" y2="{{ product_line_chart.plot_bottom }}" class="line-chart-axis"></line>
+                        {% for point in product_line_chart.x_points %}
+                        <line x1="{{ point.x }}" y1="{{ product_line_chart.plot_bottom }}" x2="{{ point.x }}" y2="{{ product_line_chart.plot_bottom|add:6 }}" class="line-chart-axis"></line>
+                        {% endfor %}
+                        {% for serie in product_line_chart.series %}
+                        <polyline points="{{ serie.points }}" fill="none" stroke="{{ serie.color }}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                        {% for dot in serie.dots %}
+                        <circle cx="{{ dot.x }}" cy="{{ dot.y }}" r="4.3" fill="{{ serie.color }}"></circle>
+                        {% endfor %}
+                        {% endfor %}
+                    </svg>
+                </div>
+                <div class="line-chart-xlabels" style="grid-template-columns: repeat({{ product_line_chart.x_points|length }}, minmax(0, 1fr));">
+                    {% for point in product_line_chart.x_points %}
+                    <span>{{ point.label }}</span>
+                    {% endfor %}
+                </div>
+                <div class="line-chart-legend">
+                    {% for serie in product_line_chart.series %}
+                    <div class="line-chart-legend-item">
+                        <span class="line-chart-legend-dot" style="background: {{ serie.color }};"></span>
+                        <strong>{{ serie.name }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="financial-main-grid">
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Lecture</p>
+                    <h2>Valorisation par etat</h2>
+                </div>
+            </div>
+            <div class="bar-chart">
+                {% for item in statut_graph %}
+                <div class="bar-chart-row">
+                    <div class="bar-chart-label">{{ item.label }}</div>
+                    <div class="bar-chart-track">
+                        <div class="bar-chart-fill" style="width: {{ item.percent }}%;"></div>
+                    </div>
+                    <div class="bar-chart-value">{{ item.amount|gnf }}</div>
+                </div>
+                {% empty %}
+                <p class="muted">Aucune valorisation disponible.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Historique</p>
+                    <h2>Encaissements sur 8 mois</h2>
+                </div>
+            </div>
+            <div class="month-chart">
+                {% for item in monthly_graph %}
+                <div class="month-chart-col">
+                    <div class="month-chart-bar-wrap">
+                        <div class="month-chart-bar" style="height: {{ item.percent }}%;"></div>
+                    </div>
+                    <strong>{{ item.label }}</strong>
+                    <small>{{ item.amount|gnf }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="financial-main-grid">
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Impayes</p>
+                    <h2>Top commandes a surveiller</h2>
+                </div>
+            </div>
+            <div class="table-shell">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Commande</th>
+                            <th>Produit</th>
+                            <th>Montant</th>
+                            <th>Paye</th>
+                            <th>Solde</th>
+                            <th>Etat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_impayes %}
+                        <tr>
+                            <td>{{ item.reference }}</td>
+                            <td>{{ item.produit }}</td>
+                            <td>{{ item.montant|gnf }}</td>
+                            <td>{{ item.paye|gnf }}</td>
+                            <td>{{ item.solde|gnf }}</td>
+                            <td>{{ item.statut }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6">Aucune commande disponible sur la periode.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="financial-card">
+            <div class="financial-card-header">
+                <div>
+                    <p class="eyebrow">Tresorerie</p>
+                    <h2>Derniers paiements</h2>
+                </div>
+            </div>
+            <div class="table-shell">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Mode</th>
+                            <th>Montant</th>
+                            <th>Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for encaissement in encaissements %}
+                        <tr>
+                            <td>{{ encaissement.date_encaissement|date:"d/m/Y" }}</td>
+                            <td>{{ encaissement.get_type_encaissement_display }}</td>
+                            <td>{{ encaissement.get_mode_paiement_display }}</td>
+                            <td>{{ encaissement.montant|gnf }}</td>
+                            <td>{{ encaissement.reference|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Aucun paiement sur cette periode.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.financial-report-shell {
+    display: grid;
+    gap: 22px;
+}
+
+.financial-hero,
+.financial-filter-card,
+.financial-card {
+    background: #fff;
+    border: 1px solid #d8e6ef;
+    border-radius: 26px;
+    box-shadow: 0 18px 42px rgba(18, 48, 71, 0.08);
+}
+
+.financial-hero {
+    padding: 24px 26px;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.financial-subtitle {
+    margin-top: 10px;
+    color: #547087;
+    max-width: 880px;
+}
+
+.financial-filter-card,
+.financial-card {
+    padding: 20px;
+}
+
+.financial-filter-grid,
+.financial-kpi-grid,
+.financial-main-grid,
+.dma-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.financial-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.financial-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.financial-kpi {
+    border-radius: 22px;
+    padding: 16px;
+    border: 1px solid #dbe7ef;
+}
+
+.financial-kpi span {
+    display: block;
+    color: #6f8293;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    margin-bottom: 10px;
+}
+
+.financial-kpi strong {
+    display: block;
+    color: #123047;
+    font-size: 1.15rem;
+}
+
+.financial-kpi small {
+    display: block;
+    margin-top: 6px;
+    color: #648094;
+}
+
+.financial-kpi--danger { background: #fff6f3; }
+.financial-kpi--alert { background: #fff8f8; }
+.financial-kpi--green { background: #f4fbf7; }
+.financial-kpi--blue { background: #f6faff; }
+.financial-kpi--slate { background: #fbfdff; }
+.financial-kpi--violet { background: #f8f6ff; }
+
+.financial-main-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.financial-card-header {
+    margin-bottom: 18px;
+}
+
+.financial-card-header h2 {
+    margin: 0;
+}
+
+.dma-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: center;
+}
+
+.dma-gauge-card {
+    display: flex;
+    justify-content: center;
+}
+
+.dma-gauge {
+    --ratio: 0;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    background: conic-gradient(#e26a4a calc(var(--ratio) * 1%), #e9f1f7 0);
+    position: relative;
+}
+
+.dma-gauge::after {
+    content: "";
+    position: absolute;
+    inset: 16px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.dma-gauge__center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.dma-gauge__center strong {
+    font-size: 1.4rem;
+    color: #123047;
+}
+
+.dma-metrics {
+    display: grid;
+    gap: 12px;
+}
+
+.mini-metric {
+    border-radius: 18px;
+    background: #f9fcff;
+    border: 1px solid #dbe7ef;
+    padding: 14px 16px;
+}
+
+.mini-metric span {
+    display: block;
+    color: #6f8293;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.73rem;
+    margin-bottom: 8px;
+}
+
+.mini-metric strong {
+    color: #123047;
+}
+
+.product-mix {
+    display: grid;
+    gap: 18px;
+}
+
+.mix-track {
+    display: flex;
+    height: 24px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #edf3f7;
+}
+
+.mix-bar--essence {
+    background: linear-gradient(90deg, #2c8acb, #64b3ea);
+}
+
+.mix-bar--gasoil {
+    background: linear-gradient(90deg, #8ea53a, #b8d060);
+}
+
+.mix-legend {
+    display: grid;
+    gap: 12px;
+}
+
+.mix-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.mix-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    margin-top: 4px;
+}
+
+.mix-dot--essence { background: #3b97d4; }
+.mix-dot--gasoil { background: #9bb34a; }
+
+.line-chart-card {
+    display: grid;
+    gap: 14px;
+}
+
+.line-chart-svg-wrap {
+    overflow-x: auto;
+}
+
+.line-chart-svg {
+    width: 100%;
+    min-width: 640px;
+    height: auto;
+}
+
+.line-chart-grid {
+    stroke: #dbe7ef;
+    stroke-width: 1;
+}
+
+.line-chart-axis {
+    stroke: #8ea3b5;
+    stroke-width: 1.2;
+}
+
+.line-chart-ylabel {
+    fill: #688094;
+    font-size: 11px;
+}
+
+.line-chart-xlabels {
+    display: grid;
+    gap: 8px;
+    margin-left: 54px;
+}
+
+.line-chart-xlabels span {
+    text-align: center;
+    color: #5f778a;
+    font-size: 0.78rem;
+}
+
+.line-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.line-chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #123047;
+}
+
+.line-chart-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+}
+
+.bar-chart {
+    display: grid;
+    gap: 12px;
+}
+
+.bar-chart-row {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr) 170px;
+    gap: 14px;
+    align-items: center;
+}
+
+.bar-chart-label,
+.bar-chart-value {
+    color: #123047;
+    font-size: 0.95rem;
+}
+
+.bar-chart-track {
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #edf3f7;
+}
+
+.bar-chart-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #1fa07d, #65c4a8);
+}
+
+.month-chart {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    min-height: 280px;
+}
+
+.month-chart-col {
+    display: grid;
+    gap: 10px;
+    align-items: end;
+    justify-items: center;
+}
+
+.month-chart-bar-wrap {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: end;
+}
+
+.month-chart-bar {
+    width: 100%;
+    border-radius: 16px 16px 8px 8px;
+    background: linear-gradient(180deg, #2d8fcd 0%, #65c4a8 100%);
+}
+
+.month-chart-col strong {
+    color: #123047;
+    font-size: 0.82rem;
+}
+
+.month-chart-col small {
+    color: #6b8192;
+    text-align: center;
+    font-size: 0.78rem;
+}
+
+.table-shell {
+    overflow-x: auto;
+    border: 1px solid #dfeaf2;
+    border-radius: 18px;
+}
+
+.text-danger {
+    color: #d64545;
+}
+
+@media (max-width: 1550px) {
+    .financial-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1180px) {
+    .financial-main-grid,
+    .financial-filter-grid,
+    .dma-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .month-chart {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .bar-chart-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .financial-kpi-grid,
+    .month-chart {
+        grid-template-columns: 1fr;
+    }
+
+    .financial-hero {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

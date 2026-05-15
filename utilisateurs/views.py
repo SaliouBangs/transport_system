@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import UtilisateurCreationForm, UtilisateurModificationForm
@@ -65,8 +66,68 @@ def historique_actions_view(request):
         messages.error(request, "Seul l'administrateur peut consulter l'historique.")
         return redirect(get_default_landing_url(request.user))
 
-    actions = HistoriqueAction.objects.select_related("utilisateur")
-    return render(request, "utilisateurs/actions.html", {"actions": actions})
+    actions = HistoriqueAction.objects.select_related("utilisateur").order_by("-created_at")
+    q = (request.GET.get("q") or "").strip()
+    user_filter = (request.GET.get("utilisateur") or "").strip()
+    module_filter = (request.GET.get("module") or "").strip()
+    action_filter = (request.GET.get("action") or "").strip()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+
+    if q:
+        actions = actions.filter(
+            Q(module__icontains=q)
+            | Q(action__icontains=q)
+            | Q(cible__icontains=q)
+            | Q(description__icontains=q)
+            | Q(utilisateur__username__icontains=q)
+        )
+    if user_filter:
+        actions = actions.filter(utilisateur__username=user_filter)
+    if module_filter:
+        actions = actions.filter(module=module_filter)
+    if action_filter:
+        actions = actions.filter(action=action_filter)
+    if date_from:
+        actions = actions.filter(created_at__date__gte=date_from)
+    if date_to:
+        actions = actions.filter(created_at__date__lte=date_to)
+
+    user_choices = (
+        HistoriqueAction.objects.exclude(utilisateur__isnull=True)
+        .order_by("utilisateur__username")
+        .values_list("utilisateur__username", flat=True)
+        .distinct()
+    )
+    module_choices = (
+        HistoriqueAction.objects.order_by("module")
+        .values_list("module", flat=True)
+        .distinct()
+    )
+    action_choices = (
+        HistoriqueAction.objects.order_by("action")
+        .values_list("action", flat=True)
+        .distinct()
+    )
+
+    return render(
+        request,
+        "utilisateurs/actions.html",
+        {
+            "actions": actions,
+            "filter_values": {
+                "q": q,
+                "utilisateur": user_filter,
+                "module": module_filter,
+                "action": action_filter,
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            "user_choices": [item for item in user_choices if item],
+            "module_choices": [item for item in module_choices if item],
+            "action_choices": [item for item in action_choices if item],
+        },
+    )
 
 
 def liste_utilisateurs(request):

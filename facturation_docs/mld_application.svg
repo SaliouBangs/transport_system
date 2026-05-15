@@ -1,0 +1,348 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1900" viewBox="0 0 2600 1900">
+<rect width="100%" height="100%" fill="#f8fbfd"/>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L9,3 z" fill="#4f7aa0" />
+</marker>
+<filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+<feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#8aa8bf" flood-opacity="0.18"/>
+</filter>
+</defs>
+<text x="1300.0" y="50" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#123047">MLD - Application de Gestion Transport / Maintenance</text>
+<text x="1300.0" y="82" text-anchor="middle" font-family="Arial" font-size="14" fill="#4f7aa0">Vue logique des tables principales, cles et liaisons relationnelles</text>
+<rect x="40" y="120" rx="16" ry="16" width="280" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="40" y="120" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="180.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">TRANSPORTEUR</text>
+<text x="56" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="56" y="206" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<rect x="360" y="120" rx="16" ry="16" width="320" height="320" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="360" y="120" rx="16" ry="16" width="320" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="520.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">CAMION</text>
+<text x="376" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="376" y="206" font-family="Arial" font-size="13" fill="#17324d">code_camion</text>
+<text x="376" y="224" font-family="Arial" font-size="13" fill="#17324d">numero_tracteur</text>
+<text x="376" y="242" font-family="Arial" font-size="13" fill="#17324d">numero_citerne</text>
+<text x="376" y="260" font-family="Arial" font-size="13" fill="#17324d">type_camion</text>
+<text x="376" y="278" font-family="Arial" font-size="13" fill="#17324d">marque, modele, annee</text>
+<text x="376" y="296" font-family="Arial" font-size="13" fill="#17324d">carburant, chassis</text>
+<text x="376" y="314" font-family="Arial" font-size="13" fill="#17324d">imsi, numero_sim</text>
+<text x="376" y="332" font-family="Arial" font-size="13" fill="#17324d">dimensions</text>
+<text x="376" y="350" font-family="Arial" font-size="13" fill="#17324d">numero_balise</text>
+<text x="376" y="368" font-family="Arial" font-size="13" fill="#17324d">FK transporteur_id</text>
+<text x="376" y="386" font-family="Arial" font-size="13" fill="#17324d">capacite, kilometrage, etat</text>
+<rect x="740" y="120" rx="16" ry="16" width="260" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="740" y="120" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="870.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">CHAUFFEUR</text>
+<text x="756" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="756" y="206" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="756" y="224" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="756" y="242" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<rect x="40" y="500" rx="16" ry="16" width="300" height="190" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="40" y="500" rx="16" ry="16" width="300" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="190.0" y="528" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">PROSPECT</text>
+<text x="56" y="568" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="56" y="586" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="56" y="604" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="56" y="622" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="56" y="640" font-family="Arial" font-size="13" fill="#17324d">ville</text>
+<text x="56" y="658" font-family="Arial" font-size="13" fill="#17324d">FK commercial_id</text>
+<rect x="380" y="500" rx="16" ry="16" width="320" height="220" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="380" y="500" rx="16" ry="16" width="320" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="540.0" y="528" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">CLIENT</text>
+<text x="396" y="568" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="396" y="586" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<text x="396" y="604" font-family="Arial" font-size="13" fill="#17324d">telephone</text>
+<text x="396" y="622" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="396" y="640" font-family="Arial" font-size="13" fill="#17324d">ville</text>
+<text x="396" y="658" font-family="Arial" font-size="13" fill="#17324d">adresse</text>
+<text x="396" y="676" font-family="Arial" font-size="13" fill="#17324d">observation</text>
+<text x="396" y="694" font-family="Arial" font-size="13" fill="#17324d">FK commercial_id</text>
+<text x="396" y="712" font-family="Arial" font-size="13" fill="#17324d">FK prospect_id</text>
+<rect x="760" y="500" rx="16" ry="16" width="300" height="260" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="760" y="500" rx="16" ry="16" width="300" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="910.0" y="528" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">COMMANDE</text>
+<text x="776" y="568" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="776" y="586" font-family="Arial" font-size="13" fill="#17324d">reference</text>
+<text x="776" y="604" font-family="Arial" font-size="13" fill="#17324d">description</text>
+<text x="776" y="622" font-family="Arial" font-size="13" fill="#17324d">villes</text>
+<text x="776" y="640" font-family="Arial" font-size="13" fill="#17324d">date_commande</text>
+<text x="776" y="658" font-family="Arial" font-size="13" fill="#17324d">date_livraison_prevue</text>
+<text x="776" y="676" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="776" y="694" font-family="Arial" font-size="13" fill="#17324d">quantite, prix_negocie</text>
+<text x="776" y="712" font-family="Arial" font-size="13" fill="#17324d">validations DGA/DG</text>
+<text x="776" y="730" font-family="Arial" font-size="13" fill="#17324d">FK client_id</text>
+<text x="776" y="748" font-family="Arial" font-size="13" fill="#17324d">FK produit_id</text>
+<text x="776" y="766" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<text x="776" y="784" font-family="Arial" font-size="13" fill="#17324d">FK chauffeur_id</text>
+<rect x="1120" y="500" rx="16" ry="16" width="280" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1120" y="500" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1260.0" y="528" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">LIVRAISON</text>
+<text x="1136" y="568" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1136" y="586" font-family="Arial" font-size="13" fill="#17324d">date_depart</text>
+<text x="1136" y="604" font-family="Arial" font-size="13" fill="#17324d">date_arrivee</text>
+<text x="1136" y="622" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="1136" y="640" font-family="Arial" font-size="13" fill="#17324d">observations</text>
+<text x="1136" y="658" font-family="Arial" font-size="13" fill="#17324d">FK commande_id</text>
+<text x="1136" y="676" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<text x="1136" y="694" font-family="Arial" font-size="13" fill="#17324d">FK chauffeur_id</text>
+<rect x="1120" y="120" rx="16" ry="16" width="220" height="110" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1120" y="120" rx="16" ry="16" width="220" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1230.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">PRODUIT</text>
+<text x="1136" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1136" y="206" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<rect x="1380" y="120" rx="16" ry="16" width="240" height="130" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1380" y="120" rx="16" ry="16" width="240" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1500.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">REGIME_DOUANIER</text>
+<text x="1396" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1396" y="206" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<text x="1396" y="224" font-family="Arial" font-size="13" fill="#17324d">code_regime</text>
+<rect x="1660" y="120" rx="16" ry="16" width="200" height="110" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1660" y="120" rx="16" ry="16" width="200" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1760.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">DEPOT</text>
+<text x="1676" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1676" y="206" font-family="Arial" font-size="13" fill="#17324d">nom</text>
+<rect x="1900" y="120" rx="16" ry="16" width="300" height="190" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1900" y="120" rx="16" ry="16" width="300" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2050.0" y="148" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">SOMMIER</text>
+<text x="1916" y="188" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1916" y="206" font-family="Arial" font-size="13" fill="#17324d">numero_sm</text>
+<text x="1916" y="224" font-family="Arial" font-size="13" fill="#17324d">date_sommier</text>
+<text x="1916" y="242" font-family="Arial" font-size="13" fill="#17324d">reference_navire</text>
+<text x="1916" y="260" font-family="Arial" font-size="13" fill="#17324d">quantite_initiale</text>
+<text x="1916" y="278" font-family="Arial" font-size="13" fill="#17324d">quantite_disponible</text>
+<text x="1916" y="296" font-family="Arial" font-size="13" fill="#17324d">FK produit_id</text>
+<rect x="1380" y="340" rx="16" ry="16" width="460" height="380" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1380" y="340" rx="16" ry="16" width="460" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1610.0" y="368" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">OPERATION</text>
+<text x="1396" y="408" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1396" y="426" font-family="Arial" font-size="13" fill="#17324d">numero_bl</text>
+<text x="1396" y="444" font-family="Arial" font-size="13" fill="#17324d">etat_bon</text>
+<text x="1396" y="462" font-family="Arial" font-size="13" fill="#17324d">reference_externe</text>
+<text x="1396" y="480" font-family="Arial" font-size="13" fill="#17324d">destination</text>
+<text x="1396" y="498" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="1396" y="516" font-family="Arial" font-size="13" fill="#17324d">dates BL / transmission / charge / livre / retour</text>
+<text x="1396" y="534" font-family="Arial" font-size="13" fill="#17324d">date/heure decharge chauffeur</text>
+<text x="1396" y="552" font-family="Arial" font-size="13" fill="#17324d">livreur</text>
+<text x="1396" y="570" font-family="Arial" font-size="13" fill="#17324d">numero/date/montant facture</text>
+<text x="1396" y="588" font-family="Arial" font-size="13" fill="#17324d">mouvement_camion</text>
+<text x="1396" y="606" font-family="Arial" font-size="13" fill="#17324d">latitude_position</text>
+<text x="1396" y="624" font-family="Arial" font-size="13" fill="#17324d">longitude_position</text>
+<text x="1396" y="642" font-family="Arial" font-size="13" fill="#17324d">FK commande_id</text>
+<text x="1396" y="660" font-family="Arial" font-size="13" fill="#17324d">FK regime_douanier_id</text>
+<text x="1396" y="678" font-family="Arial" font-size="13" fill="#17324d">FK depot_id</text>
+<text x="1396" y="696" font-family="Arial" font-size="13" fill="#17324d">FK sommier_id</text>
+<text x="1396" y="714" font-family="Arial" font-size="13" fill="#17324d">FK client_id</text>
+<text x="1396" y="732" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<text x="1396" y="750" font-family="Arial" font-size="13" fill="#17324d">FK chauffeur_id</text>
+<text x="1396" y="768" font-family="Arial" font-size="13" fill="#17324d">FK produit_id</text>
+<text x="1396" y="786" font-family="Arial" font-size="13" fill="#17324d">FK remplace_par_id</text>
+<rect x="1900" y="360" rx="16" ry="16" width="360" height="210" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1900" y="360" rx="16" ry="16" width="360" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2080.0" y="388" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">HIST_AFFECT_OPERATION</text>
+<text x="1916" y="428" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1916" y="446" font-family="Arial" font-size="13" fill="#17324d">ancien_livreur</text>
+<text x="1916" y="464" font-family="Arial" font-size="13" fill="#17324d">ancienne_date/heure</text>
+<text x="1916" y="482" font-family="Arial" font-size="13" fill="#17324d">ancien_etat_bon</text>
+<text x="1916" y="500" font-family="Arial" font-size="13" fill="#17324d">date_changement</text>
+<text x="1916" y="518" font-family="Arial" font-size="13" fill="#17324d">FK operation_id</text>
+<text x="1916" y="536" font-family="Arial" font-size="13" fill="#17324d">FK ancien_camion_id</text>
+<text x="1916" y="554" font-family="Arial" font-size="13" fill="#17324d">FK ancien_chauffeur_id</text>
+<text x="1916" y="572" font-family="Arial" font-size="13" fill="#17324d">FK nouveau_camion_id</text>
+<text x="1916" y="590" font-family="Arial" font-size="13" fill="#17324d">FK nouveau_chauffeur_id</text>
+<rect x="360" y="840" rx="16" ry="16" width="320" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="360" y="840" rx="16" ry="16" width="320" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="520.0" y="868" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">DOCUMENT</text>
+<text x="376" y="908" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="376" y="926" font-family="Arial" font-size="13" fill="#17324d">type_document</text>
+<text x="376" y="944" font-family="Arial" font-size="13" fill="#17324d">numero_document</text>
+<text x="376" y="962" font-family="Arial" font-size="13" fill="#17324d">date_emission</text>
+<text x="376" y="980" font-family="Arial" font-size="13" fill="#17324d">date_expiration</text>
+<text x="376" y="998" font-family="Arial" font-size="13" fill="#17324d">commentaire</text>
+<text x="376" y="1016" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<rect x="40" y="840" rx="16" ry="16" width="240" height="110" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="40" y="840" rx="16" ry="16" width="240" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="160.0" y="868" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">TYPE_MAINTENANCE</text>
+<text x="56" y="908" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="56" y="926" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<rect x="40" y="1010" rx="16" ry="16" width="300" height="200" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="40" y="1010" rx="16" ry="16" width="300" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="190.0" y="1038" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">FOURNISSEUR</text>
+<text x="56" y="1078" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="56" y="1096" font-family="Arial" font-size="13" fill="#17324d">nom_fournisseur</text>
+<text x="56" y="1114" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="56" y="1132" font-family="Arial" font-size="13" fill="#17324d">email</text>
+<text x="56" y="1150" font-family="Arial" font-size="13" fill="#17324d">domaine_activite</text>
+<text x="56" y="1168" font-family="Arial" font-size="13" fill="#17324d">mode_paiement</text>
+<text x="56" y="1186" font-family="Arial" font-size="13" fill="#17324d">numero_telephone</text>
+<rect x="380" y="1010" rx="16" ry="16" width="280" height="150" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="380" y="1010" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="520.0" y="1038" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">PRESTATAIRE</text>
+<text x="396" y="1078" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="396" y="1096" font-family="Arial" font-size="13" fill="#17324d">nom_prestataire</text>
+<text x="396" y="1114" font-family="Arial" font-size="13" fill="#17324d">entreprise</text>
+<text x="396" y="1132" font-family="Arial" font-size="13" fill="#17324d">domaine_activite</text>
+<text x="396" y="1150" font-family="Arial" font-size="13" fill="#17324d">numero_telephone</text>
+<rect x="720" y="920" rx="16" ry="16" width="320" height="230" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="720" y="920" rx="16" ry="16" width="320" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="880.0" y="948" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">ARTICLE_STOCK</text>
+<text x="736" y="988" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="736" y="1006" font-family="Arial" font-size="13" fill="#17324d">code_article</text>
+<text x="736" y="1024" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<text x="736" y="1042" font-family="Arial" font-size="13" fill="#17324d">categorie</text>
+<text x="736" y="1060" font-family="Arial" font-size="13" fill="#17324d">unite</text>
+<text x="736" y="1078" font-family="Arial" font-size="13" fill="#17324d">quantite_stock</text>
+<text x="736" y="1096" font-family="Arial" font-size="13" fill="#17324d">seuil_alerte</text>
+<text x="736" y="1114" font-family="Arial" font-size="13" fill="#17324d">prix_unitaire</text>
+<text x="736" y="1132" font-family="Arial" font-size="13" fill="#17324d">observation</text>
+<text x="736" y="1150" font-family="Arial" font-size="13" fill="#17324d">FK fournisseur_id</text>
+<rect x="720" y="1210" rx="16" ry="16" width="320" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="720" y="1210" rx="16" ry="16" width="320" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="880.0" y="1238" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">ARTICLE_STOCK_CONVERSION</text>
+<text x="736" y="1278" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="736" y="1296" font-family="Arial" font-size="13" fill="#17324d">unite_source</text>
+<text x="736" y="1314" font-family="Arial" font-size="13" fill="#17324d">quantite_equivalente</text>
+<text x="736" y="1332" font-family="Arial" font-size="13" fill="#17324d">FK article_id</text>
+<rect x="1080" y="1210" rx="16" ry="16" width="340" height="210" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1080" y="1210" rx="16" ry="16" width="340" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1250.0" y="1238" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">MOUVEMENT_STOCK</text>
+<text x="1096" y="1278" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1096" y="1296" font-family="Arial" font-size="13" fill="#17324d">type_mouvement</text>
+<text x="1096" y="1314" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="1096" y="1332" font-family="Arial" font-size="13" fill="#17324d">unite</text>
+<text x="1096" y="1350" font-family="Arial" font-size="13" fill="#17324d">reference_externe</text>
+<text x="1096" y="1368" font-family="Arial" font-size="13" fill="#17324d">observation</text>
+<text x="1096" y="1386" font-family="Arial" font-size="13" fill="#17324d">date_mouvement</text>
+<text x="1096" y="1404" font-family="Arial" font-size="13" fill="#17324d">FK article_id</text>
+<rect x="1460" y="860" rx="16" ry="16" width="420" height="420" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1460" y="860" rx="16" ry="16" width="420" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="1670.0" y="888" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">MAINTENANCE</text>
+<text x="1476" y="928" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1476" y="946" font-family="Arial" font-size="13" fill="#17324d">reference</text>
+<text x="1476" y="964" font-family="Arial" font-size="13" fill="#17324d">statut</text>
+<text x="1476" y="982" font-family="Arial" font-size="13" fill="#17324d">date_debut / date_fin</text>
+<text x="1476" y="1000" font-family="Arial" font-size="13" fill="#17324d">kilometrage_entree / sortie</text>
+<text x="1476" y="1018" font-family="Arial" font-size="13" fill="#17324d">observation</text>
+<text x="1476" y="1036" font-family="Arial" font-size="13" fill="#17324d">date_paiement</text>
+<text x="1476" y="1054" font-family="Arial" font-size="13" fill="#17324d">mode_paiement</text>
+<text x="1476" y="1072" font-family="Arial" font-size="13" fill="#17324d">numero_facture</text>
+<text x="1476" y="1090" font-family="Arial" font-size="13" fill="#17324d">total_facture</text>
+<text x="1476" y="1108" font-family="Arial" font-size="13" fill="#17324d">validations logistique / DGA / DG</text>
+<text x="1476" y="1126" font-family="Arial" font-size="13" fill="#17324d">dates validation</text>
+<text x="1476" y="1144" font-family="Arial" font-size="13" fill="#17324d">FK camion_id</text>
+<text x="1476" y="1162" font-family="Arial" font-size="13" fill="#17324d">FK fournisseur_id</text>
+<text x="1476" y="1180" font-family="Arial" font-size="13" fill="#17324d">FK prestataire_id</text>
+<text x="1476" y="1198" font-family="Arial" font-size="13" fill="#17324d">FK created_by</text>
+<text x="1476" y="1216" font-family="Arial" font-size="13" fill="#17324d">FK validation_logistique_by</text>
+<text x="1476" y="1234" font-family="Arial" font-size="13" fill="#17324d">FK validation_dga_by</text>
+<text x="1476" y="1252" font-family="Arial" font-size="13" fill="#17324d">FK validation_dg_by</text>
+<rect x="1900" y="860" rx="16" ry="16" width="340" height="180" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1900" y="860" rx="16" ry="16" width="340" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2070.0" y="888" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">MAINTENANCE_LIGNE</text>
+<text x="1916" y="928" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1916" y="946" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<text x="1916" y="964" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="1916" y="982" font-family="Arial" font-size="13" fill="#17324d">prix_unitaire</text>
+<text x="1916" y="1000" font-family="Arial" font-size="13" fill="#17324d">montant</text>
+<text x="1916" y="1018" font-family="Arial" font-size="13" fill="#17324d">FK maintenance_id</text>
+<text x="1916" y="1036" font-family="Arial" font-size="13" fill="#17324d">FK type_maintenance_id</text>
+<rect x="1900" y="1080" rx="16" ry="16" width="360" height="190" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="1900" y="1080" rx="16" ry="16" width="360" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2080.0" y="1108" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">MAINTENANCE_SOUS_LIGNE</text>
+<text x="1916" y="1148" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="1916" y="1166" font-family="Arial" font-size="13" fill="#17324d">libelle</text>
+<text x="1916" y="1184" font-family="Arial" font-size="13" fill="#17324d">quantite</text>
+<text x="1916" y="1202" font-family="Arial" font-size="13" fill="#17324d">prix_unitaire</text>
+<text x="1916" y="1220" font-family="Arial" font-size="13" fill="#17324d">montant</text>
+<text x="1916" y="1238" font-family="Arial" font-size="13" fill="#17324d">FK maintenance_ligne_id</text>
+<text x="1916" y="1256" font-family="Arial" font-size="13" fill="#17324d">FK article_stock_id</text>
+<text x="1916" y="1274" font-family="Arial" font-size="13" fill="#17324d">FK mouvement_stock_id</text>
+<rect x="2280" y="860" rx="16" ry="16" width="260" height="130" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="2280" y="860" rx="16" ry="16" width="260" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2410.0" y="888" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">ALERTE_FACTURE_RESOLUE</text>
+<text x="2296" y="928" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="2296" y="946" font-family="Arial" font-size="13" fill="#17324d">numero_facture</text>
+<text x="2296" y="964" font-family="Arial" font-size="13" fill="#17324d">resolved_at</text>
+<text x="2296" y="982" font-family="Arial" font-size="13" fill="#17324d">FK resolved_by</text>
+<rect x="2280" y="1080" rx="16" ry="16" width="280" height="170" fill="#ffffff" stroke="#c7d6e2" stroke-width="2" filter="url(#shadow)"/>
+<rect x="2280" y="1080" rx="16" ry="16" width="280" height="44" fill="#eaf4fb" stroke="#c7d6e2" stroke-width="0"/>
+<text x="2420.0" y="1108" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#123047">HISTORIQUE_ACTION</text>
+<text x="2296" y="1148" font-family="Arial" font-size="13" fill="#17324d">PK id</text>
+<text x="2296" y="1166" font-family="Arial" font-size="13" fill="#17324d">module</text>
+<text x="2296" y="1184" font-family="Arial" font-size="13" fill="#17324d">action</text>
+<text x="2296" y="1202" font-family="Arial" font-size="13" fill="#17324d">cible</text>
+<text x="2296" y="1220" font-family="Arial" font-size="13" fill="#17324d">description</text>
+<text x="2296" y="1238" font-family="Arial" font-size="13" fill="#17324d">created_at</text>
+<text x="2296" y="1256" font-family="Arial" font-size="13" fill="#17324d">FK utilisateur_id</text>
+<line x1="320" y1="205" x2="360" y2="205" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="294.0" y="185.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="340.0" y="199.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="680" y1="205" x2="740" y2="205" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="664.0" y="185.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="710.0" y="199.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,1</text>
+<line x1="210" y1="595" x2="380" y2="595" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="249.0" y="575.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="295.0" y="589.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="700" y1="610" x2="760" y2="610" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="684.0" y="590.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="730.0" y="604.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="1060" y1="610" x2="1120" y2="610" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1044.0" y="590.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1090.0" y="604.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,1</text>
+<line x1="1230" y1="230" x2="1230" y2="500" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1184.0" y="345.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1230.0" y="359.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="1500" y1="250" x2="1500" y2="340" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1454.0" y="275.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1500.0" y="289.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="1760" y1="230" x2="1760" y2="340" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1714.0" y="265.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1760.0" y="279.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="2050" y1="310" x2="1820" y2="430" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1889.0" y="350.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1935.0" y="364.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="520" y1="280" x2="1520" y2="340" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="974.0" y="290.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1020.0" y="304.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="870" y1="290" x2="1600" y2="340" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1189.0" y="295.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1235.0" y="309.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="520" y1="720" x2="520" y2="840" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="474.0" y="760.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="520.0" y="774.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="160" y1="950" x2="160" y2="1010" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="114.0" y="960.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="160.0" y="974.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="340" y1="1110" x2="380" y2="1110" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="314.0" y="1090.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="360.0" y="1104.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="340" y1="1040" x2="720" y2="1040" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="484.0" y="1020.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="530.0" y="1034.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="880" y1="1150" x2="880" y2="1210" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="834.0" y="1160.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="880.0" y="1174.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="1040" y1="1295" x2="1080" y2="1295" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1014.0" y="1275.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1060.0" y="1289.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="1420" y1="1295" x2="1770" y2="1040" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1549.0" y="1147.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1595.0" y="1161.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="1880" y1="970" x2="1900" y2="970" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1844.0" y="950.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1890.0" y="964.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="1880" y1="1135" x2="1900" y2="1135" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1844.0" y="1115.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1890.0" y="1129.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">1,N</text>
+<line x1="2240" y1="1175" x2="2280" y2="1175" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="2214.0" y="1155.0" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="2260.0" y="1169.0" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,1</text>
+<line x1="2140" y1="990" x2="2280" y2="925" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="2164.0" y="937.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="2210.0" y="951.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="700" y1="205" x2="860" y2="500" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="734.0" y="332.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="780.0" y="346.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+<line x1="1340" y1="205" x2="1460" y2="980" stroke="#4f7aa0" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="1354.0" y="572.5" width="92" height="20" rx="10" ry="10" fill="#ffffff" opacity="0.92"/>
+<text x="1400.0" y="586.5" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#2ea287">0,N</text>
+</svg>

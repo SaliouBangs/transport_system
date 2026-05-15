@@ -17,6 +17,35 @@
     height: 100%;
 }
 
+.affectation-section {
+    border-top: 1px solid #dbe6ee;
+    padding-top: 18px;
+    margin-top: 18px;
+}
+
+.affectation-section:first-child {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.affectation-heading {
+    margin: 0 0 12px;
+    font-size: 1.35rem;
+    color: #123047;
+}
+
+.affectation-panel-title {
+    margin: 0 0 12px;
+    font-size: 1.05rem;
+    color: #123047;
+}
+
+.affectation-subtitle {
+    margin: 0 0 12px;
+    color: #5f7384;
+}
+
 .affectation-card .summary-table th {
     width: 48%;
 }
@@ -39,10 +68,182 @@
     align-items: end;
 }
 
+.affrete-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 18px;
+}
+
+.affectation-actions-inline {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.camion-search-wrap {
+    position: relative;
+}
+
+.camion-suggestions {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 18px;
+    border: 1px solid #c9dceb;
+    background: rgba(18, 48, 71, 0.96);
+    box-shadow: 0 22px 44px rgba(18, 48, 71, 0.22);
+    z-index: 30;
+}
+
+.camion-suggestions[hidden] {
+    display: none !important;
+}
+
+.camion-suggestion-btn {
+    width: 100%;
+    display: block;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 1rem;
+    line-height: 1.4;
+    cursor: pointer;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.camion-suggestion-btn:hover,
+.camion-suggestion-btn.is-active {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.camion-suggestion-meta {
+    display: block;
+    color: #d0deea;
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.affrete-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(12, 33, 49, 0.45);
+    z-index: 120;
+}
+
+.affrete-modal[hidden] {
+    display: none !important;
+}
+
+.affrete-modal-card {
+    width: min(980px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    border-radius: 24px;
+    background: #fff;
+    border: 1px solid #dbe6ee;
+    box-shadow: 0 24px 64px rgba(18, 48, 71, 0.25);
+    padding: 22px;
+}
+
+.affrete-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.affrete-modal-switch {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.affrete-modal-pane[hidden] {
+    display: none !important;
+}
+
+.affrete-modal-card .field label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #123047;
+    margin-bottom: 8px;
+}
+
+.affrete-modal-card .field input,
+.affrete-modal-card .field select {
+    min-height: 52px;
+    border-radius: 16px;
+    border: 1px solid #c8dceb;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    padding: 0 16px;
+    font-size: 0.98rem;
+    color: #123047;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.affrete-modal-card .field input:focus,
+.affrete-modal-card .field select:focus {
+    outline: none;
+    border-color: #34b497;
+    box-shadow: 0 0 0 4px rgba(52, 180, 151, 0.12);
+    transform: translateY(-1px);
+}
+
+.affrete-modal-card .field select {
+    appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #5f7384 50%),
+        linear-gradient(135deg, #5f7384 50%, transparent 50%),
+        linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    background-position:
+        calc(100% - 22px) calc(50% - 3px),
+        calc(100% - 16px) calc(50% - 3px),
+        0 0;
+    background-size: 6px 6px, 6px 6px, 100% 100%;
+    background-repeat: no-repeat;
+    padding-right: 42px;
+}
+
+.affrete-pane-shell {
+    padding: 18px;
+    border: 1px solid #dbe6ee;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(247,251,255,0.92) 0%, rgba(255,255,255,0.98) 100%);
+}
+
+.affrete-pane-title {
+    margin: 0 0 6px;
+    font-size: 1.02rem;
+    color: #123047;
+}
+
+.affrete-pane-help {
+    margin: 0 0 14px;
+    color: #5f7384;
+    font-size: 0.95rem;
+}
+
 @media (max-width: 1100px) {
     .affectation-layout,
     .affectation-inputs,
-    .affectation-complete-grid {
+    .affectation-complete-grid,
+    .affrete-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -69,29 +270,37 @@
 
     <div class="affectation-layout">
         <div class="summary-card affectation-card affectation-compact">
-            <h3>Resume commande</h3>
+            <div class="affectation-section">
+            <h3 class="affectation-heading">Resume commande</h3>
             <p><strong>Client :</strong> {{ commande.client.entreprise }}</p>
             <p><strong>Produit :</strong> {% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</p>
             <p><strong>Quantite :</strong> {{ commande.quantite|default:"-" }}</p>
             <p><strong>Trajet :</strong> {{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</p>
             <p><strong>Prix negocie :</strong> {{ commande.prix_negocie|default:"-" }}</p>
+            </div>
 
+            <div class="affectation-section">
+            <h4 class="affectation-panel-title">Choix du camion</h4>
             <div class="affectation-inputs">
                 <div class="field">
                     <label for="camion-search-input">Recherche camion</label>
-                    <input
-                        type="text"
-                        id="camion-search-input"
-                        list="camions-list"
-                        placeholder="Tape le tracteur ou la citerne"
-                        value="{% if form.camion.value %}{% for camion in camions %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}{% endif %}{% endfor %}{% endif %}">
-                    {{ form.camion.as_hidden }}
-                    <datalist id="camions-list">
-                        {% for camion in camions %}
-                        <option value="{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %}" data-id="{{ camion.id }}"></option>
-                        {% endfor %}
-                    </datalist>
+                    <div class="camion-search-wrap">
+                        <input
+                            type="text"
+                            id="camion-search-input"
+                            autocomplete="off"
+                            placeholder="Tape le tracteur ou la citerne"
+                            value="{% if form.camion.value %}{% for camion in camions %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %} - {{ camion.capacite|floatformat:0 }} L{% if camion.est_affrete %} - Affrete{% endif %}{% with chauffeur=camion.chauffeur_set.first %}{% if chauffeur %} - {{ chauffeur.nom }}{% endif %}{% endwith %}{% endif %}{% endfor %}{% endif %}">
+                        {{ form.camion.as_hidden }}
+                        <div id="camion-suggestions" class="camion-suggestions" hidden></div>
+                    </div>
                     {% if form.camion.errors %}<p class="field-error" id="camion-server-error">{{ form.camion.errors.0 }}</p>{% endif %}
+                    {% if can_manage_affretes %}
+                    <div class="affectation-actions-inline">
+                        <button type="button" class="btn-secondary" id="open-new-affrete-btn">Nouvel affrete</button>
+                        <button type="button" class="btn-secondary" id="open-existing-affrete-btn">Camion d'un affrete existant</button>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="field">
@@ -101,16 +310,20 @@
                     {% if form.chauffeur.errors %}<p class="field-error">{{ form.chauffeur.errors.0 }}</p>{% endif %}
                 </div>
             </div>
+            </div>
 
-            <div class="field" style="margin-top:10px;">
+            <div class="affectation-section">
+            <div class="field" style="margin-top:0;">
                 <p class="helper-text" id="capacite-sous-chauffeur" style="margin:0; font-size:1rem; font-weight:700; color:#123047;">
                     Capacite camion : -
                 </p>
             </div>
+            </div>
         </div>
 
         <div class="summary-card affectation-card">
-            <h3>Informations du camion choisi</h3>
+            <div class="affectation-section">
+            <h3 class="affectation-heading">Informations du camion choisi</h3>
             <table class="summary-table">
                 <tbody>
                     <tr><th>Tracteur</th><td id="camion-numero">-</td></tr>
@@ -118,12 +331,15 @@
                     <tr><th>Capacite</th><td id="camion-capacite">-</td></tr>
                     <tr><th>Etat</th><td id="camion-etat">-</td></tr>
                     <tr><th>Transporteur</th><td id="camion-transporteur">-</td></tr>
+                    <tr><th>Entreprise affretee</th><td id="camion-affrete">-</td></tr>
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="summary-card affectation-card">
-            <h3>Comparaison capacite / commande</h3>
+            <div class="affectation-section">
+            <h3 class="affectation-heading">Comparaison capacite / commande</h3>
             <table class="summary-table">
                 <tbody>
                     <tr><th>Commande de base</th><td id="commande-quantite">{{ commande.quantite|default:"0" }}</td></tr>
@@ -137,10 +353,12 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="summary-card affectation-card">
-            <h3>5 dernieres operations du camion</h3>
+            <div class="affectation-section">
+            <h3 class="affectation-heading">5 dernieres operations du camion</h3>
             <table class="table" id="camion-operations-table">
                 <thead>
                     <tr>
@@ -158,10 +376,13 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
         </div>
 
-        <div class="summary-card affectation-wide" style="box-shadow:none; border:1px solid #dbe6ee;">
-            <h3>Completer le camion</h3>
+        <div class="summary-card affectation-wide" id="complement-section" style="box-shadow:none; border:1px solid #dbe6ee;" hidden>
+            <div class="affectation-section">
+            <h3 class="affectation-heading">Completer le camion</h3>
+            <p class="affectation-subtitle">Ce bloc apparait seulement si la capacite du camion depasse la commande de base.</p>
             <div class="affectation-complete-grid">
                 <div class="field">
                     <label for="commande-complement-search">Recherche commande a ajouter</label>
@@ -216,6 +437,7 @@
                     </table>
                 </div>
             </div>
+            </div>
         </div>
     </div>
 
@@ -225,6 +447,122 @@
     </div>
 </form>
 </div>
+
+{% if can_manage_affretes %}
+<div class="affrete-modal" id="affrete-modal" hidden>
+    <div class="affrete-modal-card">
+        <div class="affrete-modal-header">
+            <div>
+                <p class="eyebrow" style="margin-bottom:6px;">Sous-formulaire</p>
+                <h3 class="affectation-heading" style="margin-bottom:6px;">Gestion des affretes</h3>
+                <p class="helper-text" style="margin:0;">Choisissez si vous creez un nouvel affrete complet ou si vous ajoutez un camion a un affrete deja existant.</p>
+            </div>
+            <button type="button" class="btn-secondary" id="close-affrete-modal-btn">Fermer</button>
+        </div>
+
+        <div class="affrete-modal-switch">
+            <button type="button" class="btn" id="switch-new-affrete-btn">Nouvel affrete</button>
+            <button type="button" class="btn-secondary" id="switch-existing-affrete-btn">Camion d'un affrete existant</button>
+        </div>
+
+        <div class="affrete-modal-pane" id="pane-new-affrete">
+            <div class="affrete-pane-shell">
+                <h4 class="affrete-pane-title">Creer un nouvel affrete</h4>
+                <p class="affrete-pane-help">Renseignez l’entreprise, son camion et le chauffeur pour l’utiliser tout de suite dans l’affectation.</p>
+                <div class="affrete-grid">
+                    <div class="field">
+                        <label for="affrete-entreprise-nom">Nom de l'entreprise</label>
+                        <input type="text" id="affrete-entreprise-nom" value="" placeholder="Ex: GUINEA OIL SERVICE">
+                        <p class="field-error" id="affrete-entreprise-nom-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-entreprise-telephone">Tel entreprise</label>
+                        <input type="text" id="affrete-entreprise-telephone" value="" placeholder="Numero de contact">
+                        <p class="field-error" id="affrete-entreprise-telephone-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-numero-tracteur">Camion / tracteur</label>
+                        <input type="text" id="affrete-numero-tracteur" value="" placeholder="Ex: AX 5856 02">
+                        <p class="field-error" id="affrete-numero-tracteur-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-numero-citerne">Citerne</label>
+                        <input type="text" id="affrete-numero-citerne" value="" placeholder="Ex: BD 1786 02">
+                        <p class="field-error" id="affrete-numero-citerne-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-capacite">Capacite</label>
+                        <input type="number" id="affrete-capacite" min="1" step="1" value="" placeholder="Ex: 40000">
+                        <p class="field-error" id="affrete-capacite-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-chauffeur-nom">Nom du chauffeur</label>
+                        <input type="text" id="affrete-chauffeur-nom" value="" placeholder="Nom complet du chauffeur">
+                        <p class="field-error" id="affrete-chauffeur-nom-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="affrete-chauffeur-telephone">Tel chauffeur</label>
+                        <input type="text" id="affrete-chauffeur-telephone" value="" placeholder="Numero du chauffeur">
+                        <p class="field-error" id="affrete-chauffeur-telephone-error" style="display:none;"></p>
+                    </div>
+                </div>
+                <div class="form-actions" style="margin-top:16px;">
+                    <button type="button" class="btn-secondary" id="cancel-new-affrete-btn">Annuler</button>
+                    <button type="button" class="btn" id="save-affrete-btn">Ajouter l'affrete</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="affrete-modal-pane" id="pane-existing-affrete" hidden>
+            <div class="affrete-pane-shell">
+                <h4 class="affrete-pane-title">Ajouter un camion a un affrete existant</h4>
+                <p class="affrete-pane-help">Choisissez d’abord l’entreprise affrétée, puis enregistrez le nouveau camion et son chauffeur.</p>
+                <div class="affrete-grid">
+                    <div class="field">
+                        <label for="existing-affrete-transporteur">Affrete existant</label>
+                        <select id="existing-affrete-transporteur">
+                            <option value="">---------</option>
+                            {% for transporteur in affrete_existant_form.fields.transporteur.queryset %}
+                            <option value="{{ transporteur.id }}">{{ transporteur.nom }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="field-error" id="existing-affrete-transporteur-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="existing-affrete-numero-tracteur">Camion / tracteur</label>
+                        <input type="text" id="existing-affrete-numero-tracteur" value="" placeholder="Ex: AN 5314 02">
+                        <p class="field-error" id="existing-affrete-numero-tracteur-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="existing-affrete-numero-citerne">Citerne</label>
+                        <input type="text" id="existing-affrete-numero-citerne" value="" placeholder="Ex: AO 3490 02">
+                        <p class="field-error" id="existing-affrete-numero-citerne-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="existing-affrete-capacite">Capacite</label>
+                        <input type="number" id="existing-affrete-capacite" min="1" step="1" value="" placeholder="Ex: 40000">
+                        <p class="field-error" id="existing-affrete-capacite-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="existing-affrete-chauffeur-nom">Nom du chauffeur</label>
+                        <input type="text" id="existing-affrete-chauffeur-nom" value="" placeholder="Nom complet du chauffeur">
+                        <p class="field-error" id="existing-affrete-chauffeur-nom-error" style="display:none;"></p>
+                    </div>
+                    <div class="field">
+                        <label for="existing-affrete-chauffeur-telephone">Tel chauffeur</label>
+                        <input type="text" id="existing-affrete-chauffeur-telephone" value="" placeholder="Numero du chauffeur">
+                        <p class="field-error" id="existing-affrete-chauffeur-telephone-error" style="display:none;"></p>
+                    </div>
+                </div>
+                <div class="form-actions" style="margin-top:16px;">
+                    <button type="button" class="btn-secondary" id="cancel-existing-affrete-btn">Annuler</button>
+                    <button type="button" class="btn" id="save-existing-affrete-btn">Ajouter le camion</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {{ commandes_candidates|json_script:"commandes-candidates-data" }}
 <script id="commande-produit-meta" type="application/json">{"label":"{{ produit_label|escapejs }}","labelLower":"{{ produit_label_lower|escapejs }}"}</script>
@@ -238,13 +576,23 @@
 const camionSelect = document.getElementById("id_camion");
 const chauffeurSelect = document.getElementById("id_chauffeur");
 const camionSearchInput = document.getElementById("camion-search-input");
-const camionOptions = Array.from(document.querySelectorAll("#camions-list option"));
+const camionSuggestions = document.getElementById("camion-suggestions");
+const camionOptions = [
+    {% for camion in camions %}
+    {
+        id: {{ camion.id }},
+        label: "{{ camion.numero_tracteur|escapejs }}{% if camion.numero_citerne %} / {{ camion.numero_citerne|escapejs }}{% endif %} - {{ camion.capacite|floatformat:0|escapejs }} L{% if camion.est_affrete %} - Affrete{% endif %}{% with chauffeur=camion.chauffeur_set.first %}{% if chauffeur %} - {{ chauffeur.nom|escapejs }}{% endif %}{% endwith %}",
+        meta: "{% if camion.transporteur %}{{ camion.transporteur.nom|escapejs }}{% else %}SOGEFI{% endif %}{% if camion.est_affrete %} - Entreprise affretee{% endif %}",
+    },
+    {% endfor %}
+];
 const chauffeurDisplay = document.getElementById("chauffeur-display");
 const camionNumero = document.getElementById("camion-numero");
 const camionCiterne = document.getElementById("camion-citerne");
 const camionCapacite = document.getElementById("camion-capacite");
 const camionEtat = document.getElementById("camion-etat");
 const camionTransporteur = document.getElementById("camion-transporteur");
+const camionAffrete = document.getElementById("camion-affrete");
 const operationsBody = document.getElementById("camion-operations-body");
 const camionServerError = document.getElementById("camion-server-error");
 const capaciteSousChauffeur = document.getElementById("capacite-sous-chauffeur");
@@ -254,6 +602,7 @@ const capaciteBadge = document.getElementById("capacite-badge");
 const quantiteComplements = document.getElementById("quantite-complements");
 const quantiteTotaleAffectee = document.getElementById("quantite-totale-affectee");
 const submitAffectationBtn = document.getElementById("submit-affectation-btn");
+const complementSection = document.getElementById("complement-section");
 const commandesComplementairesInput = document.getElementById("commandes-complementaires-input");
 const complementSearch = document.getElementById("commande-complement-search");
 const addComplementBtn = document.getElementById("add-complement-btn");
@@ -261,11 +610,130 @@ const complementHelper = document.getElementById("complement-helper");
 const selectedCommandesBody = document.getElementById("selected-commandes-body");
 const availableCommandesBody = document.getElementById("available-commandes-body");
 const compatibleCommandesTitle = document.getElementById("compatible-commandes-title");
+const openNewAffreteBtn = document.getElementById("open-new-affrete-btn");
+const openExistingAffreteBtn = document.getElementById("open-existing-affrete-btn");
+const affreteModal = document.getElementById("affrete-modal");
+const paneNewAffrete = document.getElementById("pane-new-affrete");
+const paneExistingAffrete = document.getElementById("pane-existing-affrete");
+const closeAffreteModalBtn = document.getElementById("close-affrete-modal-btn");
+const switchNewAffreteBtn = document.getElementById("switch-new-affrete-btn");
+const switchExistingAffreteBtn = document.getElementById("switch-existing-affrete-btn");
+const cancelNewAffreteBtn = document.getElementById("cancel-new-affrete-btn");
+const cancelExistingAffreteBtn = document.getElementById("cancel-existing-affrete-btn");
+const saveAffreteBtn = document.getElementById("save-affrete-btn");
+const saveExistingAffreteBtn = document.getElementById("save-existing-affrete-btn");
+const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
 const commandesCandidates = JSON.parse(document.getElementById("commandes-candidates-data").textContent);
 const produitMeta = JSON.parse(document.getElementById("commande-produit-meta").textContent);
 const commandeQuantite = Number("{{ commande.quantite|default:'0' }}".replace(/\s/g, "").replace(",", ".")) || 0;
 let selectedComplements = [];
 let currentCamionCapacity = null;
+let activeCamionSuggestionIndex = -1;
+
+function toggleComplementSection(visible) {
+    if (!complementSection) return;
+    complementSection.hidden = !visible;
+}
+
+function hideCamionSuggestions() {
+    if (!camionSuggestions) return;
+    camionSuggestions.hidden = true;
+    camionSuggestions.innerHTML = "";
+    activeCamionSuggestionIndex = -1;
+}
+
+function renderCamionSuggestions(query = "") {
+    if (!camionSuggestions) return;
+    const normalized = (query || "").trim().toLowerCase();
+    const items = camionOptions.filter((item) => {
+        if (!normalized) return true;
+        return `${item.label} ${item.meta}`.toLowerCase().includes(normalized);
+    }).slice(0, 12);
+
+    if (!items.length) {
+        hideCamionSuggestions();
+        return;
+    }
+
+    camionSuggestions.innerHTML = items.map((item, index) => `
+        <button type="button" class="camion-suggestion-btn${index === activeCamionSuggestionIndex ? " is-active" : ""}" data-id="${item.id}" data-label="${item.label}">
+            ${item.label}
+            <span class="camion-suggestion-meta">${item.meta}</span>
+        </button>
+    `).join("");
+    camionSuggestions.hidden = false;
+}
+
+function resetAffreteErrors() {
+    document.querySelectorAll("[id^='affrete-'][id$='-error']").forEach((node) => {
+        node.textContent = "";
+        node.style.display = "none";
+    });
+    document.querySelectorAll("[id^='existing-affrete-'][id$='-error']").forEach((node) => {
+        node.textContent = "";
+        node.style.display = "none";
+    });
+}
+
+function resetAffreteForm() {
+    [
+        "affrete-entreprise-nom",
+        "affrete-entreprise-telephone",
+        "affrete-numero-tracteur",
+        "affrete-numero-citerne",
+        "affrete-capacite",
+        "affrete-chauffeur-nom",
+        "affrete-chauffeur-telephone",
+    ].forEach((id) => {
+        const field = document.getElementById(id);
+        if (field) field.value = "";
+    });
+    [
+        "existing-affrete-transporteur",
+        "existing-affrete-numero-tracteur",
+        "existing-affrete-numero-citerne",
+        "existing-affrete-capacite",
+        "existing-affrete-chauffeur-nom",
+        "existing-affrete-chauffeur-telephone",
+    ].forEach((id) => {
+        const field = document.getElementById(id);
+        if (field) field.value = "";
+    });
+    resetAffreteErrors();
+}
+
+function setAffreteMode(mode) {
+    const isNewMode = mode === "new";
+    paneNewAffrete.hidden = !isNewMode;
+    paneExistingAffrete.hidden = isNewMode;
+    switchNewAffreteBtn.className = isNewMode ? "btn" : "btn-secondary";
+    switchExistingAffreteBtn.className = isNewMode ? "btn-secondary" : "btn";
+}
+
+function openAffreteModal(mode = "new") {
+    resetAffreteErrors();
+    setAffreteMode(mode);
+    affreteModal.hidden = false;
+}
+
+function closeAffreteModal() {
+    affreteModal.hidden = true;
+    resetAffreteForm();
+}
+
+function registerCamionFromModal(data) {
+    camionOptions.push({
+        id: Number(data.camion.id),
+        label: data.camion.label,
+        meta: `${data.camion.transporteur || "SOGEFI"} - Entreprise affretee`,
+    });
+    camionSearchInput.value = data.camion.label;
+    camionSelect.value = String(data.camion.id);
+    chauffeurSelect.value = data.camion.chauffeur && data.camion.chauffeur.id ? String(data.camion.chauffeur.id) : "";
+    chauffeurDisplay.value = data.camion.chauffeur && data.camion.chauffeur.nom ? data.camion.chauffeur.nom : "";
+    closeAffreteModal();
+    loadCamionInfos();
+}
 
 function formatNumber(value) {
     return new Intl.NumberFormat("fr-FR", {
@@ -352,6 +820,7 @@ function updateCapacityComparison(capaciteValue) {
         capaciteSousChauffeur.textContent = "Capacite camion : -";
         submitAffectationBtn.disabled = true;
         complementHelper.textContent = "Choisis d'abord un camion pour completer le restant.";
+        toggleComplementSection(false);
         renderAvailableCommandes();
         return;
     }
@@ -373,6 +842,7 @@ function updateCapacityComparison(capaciteValue) {
         capaciteBadge.className = "status-badge status-ok";
         submitAffectationBtn.disabled = false;
         complementHelper.textContent = "Le camion est complet. Tu peux maintenant affecter la commande.";
+        toggleComplementSection(false);
         if (camionServerError) {
             camionServerError.style.display = "none";
         }
@@ -381,6 +851,7 @@ function updateCapacityComparison(capaciteValue) {
         capaciteBadge.className = "status-badge status-danger";
         submitAffectationBtn.disabled = true;
         complementHelper.textContent = `Il reste ${formatNumber(restant)} a completer avec d'autres commandes.`;
+        toggleComplementSection(true);
         if (camionServerError) {
             camionServerError.style.display = "none";
         }
@@ -389,6 +860,7 @@ function updateCapacityComparison(capaciteValue) {
         capaciteBadge.className = "status-badge status-danger";
         submitAffectationBtn.disabled = true;
         complementHelper.textContent = "La somme depasse la capacite du camion. Retire une commande ajoutee.";
+        toggleComplementSection(false);
         if (camionServerError) {
             camionServerError.style.display = "";
         }
@@ -398,13 +870,30 @@ function updateCapacityComparison(capaciteValue) {
     renderAvailableCommandes();
 }
 
-function syncCamionSelectionFromSearch() {
-    const match = camionOptions.find((option) => option.value === camionSearchInput?.value);
-    camionSelect.value = match?.dataset.id || "";
-    if (!match) {
+function tryResolveCamionSelection() {
+    const currentValue = (camionSearchInput?.value || "").trim();
+    if (!currentValue) {
+        camionSelect.value = "";
         chauffeurSelect.value = "";
         chauffeurDisplay.value = "";
+        loadCamionInfos();
+        return;
     }
+
+    const match = camionOptions.find((option) => option.label === currentValue);
+    if (!match) {
+        return;
+    }
+
+    camionSelect.value = String(match.id);
+    hideCamionSuggestions();
+    loadCamionInfos();
+}
+
+function selectCamionOption(id, label) {
+    camionSelect.value = String(id);
+    camionSearchInput.value = label;
+    hideCamionSuggestions();
     loadCamionInfos();
 }
 
@@ -477,6 +966,7 @@ async function loadCamionInfos() {
         camionCapacite.textContent = "-";
         camionEtat.textContent = "-";
         camionTransporteur.textContent = "-";
+        camionAffrete.textContent = "-";
         chauffeurDisplay.value = "";
         updateCapacityComparison(null);
         renderOperations([]);
@@ -496,7 +986,13 @@ async function loadCamionInfos() {
         camionCiterne.textContent = data.camion.numero_citerne || "-";
         camionCapacite.textContent = data.camion.capacite || "-";
         camionEtat.textContent = data.camion.etat_label || "-";
-        camionTransporteur.textContent = data.camion.transporteur || "-";
+        camionTransporteur.textContent = "SOGEFI";
+        camionAffrete.textContent = data.camion.est_affrete
+            ? `${data.camion.entreprise_affretee || data.camion.transporteur || "-"}${data.camion.transporteur_telephone ? ` (${data.camion.transporteur_telephone})` : ""}`
+            : "-";
+        if (camionSearchInput) {
+            camionSearchInput.value = `${data.camion.numero_tracteur || "-"}${data.camion.numero_citerne ? ` / ${data.camion.numero_citerne}` : ""} - ${formatNumber(data.camion.capacite || 0)} L${data.camion.est_affrete ? " (Affrete)" : ""}${data.chauffeur ? ` - ${data.chauffeur.nom}` : ""}`;
+        }
         updateCapacityComparison(data.camion.capacite);
 
         if (data.chauffeur) {
@@ -512,8 +1008,120 @@ async function loadCamionInfos() {
     }
 }
 
-camionSearchInput?.addEventListener("input", syncCamionSelectionFromSearch);
-camionSearchInput?.addEventListener("change", syncCamionSelectionFromSearch);
+async function saveAffrete() {
+    resetAffreteErrors();
+    const payload = new URLSearchParams({
+        entreprise_nom: document.getElementById("affrete-entreprise-nom")?.value || "",
+        entreprise_telephone: document.getElementById("affrete-entreprise-telephone")?.value || "",
+        numero_tracteur: document.getElementById("affrete-numero-tracteur")?.value || "",
+        numero_citerne: document.getElementById("affrete-numero-citerne")?.value || "",
+        capacite: document.getElementById("affrete-capacite")?.value || "",
+        chauffeur_nom: document.getElementById("affrete-chauffeur-nom")?.value || "",
+        chauffeur_telephone: document.getElementById("affrete-chauffeur-telephone")?.value || "",
+    });
+
+    try {
+        const response = await fetch("/commandes/affretes/ajouter-modal/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-CSRFToken": csrfToken,
+            },
+            body: payload.toString(),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            Object.entries(data.errors || {}).forEach(([field, messages]) => {
+                const errorNode = document.getElementById(`affrete-${field.replace(/_/g, "-")}-error`);
+                if (errorNode) {
+                    errorNode.textContent = messages[0];
+                    errorNode.style.display = "";
+                }
+            });
+            return;
+        }
+
+        registerCamionFromModal(data);
+    } catch (error) {
+    }
+}
+
+async function saveExistingAffrete() {
+    resetAffreteErrors();
+    const payload = new URLSearchParams({
+        transporteur: document.getElementById("existing-affrete-transporteur")?.value || "",
+        numero_tracteur: document.getElementById("existing-affrete-numero-tracteur")?.value || "",
+        numero_citerne: document.getElementById("existing-affrete-numero-citerne")?.value || "",
+        capacite: document.getElementById("existing-affrete-capacite")?.value || "",
+        chauffeur_nom: document.getElementById("existing-affrete-chauffeur-nom")?.value || "",
+        chauffeur_telephone: document.getElementById("existing-affrete-chauffeur-telephone")?.value || "",
+    });
+
+    try {
+        const response = await fetch("/commandes/affretes/ajouter-camion-modal/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-CSRFToken": csrfToken,
+            },
+            body: payload.toString(),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            Object.entries(data.errors || {}).forEach(([field, messages]) => {
+                const errorNode = document.getElementById(`existing-affrete-${field.replace(/_/g, "-")}-error`);
+                if (errorNode) {
+                    errorNode.textContent = messages[0];
+                    errorNode.style.display = "";
+                }
+            });
+            return;
+        }
+        registerCamionFromModal(data);
+    } catch (error) {
+    }
+}
+
+camionSearchInput?.addEventListener("focus", () => renderCamionSuggestions(camionSearchInput.value));
+camionSearchInput?.addEventListener("input", () => {
+    activeCamionSuggestionIndex = -1;
+    renderCamionSuggestions(camionSearchInput.value);
+});
+camionSearchInput?.addEventListener("change", tryResolveCamionSelection);
+camionSearchInput?.addEventListener("blur", () => {
+    setTimeout(() => {
+        tryResolveCamionSelection();
+        hideCamionSuggestions();
+    }, 120);
+});
+camionSearchInput?.addEventListener("keydown", (event) => {
+    if (!camionSuggestions || camionSuggestions.hidden) return;
+    const buttons = Array.from(camionSuggestions.querySelectorAll(".camion-suggestion-btn"));
+    if (!buttons.length) return;
+
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        activeCamionSuggestionIndex = Math.min(activeCamionSuggestionIndex + 1, buttons.length - 1);
+        renderCamionSuggestions(camionSearchInput.value);
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        activeCamionSuggestionIndex = Math.max(activeCamionSuggestionIndex - 1, 0);
+        renderCamionSuggestions(camionSearchInput.value);
+    } else if (event.key === "Enter" && activeCamionSuggestionIndex >= 0) {
+        event.preventDefault();
+        const button = buttons[activeCamionSuggestionIndex];
+        selectCamionOption(button.dataset.id, button.dataset.label);
+    } else if (event.key === "Escape") {
+        hideCamionSuggestions();
+    }
+});
+camionSuggestions?.addEventListener("click", (event) => {
+    const button = event.target.closest(".camion-suggestion-btn");
+    if (!button) return;
+    selectCamionOption(button.dataset.id, button.dataset.label);
+});
 complementSearch?.addEventListener("input", renderAvailableCommandes);
 complementSearch?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -535,6 +1143,22 @@ availableCommandesBody?.addEventListener("click", (event) => {
     if (!button) return;
     addSelectedComplement(button.dataset.id);
 });
+if (affreteModal) {
+    openNewAffreteBtn?.addEventListener("click", () => openAffreteModal("new"));
+    openExistingAffreteBtn?.addEventListener("click", () => openAffreteModal("existing"));
+    closeAffreteModalBtn?.addEventListener("click", closeAffreteModal);
+    cancelNewAffreteBtn?.addEventListener("click", closeAffreteModal);
+    cancelExistingAffreteBtn?.addEventListener("click", closeAffreteModal);
+    switchNewAffreteBtn?.addEventListener("click", () => setAffreteMode("new"));
+    switchExistingAffreteBtn?.addEventListener("click", () => setAffreteMode("existing"));
+    saveAffreteBtn?.addEventListener("click", saveAffrete);
+    saveExistingAffreteBtn?.addEventListener("click", saveExistingAffrete);
+    affreteModal.addEventListener("click", (event) => {
+        if (event.target === affreteModal) {
+            closeAffreteModal();
+        }
+    });
+}
 
 renderSelectedCommandes();
 renderAvailableCommandes();

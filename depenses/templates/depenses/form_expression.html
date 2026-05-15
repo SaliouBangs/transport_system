@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Depenses</p>
+    <h1>{{ page_title }}</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <form method="post" class="app-form">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field field-full">
+        <label for="{{ form.titre.id_for_label }}">Titre</label>
+        {{ form.titre }}
+        {% if form.titre.errors %}<p class="field-error">{{ form.titre.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field field-full">
+        <label for="{{ form.description.id_for_label }}">Description du besoin</label>
+        {{ form.description }}
+        {% if form.description.errors %}<p class="field-error">{{ form.description.errors|join:", " }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form.montant_estime.id_for_label }}">Montant estime</label>
+        {{ form.montant_estime }}
+        {% if form.montant_estime.errors %}<p class="field-error">{{ form.montant_estime.errors|join:", " }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/depenses/" class="btn-secondary">Retour</a>
+      <button type="submit" class="btn">{% if is_edit %}Mettre a jour{% else %}Envoyer{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load client_extras %}
 
 {% block content %}
 
@@ -8,6 +9,7 @@
 <h1>Clients</h1>
 </div>
 <div class="field-inline">
+<a href="/clients/encaissements/" class="btn-secondary">Encaissements</a>
 {% if can_manage_client_portfolios %}<a href="/clients/portefeuilles/" class="btn-secondary">Portefeuilles{% if clients_non_affectes %} ({{ clients_non_affectes }} non affectes){% endif %}</a>{% endif %}
 {% if can_add_clients %}<a href="/clients/ajouter/" class="btn">Ajouter un client</a>{% endif %}
 </div>
@@ -17,30 +19,51 @@
 <thead>
 <tr>
 <th>Nom</th>
-<th>Entreprise</th>
+<th>Client</th>
 <th>Telephone</th>
 <th>Ville</th>
+<th>Encours</th>
+<th>Risque</th>
+<th>Creance</th>
+<th>DMA</th>
 <th>Portefeuille</th>
-<th>Prospect source</th>
-<th>Adresse</th>
+<th>Siege / Destinations</th>
 <th>Actions</th>
 </tr>
 </thead>
 <tbody>
 {% for client in clients %}
 <tr>
-<td>{{ client.nom }}</td>
+<td>
+    <strong>{{ client.nom }}</strong>
+    {% if client.fonction_contact %}<div class="muted">{{ client.fonction_contact }}</div>{% endif %}
+</td>
 <td>{{ client.entreprise }}</td>
 <td>{{ client.telephone }}</td>
 <td>{{ client.ville }}</td>
+<td>{{ client.encours_client|gnf }}</td>
+<td>
+    <div class="risk-meter">
+        <div class="risk-meter__track">
+            <div class="risk-meter__fill risk-meter__fill--{{ client.niveau_risque }}" style="width: {{ client.ratio_decouvert|floatformat:0 }}%;"></div>
+        </div>
+        <div class="muted">{{ client.ratio_decouvert|floatformat:0 }}% du decouvert</div>
+    </td>
+<td>{{ client.creance_client|gnf }}</td>
+<td>{{ client.decouvert_maximum_autorise|gnf }}</td>
 <td>{% if client.commercial %}{{ client.commercial.get_full_name|default:client.commercial.username }}{% else %}-{% endif %}</td>
-<td>{% if client.prospect %}{{ client.prospect.entreprise }}{% else %}-{% endif %}</td>
-<td>{{ client.adresse|default:"-" }}</td>
+<td>
+    <div><strong>Siege :</strong> {{ client.adresse|default:"-" }}</div>
+    <div class="muted">{{ client.destinations.count }} destination(s)</div>
+</td>
 <td>
 <div class="table-actions">
+<a href="/clients/detail/{{ client.id }}/" class="btn-secondary">Detail</a>
 {% if can_edit_clients %}
 <a href="/clients/modifier/{{ client.id }}/" class="btn-edit">Modifier</a>
+{% if can_delete_clients %}
 <a href="/clients/supprimer/{{ client.id }}/" class="btn-delete" onclick="return confirm('Supprimer ce client ?')">Supprimer</a>
+{% endif %}
 {% else %}
 <span class="status-badge status-ok">Lecture</span>
 {% endif %}
@@ -49,10 +72,40 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="8">Aucun client enregistre pour le moment.</td>
+<td colspan="11">Aucun client enregistre pour le moment.</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.risk-meter__track {
+    width: 140px;
+    height: 10px;
+    border-radius: 999px;
+    background: #e6edf4;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.risk-meter__fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.risk-meter__fill--ok {
+    background: linear-gradient(90deg, #2bb673, #83d38f);
+}
+
+.risk-meter__fill--alerte {
+    background: linear-gradient(90deg, #e6b325, #ef7d32);
+}
+
+.risk-meter__fill--critique {
+    background: linear-gradient(90deg, #ef7d32, #d64545);
+}
+</style>
 {% endblock %}

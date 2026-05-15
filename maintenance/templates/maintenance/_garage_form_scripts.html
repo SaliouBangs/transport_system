@@ -8,6 +8,8 @@ const kilometrageEntreeInput = document.getElementById("id_kilometrage_entree");
 const kilometrageSortieInput = document.getElementById("id_kilometrage_sortie");
 const prochaineVidangeInput = document.getElementById("id_prochaine_vidange_dans_km");
 const nextServicePreview = document.getElementById("next-service-preview");
+const pannesByType = {{ pannes_catalog_json|default:"{}" }};
+let activePanneContext = null;
 
 function bindRow(row) {
     const deleteCheckbox = row.querySelector(`input[name$="-DELETE"]`);
@@ -53,6 +55,7 @@ function updateNextServicePreview() {
 }
 
 function createSublineItem(prefix, value = {}) {
+    const listId = `panne-list-${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     const optionHtml =
         document.querySelector(".stock-article-select")?.innerHTML ||
         '<option value="">Piece hors stock</option>';
@@ -84,8 +87,9 @@ function createSublineItem(prefix, value = {}) {
             <input type="number" name="subline-${prefix}-quantites" value="${value.quantite || "1"}" min="0.01" step="0.01" placeholder="Qte" style="width:100%;">
         </div>
         <div>
-            <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle piece</label>
-            <input type="text" name="subline-${prefix}-labels" value="${value.libelle || ""}" placeholder="Ex: Filtre a huile, courroie, boulon..." style="width:100%;" class="stock-label-input">
+            <label style="margin:0 0 6px 0; font-size:0.9rem; color:#577086;">Libelle panne / piece</label>
+            <input type="text" name="subline-${prefix}-labels" value="${value.libelle || ""}" placeholder="Ex: Joint de culasse, filtre a huile, courroie..." style="width:100%;" class="stock-label-input panne-label-input" list="${listId}">
+            <datalist id="${listId}" class="panne-datalist"></datalist>
         </div>
         <button type="button" class="btn-delete subline-remove-btn" style="align-self:center;">x</button>
     `;
@@ -122,6 +126,27 @@ function bindSublineEvents(row) {
             bindSublineEvents(row);
         };
     });
+
+    row.querySelectorAll(".panne-label-input").forEach((input) => {
+        input.addEventListener("focus", () => {
+            activePanneContext = { row, input };
+        });
+    });
+
+    updateRowPanneOptions(row);
+}
+
+function updateRowPanneOptions(row) {
+    const typeSelect = row.querySelector(`select[name$="-type_maintenance"]`);
+    const typeId = typeSelect?.value || "";
+    const pannes = pannesByType[typeId] || [];
+    row.querySelectorAll(".panne-datalist").forEach((datalist) => {
+        datalist.innerHTML = pannes.map((item) => `<option value="${item.label}"></option>`).join("");
+    });
+}
+
+function syncAllPanneLists() {
+    linesBody.querySelectorAll(".maintenance-line-row").forEach(updateRowPanneOptions);
 }
 
 addLineBtn?.addEventListener("click", () => {
@@ -134,13 +159,24 @@ addLineBtn?.addEventListener("click", () => {
 });
 
 linesBody.querySelectorAll(".maintenance-line-row").forEach(bindRow);
+linesBody.addEventListener("change", (event) => {
+    const typeSelect = event.target.closest(`select[name$="-type_maintenance"]`);
+    if (typeSelect) {
+        updateRowPanneOptions(typeSelect.closest(".maintenance-line-row"));
+    }
+});
 kilometrageEntreeInput?.addEventListener("input", updateNextServicePreview);
 kilometrageSortieInput?.addEventListener("input", updateNextServicePreview);
 prochaineVidangeInput?.addEventListener("input", updateNextServicePreview);
 updateNextServicePreview();
+syncAllPanneLists();
 
 const typeForm = document.getElementById("type-maintenance-form");
 const typeError = document.getElementById("type-maintenance-error");
+const panneForm = document.getElementById("panne-maintenance-form");
+const panneError = document.getElementById("panne-maintenance-error");
+const panneTypeField = document.getElementById("id_type_maintenance");
+const panneLabelField = document.getElementById("id_libelle");
 
 typeForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -175,5 +211,51 @@ typeForm?.addEventListener("submit", async (event) => {
 
     typeForm.reset();
     document.getElementById("type-maintenance-modal")?.classList.remove("is-open");
+});
+
+document.getElementById("open-panne-modal-btn")?.addEventListener("click", () => {
+    if (!panneTypeField) {
+        return;
+    }
+    const currentType = activePanneContext?.row?.querySelector(`select[name$="-type_maintenance"]`)?.value || "";
+    if (currentType) {
+        panneTypeField.value = currentType;
+    }
+});
+
+panneForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    panneError.style.display = "none";
+    panneError.textContent = "";
+
+    const response = await fetch("/maintenance/pannes/ajouter-modal/", {
+        method: "POST",
+        body: new FormData(panneForm),
+        headers: {
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.success) {
+        const message = payload.errors?.libelle?.[0] || payload.errors?.type_maintenance?.[0] || payload.errors?.__all__?.[0] || "Impossible d'ajouter cette panne.";
+        panneError.textContent = message;
+        panneError.style.display = "block";
+        return;
+    }
+
+    const typeId = String(payload.panne.type_maintenance_id);
+    if (!pannesByType[typeId]) {
+        pannesByType[typeId] = [];
+    }
+    pannesByType[typeId].push({ id: payload.panne.id, label: payload.panne.label });
+    syncAllPanneLists();
+
+    if (activePanneContext?.input) {
+        activePanneContext.input.value = payload.panne.label;
+    }
+
+    panneForm.reset();
+    document.getElementById("panne-maintenance-modal")?.classList.remove("is-open");
 });
 </script>

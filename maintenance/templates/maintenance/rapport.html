@@ -25,20 +25,27 @@
     <option value="{{ value }}" {% if filter_values.statut == value %}selected{% endif %}>{{ label }}</option>
     {% endfor %}
 </select>
+<input list="pannes-catalog" name="panne" value="{{ filter_values.panne }}" placeholder="Filtrer par panne" style="min-width:220px;" autocomplete="off">
+<datalist id="pannes-catalog">
+    {% for panne_label in panne_choices %}
+    <option value="{{ panne_label }}"></option>
+    {% endfor %}
+</datalist>
 <button type="submit" class="btn">Rechercher</button>
 <a href="/maintenance/rapports/" class="btn-secondary">Reinitialiser</a>
 </form>
 
 <div class="cards" style="margin-bottom:24px;">
 <div class="card"><h3>Situations</h3><p>{{ total_situations }}</p></div>
-<div class="card"><h3>Montant total</h3><p>{{ total_montant }} GNF</p></div>
+<div class="card"><h3>Montant payable</h3><p>{{ total_montant }} GNF</p></div>
+<div class="card"><h3>Cout global camion</h3><p>{{ total_cout_global }} GNF</p></div>
 <div class="card"><h3>Fiches payees</h3><p>{{ total_payees }}</p></div>
 <div class="card"><h3>Fiches en attente</h3><p>{{ total_attente }}</p></div>
 </div>
 
 <div class="card report-card" style="text-align:left;">
 <h3>Situation detaillee sur la periode</h3>
-<p style="color:#5f7384; margin-bottom:16px;">Le rapport reprend toutes les informations liees a la fiche: entree garage, sortie, kilometrage, diagnostic, prix, validations et paiement. La periode est filtree sur la date de paiement.</p>
+<p style="color:#5f7384; margin-bottom:16px;">Le rapport reprend toutes les informations liees a la fiche: entree garage, sortie, kilometrage, diagnostic, pannes, prix, validations et paiement. Le cout global camion inclut aussi la valorisation stock au CMP, mais le montant payable reste separe.</p>
 <table class="table report-table" style="margin-top:16px;">
 <thead>
 <tr>
@@ -77,12 +84,35 @@
     {% endfor %}
 </td>
 <td>
-    Fournisseur: {{ maintenance.fournisseur|default:"-" }}<br>
-    Prestataire: {{ maintenance.prestataire|default:"-" }}
+    Prestataire: {{ maintenance.prestataire|default:"-" }}<br>
+    {% if maintenance.invoice_rows %}
+        {% for invoice in maintenance.invoice_rows %}
+        <div style="margin-top:6px;">
+            Fournisseur: {% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}
+            {% if invoice.numero_facture %}<br>Facture: {{ invoice.numero_facture }}{% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        Fournisseur: -
+    {% endif %}
 </td>
 <td>
-    Facture: {{ maintenance.numero_facture|default:"-" }}<br>
-    Total: {{ maintenance.total_facture }} GNF
+    {% if maintenance.invoice_rows %}
+        {% for invoice in maintenance.invoice_rows %}
+        <div style="margin-bottom:6px;">
+            {% if invoice.facture_fichier %}
+            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+            {% else %}
+            -
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        Facture: -<br>
+    {% endif %}
+    Payable: {{ maintenance.total_facture }} GNF<br>
+    Stock (info): {{ maintenance.stock_information_affiche }} GNF<br>
+    Cout global: {{ maintenance.cout_global_affiche }} GNF
 </td>
 <td>
     <div>Logistique: {% if maintenance.validation_logistique_at %}{{ maintenance.validation_logistique_at|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
