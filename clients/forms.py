@@ -55,6 +55,66 @@ class ClientForm(forms.ModelForm):
         self.fields["date_solde_initial"].label = "Date de solde initial"
         self.fields["delai_paiement_jours"].label = "Delai de paiement (jours)"
         self.fields["decouvert_maximum_autorise"].label = "Decouvert maximum autorise"
+        self.fields["date_solde_initial"].widget = forms.DateInput(attrs={"type": "date"})
+        self.fields["solde_initial"].widget = forms.TextInput(
+            attrs={
+                "inputmode": "decimal",
+                "data-format-thousands": "1",
+                "placeholder": "Ex : 500 000 000",
+            }
+        )
+        self.fields["decouvert_maximum_autorise"].widget = forms.TextInput(
+            attrs={
+                "inputmode": "decimal",
+                "data-format-thousands": "1",
+                "placeholder": "Ex : 1 500 000 000",
+            }
+        )
+
+        if self.instance and self.instance.pk:
+            self.initial["solde_initial"] = self._format_decimal_display(self.instance.solde_initial)
+            self.initial["decouvert_maximum_autorise"] = self._format_decimal_display(self.instance.decouvert_maximum_autorise)
+
+    @staticmethod
+    def _format_decimal_display(value):
+        if value in (None, ""):
+            return ""
+        try:
+            return f"{Decimal(value):,.0f}".replace(",", " ")
+        except Exception:
+            return str(value)
+
+    @staticmethod
+    def _clean_decimal_input(raw_value):
+        raw = str(raw_value or "").strip()
+        if not raw:
+            return Decimal("0.00")
+
+        normalized = "".join(raw.split())
+        has_comma = "," in normalized
+        has_dot = "." in normalized
+
+        if has_comma and has_dot:
+            if normalized.rfind(",") > normalized.rfind("."):
+                normalized = normalized.replace(".", "").replace(",", ".")
+            else:
+                normalized = normalized.replace(",", "")
+        elif has_comma:
+            normalized = normalized.replace(",", ".")
+
+        return Decimal(normalized)
+
+    def clean_solde_initial(self):
+        try:
+            return self._clean_decimal_input(self.data.get(self.add_prefix("solde_initial"), ""))
+        except Exception:
+            raise forms.ValidationError("Saisissez un montant valide.")
+
+    def clean_decouvert_maximum_autorise(self):
+        try:
+            return self._clean_decimal_input(self.data.get(self.add_prefix("decouvert_maximum_autorise"), ""))
+        except Exception:
+            raise forms.ValidationError("Saisissez un montant valide.")
 
 
 class ClientDestinationForm(forms.ModelForm):

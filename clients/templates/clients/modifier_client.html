@@ -199,6 +199,36 @@ addDestinationButton?.addEventListener("click", () => {
     destinationContainer.appendChild(row);
     destinationTotalInput.value = index + 1;
 });
+
+function formatThousandsInputValue(rawValue) {
+    const digits = String(rawValue || "").replace(/\s+/g, "").replace(/[^\d.,]/g, "");
+    if (!digits) {
+        return "";
+    }
+
+    const normalized = digits.replace(/,/g, ".");
+    const parts = normalized.split(".");
+    const integerPart = parts[0].replace(/^0+(?=\d)/, "") || "0";
+    return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function attachThousandsFormatter(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) {
+        return;
+    }
+
+    const applyFormat = () => {
+        input.value = formatThousandsInputValue(input.value);
+    };
+
+    input.addEventListener("input", applyFormat);
+    input.addEventListener("blur", applyFormat);
+    applyFormat();
+}
+
+attachThousandsFormatter("id_solde_initial");
+attachThousandsFormatter("id_decouvert_maximum_autorise");
 </script>
 <style>
 .destination-row {
