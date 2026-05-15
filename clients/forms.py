@@ -16,6 +16,8 @@ class ClientForm(forms.ModelForm):
         required=False,
         label="Commercial responsable",
     )
+    solde_initial = forms.CharField(required=False, label="Solde initial")
+    decouvert_maximum_autorise = forms.CharField(required=False, label="Decouvert maximum autorise")
 
     class Meta:
         model = Client
