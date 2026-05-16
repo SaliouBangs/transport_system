@@ -211,8 +211,15 @@ class EncaissementClientForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        self.fields["commande"].queryset = Commande.objects.select_related("client").order_by("-date_creation")
+        clients_queryset = Client.objects.order_by("entreprise", "nom")
+        commandes_queryset = Commande.objects.select_related("client").order_by("-date_creation")
+        if self.user and get_user_role(self.user) == ROLE_COMMERCIAL and not is_admin_user(self.user):
+            clients_queryset = clients_queryset.filter(commercial=self.user)
+            commandes_queryset = commandes_queryset.filter(client__commercial=self.user)
+        self.fields["client"].queryset = clients_queryset
+        self.fields["commande"].queryset = commandes_queryset
         if self.instance and self.instance.pk and self.instance.client_id:
             self.fields["client_recherche"].initial = self.instance.client.entreprise
         if self.instance and self.instance.pk and self.instance.commande_id:
@@ -262,7 +269,8 @@ class EncaissementClientForm(forms.ModelForm):
         montant = cleaned_data.get("montant")
 
         if not client and client_recherche:
-            client = Client.objects.filter(entreprise__iexact=client_recherche).first()
+            client_queryset = self.fields["client"].queryset
+            client = client_queryset.filter(entreprise__iexact=client_recherche).first()
             if client:
                 cleaned_data["client"] = client
 
@@ -271,7 +279,11 @@ class EncaissementClientForm(forms.ModelForm):
             return cleaned_data
 
         if commande_recherche and not commande:
-            commande = Commande.objects.filter(reference__iexact=commande_recherche, client=cleaned_data["client"]).first()
+            commande_queryset = self.fields["commande"].queryset
+            commande = commande_queryset.filter(
+                reference__iexact=commande_recherche,
+                client=cleaned_data["client"],
+            ).first()
             if commande:
                 cleaned_data["commande"] = commande
 

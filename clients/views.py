@@ -634,6 +634,8 @@ def _build_encaissements_history_context(request):
     commande_query = request.GET.get("commande", "").strip()
 
     encaissements = EncaissementClient.objects.select_related("client", "commande").prefetch_related("allocations__commande").order_by("-date_encaissement", "-id")
+    if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
+        encaissements = encaissements.filter(client__commercial=request.user)
     if query:
         encaissements = encaissements.filter(
             Q(client__entreprise__icontains=query)
@@ -669,11 +671,13 @@ def _build_encaissements_history_context(request):
 def encaissements_clients(request):
     history_context = _build_encaissements_history_context(request)
     clients = Client.objects.order_by("entreprise", "nom")
+    if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
+        clients = clients.filter(commercial=request.user)
     banques = Banque.objects.filter(actif=True).order_by("nom")
     allocation_rows = [{}]
 
     if request.method == "POST":
-        form = EncaissementClientForm(request.POST)
+        form = EncaissementClientForm(request.POST, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -710,7 +714,7 @@ def encaissements_clients(request):
             except ValidationError as exc:
                 form.add_error(None, exc.message if hasattr(exc, "message") else str(exc))
     else:
-        form = EncaissementClientForm()
+        form = EncaissementClientForm(user=request.user)
 
     return render(
         request,
@@ -854,7 +858,10 @@ def commandes_client_infos(request):
     if not client_id:
         return JsonResponse({"success": False, "errors": {"client": ["Client manquant."]}}, status=400)
 
-    client = Client.objects.filter(id=client_id).first()
+    client_queryset = Client.objects.all()
+    if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
+        client_queryset = client_queryset.filter(commercial=request.user)
+    client = client_queryset.filter(id=client_id).first()
     if not client:
         return JsonResponse({"success": False, "errors": {"client": ["Client introuvable."]}}, status=404)
     snapshot = _build_client_snapshot(client, date_debut=date_debut, date_fin=date_fin)

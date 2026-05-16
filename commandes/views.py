@@ -659,7 +659,13 @@ def _build_rapport_global_context(request):
     produit_id = request.GET.get("produit", "").strip()
     affrete_id = request.GET.get("affrete", "").strip()
 
+    user_role = get_user_role(request.user)
+    is_admin = is_admin_user(request.user)
     queryset = _rapport_global_base_queryset()
+    clients_filter_queryset = Client.objects.order_by("entreprise", "nom")
+    if user_role == "commercial" and not is_admin:
+        queryset = queryset.filter(client__commercial=request.user)
+        clients_filter_queryset = clients_filter_queryset.filter(commercial=request.user)
     if query:
         queryset = queryset.filter(
             Q(reference__icontains=query)
@@ -774,7 +780,7 @@ def _build_rapport_global_context(request):
         "client_id": client_id,
         "produit_id": produit_id,
         "affrete_id": affrete_id,
-        "clients_filter": Client.objects.order_by("entreprise", "nom"),
+        "clients_filter": clients_filter_queryset,
         "produits_filter": produits_filter,
         "affretes_filter": affretes_filter,
         "transporteur_filter_label": (
@@ -808,26 +814,27 @@ def rapport_global(request):
 
 
 def detail_rapport_global(request, id):
-    commande = get_object_or_404(
-        Commande.objects.select_related(
-            "client",
-            "client__commercial",
-            "produit",
-            "camion",
-            "chauffeur",
-        ).prefetch_related(
-            Prefetch(
-                "operations",
-                queryset=Operation.objects.select_related("camion", "chauffeur").prefetch_related(
-                    Prefetch(
-                        "depenses_liees",
-                        queryset=Depense.objects.select_related("demandeur").prefetch_related("lignes").order_by("-date_creation"),
-                    )
-                ).order_by("-date_creation"),
-            )
-        ),
-        id=id,
+    commandes_queryset = Commande.objects.select_related(
+        "client",
+        "client__commercial",
+        "produit",
+        "camion",
+        "chauffeur",
+    ).prefetch_related(
+        Prefetch(
+            "operations",
+            queryset=Operation.objects.select_related("camion", "chauffeur").prefetch_related(
+                Prefetch(
+                    "depenses_liees",
+                    queryset=Depense.objects.select_related("demandeur").prefetch_related("lignes").order_by("-date_creation"),
+                )
+            ).order_by("-date_creation"),
+        )
     )
+    if get_user_role(request.user) == "commercial" and not is_admin_user(request.user):
+        commandes_queryset = commandes_queryset.filter(client__commercial=request.user)
+
+    commande = get_object_or_404(commandes_queryset, id=id)
     operations = list(commande.operations.all())
     latest_operation = operations[0] if operations else None
     commande.latest_operation = latest_operation
