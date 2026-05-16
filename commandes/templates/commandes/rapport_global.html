@@ -78,7 +78,14 @@
     <div class="cards rapport-cards">
         <div class="card"><h3>Total commandes</h3><p>{{ stats.total_commandes }}</p></div>
         <div class="card"><h3>Montant filtre</h3><p>{{ stats.total_montant|gnf }}</p></div>
-        <div class="card"><h3>Quantite totale</h3><p>{{ stats.total_quantite|floatformat:0 }} L</p></div>
+        <div class="card rapport-card-quantite">
+            <h3>Quantite totale</h3>
+            <p>{{ stats.total_quantite|floatformat:0 }} L</p>
+            <div class="rapport-card-quantite__details">
+                <span>Essence : {{ stats.total_quantite_essence|floatformat:0 }} L</span>
+                <span>Gasoil : {{ stats.total_quantite_gasoil|floatformat:0 }} L</span>
+            </div>
+        </div>
         <div class="card"><h3>BL crees</h3><p>{{ stats.total_bl }}</p></div>
         <div class="card"><h3>Chargees</h3><p>{{ stats.total_chargees }}</p></div>
         <div class="card"><h3>Livrees</h3><p>{{ stats.total_livrees }}</p></div>
@@ -208,6 +215,15 @@
 .rapport-filter-chip--muted{
     background:#f3f7fb;
     color:#64748b;
+}
+
+.rapport-card-quantite__details{
+    margin-top:8px;
+    display:grid;
+    gap:4px;
+    font-size:0.83rem;
+    color:#5b7084;
+    font-weight:600;
 }
 
 .rapport-search-form input,

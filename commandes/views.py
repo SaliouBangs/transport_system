@@ -686,6 +686,8 @@ def _build_rapport_global_context(request):
     lignes = []
     total_montant = Decimal("0.00")
     total_quantite = Decimal("0.00")
+    total_quantite_essence = Decimal("0.00")
+    total_quantite_gasoil = Decimal("0.00")
     total_livrees = 0
     total_chargees = 0
     total_bl = 0
@@ -748,7 +750,13 @@ def _build_rapport_global_context(request):
                     continue
 
         total_montant += commande.current_valorisation
-        total_quantite += commande.quantite or Decimal("0.00")
+        quantite_commande = commande.quantite or Decimal("0.00")
+        total_quantite += quantite_commande
+        produit_nom = (commande.produit.nom or "").strip().upper() if commande.produit_id and commande.produit else ""
+        if "ESSENCE" in produit_nom:
+            total_quantite_essence += quantite_commande
+        elif "GASOIL" in produit_nom:
+            total_quantite_gasoil += quantite_commande
         if latest_operation:
             total_bl += 1
             if latest_operation.etat_bon == "charge":
@@ -798,6 +806,8 @@ def _build_rapport_global_context(request):
             "total_commandes": len(lignes),
             "total_montant": total_montant,
             "total_quantite": total_quantite,
+            "total_quantite_essence": total_quantite_essence,
+            "total_quantite_gasoil": total_quantite_gasoil,
             "total_bl": total_bl,
             "total_chargees": total_chargees,
             "total_livrees": total_livrees,
