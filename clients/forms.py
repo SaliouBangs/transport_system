@@ -6,7 +6,7 @@ from django.forms import inlineformset_factory
 
 from commandes.models import Commande
 from utilisateurs.constants import ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL
-from utilisateurs.permissions import get_user_role
+from utilisateurs.permissions import get_user_role, is_admin_user
 from .models import Banque, Client, ClientDestinationAdresse, EncaissementClient, total_encaisse_sur_commande
 
 
