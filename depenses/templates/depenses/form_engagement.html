@@ -3,19 +3,41 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <p class="eyebrow">Depenses</p>
-    <h1>Engagement {{ depense.reference }}</h1>
+    <p class="eyebrow">Depenses internes</p>
+    <h1>Saisie achat / prix {{ depense.reference }}</h1>
+    <p class="page-subtitle">Le responsable achat renseigne les lignes, les fournisseurs et la facture avant la validation DGA SOGEFI.</p>
   </div>
 </div>
 
 <div class="form-shell">
   <div class="summary-panel">
-    <h2>Recap de l'expression</h2>
+    <h2>Recap du besoin initial</h2>
     <table class="table summary-table">
       <tr><th>Demandeur</th><td>{{ depense.demandeur.username }}</td></tr>
+      <tr><th>Date d'expression</th><td>{{ depense.date_expression|date:"d/m/Y" }}</td></tr>
       <tr><th>Titre</th><td>{{ depense.titre }}</td></tr>
       <tr><th>Description</th><td>{{ depense.description }}</td></tr>
-      <tr><th>Montant estime</th><td>{{ depense.montant_estime|default:"-" }}</td></tr>
+      <tr><th>Quantite totale demandee</th><td>{{ depense.quantite_totale|floatformat:-2 }}</td></tr>
+    </table>
+  </div>
+
+  <div class="summary-panel" style="margin-top:18px;">
+    <h2>Details transmis a l'achat</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Libelle</th>
+          <th>Quantite</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in depense.lignes.all %}
+        <tr>
+          <td>{{ ligne.designation }}</td>
+          <td>{{ ligne.quantite|floatformat:-2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 
@@ -103,7 +125,7 @@
             <tr class="depense-ligne-row">
               <td><input type="text" name="ligne_designation[]" value="{{ ligne.designation }}" placeholder="Designation"></td>
               <td><input type="number" name="ligne_quantite[]" value="{{ ligne.quantite }}" min="0.01" step="0.01" class="ligne-quantite"></td>
-              <td><input type="number" name="ligne_prix[]" value="{{ ligne.prix_unitaire }}" min="0" step="0.01" class="ligne-prix"></td>
+              <td><input type="text" name="ligne_prix[]" value="{{ ligne.prix_unitaire }}" inputmode="decimal" class="ligne-prix" placeholder="Prix unitaire"></td>
               <td><input type="text" value="{{ ligne.montant }}" class="ligne-montant" readonly></td>
               <td><button type="button" class="btn-delete remove-ligne">Retirer</button></td>
             </tr>
@@ -148,6 +170,7 @@
     </div>
     <form id="type-depense-form" class="app-form">
       {% csrf_token %}
+      <input type="hidden" name="portefeuille" value="interne">
       <div class="field">
         <label for="type-depense-libelle">Libelle</label>
         <input type="text" id="type-depense-libelle" name="libelle">
@@ -287,7 +310,7 @@ function updateDepenseTotals() {
   let totalMontant = 0;
   document.querySelectorAll(".depense-ligne-row").forEach((row) => {
     const quantite = parseFloat(row.querySelector(".ligne-quantite")?.value || "0");
-    const prix = parseFloat(row.querySelector(".ligne-prix")?.value || "0");
+    const prix = parseFormattedPrice(row.querySelector(".ligne-prix")?.value || "0");
     const montant = (isNaN(quantite) ? 0 : quantite) * (isNaN(prix) ? 0 : prix);
     const montantInput = row.querySelector(".ligne-montant");
     if (montantInput) montantInput.value = montant.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -300,9 +323,31 @@ function updateDepenseTotals() {
   if (totalMontantNode) totalMontantNode.textContent = totalMontant.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function parseFormattedPrice(value) {
+  const raw = String(value || "").trim().replace(/\s/g, "").replace(/\u202f/g, "").replace(/,/g, ".");
+  const numeric = parseFloat(raw);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function formatPriceInput(input) {
+  if (!input) return;
+  const numeric = parseFormattedPrice(input.value);
+  input.value = numeric ? numeric.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "";
+}
+
 function bindLigneRow(row) {
-  row.querySelectorAll(".ligne-quantite, .ligne-prix").forEach((input) => {
+  row.querySelectorAll(".ligne-quantite").forEach((input) => {
     input.addEventListener("input", updateDepenseTotals);
+  });
+  row.querySelectorAll(".ligne-prix").forEach((input) => {
+    input.addEventListener("input", () => {
+      formatPriceInput(input);
+      updateDepenseTotals();
+    });
+    input.addEventListener("blur", () => {
+      formatPriceInput(input);
+      updateDepenseTotals();
+    });
   });
   row.querySelector(".remove-ligne")?.addEventListener("click", () => {
     const body = document.getElementById("depense-lignes-body");
@@ -322,13 +367,20 @@ document.getElementById("add-ligne-button")?.addEventListener("click", () => {
   row.innerHTML = `
     <td><input type="text" name="ligne_designation[]" placeholder="Designation"></td>
     <td><input type="number" name="ligne_quantite[]" value="1" min="0.01" step="0.01" class="ligne-quantite"></td>
-    <td><input type="number" name="ligne_prix[]" value="0" min="0" step="0.01" class="ligne-prix"></td>
+    <td><input type="text" name="ligne_prix[]" value="" inputmode="decimal" class="ligne-prix" placeholder="Prix unitaire"></td>
     <td><input type="text" value="0" class="ligne-montant" readonly></td>
     <td><button type="button" class="btn-delete remove-ligne">Retirer</button></td>
   `;
   body.appendChild(row);
   bindLigneRow(row);
   updateDepenseTotals();
+});
+
+document.querySelectorAll(".ligne-prix").forEach((input) => formatPriceInput(input));
+document.querySelector("form.app-form")?.addEventListener("submit", () => {
+  document.querySelectorAll(".ligne-prix").forEach((input) => {
+    input.value = String(parseFormattedPrice(input.value));
+  });
 });
 
 updateDepenseTotals();

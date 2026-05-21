@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Caisse</p>
+<h1>Situation de caisse</h1>
+<p class="page-subtitle">Lecture chronologique des approvisionnements et des sorties reellement saisies par la caissiere.</p>
+</div>
+<div class="table-actions">
+<button type="button" class="btn-secondary" onclick="window.print()">Imprimer l'etat</button>
+</div>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+{% if user_role != "caissiere" %}
+<select name="caissiere" style="min-width:220px; height:52px;">
+    {% for caissiere in caissieres %}
+    <option value="{{ caissiere.id }}" {% if selected_caissiere and caissiere.id == selected_caissiere.id %}selected{% endif %}>
+        {{ caissiere.get_full_name|default:caissiere.username }}
+    </option>
+    {% endfor %}
+</select>
+{% endif %}
+<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;">
+<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;">
+<button type="submit" class="btn">Afficher</button>
+<a href="/maintenance/caisse/situation/" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<div class="report-kpis">
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Approvisionnements</span>
+    <strong class="report-kpi-value">{{ total_appro }} GNF</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Sorties maintenance</span>
+    <strong class="report-kpi-value">{{ total_sorties_maintenance }} GNF</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Sorties depenses</span>
+    <strong class="report-kpi-value">{{ total_sorties_depenses }} GNF</strong>
+</div>
+<div class="report-kpi-card report-kpi-card-accent">
+    <span class="report-kpi-label">Solde caisse</span>
+    <strong class="report-kpi-value">{{ solde_caisse }} GNF</strong>
+</div>
+</div>
+
+<section class="dashboard-section" style="margin-top:18px;">
+  <div class="dashboard-section-header">
+    <div>
+      <p class="eyebrow" style="margin-bottom:8px;">Etat de caisse</p>
+      <h2 class="dashboard-section-title">
+        {% if selected_caissiere %}
+          {{ selected_caissiere.get_full_name|default:selected_caissiere.username }}
+        {% else %}
+          Caissiere
+        {% endif %}
+      </h2>
+    </div>
+  </div>
+  <div class="dashboard-table-wrap">
+    <table class="table report-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Reference</th>
+          <th>Designation</th>
+          <th>Detail</th>
+          <th>Entree</th>
+          <th>Sortie</th>
+          <th>Solde</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mouvement in mouvements %}
+        <tr>
+          <td>{{ mouvement.date|date:"d/m/Y" }}</td>
+          <td>{{ mouvement.type }}</td>
+          <td>{{ mouvement.reference }}</td>
+          <td>{{ mouvement.designation }}</td>
+          <td>{{ mouvement.detail }}</td>
+          <td class="money-cell">{% if mouvement.entree %}{{ mouvement.entree_display }} GNF{% else %}-{% endif %}</td>
+          <td class="money-cell">{% if mouvement.sortie %}{{ mouvement.sortie_display }} GNF{% else %}-{% endif %}</td>
+          <td class="money-cell money-balance">{{ mouvement.solde_display }} GNF</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">Aucun mouvement de caisse sur cette periode.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+.page-subtitle {
+    margin: 4px 0 0;
+    color: #5f7384;
+    max-width: 760px;
+}
+
+.report-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.report-kpi-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(191, 216, 236, 0.9);
+    box-shadow: 0 10px 24px rgba(18, 48, 71, 0.06);
+    display: grid;
+    gap: 6px;
+}
+
+.report-kpi-card-accent {
+    background: linear-gradient(180deg, rgba(18,48,71,0.96), rgba(34,92,128,0.96));
+    border-color: rgba(18,48,71,0.96);
+}
+
+.report-kpi-card-accent .report-kpi-label,
+.report-kpi-card-accent .report-kpi-value {
+    color: #f7fbff;
+}
+
+.report-kpi-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6a7f92;
+    font-weight: 700;
+}
+
+.report-kpi-value {
+    font-size: 1.35rem;
+    line-height: 1.15;
+    color: #123047;
+    font-weight: 800;
+}
+
+.money-cell {
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.money-balance {
+    color: #123047;
+}
+
+@media (max-width: 1100px) {
+    .report-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .report-kpis {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

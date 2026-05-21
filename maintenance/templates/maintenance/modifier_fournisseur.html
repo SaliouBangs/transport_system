@@ -2,11 +2,13 @@
 
 {% block content %}
 
+{% if fournisseur_portefeuille != "interne" %}
 {% include "maintenance/_tabs.html" %}
+{% endif %}
 
 <div class="page-header">
 <div>
-<p class="eyebrow">Entretien flotte</p>
+<p class="eyebrow">{% if fournisseur_portefeuille == "interne" %}Depenses internes{% else %}Entretien flotte{% endif %}</p>
 <h1>Modifier fournisseur</h1>
 </div>
 <div class="table-actions">

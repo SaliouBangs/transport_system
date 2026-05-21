@@ -3,6 +3,7 @@ from decimal import Decimal
 from urllib.parse import quote_plus
 
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.shortcuts import redirect, render
@@ -14,7 +15,7 @@ from clients.models import Client
 from clients.models import EncaissementClient
 from commandes.models import Commande
 from depenses.models import Depense
-from maintenance.models import AlerteFactureResolue, ArticleStock, Maintenance, MouvementStock
+from maintenance.models import AlerteFactureResolue, ApprovisionnementCaisse, ArticleStock, Maintenance, MouvementStock, SoldeInitialCaisse
 from operations.models import Operation
 from prospects.models import Prospect
 from utilisateurs.permissions import get_user_role, role_required
@@ -111,12 +112,182 @@ def dashboard(request):
     depenses_attente_chargement_dg = Depense.objects.filter(
         statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG
     ).count()
+    depenses_attente_cheque = Depense.objects.filter(
+        statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE
+    ).count()
     depenses_attente_paiement = Depense.objects.filter(
+        statut__in=[
+            Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+            Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+            ]
+        ).count()
+    depenses_internes_queryset = Depense.objects.filter(source_depense=Depense.SOURCE_GENERALE).select_related(
+        "demandeur",
+        "fournisseur",
+        "validation_dga_par",
+        "validation_dg_par",
+    )
+    depenses_internes_total = depenses_internes_queryset.count()
+    depenses_internes_attente_achat = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_ATTENTE_ENGAGEMENT
+    ).count()
+    depenses_internes_attente_dga = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_ATTENTE_VALIDATION_DGA
+    ).count()
+    depenses_internes_attente_dg = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_ATTENTE_VALIDATION_DG
+    ).count()
+    depenses_internes_attente_paiement = depenses_internes_queryset.filter(
         statut__in=[
             Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
             Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
         ]
     ).count()
+    depenses_internes_attente_caisse = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE
+    ).count()
+    depenses_internes_attente_comptable = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE
+    ).count()
+    depenses_internes_payees = depenses_internes_queryset.filter(
+        statut=Depense.STATUT_PAYEE
+    ).count()
+    depenses_internes_montant_total = (
+        depenses_internes_queryset.aggregate(total=Sum("montant_engage")).get("total")
+        or Decimal("0.00")
+    )
+    depenses_internes_montant_en_attente = (
+        depenses_internes_queryset.filter(
+            statut__in=[
+                Depense.STATUT_ATTENTE_VALIDATION_DGA,
+                Depense.STATUT_ATTENTE_VALIDATION_DG,
+                Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+            ]
+        ).aggregate(total=Sum("montant_engage")).get("total")
+        or Decimal("0.00")
+    )
+    depenses_internes_recentes = list(
+        depenses_internes_queryset.order_by("-date_creation", "-id")[:6]
+    )
+    caissiere_user_ids = list(
+        User.objects.filter(groups__name="caissiere", is_active=True).values_list("id", flat=True).distinct()
+    )
+    caisse_solde_initial_total = SoldeInitialCaisse.objects.aggregate(total=Sum("montant_initial")).get("total") or Decimal("0.00")
+    caisse_appro_total = ApprovisionnementCaisse.objects.filter(
+        nature_approvisionnement__in=[
+            ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            ApprovisionnementCaisse.NATURE_CHEQUE_DIRECT,
+        ]
+    ).aggregate(total=Sum("montant")).get("total") or Decimal("0.00")
+    caisse_sorties_maintenance_total = (
+        Maintenance.objects.filter(statut="payee", paiement_saisi_par_id__in=caissiere_user_ids)
+        .aggregate(total=Sum("total_facture"))
+        .get("total")
+        or Decimal("0.00")
+    )
+    caisse_sorties_depenses_total = (
+        Depense.objects.filter(
+            statut=Depense.STATUT_PAYEE,
+            mode_reglement=Depense.MODE_ESPECE,
+            paiement_saisi_par_id__in=caissiere_user_ids,
+        )
+        .aggregate(total=Sum("montant_engage"))
+        .get("total")
+        or Decimal("0.00")
+    )
+    dg_total_avances = (
+        ApprovisionnementCaisse.objects.filter(
+            nature_approvisionnement=ApprovisionnementCaisse.NATURE_URGENCE_DG
+        ).aggregate(total=Sum("montant")).get("total")
+        or Decimal("0.00")
+    )
+    dg_total_remboursements = (
+        ApprovisionnementCaisse.objects.filter(
+            nature_approvisionnement=ApprovisionnementCaisse.NATURE_RETRAIT_REMBOURSEMENT
+        ).aggregate(total=Sum("montant")).get("total")
+        or Decimal("0.00")
+    )
+    dg_solde_total = dg_total_avances - dg_total_remboursements
+    caisse_solde_global = caisse_solde_initial_total + caisse_appro_total - caisse_sorties_maintenance_total - caisse_sorties_depenses_total
+    caisse_appro_count = ApprovisionnementCaisse.objects.count()
+    caisse_recent_appros = list(
+        ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par").order_by("-date_approvisionnement", "-id")[:6]
+    )
+    caisse_recent_mouvements = []
+    if user_role == "caissiere":
+        caissiere_user_ids = [request.user.id]
+        caisse_solde_initial_total = (
+            SoldeInitialCaisse.objects.filter(caissiere=request.user).aggregate(total=Sum("montant_initial")).get("total")
+            or Decimal("0.00")
+        )
+        caisse_appro_total = (
+            ApprovisionnementCaisse.objects.filter(
+                caissiere=request.user,
+                nature_approvisionnement__in=[
+                    ApprovisionnementCaisse.NATURE_URGENCE_DG,
+                    ApprovisionnementCaisse.NATURE_CHEQUE_DIRECT,
+                ],
+            ).aggregate(total=Sum("montant")).get("total")
+            or Decimal("0.00")
+        )
+        caisse_sorties_maintenance_total = (
+            Maintenance.objects.filter(statut="payee", paiement_saisi_par=request.user)
+            .aggregate(total=Sum("total_facture"))
+            .get("total")
+            or Decimal("0.00")
+        )
+        caisse_sorties_depenses_total = (
+            Depense.objects.filter(
+                statut=Depense.STATUT_PAYEE,
+                mode_reglement=Depense.MODE_ESPECE,
+                paiement_saisi_par=request.user,
+            )
+            .aggregate(total=Sum("montant_engage"))
+            .get("total")
+            or Decimal("0.00")
+        )
+        caisse_solde_global = caisse_solde_initial_total + caisse_appro_total - caisse_sorties_maintenance_total - caisse_sorties_depenses_total
+        caisse_recent_appros = list(
+            ApprovisionnementCaisse.objects.filter(caissiere=request.user)
+            .select_related("caissiere", "saisi_par")
+            .order_by("-date_approvisionnement", "-id")[:6]
+        )
+    if user_role in {"caissiere", "comptable_sogefi"}:
+        maintenance_caisse_qs = Maintenance.objects.filter(
+            statut="payee",
+            paiement_saisi_par_id__in=caissiere_user_ids,
+        ).order_by("-date_paiement", "-id")[:4]
+        depenses_caisse_qs = Depense.objects.filter(
+            statut=Depense.STATUT_PAYEE,
+            mode_reglement=Depense.MODE_ESPECE,
+            paiement_saisi_par_id__in=caissiere_user_ids,
+        ).select_related("operation").order_by("-date_paiement", "-id")[:4]
+        for maintenance in maintenance_caisse_qs:
+            caisse_recent_mouvements.append(
+                {
+                    "date": maintenance.date_paiement,
+                    "type": "Maintenance",
+                    "reference": maintenance.reference,
+                    "designation": maintenance.camion.numero_tracteur,
+                    "montant": maintenance.total_facture or Decimal("0.00"),
+                }
+            )
+        for depense in depenses_caisse_qs:
+            caisse_recent_mouvements.append(
+                {
+                    "date": depense.date_paiement,
+                    "type": "Depense BL" if depense.source_depense == Depense.SOURCE_CHARGEMENT else "Autre depense",
+                    "reference": depense.reference,
+                    "designation": depense.libelle_depense or depense.titre,
+                    "montant": depense.montant_total,
+                }
+            )
+        caisse_recent_mouvements.sort(
+            key=lambda item: (item["date"] or today, item["reference"]),
+            reverse=True,
+        )
+        caisse_recent_mouvements = caisse_recent_mouvements[:6]
     commercial_clients_queryset = Client.objects.select_related("commercial").order_by("entreprise")
     commercial_prospects_queryset = Prospect.objects.select_related("commercial").order_by("entreprise")
     commercial_commandes_queryset = Commande.objects.select_related("client", "produit").order_by("-date_creation")
@@ -514,23 +685,19 @@ def dashboard(request):
                 "danger",
             )
     elif user_role == "caissiere":
-        paiements_en_attente = Maintenance.objects.filter(statut="attente_paiement").count()
-        if paiements_en_attente:
+        maintenances_espece = Maintenance.objects.filter(
+            statut="attente_paiement",
+            mode_paiement=Maintenance.MODE_ESPECE,
+        ).count()
+        depenses_espece = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE).count()
+        total_paiements_caisse = maintenances_espece + depenses_espece
+        if total_paiements_caisse:
             add_alert(
-                "Paiements a enregistrer",
-                f"{paiements_en_attente} fiche(s) de maintenance attendent un paiement.",
+                "Paiements a traiter",
+                f"{total_paiements_caisse} paiement(s) attendent votre traitement en caisse ({maintenances_espece} maintenance, {depenses_espece} depense).",
                 "Ouvrir les paiements",
                 "/maintenance/paiements/",
                 "ok",
-            )
-        depenses_espece = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE).count()
-        if depenses_espece:
-            add_alert(
-                "Depenses a regler en espece",
-                f"{depenses_espece} depense(s) attendent votre paiement en caisse.",
-                "Ouvrir les depenses",
-                "/depenses/?statut=attente_paiement_caissiere",
-                "warning",
             )
     elif user_role == "comptable":
         commandes_a_transformer = Commande.objects.filter(statut="planifiee").exclude(operations__isnull=False).count()
@@ -554,13 +721,18 @@ def dashboard(request):
                 "warning",
             )
     elif user_role == "comptable_sogefi":
+        maintenances_cheque = Maintenance.objects.filter(
+            statut="attente_paiement",
+            mode_paiement=Maintenance.MODE_CHEQUE,
+        ).count()
         depenses_cheque = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE).count()
-        if depenses_cheque:
+        total_paiements_cheque = maintenances_cheque + depenses_cheque
+        if total_paiements_cheque:
             add_alert(
-                "Cheques a traiter",
-                f"{depenses_cheque} depense(s) attendent le traitement comptable par cheque.",
-                "Ouvrir les depenses",
-                "/depenses/?statut=attente_paiement_comptable",
+                "Paiements par cheque a traiter",
+                f"{total_paiements_cheque} paiement(s) attendent votre traitement comptable ({maintenances_cheque} maintenance, {depenses_cheque} depense).",
+                "Ouvrir les paiements",
+                "/maintenance/paiements/",
                 "warning",
             )
     elif user_role == "responsable_achat":
@@ -574,20 +746,11 @@ def dashboard(request):
                 "warning",
             )
     elif user_role == "dga_sogefi":
-        expressions = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION).count()
         engagements_dga = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_DGA).count()
-        if expressions:
-            add_alert(
-                "Expressions a valider",
-                f"{expressions} expression(s) de besoin attendent votre decision.",
-                "Ouvrir les depenses",
-                "/depenses/?statut=attente_validation_expression",
-                "danger",
-            )
         if engagements_dga:
             add_alert(
                 "Engagements a valider",
-                f"{engagements_dga} engagement(s) de depenses attendent votre validation DGA SOGEFI.",
+                f"{engagements_dga} depense(s) internes attendent votre validation DGA SOGEFI apres la saisie achat / prix.",
                 "Ouvrir les depenses",
                 "/depenses/?statut=attente_validation_dga_engagement",
                 "warning",
@@ -809,7 +972,30 @@ def dashboard(request):
         "commandes_planifiees": commandes_planifiees,
         "depenses_attente_chargement_dga": depenses_attente_chargement_dga,
         "depenses_attente_chargement_dg": depenses_attente_chargement_dg,
+        "depenses_attente_cheque": depenses_attente_cheque,
         "depenses_attente_paiement": depenses_attente_paiement,
+        "depenses_internes_total": depenses_internes_total,
+        "depenses_internes_attente_achat": depenses_internes_attente_achat,
+        "depenses_internes_attente_dga": depenses_internes_attente_dga,
+        "depenses_internes_attente_dg": depenses_internes_attente_dg,
+        "depenses_internes_attente_paiement": depenses_internes_attente_paiement,
+        "depenses_internes_attente_caisse": depenses_internes_attente_caisse,
+        "depenses_internes_attente_comptable": depenses_internes_attente_comptable,
+        "depenses_internes_payees": depenses_internes_payees,
+        "depenses_internes_montant_total": depenses_internes_montant_total,
+        "depenses_internes_montant_en_attente": depenses_internes_montant_en_attente,
+        "depenses_internes_recentes": depenses_internes_recentes,
+        "caisse_solde_initial_total": caisse_solde_initial_total,
+        "caisse_appro_total": caisse_appro_total,
+        "caisse_sorties_maintenance_total": caisse_sorties_maintenance_total,
+        "caisse_sorties_depenses_total": caisse_sorties_depenses_total,
+        "caisse_solde_global": caisse_solde_global,
+        "caisse_appro_count": caisse_appro_count,
+        "caisse_recent_appros": caisse_recent_appros,
+        "caisse_recent_mouvements": caisse_recent_mouvements,
+        "dg_total_avances": dg_total_avances,
+        "dg_total_remboursements": dg_total_remboursements,
+        "dg_solde_total": dg_solde_total,
         "dernieres_operations": dernieres_operations,
         "alertes_operations": alertes_operations,
         "top_clients": top_clients,

@@ -234,18 +234,22 @@ def _build_client_snapshot(client, date_debut=None, date_fin=None):
         if est_risque_potentiel:
             risque_potentiel += montant_commande
 
-        if est_facturee and latest_operation and latest_operation.date_bon_retour and solde <= Decimal("0.00"):
-            etat_affiche = "Livree / retournee / soldee"
-        elif est_facturee and latest_operation and latest_operation.date_bon_retour:
-            etat_affiche = "Livree / retournee"
-        elif est_facturee and latest_operation and (latest_operation.numero_facture or latest_operation.date_facture) and solde <= Decimal("0.00"):
-            etat_affiche = "Livree / facturee / soldee"
-        elif est_facturee and latest_operation and (latest_operation.numero_facture or latest_operation.date_facture):
-            etat_affiche = "Livree / facturee"
+        est_soldee = solde <= Decimal("0.00") and total_paye > Decimal("0.00")
+        est_operation_facturee = bool(latest_operation and (latest_operation.numero_facture or latest_operation.date_facture))
+        if latest_operation and latest_operation.date_bon_retour:
+            etat_affiche = "Livree / retournee / payee / soldee" if est_soldee else "Livree / retournee / facturee" if est_operation_facturee else "Livree / retournee"
+        elif latest_operation and latest_operation.etat_bon == "livre":
+            etat_affiche = "Livree / payee / soldee" if est_soldee else "Livree / facturee" if est_operation_facturee else "Livree"
+        elif latest_operation and latest_operation.etat_bon == "charge":
+            etat_affiche = "Chargee / payee / soldee" if est_soldee else "Chargee / facturee" if est_operation_facturee else "Chargee"
+        elif latest_operation and latest_operation.etat_bon == "liquide":
+            etat_affiche = "Liquidee / payee / soldee" if est_soldee else "Liquidee / facturee" if est_operation_facturee else "Liquidee"
+        elif latest_operation and latest_operation.etat_bon == "declare":
+            etat_affiche = "Declaree / payee / soldee" if est_soldee else "Declaree / facturee" if est_operation_facturee else "Declaree"
+        elif est_operation_facturee:
+            etat_affiche = "Facturee / payee / soldee" if est_soldee else "Facturee"
         elif est_facturee:
             etat_affiche = "Livree"
-        elif latest_operation and latest_operation.etat_bon == "charge":
-            etat_affiche = "Chargee"
         else:
             etat_affiche = commande.get_statut_display()
 
@@ -259,7 +263,7 @@ def _build_client_snapshot(client, date_debut=None, date_fin=None):
                 "solde": str(solde),
                 "statut": commande.get_statut_display(),
                 "etat_affiche": etat_affiche,
-                "soldee": solde <= Decimal("0.00") and total_paye > Decimal("0.00"),
+                "soldee": est_soldee,
                 "livree": est_facturee,
                 "paiement_type": dernier_reglement.get_type_encaissement_display() if dernier_reglement else "",
                 "paiement_mode": dernier_reglement.get_mode_paiement_display() if dernier_reglement else "",

@@ -3,9 +3,10 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
+from clients.models import Banque
 from maintenance.models import Fournisseur
 
-from .models import Depense, LieuProjet, TypeDepense
+from .models import Depense, LieuProjet, TypeDepense, TypePieceIdentite
 
 
 def _is_carburant_label(label):
@@ -16,13 +17,31 @@ def _is_carburant_label(label):
 CARBURANT_PRIX_UNITAIRE = Decimal("12000")
 
 
+def _types_depense_queryset(portefeuille):
+    return TypeDepense.objects.filter(portefeuille=portefeuille).order_by("libelle")
+
+
+def _fournisseurs_queryset(portefeuille):
+    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
+
+
 class DepenseExpressionForm(forms.ModelForm):
+    date_expression = forms.DateField(
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
     class Meta:
         model = Depense
-        fields = ["titre", "description", "montant_estime"]
+        fields = ["titre", "date_expression", "description"]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk or not self.instance.date_expression:
+            self.initial["date_expression"] = timezone.localdate().isoformat()
 
 
 class DepenseChargementForm(forms.ModelForm):
@@ -47,7 +66,7 @@ class DepenseChargementForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.type_depenses = list(TypeDepense.objects.order_by("libelle"))
+        self.type_depenses = list(_types_depense_queryset(TypeDepense.PORTEFEUILLE_LOGISTIQUE))
         for item in self.type_depenses:
             item.montant_defaut_input = format(item.montant_defaut or 0, "f")
             item.is_carburant_type_input = "true" if item.is_carburant_type else "false"
@@ -61,7 +80,7 @@ class DepenseChargementForm(forms.ModelForm):
         type_depense = cleaned_data.get("type_depense")
         type_search = (cleaned_data.get("type_depense_search") or "").strip()
         if not type_depense and type_search:
-            type_depense = TypeDepense.objects.filter(libelle__iexact=type_search).first()
+            type_depense = _types_depense_queryset(TypeDepense.PORTEFEUILLE_LOGISTIQUE).filter(libelle__iexact=type_search).first()
             if type_depense:
                 cleaned_data["type_depense"] = type_depense
         if cleaned_data.get("type_depense") and cleaned_data.get("montant_estime") in (None, ""):
@@ -80,6 +99,21 @@ class TypeDepenseForm(forms.ModelForm):
     class Meta:
         model = TypeDepense
         fields = ["libelle", "montant_defaut"]
+
+    def __init__(self, *args, portefeuille=None, **kwargs):
+        self.portefeuille = portefeuille or TypeDepense.PORTEFEUILLE_LOGISTIQUE
+        super().__init__(*args, **kwargs)
+        self.fields["montant_defaut"].required = False
+        self.fields["montant_defaut"].initial = self.initial.get("montant_defaut", 0)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.portefeuille = self.portefeuille
+        if instance.montant_defaut in (None, ""):
+            instance.montant_defaut = Decimal("0")
+        if commit:
+            instance.save()
+        return instance
 
 
 class LieuProjetForm(forms.ModelForm):
@@ -114,9 +148,9 @@ class DepenseEngagementForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.type_depenses = list(TypeDepense.objects.order_by("libelle"))
+        self.type_depenses = list(_types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE))
         self.lieux_projets = list(LieuProjet.objects.order_by("libelle"))
-        self.fournisseurs = list(Fournisseur.objects.order_by("nom_fournisseur", "entreprise"))
+        self.fournisseurs = list(_fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE))
         if self.instance.pk and self.instance.fournisseur_id:
             self.fields["fournisseur_search"].initial = str(self.instance.fournisseur)
         if self.instance.pk and self.instance.type_depense_id:
@@ -129,7 +163,7 @@ class DepenseEngagementForm(forms.ModelForm):
         type_depense = cleaned_data.get("type_depense")
         type_search = (cleaned_data.get("type_depense_search") or "").strip()
         if not type_depense and type_search:
-            type_depense = TypeDepense.objects.filter(libelle__iexact=type_search).first()
+            type_depense = _types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE).filter(libelle__iexact=type_search).first()
             if type_depense:
                 cleaned_data["type_depense"] = type_depense
 
@@ -148,9 +182,9 @@ class DepenseEngagementForm(forms.ModelForm):
         search = (cleaned_data.get("fournisseur_search") or "").strip()
         if not fournisseur and search:
             fournisseur = (
-                Fournisseur.objects.filter(nom_fournisseur__iexact=search).first()
-                or Fournisseur.objects.filter(entreprise__iexact=search).first()
-                or Fournisseur.objects.filter(numero_telephone__iexact=search).first()
+                _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(nom_fournisseur__iexact=search).first()
+                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(entreprise__iexact=search).first()
+                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(numero_telephone__iexact=search).first()
             )
             if fournisseur:
                 cleaned_data["fournisseur"] = fournisseur
@@ -161,6 +195,12 @@ class DepenseEngagementForm(forms.ModelForm):
         if not cleaned_data.get("fournisseur"):
             self.add_error("fournisseur_search", "Selectionnez ou ajoutez un fournisseur.")
         return cleaned_data
+
+
+class TypePieceIdentiteForm(forms.ModelForm):
+    class Meta:
+        model = TypePieceIdentite
+        fields = ["libelle"]
 
 
 class DepenseDecisionExpressionForm(forms.Form):
@@ -185,24 +225,32 @@ class DepenseDecisionEngagementForm(forms.Form):
 
 
 class DepensePaiementForm(forms.ModelForm):
+    date_paiement = forms.DateField(
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    date_cheque = forms.DateField(
+        required=False,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
     class Meta:
         model = Depense
         fields = [
             "date_paiement",
-            "reference_paiement",
-            "mode_paiement_effectif",
             "date_cheque",
             "numero_cheque",
             "banque_cheque",
             "beneficiaire_cheque",
+            "type_piece_identite",
+            "numero_piece_identite",
             "receveur_nom",
             "receveur_fonction",
             "receveur_telephone",
             "paiement_observation",
         ]
         widgets = {
-            "date_paiement": forms.DateInput(attrs={"type": "date"}),
-            "date_cheque": forms.DateInput(attrs={"type": "date"}),
             "paiement_observation": forms.Textarea(attrs={"rows": 4}),
         }
 
@@ -210,11 +258,34 @@ class DepensePaiementForm(forms.ModelForm):
         self.depense = kwargs.get("instance")
         super().__init__(*args, **kwargs)
         if not self.instance.pk or not self.instance.date_paiement:
-            self.fields["date_paiement"].initial = timezone.localdate()
+            self.initial["date_paiement"] = timezone.localdate().isoformat()
+        if not self.instance.pk or not self.instance.date_cheque:
+            self.initial["date_cheque"] = timezone.localdate().isoformat()
         self.fields["date_paiement"].required = True
+        self.fields["banque_cheque"].required = False
+        self.fields["banque_cheque"].widget.attrs.update(
+            {
+                "list": "banques-paiement-list",
+                "placeholder": "Selectionnez ou ajoutez une banque",
+                "autocomplete": "off",
+            }
+        )
+        self.fields["type_piece_identite"].queryset = TypePieceIdentite.objects.order_by("libelle")
         if self.depense and self.depense.mode_reglement == Depense.MODE_ESPECE:
-            for field_name in ["date_cheque", "numero_cheque", "banque_cheque", "beneficiaire_cheque"]:
+            for field_name in [
+                "date_cheque",
+                "numero_cheque",
+                "banque_cheque",
+                "beneficiaire_cheque",
+                "type_piece_identite",
+                "numero_piece_identite",
+            ]:
                 self.fields[field_name].required = False
         else:
-            for field_name in ["date_cheque", "numero_cheque", "banque_cheque"]:
+            for field_name in ["date_cheque", "numero_cheque", "banque_cheque", "type_piece_identite", "numero_piece_identite"]:
                 self.fields[field_name].required = True
+            self.fields["receveur_nom"].required = True
+
+    @property
+    def banques(self):
+        return Banque.objects.filter(actif=True).order_by("nom")

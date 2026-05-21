@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="report-hero">
+<div class="report-hero-main">
+<p class="eyebrow">Caisse</p>
+<h1>Rapport unifie des paiements</h1>
+<p class="report-hero-subtitle">Synthese des paiements maintenance et depenses enregistres par la caissiere, avec lecture rapide des volumes et des montants.</p>
+</div>
+<div class="table-actions">
+<button type="button" class="btn-secondary" onclick="window.print()">Imprimer le rapport</button>
+</div>
+</div>
+
+<form method="get" class="search-form" id="rapport-caisse-search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher reference, camion, BL, fournisseur, facture ou beneficiaire" autocomplete="off" spellcheck="false">
+<input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
+<input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
+<select name="type_depense" style="min-width:190px; height:52px;" data-live-change>
+    <option value="">Tous les paiements</option>
+    <option value="maintenance" {% if filter_values.type_depense == "maintenance" %}selected{% endif %}>Maintenance</option>
+    <option value="bl" {% if filter_values.type_depense == "bl" %}selected{% endif %}>Depense BL</option>
+    <option value="generale" {% if filter_values.type_depense == "generale" %}selected{% endif %}>Autre depense</option>
+</select>
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/rapports/" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<div class="report-kpis">
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Total paiements</span>
+    <strong class="report-kpi-value">{{ total_paiements }}</strong>
+</div>
+<div class="report-kpi-card report-kpi-card-wide">
+    <span class="report-kpi-label">Montant total</span>
+    <strong class="report-kpi-value">{{ total_montant }} GNF</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Maintenances</span>
+    <strong class="report-kpi-value">{{ total_maintenance }}</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Depenses BL</span>
+    <strong class="report-kpi-value">{{ total_depenses_bl }}</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Autres depenses</span>
+    <strong class="report-kpi-value">{{ total_depenses_generales }}</strong>
+</div>
+</div>
+
+<div class="card report-card" style="text-align:left;">
+<h3>Liste de tous les paiements saisis en caisse</h3>
+<p style="color:#5f7384; margin-bottom:16px;">Ce rapport regroupe en un seul tableau les paiements maintenance et les paiements de depenses saisis par la caissiere.</p>
+<table class="table report-table" style="margin-top:16px;">
+<thead>
+<tr>
+<th>Date</th>
+<th>Type</th>
+<th>Reference</th>
+<th>Designation</th>
+<th>Detail</th>
+<th>Beneficiaire</th>
+<th>Mode</th>
+<th>Montant</th>
+</tr>
+</thead>
+<tbody>
+{% for row in payment_rows %}
+<tr>
+<td>{% if row.date_paiement %}{{ row.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+<td>{{ row.famille }}</td>
+<td>{{ row.reference }}</td>
+<td>
+    <div class="payment-designation">
+        {% if row.designation_lines %}
+            {% for item in row.designation_lines %}
+            <div class="{% if forloop.first %}payment-designation-title{% else %}payment-designation-line{% endif %}">
+                {{ item }}
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="payment-designation-title">{{ row.designation }}</div>
+        {% endif %}
+    </div>
+</td>
+<td>
+    <div class="payment-detail">
+        {% for section in row.detail_sections %}
+        <div class="payment-detail-section">
+            <div class="payment-detail-label">{{ section.label }}:</div>
+            {% for item in section.items %}
+            <div class="payment-detail-line">{{ item }}</div>
+            {% endfor %}
+        </div>
+        {% empty %}
+        <div class="payment-detail-line">Aucun detail complementaire.</div>
+        {% endfor %}
+    </div>
+</td>
+<td class="payment-beneficiary">{{ row.beneficiaire }}</td>
+<td class="payment-mode">{{ row.mode_paiement }}</td>
+<td class="payment-amount">{{ row.montant_display }} GNF</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucun paiement de caisse sur cette selection.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<style>
+.report-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(244,249,252,0.96));
+    border: 1px solid rgba(188, 210, 226, 0.8);
+    box-shadow: 0 12px 28px rgba(18, 48, 71, 0.08);
+}
+
+.report-hero-main h1 {
+    margin: 2px 0 6px 0;
+    font-size: 2rem;
+    line-height: 1.1;
+}
+
+.report-hero-subtitle {
+    margin: 0;
+    max-width: 760px;
+    color: #5f7384;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.report-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.report-kpi-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(191, 216, 236, 0.9);
+    box-shadow: 0 10px 24px rgba(18, 48, 71, 0.06);
+    display: grid;
+    gap: 6px;
+}
+
+.report-kpi-card-wide {
+    grid-column: span 1;
+}
+
+.report-kpi-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6a7f92;
+    font-weight: 700;
+}
+
+.report-kpi-value {
+    font-size: 1.7rem;
+    line-height: 1.1;
+    color: #123047;
+    font-weight: 800;
+}
+
+.report-table td {
+    vertical-align: top;
+}
+
+.payment-designation {
+    display: grid;
+    gap: 6px;
+}
+
+.payment-designation-title {
+    font-weight: 700;
+    color: #123047;
+}
+
+.payment-designation-line {
+    color: #4f6476;
+}
+
+.payment-detail {
+    display: grid;
+    gap: 8px;
+    min-width: 360px;
+}
+
+.payment-detail-section {
+    display: grid;
+    gap: 3px;
+}
+
+.payment-detail-label {
+    color: #123047;
+    font-weight: 700;
+}
+
+.payment-detail-line {
+    color: #123047;
+    line-height: 1.45;
+}
+
+.payment-piece,
+.payment-beneficiary,
+.payment-mode,
+.payment-amount {
+    white-space: nowrap;
+}
+
+.payment-amount {
+    font-weight: 800;
+    color: #123047;
+}
+
+@media (max-width: 1100px) {
+    .report-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .report-hero {
+        flex-direction: column;
+    }
+
+    .report-hero-main h1 {
+        font-size: 1.65rem;
+    }
+
+    .report-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media print {
+    .page-header .table-actions,
+    .report-hero,
+    .search-form,
+    .subtabs,
+    .topbar,
+    .sidebar,
+    .mobile-menu-button,
+    .sidebar-overlay {
+        display:none !important;
+    }
+    .main-content,
+    .content-shell,
+    .report-card {
+        margin:0 !important;
+        padding:0 !important;
+        box-shadow:none !important;
+        background:#fff !important;
+    }
+    .report-table th,
+    .report-table td {
+        font-size:11px;
+        padding:7px;
+    }
+}
+</style>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const form = document.getElementById("rapport-caisse-search-form");
+    if (!form) {
+        return;
+    }
+    form.querySelectorAll("[data-live-change]").forEach((field) => {
+        field.addEventListener("change", () => form.requestSubmit());
+    });
+})();
+</script>
+{% endblock %}

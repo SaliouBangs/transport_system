@@ -6,8 +6,9 @@
 
 <div class="page-header">
 <div>
-<p class="eyebrow">Entretien flotte</p>
-<h1>{% if historique %}Historique des paiements{% else %}Paiements maintenance{% endif %}</h1>
+<p class="eyebrow">Paiements unifies</p>
+<h1>{% if historique %}Historique des paiements{% else %}File unique des paiements{% endif %}</h1>
+<p class="page-subtitle">Maintenance, depenses BL et autres depenses sont regroupes dans une seule file de traitement.</p>
 </div>
 <div class="table-actions">
 {% if historique %}
@@ -18,11 +19,33 @@
 </div>
 </div>
 
+<div class="kpi-grid" style="margin-bottom:18px;">
+    <div class="kpi-card">
+        <span class="kpi-label">Elements</span>
+        <strong class="kpi-value">{{ payment_count }}</strong>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Montant total</span>
+        <strong class="kpi-value">{{ total_montant_display }} GNF</strong>
+    </div>
+    {% if solde_caisse_display %}
+    <div class="kpi-card {% if not historique %}kpi-card--accent{% endif %}">
+        <span class="kpi-label">Solde caisse courant</span>
+        <strong class="kpi-value">{{ solde_caisse_display }} GNF</strong>
+    </div>
+    {% endif %}
+</div>
+
 <form method="get" class="search-form" id="paiement-search-form" style="margin-bottom:18px;">
 {% if historique %}<input type="hidden" name="scope" value="historique">{% endif %}
-<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher camion, citerne, chauffeur ou reference" data-live-search autocomplete="off" spellcheck="false">
+<input type="text" name="q" value="{{ filter_values.q }}" placeholder="Rechercher reference, camion, BL, fournisseur ou facture" data-live-search autocomplete="off" spellcheck="false">
 <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;" data-live-change>
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
+<select name="payment_type" style="min-width:220px;" data-live-change>
+    {% for value, label in payment_type_choices %}
+    <option value="{{ value }}"{% if filter_values.payment_type == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>
 <button type="submit" class="btn">Rechercher</button>
 <a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Reinitialiser</a>
 </form>
@@ -30,56 +53,124 @@
 <table class="table">
 <thead>
 <tr>
+<th>Date</th>
+<th>Type</th>
 <th>Reference</th>
-<th>Camion</th>
-<th>Fournisseur / facture</th>
-<th>Total facture</th>
-<th>Date paiement</th>
+<th>Designation</th>
+<th>Tiers / support</th>
+<th>Mode</th>
+<th>Destination</th>
+<th>Montant</th>
+<th>Alerte</th>
 <th>Actions</th>
 </tr>
 </thead>
 <tbody>
-{% for maintenance in maintenances %}
+{% for item in payment_items %}
 <tr>
-<td>{{ maintenance.reference }}</td>
-<td>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</td>
+<td>{{ item.date_display|default:"-" }}</td>
+<td>{{ item.item_type }}</td>
+<td>{{ item.reference }}</td>
+<td>{{ item.designation }}</td>
 <td>
-{% if maintenance.invoice_rows %}
-    {% for invoice in maintenance.invoice_rows %}
-    <div style="margin-bottom:8px;">
-        <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
-        {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
-        {% if invoice.facture_fichier %}
-        <div style="margin-top:4px;">
-            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
-        </div>
-        {% endif %}
+    <strong>{{ item.tiers }}</strong>
+    <br>{{ item.support }}
+    {% if item.support_url %}
+    <div style="margin-top:6px;">
+        <a href="{{ item.support_url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir piece</a>
     </div>
-    {% endfor %}
-{% else %}
-    {{ maintenance.prestataire|default:"-" }}
-{% endif %}
+    {% endif %}
 </td>
-<td>{{ maintenance.total_facture }}</td>
-<td>{{ maintenance.date_paiement|default:"-" }}</td>
+<td>{{ item.mode_paiement }}</td>
+<td>{{ item.destination_label }}</td>
+<td><strong>{{ item.montant_display }}</strong></td>
+<td>
+    {% if item.balance_warning %}
+    <span class="status-badge status-badge--danger">Solde insuffisant</span>
+    {% else %}
+    <span class="status-badge status-badge--ok">{% if historique %}Traite{% else %}Disponible{% endif %}</span>
+    {% endif %}
+</td>
 <td>
     <div class="table-actions">
-        {% if not historique %}
-        <a href="/maintenance/paiements/modifier/{{ maintenance.id }}/" class="btn-edit">Enregistrer paiement</a>
-        {% else %}
-        <a href="/maintenance/paiements/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>
-        <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn">Etat complet</a>
-        {% endif %}
+        <a href="{{ item.action_url }}" class="{% if historique %}btn-secondary{% else %}btn-edit{% endif %}">{{ item.action_label }}</a>
     </div>
 </td>
 </tr>
 {% empty %}
 <tr>
-<td colspan="6">{% if historique %}Aucune fiche payee archivee.{% else %}Aucune situation non payee disponible.{% endif %}</td>
+<td colspan="10">{% if historique %}Aucun paiement archive dans cette selection.{% else %}Aucun paiement en attente dans cette selection.{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
+
+<style>
+.page-subtitle {
+    margin-top: 8px;
+    color: #5f7993;
+    max-width: 760px;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.kpi-card {
+    padding: 18px 20px;
+    border: 1px solid rgba(73, 130, 190, 0.18);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(243,249,255,0.9) 100%);
+    box-shadow: 0 16px 40px rgba(25, 56, 90, 0.08);
+}
+
+.kpi-card--accent {
+    background: linear-gradient(135deg, #173c5b 0%, #285b7f 100%);
+    color: #fff;
+}
+
+.kpi-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #5f7993;
+    margin-bottom: 10px;
+}
+
+.kpi-card--accent .kpi-label,
+.kpi-card--accent .kpi-value {
+    color: #fff;
+}
+
+.kpi-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #12375a;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.status-badge--ok {
+    background: #e6f8ef;
+    color: #0d8f56;
+}
+
+.status-badge--danger {
+    background: #fde7e2;
+    color: #c34a2c;
+}
+</style>
 
 {% endblock %}
 

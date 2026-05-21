@@ -100,7 +100,7 @@ Sortie: {{ maintenance.kilometrage_sortie|default:"-" }}
     -
 {% endif %}
 </td>
-<td>{{ maintenance.get_statut_display }}</td>
+<td>{{ maintenance.status_display_label }}</td>
 <td>
 {% if maintenance.validation_logistique_at %}<div><span class="status-badge status-ok">Logistique</span></div>{% endif %}
 {% if maintenance.validation_dga_at %}<div><span class="status-badge status-ok">DGA</span></div>{% endif %}

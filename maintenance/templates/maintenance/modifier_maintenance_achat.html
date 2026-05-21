@@ -177,10 +177,19 @@
                             {% if piece.article_stock %}
                             <span class="status-badge status-ok">Stock interne</span>
                             {% else %}
-                            <input type="number" name="piece-price-{{ piece.id }}" value="{{ piece.prix_unitaire }}" min="0" step="0.01" {% if not can_edit_achat %}readonly{% endif %}>
+                            <input
+                                type="text"
+                                name="piece-price-{{ piece.id }}"
+                                value="{{ piece.prix_unitaire }}"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                data-money-input="true"
+                                data-quantity="{{ piece.quantite }}"
+                                {% if not can_edit_achat %}readonly{% endif %}
+                            >
                             {% endif %}
                         </td>
-                        <td>{{ piece.montant }}</td>
+                        <td data-line-amount="true">{{ piece.montant }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}
@@ -190,9 +199,18 @@
                     <td><span class="status-badge status-danger">Aucune piece definie</span></td>
                     <td>{{ row.ligne.quantite }}</td>
                     <td>
-                        <input type="number" name="ligne-price-{{ row.ligne.id }}" value="{{ row.ligne.prix_unitaire }}" min="0" step="0.01" {% if not can_edit_achat %}readonly{% endif %}>
+                        <input
+                            type="text"
+                            name="ligne-price-{{ row.ligne.id }}"
+                            value="{{ row.ligne.prix_unitaire }}"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            data-money-input="true"
+                            data-quantity="{{ row.ligne.quantite }}"
+                            {% if not can_edit_achat %}readonly{% endif %}
+                        >
                     </td>
-                    <td>{{ row.ligne.montant }}</td>
+                    <td data-line-amount="true">{{ row.ligne.montant }}</td>
                 </tr>
                 {% endif %}
             {% empty %}
@@ -208,7 +226,7 @@
             <tbody>
                 <tr>
                     <th>Total maintenance</th>
-                    <td><strong>{{ maintenance.total_facture }}</strong></td>
+                    <td><strong id="maintenance-total-value">{{ maintenance.total_facture }}</strong></td>
                 </tr>
             </tbody>
         </table>
@@ -491,6 +509,103 @@ invoiceAddBtn?.addEventListener("click", () => {
 });
 
 bindInvoiceRemoval();
+
+function parseMoneyValue(rawValue) {
+    const normalized = String(rawValue || "")
+        .replace(/\s+/g, "")
+        .replace(/\u00a0/g, "")
+        .replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized || "0");
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoneyValue(value) {
+    const rounded = Math.round((Number(value) || 0) * 100) / 100;
+    const hasDecimals = Math.abs(rounded % 1) > 0.00001;
+    const formatted = new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: hasDecimals ? 2 : 0,
+        maximumFractionDigits: 2,
+    }).format(rounded);
+    return formatted;
+}
+
+function updateMaintenanceAmounts() {
+    let total = 0;
+    document.querySelectorAll("input[data-money-input='true']").forEach((input) => {
+        const quantity = parseMoneyValue(input.dataset.quantity || "0");
+        const price = parseMoneyValue(input.value);
+        const amount = quantity * price;
+        total += amount;
+        const amountCell = input.closest("tr")?.querySelector("[data-line-amount='true']");
+        if (amountCell) {
+            amountCell.textContent = formatMoneyValue(amount);
+        }
+    });
+
+    document.querySelectorAll("tr [data-line-amount='true']").forEach((cell) => {
+        const hasEditablePrice = !!cell.closest("tr")?.querySelector("input[data-money-input='true']");
+        if (!hasEditablePrice) {
+            const amount = parseMoneyValue(cell.textContent);
+            total += amount;
+            cell.textContent = formatMoneyValue(amount);
+        }
+    });
+
+    const totalCell = document.getElementById("maintenance-total-value");
+    if (totalCell) {
+        totalCell.textContent = formatMoneyValue(total);
+    }
+}
+
+function bindMoneyInputs() {
+    document.querySelectorAll("input[data-money-input='true']").forEach((input) => {
+        if (input.dataset.moneyBound === "1") {
+            return;
+        }
+        input.dataset.moneyBound = "1";
+
+        input.addEventListener("input", () => {
+            const cursorAtEnd = input.selectionStart === input.value.length;
+            const numeric = parseMoneyValue(input.value);
+            input.value = input.value.trim() ? formatMoneyValue(numeric) : "";
+            if (cursorAtEnd) {
+                const nextPos = input.value.length;
+                input.setSelectionRange(nextPos, nextPos);
+            }
+            updateMaintenanceAmounts();
+        });
+
+        input.addEventListener("focus", () => {
+            if (!input.value.trim()) {
+                return;
+            }
+            const numeric = parseMoneyValue(input.value);
+            input.value = Number.isFinite(numeric) ? String(numeric).replace(/\.0+$/, "") : "";
+        });
+
+        input.addEventListener("blur", () => {
+            if (!input.value.trim()) {
+                input.value = "0";
+            }
+            input.value = formatMoneyValue(parseMoneyValue(input.value));
+            updateMaintenanceAmounts();
+        });
+
+        if (input.value.trim()) {
+            input.value = formatMoneyValue(parseMoneyValue(input.value));
+        }
+    });
+}
+
+bindMoneyInputs();
+updateMaintenanceAmounts();
+
+document.querySelector("form.app-form")?.addEventListener("submit", () => {
+    document.querySelectorAll("input[data-money-input='true']").forEach((input) => {
+        const numeric = parseMoneyValue(input.value);
+        input.value = String(numeric);
+    });
+});
 </script>
 {% endif %}
 {% endblock %}

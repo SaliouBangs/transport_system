@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from clients.forms import BanqueForm
+from clients.models import Banque
 from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 
@@ -18,9 +20,10 @@ from .forms import (
     DepenseExpressionForm,
     DepensePaiementForm,
     LieuProjetForm,
+    TypePieceIdentiteForm,
     TypeDepenseForm,
 )
-from .models import Depense, DepenseLigne, LieuProjet, TypeDepense
+from .models import Depense, DepenseLigne, LieuProjet, TypeDepense, TypePieceIdentite
 from operations.models import Operation
 
 
@@ -269,6 +272,66 @@ def _save_depense_lignes(depense, lignes):
     depense.save(update_fields=["montant_engage"])
 
 
+def _build_expression_ligne_values(depense, request=None):
+    if request and request.method == "POST":
+        designations = request.POST.getlist("ligne_designation[]")
+        quantites = request.POST.getlist("ligne_quantite[]")
+        lignes = []
+        max_len = max(len(designations), len(quantites))
+        for index in range(max_len):
+            designation = designations[index].strip() if index < len(designations) and designations[index] else ""
+            quantite = quantites[index].strip() if index < len(quantites) and quantites[index] else "1"
+            if designation or quantite:
+                lignes.append(
+                    {
+                        "designation": designation,
+                        "quantite": quantite or "1",
+                    }
+                )
+        return lignes or [{"designation": "", "quantite": "1"}]
+
+    if depense and depense.pk and depense.lignes.exists():
+        return [
+            {
+                "designation": ligne.designation,
+                "quantite": str(ligne.quantite),
+            }
+            for ligne in depense.lignes.all()
+        ]
+    return [{"designation": "", "quantite": "1"}]
+
+
+def _validate_expression_lignes(request):
+    designations = request.POST.getlist("ligne_designation[]")
+    quantites = request.POST.getlist("ligne_quantite[]")
+    lignes = []
+    errors = []
+    max_len = max(len(designations), len(quantites))
+    for index in range(max_len):
+        designation = designations[index].strip() if index < len(designations) and designations[index] else ""
+        quantite_raw = quantites[index].strip() if index < len(quantites) and quantites[index] else ""
+        if not designation and not quantite_raw:
+            continue
+        quantite = _parse_decimal(quantite_raw or "0")
+        if not designation:
+            errors.append(f"Ligne {index + 1}: le libelle est obligatoire.")
+            continue
+        if quantite <= 0:
+            errors.append(f"Ligne {index + 1}: la quantite doit etre superieure a zero.")
+            continue
+        lignes.append(
+            {
+                "designation": designation,
+                "quantite": quantite,
+                "prix_unitaire": Decimal("0"),
+                "montant": Decimal("0"),
+            }
+        )
+    if not lignes:
+        errors.append("Ajoutez au moins une ligne de besoin.")
+    return lignes, errors
+
+
 def _decision_expression_allowed(user):
     return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "directeur"}
 
@@ -283,6 +346,31 @@ def _decision_engagement_dg_allowed(user):
 
 def _engagement_allowed(user):
     return is_admin_user(user) or get_user_role(user) == "responsable_achat"
+
+
+def _internal_expression_creation_allowed(user):
+    return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "directeur"}
+
+
+def _type_depense_management_allowed(user):
+    return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "directeur"}
+
+
+def _type_depense_portefeuille_for_role(user, fallback=None):
+    role = get_user_role(user)
+    if role in {"dga_sogefi", "responsable_achat"}:
+        return TypeDepense.PORTEFEUILLE_INTERNE
+    if role == "logistique":
+        return TypeDepense.PORTEFEUILLE_LOGISTIQUE
+    return fallback or TypeDepense.PORTEFEUILLE_LOGISTIQUE
+
+
+def _types_depense_queryset_for_user(user):
+    portefeuille = _type_depense_portefeuille_for_role(user, fallback=None)
+    queryset = TypeDepense.objects.order_by("libelle")
+    if portefeuille:
+        queryset = queryset.filter(portefeuille=portefeuille)
+    return queryset
 
 
 def _paiement_allowed(user, depense):
@@ -394,13 +482,22 @@ def _depenses_queryset_for_user(user):
         "validation_dg_par",
         "paiement_saisi_par",
     )
+    if role == "caissiere":
+        return queryset.filter(
+            Q(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE)
+            | Q(
+                statut=Depense.STATUT_PAYEE,
+                mode_reglement=Depense.MODE_ESPECE,
+                paiement_saisi_par=user,
+            )
+        )
+    if role in {"dga_sogefi", "responsable_achat"}:
+        return queryset.filter(source_depense=Depense.SOURCE_GENERALE)
     if is_admin_user(user) or role in {
         "dga",
-        "dga_sogefi",
         "directeur",
         "responsable_achat",
         "comptable_sogefi",
-        "caissiere",
         "logistique",
     }:
         return queryset
@@ -427,6 +524,8 @@ def _build_context(user, queryset):
     role = get_user_role(user)
     return {
         "user_role": role,
+        "internal_depense_scope": role in {"dga_sogefi", "responsable_achat"},
+        "dga_sogefi_scope": role == "dga_sogefi",
         "counts": _summary_counts(queryset),
         "can_validate_expression": _decision_expression_allowed(user),
         "can_validate_chargement_dga": is_admin_user(user) or role == "dga",
@@ -434,6 +533,7 @@ def _build_context(user, queryset):
         "can_validate_dga": _decision_engagement_dga_allowed(user),
         "can_validate_dg": _decision_engagement_dg_allowed(user),
         "can_access_paiement": role in {"comptable_sogefi", "caissiere"} or is_admin_user(user),
+        "can_create_internal_depense": _internal_expression_creation_allowed(user),
     }
 
 
@@ -514,20 +614,12 @@ def _build_preview_context(depense):
     else:
         validation_steps = [
             {
-                "label": "Expression DGA SOGEFI",
-                "status": depense.get_expression_decision_dga_display() if depense.expression_decision_dga else "En attente",
-                "variant": "ok" if depense.expression_decision_dga == Depense.DECISION_VALIDEE else "danger" if depense.expression_decision_dga == Depense.DECISION_REJETEE else "pending",
-                "by": depense.expression_decision_dga_par.username if depense.expression_decision_dga_par else "-",
-                "at": depense.expression_decision_dga_le,
-                "motif": depense.expression_decision_dga_motif or "",
-            },
-            {
-                "label": "Expression DG",
-                "status": depense.get_expression_decision_dg_display() if depense.expression_decision_dg else "En attente",
-                "variant": "ok" if depense.expression_decision_dg == Depense.DECISION_VALIDEE else "danger" if depense.expression_decision_dg == Depense.DECISION_REJETEE else "pending",
-                "by": depense.expression_decision_dg_par.username if depense.expression_decision_dg_par else "-",
-                "at": depense.expression_decision_dg_le,
-                "motif": depense.expression_decision_dg_motif or "",
+                "label": "Saisie achat / prix",
+                "status": "Engagement saisi" if depense.engagement_saisi_le else "En attente de saisie achat",
+                "variant": "ok" if depense.engagement_saisi_le else "pending",
+                "by": depense.engagement_saisi_par.username if depense.engagement_saisi_par else "-",
+                "at": depense.engagement_saisi_le,
+                "motif": depense.engagement_observation or "",
             },
             {
                 "label": "Engagement DGA SOGEFI",
@@ -614,17 +706,18 @@ def liste_depenses(request):
 
 
 def liste_types_depense(request):
-    if not is_admin_user(request.user):
-        messages.error(request, "Seul l'administrateur peut gerer les types de depense.")
+    if not _type_depense_management_allowed(request.user):
+        messages.error(request, "Vous n'avez pas acces a la gestion des types de depense.")
         return redirect("liste_depenses")
 
-    form = TypeDepenseForm(request.POST or None)
+    portefeuille = _type_depense_portefeuille_for_role(request.user)
+    form = TypeDepenseForm(request.POST or None, portefeuille=portefeuille)
     if request.method == "POST" and form.is_valid():
         type_depense = form.save()
         messages.success(request, f"Le type de depense {type_depense.libelle} a ete ajoute.")
         return redirect("liste_types_depense")
 
-    types_depense = list(TypeDepense.objects.order_by("libelle"))
+    types_depense = list(_types_depense_queryset_for_user(request.user))
     for type_depense in types_depense:
         type_depense.nb_depenses = type_depense.depenses.count()
         type_depense.montant_defaut_affiche = _format_amount(type_depense.montant_defaut)
@@ -635,23 +728,25 @@ def liste_types_depense(request):
         {
             "form": form,
             "types_depense": types_depense,
+            "portefeuille_type_depense": portefeuille,
         },
     )
 
 
 def modifier_type_depense(request, id):
-    if not is_admin_user(request.user):
-        messages.error(request, "Seul l'administrateur peut gerer les types de depense.")
+    if not _type_depense_management_allowed(request.user):
+        messages.error(request, "Vous n'avez pas acces a la gestion des types de depense.")
         return redirect("liste_depenses")
 
-    type_depense = get_object_or_404(TypeDepense, id=id)
-    form = TypeDepenseForm(request.POST or None, instance=type_depense)
+    portefeuille = _type_depense_portefeuille_for_role(request.user)
+    type_depense = get_object_or_404(_types_depense_queryset_for_user(request.user), id=id)
+    form = TypeDepenseForm(request.POST or None, instance=type_depense, portefeuille=portefeuille)
     if request.method == "POST" and form.is_valid():
         type_depense = form.save()
         messages.success(request, f"Le type de depense {type_depense.libelle} a ete mis a jour.")
         return redirect("liste_types_depense")
 
-    types_depense = list(TypeDepense.objects.order_by("libelle"))
+    types_depense = list(_types_depense_queryset_for_user(request.user))
     for item in types_depense:
         item.nb_depenses = item.depenses.count()
         item.montant_defaut_affiche = _format_amount(item.montant_defaut)
@@ -663,6 +758,7 @@ def modifier_type_depense(request, id):
             "form": form,
             "type_en_cours": type_depense,
             "types_depense": types_depense,
+            "portefeuille_type_depense": portefeuille,
         },
     )
 
@@ -674,7 +770,7 @@ def supprimer_type_depense(request, id):
     if request.method != "POST":
         return redirect("liste_types_depense")
 
-    type_depense = get_object_or_404(TypeDepense, id=id)
+    type_depense = get_object_or_404(_types_depense_queryset_for_user(request.user), id=id)
     if type_depense.depenses.exists():
         messages.error(request, "Impossible de supprimer ce type, il est deja utilise dans des depenses.")
         return redirect("liste_types_depense")
@@ -686,32 +782,45 @@ def supprimer_type_depense(request, id):
 
 
 def ajouter_depense(request):
+    if not _internal_expression_creation_allowed(request.user):
+        messages.error(request, "Seuls le DGA SOGEFI, le responsable achat ou le DG peuvent creer une depense interne.")
+        return redirect("liste_depenses")
     if request.method == "POST":
         form = DepenseExpressionForm(request.POST)
+        ligne_values = _build_expression_ligne_values(None, request=request)
         if form.is_valid():
-            depense = form.save(commit=False)
-            depense.demandeur = request.user
-            depense.statut = Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION
-            depense.save()
-            journaliser_action(
-                request.user,
-                "Depenses",
-                "Creation expression de besoin",
-                depense.reference,
-                f"{request.user.username} a cree l'expression de besoin {depense.reference}.",
-            )
-            messages.success(request, "L'expression de besoin a ete envoyee pour validation.")
-            return redirect("liste_depenses")
+            lignes, ligne_errors = _validate_expression_lignes(request)
+            if ligne_errors:
+                for error in ligne_errors:
+                    form.add_error(None, error)
+            else:
+                depense = form.save(commit=False)
+                depense.demandeur = request.user
+                depense.source_depense = Depense.SOURCE_GENERALE
+                depense.statut = Depense.STATUT_ATTENTE_ENGAGEMENT
+                depense.save()
+                _save_depense_lignes(depense, lignes)
+                journaliser_action(
+                    request.user,
+                    "Depenses",
+                    "Creation depense interne",
+                    depense.reference,
+                    f"{request.user.username} a cree la depense interne {depense.reference}.",
+                )
+                messages.success(request, "La depense interne a ete creee et transmise au responsable achat pour la saisie des prix.")
+                return redirect("liste_depenses")
     else:
         form = DepenseExpressionForm()
+        ligne_values = _build_expression_ligne_values(None)
 
     return render(
         request,
         "depenses/form_expression.html",
         {
             "form": form,
-            "page_title": "Nouvelle expression de besoin",
+            "page_title": "Nouvelle depense interne",
             "is_edit": False,
+            "ligne_values": ligne_values,
         },
     )
 
@@ -719,8 +828,13 @@ def ajouter_depense(request):
 def modifier_depense(request, id):
     depense = get_object_or_404(Depense, id=id)
     can_edit = (
-        depense.demandeur_id == request.user.id
+        depense.source_depense != Depense.SOURCE_GENERALE
+        and depense.demandeur_id == request.user.id
         and depense.statut in {Depense.STATUT_BROUILLON, Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION}
+    ) or (
+        depense.source_depense == Depense.SOURCE_GENERALE
+        and depense.demandeur_id == request.user.id
+        and depense.statut == Depense.STATUT_ATTENTE_ENGAGEMENT
     ) or is_admin_user(request.user) or _chargement_editable_by_logistique(depense, request.user)
     if not can_edit:
         messages.error(request, "Cette expression ne peut plus etre modifiee.")
@@ -733,7 +847,7 @@ def modifier_depense(request, id):
         success_message = "La depense camion a ete mise a jour."
         context_extra = {
             "operation": depense.operation,
-            "type_depense_form": TypeDepenseForm(),
+            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_LOGISTIQUE),
             "portee_chargement": depense.portee_chargement,
             "scope_label": _scope_label(depense.portee_chargement),
             "scope_operations": list(_get_scope_operations(depense.operation, depense.portee_chargement)) if depense.operation_id else [],
@@ -743,7 +857,7 @@ def modifier_depense(request, id):
         form_class = DepenseExpressionForm
         template_name = "depenses/form_expression.html"
         page_title = f"Modifier {depense.reference}"
-        success_message = "L'expression de besoin a ete mise a jour."
+        success_message = "La depense interne a ete mise a jour."
         context_extra = {"depense": depense}
 
     if request.method == "POST":
@@ -751,22 +865,42 @@ def modifier_depense(request, id):
         if depense.source_depense == Depense.SOURCE_CHARGEMENT:
             post_data["titre"] = depense.titre
         form = form_class(post_data, instance=depense)
+        ligne_values = _build_expression_ligne_values(depense, request=request) if depense.source_depense != Depense.SOURCE_CHARGEMENT else None
         if form.is_valid():
-            depense = form.save()
+            if depense.source_depense != Depense.SOURCE_CHARGEMENT:
+                lignes, ligne_errors = _validate_expression_lignes(request)
+                if ligne_errors:
+                    for error in ligne_errors:
+                        form.add_error(None, error)
+                else:
+                    depense = form.save()
+                    _save_depense_lignes(depense, lignes)
+                    journaliser_action(
+                        request.user,
+                        "Depenses",
+                        "Modification expression de besoin",
+                        depense.reference,
+                        f"{request.user.username} a modifie la depense {depense.reference}.",
+                    )
+                    messages.success(request, success_message)
+                    return redirect("liste_depenses")
+            else:
+                depense = form.save()
             if depense.source_depense == Depense.SOURCE_CHARGEMENT and depense.type_depense_id:
                 depense.libelle_depense = depense.type_depense.libelle
                 depense.save(update_fields=["type_depense", "description", "montant_estime", "libelle_depense", "date_mise_a_jour"])
-            journaliser_action(
-                request.user,
-                "Depenses",
-                "Modification depense camion" if depense.source_depense == Depense.SOURCE_CHARGEMENT else "Modification expression de besoin",
-                depense.reference,
-                f"{request.user.username} a modifie la depense {depense.reference}.",
-            )
-            messages.success(request, success_message)
-            return redirect("liste_depenses")
+                journaliser_action(
+                    request.user,
+                    "Depenses",
+                    "Modification depense camion",
+                    depense.reference,
+                    f"{request.user.username} a modifie la depense {depense.reference}.",
+                )
+                messages.success(request, success_message)
+                return redirect("liste_depenses")
     else:
         form = form_class(instance=depense)
+        ligne_values = _build_expression_ligne_values(depense) if depense.source_depense != Depense.SOURCE_CHARGEMENT else None
 
     return render(
         request,
@@ -776,6 +910,7 @@ def modifier_depense(request, id):
             "page_title": page_title,
             "is_edit": True,
             "depense": depense,
+            "ligne_values": ligne_values,
             **context_extra,
         },
     )
@@ -903,7 +1038,7 @@ def ajouter_depense_chargement(request, operation_id):
         {
             "form": form,
             "operation": operation,
-            "type_depense_form": TypeDepenseForm(),
+            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_LOGISTIQUE),
             "page_title": f"Nouvelle depense camion - {operation.numero_bl}",
             "depenses_existantes": depenses_existantes,
             "depense_maitre": depense_maitre,
@@ -993,7 +1128,7 @@ def modifier_ligne_depense_chargement(request, operation_id, ligne_id):
         {
             "form": form,
             "operation": operation,
-            "type_depense_form": TypeDepenseForm(),
+            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_LOGISTIQUE),
             "page_title": f"Modifier une ligne de depense camion - {operation.numero_bl}",
             "depenses_existantes": depenses_existantes,
             "depense_maitre": depense_maitre,
@@ -1051,7 +1186,7 @@ def engagement_depense(request, id):
         {
             "form": form,
             "depense": depense,
-            "type_depense_form": TypeDepenseForm(),
+            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_INTERNE),
             "lieu_projet_form": LieuProjetForm(),
             "ligne_values": ligne_values,
         },
@@ -1281,32 +1416,53 @@ def rejeter_depense_chargement_dga(request, id):
 
 def valider_depense_chargement_dg(request, id):
     depense = get_object_or_404(Depense, id=id, source_depense=Depense.SOURCE_CHARGEMENT)
-    if request.method != "POST":
-        return redirect("liste_depenses")
     if not _chargement_dg_pending(depense):
         messages.error(request, "Le DG ne peut intervenir qu'apres la decision du DGA.")
         return redirect("liste_depenses")
+    if request.method == "POST":
+        form = DepenseDecisionEngagementForm(request.POST)
+        if form.is_valid():
+            mode = form.cleaned_data.get("mode_reglement")
+            if mode not in {Depense.MODE_CHEQUE, Depense.MODE_ESPECE}:
+                form.add_error("mode_reglement", "Le DG doit choisir cheque ou espece.")
+            else:
+                timestamp = timezone.now()
+                target_status = (
+                    Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE
+                    if mode == Depense.MODE_CHEQUE
+                    else Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE
+                )
+                for depense_lot in _depenses_chargement_lot(depense).filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG):
+                    depense_lot.expression_decision_dg = Depense.DECISION_VALIDEE
+                    depense_lot.expression_decision_dg_par = request.user
+                    depense_lot.expression_decision_dg_le = timestamp
+                    depense_lot.expression_decision_dg_motif = ""
+                    depense_lot.mode_reglement = mode
+                    depense_lot.statut = target_status
+                    depense_lot.save(
+                        update_fields=[
+                            "expression_decision_dg",
+                            "expression_decision_dg_par",
+                            "expression_decision_dg_le",
+                            "expression_decision_dg_motif",
+                            "mode_reglement",
+                            "statut",
+                        ]
+                    )
+                messages.success(request, "Le lot de depenses camion a ete valide par le DG et transmis au paiement.")
+                return redirect("liste_depenses")
+    else:
+        form = DepenseDecisionEngagementForm(initial={"mode_reglement": depense.mode_reglement})
 
-    timestamp = timezone.now()
-    for depense_lot in _depenses_chargement_lot(depense).filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG):
-        depense_lot.expression_decision_dg = Depense.DECISION_VALIDEE
-        depense_lot.expression_decision_dg_par = request.user
-        depense_lot.expression_decision_dg_le = timestamp
-        depense_lot.expression_decision_dg_motif = ""
-        depense_lot.mode_reglement = Depense.MODE_ESPECE
-        depense_lot.statut = Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE
-        depense_lot.save(
-            update_fields=[
-                "expression_decision_dg",
-                "expression_decision_dg_par",
-                "expression_decision_dg_le",
-                "expression_decision_dg_motif",
-                "mode_reglement",
-                "statut",
-            ]
-        )
-    messages.success(request, "Le lot de depenses camion a ete valide par le DG puis transmis a la caissiere.")
-    return redirect("liste_depenses")
+    return render(
+        request,
+        "depenses/decision_dg.html",
+        {
+            "form": form,
+            "depense": depense,
+            "decision_scope_label": "depense camion / BL",
+        },
+    )
 
 
 def rejeter_depense_chargement_dg(request, id):
@@ -1558,32 +1714,44 @@ def paiement_depense(request, id):
     depense = get_object_or_404(Depense, id=id)
     if not _paiement_allowed(request.user, depense):
         messages.error(request, "Vous n'avez pas acces a ce paiement.")
-        return redirect("liste_depenses")
+        return redirect("paiements_maintenances")
     if depense.statut not in {Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE, Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE} and not is_admin_user(request.user):
         messages.error(request, "Cette depense n'est plus en attente de paiement.")
-        return redirect("liste_depenses")
+        return redirect("paiements_maintenances")
+    payment_role = get_user_role(request.user)
+    caisse_metrics = None
+    solde_courant = None
+    montant_a_payer = depense.montant_total or Decimal("0")
+    if depense.mode_reglement == Depense.MODE_ESPECE and payment_role == "caissiere":
+        from maintenance.views import _get_caisse_metrics
+        caisse_metrics = _get_caisse_metrics(request.user)
+        solde_courant = caisse_metrics["solde"]
 
     if request.method == "POST":
         form = DepensePaiementForm(request.POST, instance=depense)
         if form.is_valid():
-            depense = form.save(commit=False)
-            if not depense.date_paiement:
-                depense.date_paiement = timezone.localdate()
-            depense.paiement_saisi_par = request.user
-            depense.paiement_saisi_le = timezone.now()
-            depense.statut = Depense.STATUT_PAYEE
-            if not depense.mode_paiement_effectif:
-                depense.mode_paiement_effectif = depense.get_mode_reglement_display()
-            depense.save()
-            journaliser_action(
-                request.user,
-                "Depenses",
-                "Paiement depense",
-                depense.reference,
-                f"{request.user.username} a enregistre le paiement de la depense {depense.reference}.",
-            )
-            messages.success(request, "Le paiement a ete enregistre.")
-            return redirect("liste_depenses")
+            if solde_courant is not None and montant_a_payer > solde_courant:
+                form.add_error(
+                    None,
+                    f"Paiement impossible : le montant de { _format_amount(montant_a_payer) } GNF depasse le solde disponible de { _format_amount(solde_courant) } GNF.",
+                )
+            else:
+                depense = form.save(commit=False)
+                if not depense.date_paiement:
+                    depense.date_paiement = timezone.localdate()
+                depense.paiement_saisi_par = request.user
+                depense.paiement_saisi_le = timezone.now()
+                depense.statut = Depense.STATUT_PAYEE
+                depense.save()
+                journaliser_action(
+                    request.user,
+                    "Depenses",
+                    "Paiement depense",
+                    depense.reference,
+                    f"{request.user.username} a enregistre le paiement de la depense {depense.reference}.",
+                )
+                messages.success(request, "Le paiement a ete enregistre.")
+                return redirect("paiements_maintenances")
     else:
         form = DepensePaiementForm(instance=depense)
 
@@ -1596,6 +1764,14 @@ def paiement_depense(request, id):
             "payment_role": get_user_role(request.user),
             "is_cheque_payment": depense.mode_reglement == Depense.MODE_CHEQUE,
             "is_espece_payment": depense.mode_reglement == Depense.MODE_ESPECE,
+            "banques": Banque.objects.filter(actif=True).order_by("nom"),
+            "banque_form": BanqueForm(),
+            "type_piece_form": TypePieceIdentiteForm(),
+            "type_pieces": TypePieceIdentite.objects.order_by("libelle"),
+            "solde_courant_display": _format_amount(solde_courant) if solde_courant is not None else None,
+            "montant_a_payer_display": _format_amount(montant_a_payer),
+            "solde_apres_display": _format_amount((solde_courant - montant_a_payer) if solde_courant is not None else Decimal("0")) if solde_courant is not None else None,
+            "caisse_insuffisante": bool(solde_courant is not None and montant_a_payer > solde_courant),
         },
     )
 
@@ -1603,7 +1779,8 @@ def paiement_depense(request, id):
 def ajouter_type_depense_modal(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "errors": {"__all__": ["Requete invalide."]}}, status=405)
-    form = TypeDepenseForm(request.POST)
+    portefeuille = (request.POST.get("portefeuille") or "").strip() or _type_depense_portefeuille_for_role(request.user)
+    form = TypeDepenseForm(request.POST, portefeuille=portefeuille)
     if form.is_valid():
         type_depense = form.save()
         return JsonResponse(
@@ -1643,6 +1820,28 @@ def ajouter_lieu_projet_modal(request):
     return JsonResponse({"success": False, "errors": errors}, status=400)
 
 
+def ajouter_type_piece_identite_modal(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "errors": {"__all__": ["Requete invalide."]}}, status=405)
+    form = TypePieceIdentiteForm(request.POST)
+    if form.is_valid():
+        type_piece = form.save()
+        return JsonResponse(
+            {
+                "success": True,
+                "type_piece": {
+                    "id": type_piece.id,
+                    "label": type_piece.libelle,
+                },
+            }
+        )
+    errors = {
+        field: [item["message"] for item in messages_list]
+        for field, messages_list in form.errors.get_json_data().items()
+    }
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
 liste_depenses = role_required(
     "commercial",
     "responsable_commercial",
@@ -1659,9 +1858,9 @@ liste_depenses = role_required(
     "responsable_achat",
     "transitaire",
 )(liste_depenses)
-liste_types_depense = role_required()(liste_types_depense)
-modifier_type_depense = role_required()(modifier_type_depense)
-supprimer_type_depense = role_required()(supprimer_type_depense)
+liste_types_depense = role_required("dga_sogefi", "responsable_achat", "directeur")(liste_types_depense)
+modifier_type_depense = role_required("dga_sogefi", "responsable_achat", "directeur")(modifier_type_depense)
+supprimer_type_depense = role_required("dga_sogefi", "responsable_achat", "directeur")(supprimer_type_depense)
 ajouter_depense = role_required(
     "commercial",
     "responsable_commercial",
@@ -1710,8 +1909,8 @@ rejeter_engagement_dga = role_required("dga_sogefi")(rejeter_engagement_dga)
 valider_engagement_dg = role_required("directeur")(valider_engagement_dg)
 rejeter_engagement_dg = role_required("directeur")(rejeter_engagement_dg)
 paiement_depense = role_required("comptable_sogefi", "caissiere")(paiement_depense)
-ajouter_type_depense_modal = role_required("responsable_achat", "directeur", "logistique")(ajouter_type_depense_modal)
-ajouter_lieu_projet_modal = role_required("responsable_achat", "directeur")(ajouter_lieu_projet_modal)
+ajouter_type_depense_modal = role_required("responsable_achat", "directeur", "logistique", "dga_sogefi")(ajouter_type_depense_modal)
+ajouter_lieu_projet_modal = role_required("responsable_achat", "directeur", "dga_sogefi")(ajouter_lieu_projet_modal)
 apercu_depense = role_required(
     "dga",
     "dga_sogefi",

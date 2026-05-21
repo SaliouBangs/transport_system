@@ -2,23 +2,62 @@
 
 {% block content %}
 
+<style>
+{% if fournisseur_portefeuille == "interne" %}
+.internal-suppliers-card {
+    padding: 28px 30px 24px !important;
+}
+.internal-suppliers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px 18px;
+    align-items: end;
+}
+.internal-suppliers-grid > div {
+    min-width: 0;
+}
+.internal-suppliers-grid input,
+.internal-suppliers-grid select,
+.internal-suppliers-grid textarea {
+    width: 100%;
+}
+.internal-suppliers-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
+}
+@media (max-width: 1100px) {
+    .internal-suppliers-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 700px) {
+    .internal-suppliers-grid {
+        grid-template-columns: 1fr;
+    }
+}
+{% endif %}
+</style>
+
+{% if fournisseur_portefeuille != "interne" %}
 {% include "maintenance/_tabs.html" %}
+{% endif %}
 
 <div class="page-header">
 <div>
-<p class="eyebrow">Entretien flotte</p>
-<h1>Fournisseurs maintenance</h1>
+<p class="eyebrow">{% if fournisseur_portefeuille == "interne" %}Depenses internes{% else %}Entretien flotte{% endif %}</p>
+<h1>{% if fournisseur_portefeuille == "interne" %}Fournisseurs achat interne{% else %}Fournisseurs maintenance{% endif %}</h1>
 </div>
 <div class="table-actions">
-<a href="/maintenance/achat/" class="btn-secondary">Retour achat</a>
+<a href="{% if fournisseur_portefeuille == 'interne' %}/depenses/{% else %}/maintenance/achat/{% endif %}" class="btn-secondary">Retour</a>
 </div>
 </div>
 
-<div class="card" style="padding:24px; margin-bottom:18px;">
+<div class="card {% if fournisseur_portefeuille == 'interne' %}internal-suppliers-card{% endif %}" style="padding:24px; margin-bottom:18px;">
 <h2 style="margin-top:0;">Nouveau fournisseur</h2>
 <form method="post" action="/maintenance/fournisseurs/ajouter/" class="app-form">
     {% csrf_token %}
-    <div class="form-grid form-grid-2">
+    <div class="{% if fournisseur_portefeuille == 'interne' %}internal-suppliers-grid{% else %}form-grid form-grid-2{% endif %}">
         <div>
             <label for="{{ form.nom_fournisseur.id_for_label }}">Nom</label>
             {{ form.nom_fournisseur }}
@@ -50,7 +89,7 @@
             {% if form.mode_paiement.errors %}<p class="field-error">{{ form.mode_paiement.errors.0 }}</p>{% endif %}
         </div>
     </div>
-    <div class="form-actions">
+    <div class="{% if fournisseur_portefeuille == 'interne' %}internal-suppliers-actions{% else %}form-actions{% endif %}">
         <button type="submit" class="btn">Enregistrer</button>
     </div>
 </form>
@@ -84,7 +123,7 @@
 <td>{{ fournisseur.domaine_activite|default:"-" }}</td>
 <td>{{ fournisseur.mode_paiement|default:"-" }}</td>
 <td>{{ fournisseur.numero_telephone|default:"-" }}</td>
-<td>{{ fournisseur.maintenances.count }}</td>
+<td>{% if fournisseur_portefeuille == "interne" %}{{ fournisseur.depenses.count }}{% else %}{{ fournisseur.maintenances.count }}{% endif %}</td>
 <td>
     {% if is_admin_maintenance %}
     <a href="/maintenance/fournisseurs/modifier/{{ fournisseur.id }}/" class="btn-edit">Modifier</a>

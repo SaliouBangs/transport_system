@@ -44,9 +44,39 @@
         </div>
 
         <div class="field">
+            <label for="{{ form.gerant.id_for_label }}">Gerant</label>
+            {{ form.gerant }}
+            {% if form.gerant.errors %}<p class="field-error">{{ form.gerant.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
             <label for="{{ form.telephone.id_for_label }}">Telephone</label>
             {{ form.telephone }}
             {% if form.telephone.errors %}<p class="field-error">{{ form.telephone.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.email_entreprise.id_for_label }}">Mail de l'entreprise</label>
+            {{ form.email_entreprise }}
+            {% if form.email_entreprise.errors %}<p class="field-error">{{ form.email_entreprise.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.numero_entreprise.id_for_label }}">Numero de l'entreprise</label>
+            {{ form.numero_entreprise }}
+            {% if form.numero_entreprise.errors %}<p class="field-error">{{ form.numero_entreprise.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.nif.id_for_label }}">NIF</label>
+            {{ form.nif }}
+            {% if form.nif.errors %}<p class="field-error">{{ form.nif.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="{{ form.rccm.id_for_label }}">RCCM</label>
+            {{ form.rccm }}
+            {% if form.rccm.errors %}<p class="field-error">{{ form.rccm.errors.0 }}</p>{% endif %}
         </div>
 
         <div class="field">

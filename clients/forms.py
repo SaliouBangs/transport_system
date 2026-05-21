@@ -26,7 +26,12 @@ class ClientForm(forms.ModelForm):
             "prospect",
             "nom",
             "fonction_contact",
+            "gerant",
             "telephone",
+            "email_entreprise",
+            "numero_entreprise",
+            "nif",
+            "rccm",
             "solde_initial",
             "date_solde_initial",
             "delai_paiement_jours",
@@ -53,6 +58,11 @@ class ClientForm(forms.ModelForm):
         self.fields["entreprise"].label = "Client"
         self.fields["adresse"].label = "Siege du client"
         self.fields["fonction_contact"].label = "Fonction du contact"
+        self.fields["gerant"].label = "Gerant"
+        self.fields["email_entreprise"].label = "Mail de l'entreprise"
+        self.fields["numero_entreprise"].label = "Numero de l'entreprise"
+        self.fields["nif"].label = "NIF"
+        self.fields["rccm"].label = "RCCM"
         self.fields["solde_initial"].label = "Solde initial"
         self.fields["date_solde_initial"].label = "Date de solde initial"
         self.fields["delai_paiement_jours"].label = "Delai de paiement (jours)"

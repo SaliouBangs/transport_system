@@ -5,6 +5,7 @@
   <div>
     <p class="eyebrow">Depenses</p>
     <h1>Decision DG pour {{ depense.reference }}</h1>
+    {% if decision_scope_label %}<p style="margin:8px 0 0; color:#5a7189;">Validation finale {{ decision_scope_label }}</p>{% endif %}
   </div>
 </div>
 
@@ -35,4 +36,3 @@
   </form>
 </div>
 {% endblock %}
-

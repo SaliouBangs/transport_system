@@ -935,6 +935,39 @@ min-width:0;
 {% if not is_admin_user and user_role == 'secretaire' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>{% endif %}
 {% if can_access_operations_secretaire %}<a href="/operations/secretaire/" class="sidebar-standalone {% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire</span></a>{% endif %}
+{% elif not is_admin_user and user_role == 'caissiere' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/paiements/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Caisse</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/maintenance/paiements/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Paiements</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation de caisse</span></a>
+</div>
+</div>
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/rapports/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9643;</span>Maintenance</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/maintenance/rapports/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport maintenance</span></a>
+</div>
+</div>
+{% elif not is_admin_user and user_role == 'comptable_sogefi' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path or '/maintenance/paiements/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Appro</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path or '/maintenance/paiements/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Approvisionnements</span></a>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+    <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+</div>
+</div>
 {% elif not is_admin_user and user_role == 'commercial' or not is_admin_user and user_role == 'responsable_commercial' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Rapport global</span></a>{% endif %}
 {% if can_access_prospects or can_access_clients or can_access_commandes %}
@@ -950,7 +983,7 @@ min-width:0;
 </div>
 </div>
 {% endif %}
-{% elif not is_admin_user and user_role == 'comptable' or not is_admin_user and user_role == 'comptable_sogefi' or not is_admin_user and user_role == 'caissiere' %}
+{% elif not is_admin_user and user_role == 'comptable' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Rapport global</span></a>{% endif %}
 {% if can_access_operations_comptable or can_access_operations_secretaire or can_access_operations_sommiers or can_access_operations_facturation or can_access_clients %}
 <div class="sidebar-section" data-sidebar-section>
@@ -968,6 +1001,32 @@ min-width:0;
 </div>
 </div>
 {% endif %}
+{% elif not is_admin_user and user_role == 'dga_sogefi' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/depenses/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses internes</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/depenses/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/depenses/ajouter/" class="{% if '/depenses/ajouter/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9998;</span>Nouvelle expression</span></a>
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
+    <a href="/depenses/?statut=attente_validation_dga_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dga_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Validation</span></a>
+</div>
+</div>
+{% elif not is_admin_user and user_role == 'responsable_achat' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/depenses/' in request.path or '/maintenance/fournisseurs/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses internes</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/depenses/' in request.path or '/maintenance/fournisseurs/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/depenses/ajouter/" class="{% if '/depenses/ajouter/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9998;</span>Nouvelle expression</span></a>
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
+    <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
+    <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
+    <a href="/depenses/types/" class="{% if '/depenses/types/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Types de depense</span></a>
+</div>
+</div>
 {% elif not is_admin_user and user_role == 'logistique' %}
 <div class="sidebar-section" data-sidebar-section>
 <button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
@@ -1017,12 +1076,16 @@ min-width:0;
 {% else %}
 {% if can_access_reports_center %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Rapports</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
     <a href="/commandes/rapport-global/" class="{% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>
+    <a href="/camions/rapports/" class="{% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>
+    <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Rapports maintenance</span></a>
+    <a href="/maintenance/stock/rapports/" class="{% if '/maintenance/stock/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapports stock</span></a>
+    <a href="/maintenance/rapports/pannes/" class="{% if '/maintenance/rapports/pannes/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Pannes / main d'oeuvre</span></a>
 </div>
 </div>
 {% endif %}

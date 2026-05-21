@@ -159,8 +159,20 @@ def _client_commande_payload(client, etat_filtre="", date_debut="", date_fin="")
         solde_commande = max(Decimal("0.00"), montant_commande - total_paye)
         display_status = commande.get_statut_display()
         status_key = commande.statut
-        if latest_operation and latest_operation.etat_bon in operation_statuses:
+        est_soldee = solde_commande <= Decimal("0.00") and total_paye > Decimal("0.00")
+        est_operation_facturee = bool(latest_operation and (latest_operation.numero_facture or latest_operation.date_facture))
+        if latest_operation and latest_operation.date_bon_retour:
+            display_status = "Livre / retourne / paye / solde" if est_soldee else "Livre / retourne / facturee" if est_operation_facturee else "Livre / retourne"
+            status_key = "bon_retour"
+        elif latest_operation and latest_operation.etat_bon == "livre":
+            display_status = "Livre / paye / solde" if est_soldee else "Livre / facturee" if est_operation_facturee else "Livre"
+            status_key = "livre"
+        elif latest_operation and latest_operation.etat_bon in operation_statuses:
             display_status = latest_operation.get_etat_bon_display()
+            if est_soldee:
+                display_status = f"{display_status} / paye / solde"
+            elif est_operation_facturee:
+                display_status = f"{display_status} / facturee"
             status_key = latest_operation.etat_bon
         item = {
             "reference": commande.reference_affichee,
@@ -569,22 +581,41 @@ def _commande_status_display(commande):
 def _commande_exact_status_data(commande):
     latest_operation = getattr(commande, "latest_operation", None)
     if latest_operation:
+        montant_commande = commande.montant_commande or Decimal("0.00")
+        total_regle = total_encaisse_sur_commande(commande)
+        est_soldee = montant_commande > Decimal("0.00") and total_regle >= montant_commande
+        est_facturee = bool(latest_operation.numero_facture or latest_operation.date_facture)
         if latest_operation.date_bon_retour:
+            label = "Livre / retourne"
+            if est_soldee:
+                label = "Livre / retourne / paye / solde"
+            elif est_facturee:
+                label = "Livre / retourne / facturee"
             return {
                 "key": "bon_retour",
-                "label": "Livre / retourne",
+                "label": label,
                 "date": latest_operation.date_bon_retour,
             }
         if latest_operation.etat_bon == "livre":
+            label = "Livre en attente de bon retour"
+            if est_soldee:
+                label = "Livre / paye / solde"
+            elif est_facturee:
+                label = "Livre / facturee"
             return {
                 "key": "livre",
-                "label": "Livre en attente de bon retour",
+                "label": label,
                 "date": latest_operation.date_bons_livres,
             }
         date_field = OPERATION_STATUS_DATE_FIELDS.get(latest_operation.etat_bon, "")
+        label = latest_operation.get_etat_bon_display()
+        if est_soldee:
+            label = f"{label} / paye / solde"
+        elif est_facturee:
+            label = f"{label} / facturee"
         return {
             "key": latest_operation.etat_bon,
-            "label": latest_operation.get_etat_bon_display(),
+            "label": label,
             "date": getattr(latest_operation, date_field, None) if date_field else None,
         }
 

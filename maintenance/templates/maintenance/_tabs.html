@@ -1,4 +1,14 @@
 <div class="subtabs">
+    {% if user_role == "caissiere" %}
+    <a href="/maintenance/paiements/" class="subtab {% if active_tab == 'paiements' %}active{% endif %}">Paiements</a>
+    <a href="/maintenance/rapports/" class="subtab {% if active_tab == 'rapports' %}active{% endif %}">Rapport caisse</a>
+    <a href="/maintenance/caisse/situation/" class="subtab {% if active_tab == 'situation_caisse' %}active{% endif %}">Situation de caisse</a>
+    {% elif user_role == "comptable_sogefi" %}
+    <a href="/maintenance/caisse/appro/" class="subtab {% if active_tab == 'appro_caisse' %}active{% endif %}">Approvisionnement caisse</a>
+    <a href="/maintenance/paiements/" class="subtab {% if active_tab == 'paiements' %}active{% endif %}">Paiements</a>
+    <a href="/maintenance/caisse/situation/" class="subtab {% if active_tab == 'situation_caisse' %}active{% endif %}">Situation caisse</a>
+    <a href="/maintenance/caisse/dg/" class="subtab {% if active_tab == 'situation_dg' %}active{% endif %}">Compte DG</a>
+    {% else %}
     {% if user_role == "logistique" or user_role == "maintenancier" or user_role == "dga" or user_role == "directeur" or user_role == "controleur" %}<a href="/maintenance/garage/" class="subtab {% if active_tab == 'garage' %}active{% endif %}">Garage / diagnostic</a>{% endif %}
     {% if user_role == "logistique" or user_role == "directeur" or user_role == "controleur" %}<a href="/maintenance/achat/" class="subtab {% if active_tab == 'achat' %}active{% endif %}">Achat / prix</a>{% endif %}
     {% if can_access_maintenance_payment %}<a href="/maintenance/paiements/" class="subtab {% if active_tab == 'paiements' %}active{% endif %}">Paiements</a>{% endif %}
@@ -7,4 +17,5 @@
     <a href="/maintenance/rapports/" class="subtab {% if active_tab == 'rapports' %}active{% endif %}">Rapports</a>
     <a href="/maintenance/rapports/pannes/" class="subtab {% if active_tab == 'rapport_pannes' %}active{% endif %}">Pannes / main d'oeuvre</a>
     {% if user_role == "logistique" or user_role == "directeur" %}<a href="/maintenance/fournisseurs/" class="subtab {% if active_tab == 'fournisseurs' %}active{% endif %}">Fournisseurs</a>{% endif %}
+    {% endif %}
 </div>

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<section class="dg-page">
+  <div class="dg-hero">
+    <div class="dg-hero__main">
+      <p class="dg-eyebrow">Compte DG</p>
+      <h1>Situation du compte du DG</h1>
+      <p class="dg-hero__subtitle">
+        Cette vue suit les avances faites par le DG a la societe et les remboursements ulterieurs.
+        Le solde est calcule en permanence comme <strong>total avances - total remboursements</strong>.
+      </p>
+    </div>
+    <div class="dg-hero__badge">
+      <span>Solde DG</span>
+      <strong>{{ solde_dg }} GNF</strong>
+      <small>Dette restante de la societe envers le DG</small>
+    </div>
+  </div>
+
+  <form method="get" class="search-form" style="margin-bottom:18px;">
+    <input type="date" name="date_from" value="{{ filter_values.date_from }}" style="min-width:180px;">
+    <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;">
+    <button type="submit" class="btn">Afficher</button>
+    <a href="/maintenance/caisse/dg/" class="btn-secondary">Reinitialiser</a>
+  </form>
+
+  <div class="dg-kpis">
+    <article class="dg-kpi">
+      <span class="dg-kpi__label">Total avances DG</span>
+      <strong class="dg-kpi__value">{{ total_avances }} GNF</strong>
+    </article>
+    <article class="dg-kpi dg-kpi--light">
+      <span class="dg-kpi__label">Total remboursements</span>
+      <strong class="dg-kpi__value">{{ total_remboursements }} GNF</strong>
+    </article>
+    <article class="dg-kpi dg-kpi--accent">
+      <span class="dg-kpi__label">Solde DG</span>
+      <strong class="dg-kpi__value">{{ solde_dg }} GNF</strong>
+    </article>
+  </div>
+
+  <section class="dg-card">
+    <div class="dg-card__header">
+      <div>
+        <p class="dg-eyebrow">Historique</p>
+        <h2>Mouvements du compte DG</h2>
+      </div>
+    </div>
+    <div class="dg-table-wrap">
+      <table class="table dg-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Reference</th>
+            <th>Nature</th>
+            <th>Mode</th>
+            <th>Caissiere</th>
+            <th>Observation</th>
+            <th>Avance</th>
+            <th>Remboursement</th>
+            <th>Solde</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mouvement in mouvements %}
+          <tr>
+            <td>{{ mouvement.date|date:"d/m/Y" }}</td>
+            <td>{{ mouvement.reference }}</td>
+            <td>
+              <div class="dg-nature">
+                <strong>{{ mouvement.nature }}</strong>
+                {% if mouvement.reference_cheque %}
+                <small>{{ mouvement.reference_cheque }}{% if mouvement.banque_cheque %} - {{ mouvement.banque_cheque }}{% endif %}{% if mouvement.date_cheque %} - {{ mouvement.date_cheque|date:"d/m/Y" }}{% endif %}</small>
+                {% endif %}
+              </div>
+            </td>
+            <td>{{ mouvement.mode }}</td>
+            <td>{{ mouvement.caissiere.get_full_name|default:mouvement.caissiere.username }}</td>
+            <td>{{ mouvement.observation }}</td>
+            <td class="dg-money">{% if mouvement.avance %}<strong>{{ mouvement.avance|floatformat:0 }} GNF</strong>{% else %}-{% endif %}</td>
+            <td class="dg-money">{% if mouvement.remboursement %}<strong>{{ mouvement.remboursement|floatformat:0 }} GNF</strong>{% else %}-{% endif %}</td>
+            <td class="dg-money dg-money--balance"><strong>{{ mouvement.solde|floatformat:0 }} GNF</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9">Aucun mouvement DG sur cette periode.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<style>
+.dg-page {
+    display: grid;
+    gap: 18px;
+}
+
+.dg-page *,
+.dg-page *::before,
+.dg-page *::after {
+    box-sizing: border-box;
+}
+
+.dg-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.75fr);
+    gap: 18px;
+}
+
+.dg-hero__main,
+.dg-hero__badge,
+.dg-card,
+.dg-kpi {
+    border-radius: 24px;
+    border: 1px solid rgba(188, 210, 226, 0.9);
+    box-shadow: 0 16px 34px rgba(18, 48, 71, 0.07);
+}
+
+.dg-hero__main {
+    padding: 26px 28px;
+    background:
+        radial-gradient(circle at top left, rgba(42,176,143,0.12), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,249,252,0.98));
+}
+
+.dg-eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #17836f;
+}
+
+.dg-hero__main h1 {
+    margin: 6px 0 10px;
+    color: #123047;
+    font-size: clamp(2rem, 3vw, 2.5rem);
+    line-height: 1.05;
+}
+
+.dg-hero__subtitle {
+    margin: 0;
+    color: #5f7384;
+    max-width: 760px;
+    line-height: 1.55;
+}
+
+.dg-hero__badge {
+    padding: 24px;
+    background: linear-gradient(145deg, #123047, #245d86);
+    color: #f5fbff;
+    display: grid;
+    align-content: space-between;
+}
+
+.dg-hero__badge span {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    color: rgba(241, 249, 255, 0.78);
+}
+
+.dg-hero__badge strong {
+    font-size: clamp(1.9rem, 2.9vw, 2.5rem);
+}
+
+.dg-hero__badge small {
+    color: rgba(241, 249, 255, 0.82);
+}
+
+.dg-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.dg-kpi {
+    padding: 18px 20px;
+    display: grid;
+    gap: 8px;
+    background: rgba(255,255,255,0.96);
+}
+
+.dg-kpi--light {
+    background: linear-gradient(180deg, rgba(252,248,243,0.98), rgba(255,255,255,0.98));
+}
+
+.dg-kpi--accent {
+    background: linear-gradient(145deg, rgba(17,48,71,0.98), rgba(31,96,125,0.96));
+    border-color: rgba(17,48,71,0.96);
+}
+
+.dg-kpi__label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6a7f92;
+    font-weight: 800;
+}
+
+.dg-kpi__value {
+    color: #123047;
+    font-size: 1.55rem;
+    line-height: 1.08;
+    font-weight: 800;
+}
+
+.dg-kpi--accent .dg-kpi__label,
+.dg-kpi--accent .dg-kpi__value {
+    color: #f5fbff;
+}
+
+.dg-card {
+    padding: 24px;
+    background: rgba(255,255,255,0.96);
+    overflow: hidden;
+}
+
+.dg-card__header h2 {
+    margin: 6px 0 0;
+    color: #123047;
+    font-size: 1.7rem;
+}
+
+.dg-table-wrap {
+    overflow-x: auto;
+}
+
+.dg-table td,
+.dg-table th {
+    vertical-align: top;
+}
+
+.dg-nature {
+    display: grid;
+    gap: 4px;
+}
+
+.dg-nature strong {
+    color: #123047;
+}
+
+.dg-nature small {
+    color: #677d8e;
+    line-height: 1.4;
+}
+
+.dg-money {
+    white-space: nowrap;
+    color: #123047;
+}
+
+.dg-money--balance {
+    color: #0d3a58;
+}
+
+@media (max-width: 1100px) {
+    .dg-hero,
+    .dg-kpis {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

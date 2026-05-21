@@ -3,15 +3,29 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <p class="eyebrow">Depenses</p>
+    <p class="eyebrow">Depenses internes</p>
     <h1>{{ page_title }}</h1>
+    <p class="page-subtitle">Le besoin est saisi ici avec sa date et ses lignes detaillees. Le responsable achat reprendra ensuite ces lignes pour ajouter les prix, le fournisseur et la facture.</p>
   </div>
 </div>
 
 <div class="form-shell">
   <form method="post" class="app-form">
     {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-alert">
+      {% for error in form.non_field_errors %}
+      <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.date_expression.id_for_label }}">Date d'expression</label>
+        {{ form.date_expression }}
+        {% if form.date_expression.errors %}<p class="field-error">{{ form.date_expression.errors|join:", " }}</p>{% endif %}
+      </div>
       <div class="field field-full">
         <label for="{{ form.titre.id_for_label }}">Titre</label>
         {{ form.titre }}
@@ -22,17 +36,86 @@
         {{ form.description }}
         {% if form.description.errors %}<p class="field-error">{{ form.description.errors|join:", " }}</p>{% endif %}
       </div>
-      <div class="field">
-        <label for="{{ form.montant_estime.id_for_label }}">Montant estime</label>
-        {{ form.montant_estime }}
-        {% if form.montant_estime.errors %}<p class="field-error">{{ form.montant_estime.errors|join:", " }}</p>{% endif %}
+      <div class="field field-full">
+        <label>Lignes de besoin</label>
+        <table class="table" id="expression-lignes-table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Libelle</th>
+              <th>Quantite</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="expression-lignes-body">
+            {% for ligne in ligne_values %}
+            <tr class="expression-ligne-row">
+              <td><input type="text" name="ligne_designation[]" value="{{ ligne.designation }}" placeholder="Libelle du besoin"></td>
+              <td><input type="number" name="ligne_quantite[]" value="{{ ligne.quantite }}" min="0.01" step="0.01" class="expression-ligne-quantite"></td>
+              <td><button type="button" class="btn-delete remove-expression-ligne">Retirer</button></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>Total quantite</th>
+              <th><span id="expression-total-quantite">0</span></th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+        <button type="button" class="btn-secondary" id="add-expression-ligne-button" style="margin-top:10px;">Ajouter une ligne</button>
       </div>
     </div>
+
     <div class="form-actions">
       <a href="/depenses/" class="btn-secondary">Retour</a>
-      <button type="submit" class="btn">{% if is_edit %}Mettre a jour{% else %}Envoyer{% endif %}</button>
+      <button type="submit" class="btn">{% if is_edit %}Mettre a jour{% else %}Transmettre au responsable achat{% endif %}</button>
     </div>
   </form>
 </div>
 {% endblock %}
 
+{% block extra_scripts %}
+<script>
+function updateExpressionTotalQuantite() {
+  let totalQuantite = 0;
+  document.querySelectorAll(".expression-ligne-row").forEach((row) => {
+    const quantite = parseFloat(row.querySelector(".expression-ligne-quantite")?.value || "0");
+    totalQuantite += isNaN(quantite) ? 0 : quantite;
+  });
+  const totalNode = document.getElementById("expression-total-quantite");
+  if (totalNode) {
+    totalNode.textContent = totalQuantite.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+}
+
+function bindExpressionRow(row) {
+  row.querySelector(".expression-ligne-quantite")?.addEventListener("input", updateExpressionTotalQuantite);
+  row.querySelector(".remove-expression-ligne")?.addEventListener("click", () => {
+    const body = document.getElementById("expression-lignes-body");
+    if (body && body.querySelectorAll(".expression-ligne-row").length > 1) {
+      row.remove();
+      updateExpressionTotalQuantite();
+    }
+  });
+}
+
+document.querySelectorAll(".expression-ligne-row").forEach(bindExpressionRow);
+document.getElementById("add-expression-ligne-button")?.addEventListener("click", () => {
+  const body = document.getElementById("expression-lignes-body");
+  if (!body) return;
+  const row = document.createElement("tr");
+  row.className = "expression-ligne-row";
+  row.innerHTML = `
+    <td><input type="text" name="ligne_designation[]" placeholder="Libelle du besoin"></td>
+    <td><input type="number" name="ligne_quantite[]" value="1" min="0.01" step="0.01" class="expression-ligne-quantite"></td>
+    <td><button type="button" class="btn-delete remove-expression-ligne">Retirer</button></td>
+  `;
+  body.appendChild(row);
+  bindExpressionRow(row);
+  updateExpressionTotalQuantite();
+});
+
+updateExpressionTotalQuantite();
+</script>
+{% endblock %}

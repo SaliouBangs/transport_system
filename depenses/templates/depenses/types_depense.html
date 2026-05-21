@@ -3,9 +3,15 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <p class="eyebrow">Depenses</p>
+    <p class="eyebrow">{% if portefeuille_type_depense == "interne" %}Depenses internes{% else %}Depenses logistique{% endif %}</p>
     <h1>{% if type_en_cours %}Modifier un type de depense{% else %}Types de depense{% endif %}</h1>
-    <p class="muted">Gerez les libelles de depense et leur montant par defaut. La suppression est bloquee si le type est deja utilise.</p>
+    <p class="muted">
+      {% if portefeuille_type_depense == "interne" %}
+      Gerez ici le portefeuille achat interne. Ces types ne sont pas partages avec la logistique.
+      {% else %}
+      Gerez ici les types de depense logistique. La suppression est bloquee si le type est deja utilise.
+      {% endif %}
+    </p>
   </div>
   <a href="/depenses/" class="btn-secondary">Retour aux depenses</a>
 </div>

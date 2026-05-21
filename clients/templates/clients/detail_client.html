@@ -19,6 +19,11 @@
                     <small>{{ client.ville|default:"Ville non renseignee" }}</small>
                 </div>
                 <div class="identity-card">
+                    <span class="identity-label">Gerant</span>
+                    <strong>{{ client.gerant|default:"-" }}</strong>
+                    <small>Responsable de l'entreprise</small>
+                </div>
+                <div class="identity-card">
                     <span class="identity-label">Portefeuille</span>
                     <strong>{% if client.commercial %}{{ client.commercial.get_full_name|default:client.commercial.username }}{% else %}-{% endif %}</strong>
                     <small>Commercial rattache</small>
@@ -161,6 +166,16 @@
                     <span class="detail-panel-label">Contact principal</span>
                     <strong>{{ client.nom|default:"-" }}</strong>
                     <small>{{ client.fonction_contact|default:"Fonction non renseignee" }}</small>
+                </div>
+                <div class="detail-panel">
+                    <span class="detail-panel-label">Mail entreprise</span>
+                    <strong>{{ client.email_entreprise|default:"-" }}</strong>
+                    <small>Adresse email de l'entreprise</small>
+                </div>
+                <div class="detail-panel">
+                    <span class="detail-panel-label">Identifiants entreprise</span>
+                    <strong>{% if client.numero_entreprise %}{{ client.numero_entreprise }}{% else %}-{% endif %}</strong>
+                    <small>NIF : {{ client.nif|default:"-" }} | RCCM : {{ client.rccm|default:"-" }}</small>
                 </div>
             </div>
         </section>

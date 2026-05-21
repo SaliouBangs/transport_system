@@ -3,24 +3,28 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <p class="eyebrow">Depenses</p>
-    <h1>Expression de besoin et engagements</h1>
+    <p class="eyebrow">{% if internal_depense_scope %}Depenses internes{% else %}Depenses{% endif %}</p>
+    <h1>{% if internal_depense_scope %}Suivi des depenses internes{% else %}Depenses internes et depenses camion{% endif %}</h1>
   </div>
   <div style="display:flex; gap:12px; flex-wrap:wrap;">
     {% if is_admin_user %}<a href="/depenses/types/" class="btn-secondary">Types de depense</a>{% endif %}
-    <a href="/depenses/ajouter/" class="btn">Nouvelle expression</a>
+    {% if can_create_internal_depense %}<a href="/depenses/ajouter/" class="btn">Nouvelle depense interne</a>{% endif %}
   </div>
 </div>
 
 <div class="cards">
   <div class="card"><h3>Total</h3><p>{{ counts.total }}</p></div>
-  <div class="card"><h3>Expressions a valider</h3><p>{{ counts.attente_expression }}</p></div>
+  {% if not internal_depense_scope %}
   <div class="card"><h3>Depenses chargement DGA</h3><p>{{ counts.attente_chargement_dga }}</p></div>
   <div class="card"><h3>Depenses chargement DG</h3><p>{{ counts.attente_chargement_dg }}</p></div>
-  <div class="card"><h3>Engagements achat</h3><p>{{ counts.attente_engagement }}</p></div>
+  {% endif %}
+  <div class="card"><h3>Saisie achat / prix</h3><p>{{ counts.attente_engagement }}</p></div>
   <div class="card"><h3>Attente DGA</h3><p>{{ counts.attente_dga }}</p></div>
   <div class="card"><h3>Attente DG</h3><p>{{ counts.attente_dg }}</p></div>
   <div class="card"><h3>En attente paiement</h3><p>{{ counts.attente_cheque|add:counts.attente_espece }}</p></div>
+  {% if internal_depense_scope %}
+  <div class="card"><h3>Payees</h3><p>{{ counts.payees }}</p></div>
+  {% endif %}
 </div>
 
 <form method="get" class="search-form" style="margin-top:20px;">
@@ -41,7 +45,7 @@
       <th>Demandeur</th>
       <th>Titre</th>
       <th>Type</th>
-      <th>Fournisseur / BL</th>
+      <th>{% if internal_depense_scope %}Fournisseur{% else %}Fournisseur / BL{% endif %}</th>
       <th>Montant</th>
       <th>Statut / circuit</th>
       <th>Action</th>
@@ -53,7 +57,7 @@
       <td>{{ depense.reference }}</td>
       <td>{{ depense.demandeur.username }}</td>
       <td>{{ depense.titre }}</td>
-      <td>{% if depense.source_depense == "chargement" %}{{ depense.type_affiche|default:"Depenses camion" }}{% else %}{{ depense.type_depense|default:"-" }}{% endif %}</td>
+      <td>{% if depense.source_depense == "chargement" %}{{ depense.type_affiche|default:"Depenses camion" }}{% else %}{{ depense.type_depense|default:"Depense interne" }}{% endif %}</td>
       <td>{% if depense.source_depense == "chargement" %}{{ depense.operation.numero_bl|default:"-" }}{% else %}{{ depense.fournisseur|default:"-" }}{% endif %}</td>
       <td>{{ depense.montant_affiche }}</td>
       <td>
@@ -74,38 +78,24 @@
           </small>
           {% else %}
           <small>
-            Expression:
-            {% if depense.expression_decision_dga == "validee" %}<span class="status-badge status-ok">DGA SOGEFI Validee</span>{% elif depense.expression_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA SOGEFI Rejetee</span>{% else %}<span class="status-badge status-danger">DGA SOGEFI en attente</span>{% endif %}
+            Circuit interne:
+            {% if depense.engagement_saisi_le %}<span class="status-badge status-ok">Achat saisi</span>{% else %}<span class="status-badge status-danger">Achat en attente</span>{% endif %}
             /
-            {% if depense.expression_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.expression_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
-          </small>
-          {% if depense.type_depense_id or depense.lieu_ou_projet or depense.fournisseur_id %}
-          <small>
-            Engagement:
             {% if depense.engagement_decision_dga == "validee" %}<span class="status-badge status-ok">DGA SOGEFI Validee</span>{% elif depense.engagement_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA SOGEFI Rejetee</span>{% else %}<span class="status-badge status-danger">DGA SOGEFI en attente</span>{% endif %}
             /
             {% if depense.engagement_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.engagement_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
           </small>
-          {% endif %}
           {% endif %}
         </div>
       </td>
       <td>
         <div class="table-actions">
           <a href="/depenses/apercu/{{ depense.id }}/" class="btn-secondary">Apercu</a>
-          {% if depense.demandeur_id == request.user.id and depense.statut == "attente_validation_expression" %}
+          {% if depense.source_depense != "chargement" and depense.demandeur_id == request.user.id and depense.statut == "attente_engagement_achat" %}
           <a href="/depenses/modifier/{{ depense.id }}/" class="btn-edit">Modifier</a>
           {% endif %}
           {% if user_role == "logistique" and depense.source_depense == "chargement" and depense.statut == "attente_validation_chargement_dga" and not depense.expression_decision_dga %}
           <a href="/depenses/modifier/{{ depense.id }}/" class="btn-edit">Modifier</a>
-          {% endif %}
-
-          {% if can_validate_expression and depense.statut == "attente_validation_expression" %}
-          <span class="status-badge status-danger">Decision DGA attendue</span>
-          {% endif %}
-
-          {% if can_validate_expression and depense.statut == "attente_validation_expression_dg" %}
-          <span class="status-badge status-danger">Decision DG attendue</span>
           {% endif %}
 
           {% if can_validate_chargement_dga and depense.statut == "attente_validation_chargement_dga" %}

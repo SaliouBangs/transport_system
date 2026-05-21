@@ -1,155 +1,495 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
-
 {% include "maintenance/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Validation maintenance</p>
-<h1>Resume de validation {{ maintenance.reference }}</h1>
-</div>
-<div class="table-actions">
-<a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
-</div>
-</div>
+<div class="maintenance-sheet-page">
+  <div class="maintenance-sheet">
+    <div class="decision-toolbar">
+      <div class="decision-toolbar-main">
+        <a href="/maintenance/garage/" class="btn-secondary btn-compact">Retour</a>
+        <a href="/maintenance/garage/imprimer/{{ maintenance.id }}/" class="btn btn-compact" target="_blank">Imprimer</a>
 
-<div class="cards" style="margin-top:0; margin-bottom:20px;">
-    <div class="card"><h3>Camion</h3><p style="font-size:1.2rem;">{{ maintenance.camion.numero_tracteur }}</p></div>
-    <div class="card"><h3>Citerne</h3><p style="font-size:1.2rem;">{{ maintenance.camion.numero_citerne|default:"-" }}</p></div>
-    <div class="card"><h3>Chauffeur</h3><p style="font-size:1.2rem;">{{ chauffeur_nom }}</p></div>
-    <div class="card"><h3>Statut</h3><p style="font-size:1.2rem;">{{ maintenance.get_statut_display }}</p></div>
-</div>
-
-<div class="form-shell operation-shell">
-    <div class="form-alert" style="background:#eef6ff; border-color:#cfe0f5;">
-        <p style="margin:0; color:#123047;">
-            Cette fiche est un resume du diagnostic et des prix saisis par la logistique.
-            Le DGA ou le DG peut seulement la consulter, l'imprimer, la valider ou la rejeter.
-        </p>
-    </div>
-
-    <div class="summary-panel" style="margin-top:0;">
-        <h2>Recapitulatif</h2>
-        <table class="table summary-table">
-            <tbody>
-                <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
-                <tr><th>Date entree</th><td>{{ maintenance.date_debut }}</td></tr>
-                <tr><th>Date sortie</th><td>{{ maintenance.date_fin|default:"-" }}</td></tr>
-                <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
-                <tr>
-                    <th>Factures fournisseurs</th>
-                    <td>
-                        {% if invoice_rows %}
-                            {% for invoice in invoice_rows %}
-                            <div style="margin-bottom:10px;">
-                                <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
-                                {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
-                                {% if invoice.facture_fichier %}
-                                <div style="margin-top:4px;">
-                                    <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                </tr>
-                <tr><th>Montant payable</th><td>{{ montant_total_formatte }} GNF</td></tr>
-                <tr><th>Valorisation stock (info)</th><td>{{ montant_stock_information_formatte }} GNF</td></tr>
-                <tr><th>Cout global indicatif</th><td>{{ montant_global_information_formatte }} GNF</td></tr>
-                <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
-                <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="summary-panel">
-        <h2>Lignes et prix</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Libelle</th>
-                    <th>Pannes / pieces</th>
-                    <th>Qte</th>
-                    <th>Prix unitaire</th>
-                    <th>Montant</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in piece_rows %}
-                <tr>
-                    <td>{{ row.ligne.type_maintenance }}</td>
-                    <td>{{ row.ligne.libelle }}</td>
-                    <td>
-                        {% if row.pieces %}
-                            {% for piece in row.pieces %}
-                            <div>{{ piece.libelle }}{% if piece.is_stock_information %} <span class="status-badge status-ok">Stock / info</span>{% endif %}</div>
-                            {% endfor %}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if row.pieces %}
-                            {% for piece in row.pieces %}
-                            <div>{{ piece.quantite }}</div>
-                            {% endfor %}
-                        {% else %}
-                            {{ row.ligne.quantite }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if row.pieces %}
-                            {% for piece in row.pieces %}
-                            <div>{{ piece.prix_unitaire }}</div>
-                            {% endfor %}
-                        {% else %}
-                            {{ row.ligne.prix_unitaire }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if row.pieces %}
-                            {% for piece in row.pieces %}
-                            <div>{{ piece.montant }}</div>
-                            {% endfor %}
-                        {% else %}
-                            {{ row.ligne.montant }}
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6">Aucune ligne disponible.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div class="form-actions">
         {% if user_role == "dga" %}
-        <form method="post" action="/maintenance/garage/rejeter-dga/{{ maintenance.id }}/">
-            {% csrf_token %}
-            <button type="submit" class="btn-delete">Rejeter DGA</button>
-        </form>
-        <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/">
-            {% csrf_token %}
-            <button type="submit" class="btn">Valider DGA</button>
+        <form method="post" action="/maintenance/garage/valider-dga/{{ maintenance.id }}/" class="decision-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-compact">Valider DGA</button>
         </form>
         {% endif %}
+
         {% if user_role == "directeur" %}
-        <form method="post" action="/maintenance/garage/rejeter-dg/{{ maintenance.id }}/">
-            {% csrf_token %}
-            <button type="submit" class="btn-delete">Rejeter DG</button>
-        </form>
-        <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/">
-            {% csrf_token %}
-            <button type="submit" class="btn">Valider DG</button>
+        <form method="post" action="/maintenance/garage/valider-dg/{{ maintenance.id }}/" class="decision-inline decision-inline-mode">
+          {% csrf_token %}
+          {% if decision_form %}
+          <label class="mode-pill">
+            <input type="radio" name="mode_paiement" value="espece" {% if maintenance.mode_paiement != "cheque" %}checked{% endif %}>
+            <span>Espece</span>
+          </label>
+          <label class="mode-pill">
+            <input type="radio" name="mode_paiement" value="cheque" {% if maintenance.mode_paiement == "cheque" %}checked{% endif %}>
+            <span>Cheque</span>
+          </label>
+          {% endif %}
+          <button type="submit" class="btn btn-compact">Valider DG</button>
         </form>
         {% endif %}
+      </div>
+
+      {% if user_role == "dga" %}
+      <div class="decision-toolbar-side">
+        <form method="post" action="/maintenance/garage/rejeter-dga/{{ maintenance.id }}/" class="decision-inline decision-inline-reject">
+          {% csrf_token %}
+          <input type="text" name="motif_rejet" placeholder="Motif rejet DGA" required>
+          <button type="submit" class="btn-delete btn-compact">Rejeter</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if user_role == "directeur" %}
+      <div class="decision-toolbar-side">
+        <form method="post" action="/maintenance/garage/rejeter-dg/{{ maintenance.id }}/" class="decision-inline decision-inline-reject">
+          {% csrf_token %}
+          <input type="text" name="motif_rejet" placeholder="Motif rejet DG" required>
+          <button type="submit" class="btn-delete btn-compact">Rejeter</button>
+        </form>
+      </div>
+      {% endif %}
     </div>
+
+    <div class="sheet-header">
+      <div class="sheet-brand">
+        <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
+        <div>
+          <p class="eyebrow">Maintenance / etat recapitulatif</p>
+          <h1>Etat {{ maintenance.reference }}</h1>
+          <p class="sheet-muted">Rapport de diagnostic, de valorisation, de validation et de paiement maintenance.</p>
+        </div>
+      </div>
+      <div class="sheet-box sheet-status-box">
+        <strong>Statut actuel</strong>
+        {{ maintenance.get_statut_display }}<br>
+        <span class="sheet-muted">Date entree : {{ maintenance.date_debut|date:"d/m/Y H:i" }}</span><br>
+        <span class="sheet-muted">Date sortie : {% if maintenance.date_fin %}{{ maintenance.date_fin|date:"d/m/Y H:i" }}{% else %}-{% endif %}</span>
+      </div>
+    </div>
+
+    <div class="sheet-grid">
+      <div class="sheet-box">
+        <strong>Diagnostic de maintenance</strong>
+        Reference : {{ maintenance.reference }}<br>
+        Observation : {{ maintenance.observation|default:"-" }}<br>
+        Montant payable : {{ montant_total_formatte }} GNF
+      </div>
+      <div class="sheet-box">
+        <strong>Camion / chauffeur</strong>
+        Camion : {{ maintenance.camion.numero_tracteur }}<br>
+        Citerne : {{ maintenance.camion.numero_citerne|default:"-" }}<br>
+        Chauffeur : {{ chauffeur_nom }}
+      </div>
+      <div class="sheet-box">
+        <strong>Prestataire / facturation</strong>
+        Prestataire : {{ maintenance.prestataire|default:"-" }}<br>
+        {% if invoice_rows %}
+          {% for invoice in invoice_rows %}
+          <div style="margin-top:4px;">
+            Fournisseur : {% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}<br>
+            Facture : {{ invoice.numero_facture|default:"-" }}
+          </div>
+          {% endfor %}
+        {% else %}
+        Facture : -
+        {% endif %}
+      </div>
+      <div class="sheet-box">
+        <strong>Kilometrage</strong>
+        Entree : {{ maintenance.kilometrage_entree|default:"-" }}<br>
+        Sortie : {{ maintenance.kilometrage_sortie|default:"-" }}<br>
+        Prochaine vidange : {% if maintenance.prochaine_vidange_dans_km %}{{ maintenance.prochaine_vidange_dans_km }} km{% else %}-{% endif %}
+      </div>
+    </div>
+
+    <div class="sheet-summary">
+      <div class="sheet-box">
+        <h2 class="sheet-block-title">Informations generales</h2>
+        <table class="sheet-summary-table">
+          <tbody>
+            <tr><th>Reference</th><td>{{ maintenance.reference }}</td></tr>
+            <tr><th>Date entree</th><td>{{ maintenance.date_debut|date:"d/m/Y H:i" }}</td></tr>
+            <tr><th>Date sortie</th><td>{% if maintenance.date_fin %}{{ maintenance.date_fin|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td></tr>
+            <tr><th>Observation</th><td>{{ maintenance.observation|default:"-" }}</td></tr>
+            <tr><th>Date paiement</th><td>{% if maintenance.date_paiement %}{{ maintenance.date_paiement|date:"d/m/Y" }}{% else %}-{% endif %}</td></tr>
+            <tr>
+              <th>Factures fournisseurs</th>
+              <td>
+                {% if invoice_rows %}
+                  {% for invoice in invoice_rows %}
+                  <div style="margin-bottom:8px;">
+                    <strong>{% if invoice.fournisseur %}{{ invoice.fournisseur }}{% else %}-{% endif %}</strong>
+                    {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
+                    {% if invoice.facture_fichier %}
+                    <div style="margin-top:4px;">
+                      <a href="{{ invoice.facture_fichier.url }}" target="_blank" rel="noopener noreferrer">Voir facture</a>
+                    </div>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                {% else %}
+                -
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sheet-amount-box">
+        <h2>Montant payable</h2>
+        <div class="sheet-amount-value">{{ montant_total_formatte }} GNF</div>
+        <div class="sheet-amount-words">{{ montant_en_lettres|capfirst }}</div>
+        <div class="sheet-amount-words" style="margin-top:12px;">Valorisation stock (info) : {{ montant_stock_information_formatte }} GNF</div>
+        <div class="sheet-amount-words">Cout global indicatif : {{ montant_global_information_formatte }} GNF</div>
+      </div>
+    </div>
+
+    <div class="sheet-box" style="margin-bottom:24px;">
+      <h2 class="sheet-block-title">Lignes / details de la maintenance</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Libelle</th>
+            <th>Pannes / pieces</th>
+            <th>Qte</th>
+            <th>Prix unitaire</th>
+            <th>Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in piece_rows %}
+          <tr>
+            <td>{{ row.ligne.type_maintenance }}</td>
+            <td>{{ row.ligne.libelle }}</td>
+            <td>
+              {% if row.pieces %}
+                {% for piece in row.pieces %}
+                <div>{{ piece.libelle }}{% if piece.is_stock_information %} <span class="sheet-badge sheet-badge-ok">Stock / info</span>{% endif %}</div>
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if row.pieces %}
+                {% for piece in row.pieces %}
+                <div>{{ piece.quantite }}</div>
+                {% endfor %}
+              {% else %}
+                {{ row.ligne.quantite }}
+              {% endif %}
+            </td>
+            <td>
+              {% if row.pieces %}
+                {% for piece in row.pieces %}
+                <div>{{ piece.prix_unitaire }} GNF</div>
+                {% endfor %}
+              {% else %}
+                {{ row.ligne.prix_unitaire }} GNF
+              {% endif %}
+            </td>
+            <td>
+              {% if row.pieces %}
+                {% for piece in row.pieces %}
+                <div>{{ piece.montant }} GNF</div>
+                {% endfor %}
+              {% else %}
+                {{ row.ligne.montant }} GNF
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">Aucune ligne disponible.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sheet-box">
+      <h2 class="sheet-block-title">Circuit de validation</h2>
+      <div class="sheet-validation-list">
+        {% for step in validation_steps %}
+        <div class="sheet-validation-card">
+          <div class="sheet-validation-head">
+            <strong>{{ step.label }}</strong>
+            <span class="sheet-badge sheet-badge-{{ step.variant }}">{{ step.status }}</span>
+          </div>
+          <div class="sheet-validation-meta">
+            <div>Utilisateur : {{ step.by }}</div>
+            <div>Date : {% if step.at %}{{ step.at|date:"d/m/Y H:i" }}{% else %}-{% endif %}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+.maintenance-sheet-page{
+    max-width: 1120px;
+    margin: 0 auto;
+}
+
+.maintenance-sheet{
+    background:#ffffff;
+    border-radius:24px;
+    padding:24px;
+    box-shadow:0 24px 60px rgba(18,48,71,0.08);
+    border:1px solid rgba(217,226,232,0.9);
+}
+
+.decision-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+    padding:12px 14px;
+    border-radius:18px;
+    background:#f7fafc;
+    border:1px solid #e3ebf0;
+}
+
+.decision-toolbar-main,
+.decision-toolbar-side{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.decision-inline{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.decision-inline-reject input{
+    min-width:170px;
+    min-height:36px;
+    border-radius:10px;
+    border:1px solid #d9e2e8;
+    padding:0 12px;
+}
+
+.decision-inline-mode{
+    gap:10px;
+}
+
+.btn-compact{
+    min-width:auto;
+    min-height:36px;
+    padding:0 12px;
+    font-size:0.88rem;
+}
+
+.mode-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    min-height:36px;
+    padding:0 12px;
+    border:1px solid #d9e2e8;
+    border-radius:999px;
+    background:#fff;
+    color:#123047;
+    font-size:0.88rem;
+    cursor:pointer;
+}
+
+.mode-pill input{
+    margin:0;
+}
+
+.sheet-header{
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    align-items:flex-start;
+    margin:18px 0 24px;
+}
+
+.sheet-brand{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+}
+
+.sheet-brand img{
+    width:88px;
+    height:auto;
+    object-fit:contain;
+}
+
+.sheet-muted{
+    color:#5f7384;
+}
+
+.sheet-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    margin-bottom:24px;
+}
+
+.sheet-box{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#f9fbfd;
+}
+
+.sheet-box strong{
+    display:block;
+    margin-bottom:6px;
+}
+
+.sheet-status-box{
+    min-width:260px;
+}
+
+.sheet-summary{
+    display:grid;
+    grid-template-columns:1.2fr 0.8fr;
+    gap:18px;
+    margin-bottom:24px;
+    align-items:stretch;
+}
+
+.sheet-summary-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.sheet-summary-table th,
+.sheet-summary-table td{
+    padding:8px 0;
+    text-align:left;
+    vertical-align:top;
+    border-bottom:1px solid #edf2f6;
+}
+
+.sheet-summary-table th{
+    width:40%;
+    color:#5f7384;
+    font-weight:700;
+}
+
+.sheet-amount-box{
+    background:#123047;
+    color:white;
+    border-radius:18px;
+    padding:18px;
+}
+
+.sheet-amount-box h2{
+    margin-bottom:14px;
+    font-size:1rem;
+}
+
+.sheet-amount-value{
+    font-size:2rem;
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.sheet-amount-words{
+    color:#d9edf1;
+    line-height:1.5;
+}
+
+.sheet-block-title{
+    margin:0 0 10px 0;
+    font-size:1.15rem;
+    color:#163042;
+}
+
+.sheet-validation-list{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+    margin-top:16px;
+}
+
+.sheet-validation-card{
+    border:1px solid #d9e2e8;
+    border-radius:18px;
+    padding:14px 16px;
+    background:#fff;
+}
+
+.sheet-validation-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+.sheet-badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:0.78rem;
+    font-weight:700;
+}
+
+.sheet-badge-ok{
+    background:#e7f7ef;
+    color:#18794e;
+}
+
+.sheet-badge-pending{
+    background:#fff3d7;
+    color:#946200;
+}
+
+.sheet-badge-danger{
+    background:#fde8e8;
+    color:#b42318;
+}
+
+.sheet-badge-neutral{
+    background:#eef2f6;
+    color:#5f7384;
+}
+
+.sheet-validation-meta{
+    color:#5f7384;
+    font-size:0.92rem;
+    line-height:1.5;
+}
+
+@media (max-width: 980px){
+    .decision-toolbar{
+        justify-content:flex-start;
+        align-items:flex-start;
+    }
+
+    .sheet-header,
+    .sheet-grid,
+    .sheet-summary,
+    .sheet-validation-list{
+        grid-template-columns:1fr;
+        display:grid;
+    }
+
+    .sheet-header{
+        display:grid;
+    }
+}
+</style>
 
 {% endblock %}

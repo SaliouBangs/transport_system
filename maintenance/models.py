@@ -50,12 +50,24 @@ class PanneCatalogue(models.Model):
 
 
 class Fournisseur(models.Model):
+    PORTEFEUILLE_LOGISTIQUE = "logistique"
+    PORTEFEUILLE_INTERNE = "interne"
+    PORTEFEUILLE_CHOICES = [
+        (PORTEFEUILLE_LOGISTIQUE, "Logistique"),
+        (PORTEFEUILLE_INTERNE, "Depenses internes"),
+    ]
+
     nom_fournisseur = models.CharField(max_length=150)
     entreprise = models.CharField(max_length=150)
     email = models.EmailField(blank=True)
     domaine_activite = models.CharField(max_length=150, blank=True)
     mode_paiement = models.CharField(max_length=100, blank=True)
-    numero_telephone = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    numero_telephone = models.CharField(max_length=50, blank=True, null=True)
+    portefeuille = models.CharField(
+        max_length=20,
+        choices=PORTEFEUILLE_CHOICES,
+        default=PORTEFEUILLE_LOGISTIQUE,
+    )
 
     class Meta:
         ordering = ["nom_fournisseur", "entreprise"]
@@ -405,6 +417,12 @@ class MouvementStock(models.Model):
 
 
 class Maintenance(models.Model):
+    MODE_CHEQUE = "cheque"
+    MODE_ESPECE = "espece"
+    MODE_PAIEMENT_CHOICES = [
+        (MODE_CHEQUE, "Cheque"),
+        (MODE_ESPECE, "Espece"),
+    ]
     STATUT_CHOICES = [
         ("en_cours", "Diagnostic en cours"),
         ("attente_prix", "En attente de saisie de prix"),
@@ -427,7 +445,28 @@ class Maintenance(models.Model):
     date_debut = models.DateTimeField()
     date_fin = models.DateTimeField(null=True, blank=True)
     date_paiement = models.DateField(null=True, blank=True)
-    mode_paiement = models.CharField(max_length=100, blank=True)
+    mode_paiement = models.CharField(max_length=20, choices=MODE_PAIEMENT_CHOICES, blank=True)
+    reference_paiement = models.CharField(max_length=120, blank=True)
+    reference_cheque = models.CharField(max_length=80, blank=True)
+    banque_cheque = models.CharField(max_length=120, blank=True)
+    date_cheque = models.DateField(null=True, blank=True)
+    beneficiaire_cheque = models.CharField(max_length=150, blank=True)
+    type_piece_identite = models.ForeignKey(
+        "depenses.TypePieceIdentite",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenances",
+    )
+    numero_piece_identite = models.CharField(max_length=120, blank=True)
+    paiement_saisi_par = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="maintenance_paiements_saisis",
+    )
+    paiement_saisi_le = models.DateTimeField(null=True, blank=True)
     receveur_nom = models.CharField(max_length=150, blank=True)
     receveur_poste = models.CharField(max_length=150, blank=True)
     receveur_telephone = models.CharField(max_length=50, blank=True)
@@ -489,6 +528,12 @@ class Maintenance(models.Model):
         self.receveur_nom = (self.receveur_nom or "").strip()
         self.receveur_poste = (self.receveur_poste or "").strip()
         self.receveur_telephone = (self.receveur_telephone or "").strip()
+        self.mode_paiement = (self.mode_paiement or "").strip()
+        self.reference_paiement = (self.reference_paiement or "").strip()
+        self.reference_cheque = (self.reference_cheque or "").strip()
+        self.banque_cheque = (self.banque_cheque or "").strip()
+        self.beneficiaire_cheque = (self.beneficiaire_cheque or "").strip()
+        self.numero_piece_identite = (self.numero_piece_identite or "").strip()
         if self.date_fin and self.date_fin < self.date_debut:
             raise ValidationError("La date de fin ne peut pas etre avant la date de debut.")
         if (
@@ -499,6 +544,26 @@ class Maintenance(models.Model):
             raise ValidationError("Le kilometrage de sortie ne peut pas etre inferieur au kilometrage d'entree.")
         if self.prochaine_vidange_dans_km is not None and self.prochaine_vidange_dans_km <= 0:
             raise ValidationError("L'intervalle de la prochaine vidange doit etre superieur a zero.")
+        if self.statut in {"attente_paiement", "payee"} and not self.is_stock_only():
+            if self.mode_paiement not in {self.MODE_CHEQUE, self.MODE_ESPECE}:
+                raise ValidationError({"mode_paiement": "Le DG doit preciser cheque ou espece."})
+        if self.statut == "payee" and not self.is_stock_only():
+            if not self.date_paiement:
+                raise ValidationError({"date_paiement": "La date de paiement est obligatoire."})
+            if self.mode_paiement == self.MODE_CHEQUE:
+                missing = {}
+                if not self.reference_cheque:
+                    missing["reference_cheque"] = "La reference cheque est obligatoire."
+                if not self.banque_cheque:
+                    missing["banque_cheque"] = "La banque est obligatoire."
+                if not self.date_cheque:
+                    missing["date_cheque"] = "La date cheque est obligatoire."
+                if not self.type_piece_identite_id:
+                    missing["type_piece_identite"] = "Le type de piece d'identite est obligatoire."
+                if not self.numero_piece_identite:
+                    missing["numero_piece_identite"] = "Le numero de piece d'identite est obligatoire."
+                if missing:
+                    raise ValidationError(missing)
 
     def _generate_reference(self):
         if self.reference:
@@ -672,6 +737,156 @@ class MaintenanceFacture(models.Model):
 
     def __str__(self):
         return f"{self.numero_facture} - {self.fournisseur}"
+
+
+class ApprovisionnementCaisse(models.Model):
+    MODE_ESPECE = "espece"
+    MODE_CHEQUE = "cheque"
+    NATURE_URGENCE_DG = "urgence_dg_espece"
+    NATURE_RETRAIT_REMBOURSEMENT = "retrait_remboursement"
+    NATURE_CHEQUE_DIRECT = "cheque_direct"
+
+    MODE_CHOICES = [
+        (MODE_ESPECE, "Espece"),
+        (MODE_CHEQUE, "Cheque"),
+    ]
+    NATURE_CHOICES = [
+        (NATURE_URGENCE_DG, "Avance DG en espece"),
+        (NATURE_RETRAIT_REMBOURSEMENT, "Remboursement DG par cheque"),
+        (NATURE_CHEQUE_DIRECT, "Approvisionnement caisse par cheque"),
+    ]
+
+    reference = models.CharField(max_length=20, unique=True, editable=False, blank=True)
+    caissiere = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="approvisionnements_caisse_recus",
+    )
+    saisi_par = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approvisionnements_caisse_saisis",
+    )
+    date_approvisionnement = models.DateField(default=timezone.localdate)
+    mode_approvisionnement = models.CharField(max_length=20, choices=MODE_CHOICES, default=MODE_ESPECE)
+    nature_approvisionnement = models.CharField(max_length=40, choices=NATURE_CHOICES, default=NATURE_URGENCE_DG)
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    reference_cheque = models.CharField(max_length=120, blank=True)
+    banque_cheque = models.CharField(max_length=120, blank=True)
+    date_cheque = models.DateField(null=True, blank=True)
+    observation = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date_approvisionnement", "-id"]
+
+    def _generate_reference(self):
+        if self.reference:
+            return
+        last = (
+            ApprovisionnementCaisse.objects.exclude(reference="")
+            .order_by("-id")
+            .values_list("reference", flat=True)
+            .first()
+        )
+        if not last or not last.startswith("APP"):
+            self.reference = "APP001"
+            return
+        try:
+            next_number = int(last.replace("APP", "")) + 1
+        except ValueError:
+            next_number = (self.pk or ApprovisionnementCaisse.objects.count()) + 1
+        self.reference = f"APP{next_number:03d}"
+
+    def clean(self):
+        self.observation = (self.observation or "").strip()
+        self.reference_cheque = (self.reference_cheque or "").strip()
+        self.banque_cheque = (self.banque_cheque or "").strip()
+        if self.nature_approvisionnement == self.NATURE_URGENCE_DG:
+            self.mode_approvisionnement = self.MODE_ESPECE
+        elif self.nature_approvisionnement in {self.NATURE_RETRAIT_REMBOURSEMENT, self.NATURE_CHEQUE_DIRECT}:
+            self.mode_approvisionnement = self.MODE_CHEQUE
+        if self.montant is None or self.montant <= 0:
+            raise ValidationError({"montant": "Le montant d'approvisionnement doit etre superieur a zero."})
+        if self.mode_approvisionnement == self.MODE_CHEQUE:
+            missing = {}
+            if not self.reference_cheque:
+                missing["reference_cheque"] = "La reference du cheque est obligatoire."
+            if not self.banque_cheque:
+                missing["banque_cheque"] = "La banque du cheque est obligatoire."
+            if not self.date_cheque:
+                missing["date_cheque"] = "La date du cheque est obligatoire."
+            if missing:
+                raise ValidationError(missing)
+        else:
+            self.reference_cheque = ""
+            self.banque_cheque = ""
+            self.date_cheque = None
+
+    def save(self, *args, **kwargs):
+        self._generate_reference()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def alimente_caisse(self):
+        return self.nature_approvisionnement in {self.NATURE_URGENCE_DG, self.NATURE_CHEQUE_DIRECT}
+
+    @property
+    def impact_caisse(self):
+        return self.montant if self.alimente_caisse else Decimal("0")
+
+    @property
+    def impact_dg_avance(self):
+        if self.nature_approvisionnement == self.NATURE_URGENCE_DG:
+            return self.montant
+        return Decimal("0")
+
+    @property
+    def impact_dg_remboursement(self):
+        if self.nature_approvisionnement == self.NATURE_RETRAIT_REMBOURSEMENT:
+            return self.montant
+        return Decimal("0")
+
+    def __str__(self):
+        return f"{self.reference} - {self.caissiere.username}"
+
+
+class SoldeInitialCaisse(models.Model):
+    caissiere = models.OneToOneField(
+        User,
+        on_delete=models.PROTECT,
+        related_name="solde_initial_caisse",
+    )
+    montant_initial = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    date_reference = models.DateField(default=timezone.localdate)
+    observation = models.TextField(blank=True)
+    saisi_par = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="soldes_initiaux_caisse_saisis",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["caissiere__username"]
+
+    def clean(self):
+        self.observation = (self.observation or "").strip()
+        if self.montant_initial is None or self.montant_initial < 0:
+            raise ValidationError({"montant_initial": "Le solde initial ne peut pas etre negatif."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Solde initial caisse - {self.caissiere.username}"
 
 
 class MaintenanceLigne(models.Model):

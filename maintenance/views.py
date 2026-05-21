@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Case, Count, DecimalField, F, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -14,27 +15,35 @@ from django.utils.formats import date_format
 from django.utils.safestring import mark_safe
 import json
 
+from clients.forms import BanqueForm
+from clients.models import Banque
 from chauffeurs.models import Chauffeur
 from camions.models import Camion
+from depenses.forms import TypePieceIdentiteForm
+from depenses.models import Depense, TypePieceIdentite
 from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 
 from .forms import (
     ArticleStockForm,
     ArticleStockConversionFormSet,
+    ApprovisionnementCaisseForm,
     FournisseurForm,
     MaintenanceAchatForm,
     MaintenanceFactureFormSet,
     MaintenanceGarageForm,
     MaintenanceGarageLigneFormSet,
+    MaintenanceDecisionPaiementForm,
     MaintenancePaiementForm,
     MouvementStockForm,
     PanneCatalogueForm,
     PrestataireForm,
+    SoldeInitialCaisseForm,
     TypeMaintenanceForm,
 )
 from .models import (
     ArticleStock,
+    ApprovisionnementCaisse,
     Fournisseur,
     Maintenance,
     MaintenanceFacture,
@@ -42,6 +51,7 @@ from .models import (
     MaintenanceSousLigne,
     MouvementStock,
     Prestataire,
+    SoldeInitialCaisse,
 )
 
 
@@ -52,6 +62,18 @@ def _maintenance_queryset():
         "lignes__type_maintenance",
         "lignes__sous_lignes__article_stock",
     )
+
+
+def _fournisseur_portefeuille_for_role(user, fallback=Fournisseur.PORTEFEUILLE_LOGISTIQUE):
+    role = get_user_role(user)
+    if role in {"responsable_achat", "dga_sogefi"}:
+        return Fournisseur.PORTEFEUILLE_INTERNE
+    return fallback
+
+
+def _fournisseurs_queryset_for_user(user):
+    portefeuille = _fournisseur_portefeuille_for_role(user)
+    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
 
 
 def _normalize_stock_only_workflow():
@@ -74,6 +96,17 @@ def _normalize_stock_only_workflow():
 
     for maintenance_id, target_status in updates:
         Maintenance.objects.filter(pk=maintenance_id).update(statut=target_status)
+
+
+def _maintenance_payment_allowed(user, maintenance):
+    role = get_user_role(user)
+    if is_admin_user(user):
+        return True
+    if maintenance.mode_paiement == Maintenance.MODE_CHEQUE:
+        return role == "comptable_sogefi"
+    if maintenance.mode_paiement == Maintenance.MODE_ESPECE:
+        return role == "caissiere"
+    return role in {"directeur", "comptable"}
 
 
 def _apply_maintenance_filters(request, queryset):
@@ -585,22 +618,262 @@ def _issue_stock_for_maintenance(maintenance, user):
 
 
 def _save_achat_piece_prices(request, maintenance):
+    def _parse_price(raw_value):
+        normalized = (
+            (raw_value or "0")
+            .strip()
+            .replace(" ", "")
+            .replace("\u00a0", "")
+            .replace(",", ".")
+        )
+        try:
+            return Decimal(normalized or "0")
+        except Exception:
+            return Decimal("0")
+
     for ligne in maintenance.lignes.prefetch_related("sous_lignes"):
         if ligne.sous_lignes.exists():
             for piece in ligne.sous_lignes.all():
                 if piece.article_stock_id:
                     continue
-                value = (request.POST.get(f"piece-price-{piece.id}") or "0").strip().replace(",", ".")
-                piece.prix_unitaire = value or "0"
+                piece.prix_unitaire = _parse_price(request.POST.get(f"piece-price-{piece.id}") or "0")
                 piece.save()
         else:
-            value = (request.POST.get(f"ligne-price-{ligne.id}") or "0").strip().replace(",", ".")
-            ligne.prix_unitaire = value or "0"
+            ligne.prix_unitaire = _parse_price(request.POST.get(f"ligne-price-{ligne.id}") or "0")
             ligne.save()
 
 
 def _maintenance_tabs_context(active_tab):
     return {"active_tab": active_tab}
+
+
+def _caissiere_users_queryset():
+    return User.objects.filter(groups__name="caissiere", is_active=True).order_by("first_name", "last_name", "username").distinct()
+
+
+def _resolve_caissiere_for_request(request):
+    role = get_user_role(request.user)
+    if role == "caissiere":
+        return request.user
+
+    caissiere_id = (request.GET.get("caissiere") or request.POST.get("caissiere") or "").strip()
+    queryset = _caissiere_users_queryset()
+    if caissiere_id:
+        selected = queryset.filter(id=caissiere_id).first()
+        if selected:
+            return selected
+    return queryset.first()
+
+
+def _get_caisse_metrics(caissiere, date_from="", date_to=""):
+    appro_qs = ApprovisionnementCaisse.objects.none()
+    maintenance_qs = Maintenance.objects.none()
+    depenses_qs = Depense.objects.none()
+    solde_initial_obj = None
+    solde_initial = Decimal("0")
+
+    if caissiere:
+        solde_initial_obj = SoldeInitialCaisse.objects.filter(caissiere=caissiere).first()
+        solde_initial = solde_initial_obj.montant_initial if solde_initial_obj else Decimal("0")
+        appro_qs = ApprovisionnementCaisse.objects.filter(caissiere=caissiere)
+        maintenance_qs = _maintenance_queryset().filter(
+            statut="payee",
+            paiement_saisi_par=caissiere,
+        )
+        depenses_qs = Depense.objects.select_related(
+            "type_depense",
+            "operation",
+            "operation__camion",
+        ).prefetch_related("lignes").filter(
+            statut=Depense.STATUT_PAYEE,
+            mode_reglement=Depense.MODE_ESPECE,
+            paiement_saisi_par=caissiere,
+        )
+
+    if date_from:
+        appro_qs = appro_qs.filter(date_approvisionnement__gte=date_from)
+        maintenance_qs = maintenance_qs.filter(date_paiement__gte=date_from)
+        depenses_qs = depenses_qs.filter(date_paiement__gte=date_from)
+    if date_to:
+        appro_qs = appro_qs.filter(date_approvisionnement__lte=date_to)
+        maintenance_qs = maintenance_qs.filter(date_paiement__lte=date_to)
+        depenses_qs = depenses_qs.filter(date_paiement__lte=date_to)
+
+    appro_caisse_qs = appro_qs.filter(
+        nature_approvisionnement__in=[
+            ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            ApprovisionnementCaisse.NATURE_CHEQUE_DIRECT,
+        ]
+    )
+    total_appro = appro_caisse_qs.aggregate(total=Sum("montant")).get("total") or Decimal("0")
+    total_sorties_maintenance = maintenance_qs.aggregate(total=Sum("total_facture")).get("total") or Decimal("0")
+    total_sorties_depenses = sum((depense.montant_total or Decimal("0")) for depense in depenses_qs)
+    solde = solde_initial + total_appro - total_sorties_maintenance - total_sorties_depenses
+
+    mouvements = []
+    if solde_initial_obj:
+        mouvements.append(
+            {
+                "date": solde_initial_obj.date_reference,
+                "sort_key": (
+                    solde_initial_obj.date_reference or timezone.localdate(),
+                    solde_initial_obj.created_at or timezone.now(),
+                    solde_initial_obj.id,
+                ),
+                "type": "Solde initial",
+                "reference": "INITIAL",
+                "designation": f"Ouverture de caisse - {caissiere.get_full_name() or caissiere.username}",
+                "detail": solde_initial_obj.observation or "-",
+                "entree": solde_initial,
+                "sortie": Decimal("0"),
+            }
+        )
+    for appro in appro_caisse_qs:
+        mouvements.append(
+            {
+                "date": appro.date_approvisionnement,
+                "sort_key": (
+                    appro.date_approvisionnement or timezone.localdate(),
+                    appro.created_at or timezone.now(),
+                    appro.id,
+                ),
+                "type": "Approvisionnement",
+                "reference": appro.reference,
+                "designation": f"Approvisionnement caisse - {appro.caissiere.get_full_name() or appro.caissiere.username}",
+                "detail": appro.observation or "-",
+                "entree": appro.montant,
+                "sortie": Decimal("0"),
+            }
+        )
+
+    for maintenance in maintenance_qs:
+        invoice_rows = _maintenance_invoice_rows(maintenance)
+        detail_items = []
+        for invoice in invoice_rows:
+            if isinstance(invoice, dict):
+                fournisseur_value = str(invoice.get("fournisseur") or "-")
+                numero_facture_value = invoice.get("numero_facture") or "-"
+            else:
+                fournisseur_value = str(getattr(invoice, "fournisseur", None) or "-")
+                numero_facture_value = getattr(invoice, "numero_facture", "") or "-"
+            detail_items.append(f"{fournisseur_value} / {numero_facture_value}")
+        mouvements.append(
+            {
+                "date": maintenance.date_paiement,
+                "sort_key": (
+                    maintenance.date_paiement or timezone.localdate(),
+                    maintenance.paiement_saisi_le or maintenance.date_creation or timezone.now(),
+                    maintenance.id,
+                ),
+                "type": "Paiement maintenance",
+                "reference": maintenance.reference,
+                "designation": f"Camion {maintenance.camion.numero_tracteur}",
+                "detail": " | ".join(detail_items) if detail_items else (maintenance.observation or "-"),
+                "entree": Decimal("0"),
+                "sortie": maintenance.total_facture or Decimal("0"),
+            }
+        )
+
+    for depense in depenses_qs:
+        detail_parts = []
+        if depense.source_depense == Depense.SOURCE_CHARGEMENT and depense.operation_id:
+            detail_parts.append(f"BL {depense.operation.numero_bl}")
+        if depense.type_depense_id:
+            detail_parts.append(depense.type_depense.libelle)
+        if depense.numero_facture:
+            detail_parts.append(f"Facture {depense.numero_facture}")
+        mouvements.append(
+            {
+                "date": depense.date_paiement,
+                "sort_key": (
+                    depense.date_paiement or timezone.localdate(),
+                    depense.paiement_saisi_le or depense.date_creation or timezone.now(),
+                    depense.id,
+                ),
+                "type": "Depense BL" if depense.source_depense == Depense.SOURCE_CHARGEMENT else "Autre depense",
+                "reference": depense.reference,
+                "designation": depense.libelle_depense or depense.titre,
+                "detail": " | ".join(detail_parts) if detail_parts else (depense.description or "-"),
+                "entree": Decimal("0"),
+                "sortie": depense.montant_total or Decimal("0"),
+            }
+        )
+
+    mouvements.sort(key=lambda item: item["sort_key"])
+    running_balance = Decimal("0")
+    for mouvement in mouvements:
+        running_balance += mouvement["entree"] - mouvement["sortie"]
+        mouvement["solde"] = running_balance
+        mouvement["entree_display"] = _format_amount(mouvement["entree"])
+        mouvement["sortie_display"] = _format_amount(mouvement["sortie"])
+        mouvement["solde_display"] = _format_amount(mouvement["solde"])
+
+    return {
+        "appro_qs": appro_qs,
+        "appro_caisse_qs": appro_caisse_qs,
+        "maintenance_qs": maintenance_qs,
+        "depenses_qs": depenses_qs,
+        "solde_initial_obj": solde_initial_obj,
+        "solde_initial": solde_initial,
+        "mouvements": mouvements,
+        "total_appro": total_appro,
+        "total_sorties_maintenance": total_sorties_maintenance,
+        "total_sorties_depenses": total_sorties_depenses,
+        "solde": solde,
+    }
+
+
+def _get_dg_metrics(date_from="", date_to=""):
+    dg_qs = ApprovisionnementCaisse.objects.filter(
+        nature_approvisionnement__in=[
+            ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            ApprovisionnementCaisse.NATURE_RETRAIT_REMBOURSEMENT,
+        ]
+    ).select_related("caissiere", "saisi_par")
+
+    if date_from:
+        dg_qs = dg_qs.filter(date_approvisionnement__gte=date_from)
+    if date_to:
+        dg_qs = dg_qs.filter(date_approvisionnement__lte=date_to)
+
+    total_avances = dg_qs.filter(
+        nature_approvisionnement=ApprovisionnementCaisse.NATURE_URGENCE_DG
+    ).aggregate(total=Sum("montant")).get("total") or Decimal("0")
+    total_remboursements = dg_qs.filter(
+        nature_approvisionnement=ApprovisionnementCaisse.NATURE_RETRAIT_REMBOURSEMENT
+    ).aggregate(total=Sum("montant")).get("total") or Decimal("0")
+    solde_dg = total_avances - total_remboursements
+
+    mouvements = []
+    running_balance = Decimal("0")
+    for mouvement in dg_qs.order_by("date_approvisionnement", "id"):
+        avance = mouvement.impact_dg_avance
+        remboursement = mouvement.impact_dg_remboursement
+        running_balance += avance - remboursement
+        mouvements.append(
+            {
+                "date": mouvement.date_approvisionnement,
+                "reference": mouvement.reference,
+                "nature": mouvement.get_nature_approvisionnement_display(),
+                "caissiere": mouvement.caissiere,
+                "mode": mouvement.get_mode_approvisionnement_display(),
+                "observation": mouvement.observation or "-",
+                "reference_cheque": mouvement.reference_cheque,
+                "banque_cheque": mouvement.banque_cheque,
+                "date_cheque": mouvement.date_cheque,
+                "avance": avance,
+                "remboursement": remboursement,
+                "solde": running_balance,
+            }
+        )
+
+    return {
+        "queryset": dg_qs.order_by("-date_approvisionnement", "-id"),
+        "mouvements": list(reversed(mouvements)) if False else mouvements,
+        "total_avances": total_avances,
+        "total_remboursements": total_remboursements,
+        "solde_dg": solde_dg,
+    }
 
 
 def _can_manage_stock(user):
@@ -938,6 +1211,7 @@ def garage_maintenances(request):
     for maintenance in maintenances:
         maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
         maintenance.pricing_complete = maintenance.is_pricing_complete()
+        maintenance.status_display_label = maintenance.get_statut_display()
         maintenance.can_terminate = False
         maintenance.can_reject_dga = (
             user_role == "dga"
@@ -984,7 +1258,12 @@ def garage_maintenances(request):
             maintenance.validation_status_label = "En attente validation DG"
             maintenance.validation_status_variant = "warning"
         elif maintenance.statut == "attente_paiement":
-            maintenance.validation_status_label = "En attente de paiement"
+            if maintenance.mode_paiement == Maintenance.MODE_CHEQUE:
+                maintenance.status_display_label = "En attente de paiement chez le comptable"
+                maintenance.validation_status_label = "En attente de paiement comptable"
+            else:
+                maintenance.status_display_label = "En attente de paiement chez la caissiere"
+                maintenance.validation_status_label = "En attente de paiement caisse"
             maintenance.validation_status_variant = "warning"
         else:
             maintenance.validation_status_label = maintenance.get_statut_display()
@@ -1032,6 +1311,12 @@ def achat_maintenances(request):
             and maintenance.validation_dga_at is None
             and maintenance.statut in {"attente_prix", "attente_dga"}
         )
+        if maintenance.is_stock_only():
+            maintenance.pricing_action_label = "Valider le stock"
+        elif maintenance.statut == "attente_dga" or (maintenance.total_facture or Decimal("0")) > 0:
+            maintenance.pricing_action_label = "Modifier"
+        else:
+            maintenance.pricing_action_label = "Saisir les prix"
     return render(
         request,
         "maintenance/achat.html",
@@ -1049,31 +1334,622 @@ def achat_maintenances(request):
 
 def paiements_maintenances(request):
     historique = request.GET.get("scope") == "historique"
+    role = get_user_role(request.user)
+    q = (request.GET.get("q") or "").strip()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+    payment_type = (request.GET.get("payment_type") or "").strip()
+
     maintenances = _maintenance_queryset()
     if historique:
         maintenances = maintenances.filter(statut="payee")
     else:
         maintenances = maintenances.filter(statut="attente_paiement")
-    maintenances, filter_values = _apply_maintenance_filters(request, maintenances)
-    maintenances = list(maintenances)
-    for maintenance in maintenances:
-        maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
+
+    if not is_admin_user(request.user):
+        if role == "caissiere":
+            maintenances = maintenances.filter(mode_paiement=Maintenance.MODE_ESPECE)
+        elif role == "comptable_sogefi":
+            maintenances = maintenances.filter(mode_paiement=Maintenance.MODE_CHEQUE)
+
+    if q:
+        maintenances = maintenances.filter(
+            Q(reference__icontains=q)
+            | Q(numero_facture__icontains=q)
+            | Q(camion__code_camion__icontains=q)
+            | Q(camion__numero_tracteur__icontains=q)
+            | Q(camion__numero_citerne__icontains=q)
+            | Q(camion__chauffeur__nom__icontains=q)
+            | Q(fournisseur__nom_fournisseur__icontains=q)
+            | Q(fournisseur__entreprise__icontains=q)
+        ).distinct()
+    if date_from:
+        if historique:
+            maintenances = maintenances.filter(date_paiement__gte=date_from)
+        else:
+            maintenances = maintenances.filter(date_debut__date__gte=date_from)
+    if date_to:
+        if historique:
+            maintenances = maintenances.filter(date_paiement__lte=date_to)
+        else:
+            maintenances = maintenances.filter(date_debut__date__lte=date_to)
+
+    depenses = Depense.objects.select_related(
+        "demandeur",
+        "type_depense",
+        "fournisseur",
+        "operation",
+        "commande",
+        "paiement_saisi_par",
+    ).prefetch_related("lignes")
+
+    if historique:
+        depenses = depenses.filter(statut=Depense.STATUT_PAYEE)
+    else:
+        depenses = depenses.filter(
+            statut__in=[
+                Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+            ]
+        )
+
+    if not is_admin_user(request.user):
+        if role == "caissiere":
+            if historique:
+                depenses = depenses.filter(
+                    statut=Depense.STATUT_PAYEE,
+                    mode_reglement=Depense.MODE_ESPECE,
+                    paiement_saisi_par=request.user,
+                )
+            else:
+                depenses = depenses.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE)
+        elif role == "comptable_sogefi":
+            depenses = depenses.filter(mode_reglement=Depense.MODE_CHEQUE)
+
+    if q:
+        depenses = depenses.filter(
+            Q(reference__icontains=q)
+            | Q(titre__icontains=q)
+            | Q(description__icontains=q)
+            | Q(demandeur__username__icontains=q)
+            | Q(fournisseur__nom_fournisseur__icontains=q)
+            | Q(fournisseur__entreprise__icontains=q)
+            | Q(operation__numero_bl__icontains=q)
+            | Q(operation__camion__numero_tracteur__icontains=q)
+            | Q(operation__camion__numero_citerne__icontains=q)
+            | Q(operation__chauffeur__nom__icontains=q)
+            | Q(numero_facture__icontains=q)
+            | Q(numero_cheque__icontains=q)
+        ).distinct()
+    if date_from:
+        depenses = depenses.filter((Q(date_paiement__gte=date_from) if historique else Q(date_creation__date__gte=date_from)))
+    if date_to:
+        depenses = depenses.filter((Q(date_paiement__lte=date_to) if historique else Q(date_creation__date__lte=date_to)))
+
+    payment_items = []
+    current_cash_balance = None
+    if role == "caissiere":
+        current_cash_balance = _get_caisse_metrics(request.user)["solde"]
+
+    if payment_type in {"maintenance", ""}:
+        for maintenance in maintenances:
+            invoice_rows = _maintenance_invoice_rows(maintenance)
+            fournisseur_label = " / ".join(
+                str(invoice.fournisseur)
+                for invoice in invoice_rows
+                if getattr(invoice, "fournisseur", None)
+            )
+            numero_factures = ", ".join(
+                str(invoice.numero_facture)
+                for invoice in invoice_rows
+                if getattr(invoice, "numero_facture", None)
+            )
+            camion_label = maintenance.camion.numero_tracteur if maintenance.camion_id else "-"
+            if maintenance.camion_id and maintenance.camion.numero_citerne:
+                camion_label = f"{camion_label} / {maintenance.camion.numero_citerne}"
+            montant = maintenance.total_facture or Decimal("0")
+            is_cash_item = maintenance.mode_paiement == Maintenance.MODE_ESPECE
+            payment_items.append(
+                {
+                    "family": "maintenance",
+                    "id": maintenance.id,
+                    "reference": maintenance.reference,
+                    "item_type": "Maintenance",
+                    "designation": camion_label,
+                    "tiers": fournisseur_label or str(maintenance.fournisseur or maintenance.prestataire or "-"),
+                    "support": numero_factures or "-",
+                    "mode_paiement": maintenance.get_mode_paiement_display() if maintenance.mode_paiement else "-",
+                    "beneficiaire": maintenance.beneficiaire_cheque or "-",
+                    "montant_raw": montant,
+                    "montant_display": f"{_format_amount(montant)} GNF",
+                    "date_raw": maintenance.date_paiement if historique and maintenance.date_paiement else (maintenance.date_debut.date() if maintenance.date_debut else None),
+                    "date_display": date_format(maintenance.date_paiement if historique and maintenance.date_paiement else maintenance.date_debut, "d/m/Y"),
+                    "action_url": f"/maintenance/paiements/modifier/{maintenance.id}/",
+                    "action_label": "Consulter" if historique else "Payer",
+                    "support_url": invoice_rows[0].facture_fichier.url if invoice_rows and getattr(invoice_rows[0], "facture_fichier", None) else "",
+                    "is_cash_item": is_cash_item,
+                    "balance_warning": bool(not historique and is_cash_item and current_cash_balance is not None and montant > current_cash_balance),
+                    "destination_label": "Caissiere" if is_cash_item else "Comptable SOGEFI",
+                }
+            )
+
+    if payment_type in {"depense_bl", "depense_generale", ""}:
+        depense_items = []
+        seen_chargement_operations = set()
+        for depense in depenses.order_by("-date_creation", "-id"):
+            if depense.source_depense == Depense.SOURCE_CHARGEMENT and depense.operation_id:
+                if depense.operation_id in seen_chargement_operations:
+                    continue
+                seen_chargement_operations.add(depense.operation_id)
+                depense = (
+                    Depense.objects.filter(
+                        source_depense=Depense.SOURCE_CHARGEMENT,
+                        operation_id=depense.operation_id,
+                        portee_chargement=Depense.PORTEE_BL,
+                    )
+                    .select_related("demandeur", "type_depense", "fournisseur", "operation", "commande", "paiement_saisi_par")
+                    .prefetch_related("lignes")
+                    .order_by("date_creation", "id")
+                    .first()
+                    or depense
+                )
+            current_type = "depense_bl" if depense.source_depense == Depense.SOURCE_CHARGEMENT else "depense_generale"
+            if payment_type and payment_type != current_type:
+                continue
+            montant = depense.montant_total or Decimal("0")
+            operation = depense.operation
+            is_cash_item = depense.mode_reglement == Depense.MODE_ESPECE
+            depense_items.append(
+                {
+                    "family": "depense",
+                    "id": depense.id,
+                    "reference": depense.reference,
+                    "item_type": "Depense BL" if current_type == "depense_bl" else "Autre depense",
+                    "designation": depense.titre or depense.libelle_depense or "-",
+                    "tiers": str(depense.fournisseur or depense.demandeur or "-"),
+                    "support": depense.numero_facture or (operation.numero_bl if operation else "-"),
+                    "mode_paiement": depense.get_mode_reglement_display() if depense.mode_reglement else "-",
+                    "beneficiaire": depense.beneficiaire_cheque or depense.receveur_nom or "-",
+                    "montant_raw": montant,
+                    "montant_display": f"{_format_amount(montant)} GNF",
+                    "date_raw": depense.date_paiement if historique and depense.date_paiement else (depense.date_creation.date() if depense.date_creation else None),
+                    "date_display": date_format(depense.date_paiement if historique and depense.date_paiement else depense.date_creation, "d/m/Y"),
+                    "action_url": f"/depenses/paiement/{depense.id}/",
+                    "action_label": "Consulter" if historique else "Payer",
+                    "support_url": depense.piece_justificative.url if depense.piece_justificative else "",
+                    "is_cash_item": is_cash_item,
+                    "balance_warning": bool(not historique and is_cash_item and current_cash_balance is not None and montant > current_cash_balance),
+                    "destination_label": "Caissiere" if is_cash_item else "Comptable SOGEFI",
+                }
+            )
+        payment_items.extend(depense_items)
+
+    payment_items.sort(key=lambda item: (item["date_raw"] or timezone.localdate(), item["reference"]), reverse=True)
+    total_montant = sum((item["montant_raw"] for item in payment_items), Decimal("0"))
     return render(
         request,
         "maintenance/paiements.html",
         {
-            "maintenances": maintenances,
+            "payment_items": payment_items,
             "historique": historique,
-            "filter_values": filter_values,
-            "statut_choices": Maintenance.STATUT_CHOICES,
+            "filter_values": {
+                "q": q,
+                "date_from": date_from,
+                "date_to": date_to,
+                "payment_type": payment_type,
+            },
+            "payment_type_choices": [
+                ("", "Tous les paiements"),
+                ("maintenance", "Maintenance"),
+                ("depense_bl", "Depenses BL"),
+                ("depense_generale", "Autres depenses"),
+            ],
             "can_edit_paiement": True,
             "is_admin_maintenance": is_admin_user(request.user),
+            "payment_count": len(payment_items),
+            "total_montant_display": _format_amount(total_montant),
+            "solde_caisse_display": _format_amount(current_cash_balance) if current_cash_balance is not None else None,
             **_maintenance_tabs_context("paiements"),
         },
     )
 
 
+def appro_caisse(request):
+    caissieres = _caissiere_users_queryset()
+    if request.method == "POST" and request.POST.get("form_type") == "solde_initial":
+        solde_instance = None
+        selected_solde_caissiere_id = (request.POST.get("caissiere") or "").strip()
+        if selected_solde_caissiere_id:
+            solde_instance = SoldeInitialCaisse.objects.filter(caissiere_id=selected_solde_caissiere_id).first()
+        solde_form = SoldeInitialCaisseForm(request.POST, instance=solde_instance, caissiere_queryset=caissieres)
+        if solde_form.is_valid():
+            solde_initial = solde_form.save(commit=False)
+            solde_initial.saisi_par = request.user
+            solde_initial.save()
+            journaliser_action(
+                request.user,
+                "Caisse",
+                "Solde initial caisse",
+                solde_initial.caissiere.username,
+                f"{request.user.username} a defini le solde initial de caisse de {solde_initial.caissiere.username} a {solde_initial.montant_initial} GNF.",
+            )
+            messages.success(request, "Le solde initial de caisse a ete enregistre.")
+            return redirect(f"/maintenance/caisse/appro/?caissiere={solde_initial.caissiere_id}")
+        form = ApprovisionnementCaisseForm(caissiere_queryset=caissieres)
+        messages.error(request, "Impossible d'enregistrer le solde initial. Verifiez les champs.")
+    elif request.method == "POST":
+        form = ApprovisionnementCaisseForm(request.POST, caissiere_queryset=caissieres)
+        if form.is_valid():
+            appro = form.save(commit=False)
+            appro.saisi_par = request.user
+            appro.save()
+            journaliser_action(
+                request.user,
+                "Caisse",
+                "Approvisionnement caisse",
+                appro.reference,
+                f"{request.user.username} a approvisionne la caisse de {appro.caissiere.username} pour {appro.montant} GNF en mode {appro.get_mode_approvisionnement_display().lower()}.",
+            )
+            messages.success(request, f"L'approvisionnement {appro.reference} a ete enregistre.")
+            return redirect("appro_caisse")
+        solde_form = SoldeInitialCaisseForm(caissiere_queryset=caissieres)
+        messages.error(request, "Impossible d'enregistrer cet approvisionnement. Verifiez les champs.")
+    else:
+        initial = {}
+        if caissieres.count() == 1:
+            initial["caissiere"] = caissieres.first()
+        form = ApprovisionnementCaisseForm(caissiere_queryset=caissieres, initial=initial)
+        solde_form = SoldeInitialCaisseForm(caissiere_queryset=caissieres, initial=initial)
+
+    selected_caissiere = _resolve_caissiere_for_request(request)
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+    metrics = _get_caisse_metrics(selected_caissiere, date_from=date_from, date_to=date_to)
+    if selected_caissiere:
+        solde_form = SoldeInitialCaisseForm(
+            caissiere_queryset=caissieres,
+            instance=metrics["solde_initial_obj"],
+            initial={"caissiere": selected_caissiere},
+        )
+    approvisionnements = ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par")
+    if selected_caissiere:
+        approvisionnements = approvisionnements.filter(caissiere=selected_caissiere)
+    if date_from:
+        approvisionnements = approvisionnements.filter(date_approvisionnement__gte=date_from)
+    if date_to:
+        approvisionnements = approvisionnements.filter(date_approvisionnement__lte=date_to)
+
+    return render(
+        request,
+        "maintenance/appro_caisse.html",
+        {
+            "form": form,
+            "caissieres": caissieres,
+            "selected_caissiere": selected_caissiere,
+            "filter_values": {
+                "caissiere": str(selected_caissiere.id) if selected_caissiere else "",
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            "banques": Banque.objects.filter(actif=True).order_by("nom"),
+            "banque_form": BanqueForm(),
+            "solde_form": solde_form,
+            "approvisionnements": approvisionnements[:20],
+            "solde_initial": _format_amount(metrics["solde_initial"]),
+            "total_appro": _format_amount(metrics["total_appro"]),
+            "total_sorties": _format_amount(metrics["total_sorties_maintenance"] + metrics["total_sorties_depenses"]),
+            "solde_caisse": _format_amount(metrics["solde"]),
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("appro_caisse"),
+        },
+    )
+
+
+def situation_caisse(request):
+    selected_caissiere = _resolve_caissiere_for_request(request)
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+    metrics = _get_caisse_metrics(selected_caissiere, date_from=date_from, date_to=date_to)
+    mouvements = list(metrics["mouvements"])
+
+    return render(
+        request,
+        "maintenance/situation_caisse.html",
+        {
+            "caissieres": _caissiere_users_queryset(),
+            "selected_caissiere": selected_caissiere,
+            "filter_values": {
+                "caissiere": str(selected_caissiere.id) if selected_caissiere else "",
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            "mouvements": mouvements,
+            "total_appro": _format_amount(metrics["total_appro"]),
+            "total_sorties_maintenance": _format_amount(metrics["total_sorties_maintenance"]),
+            "total_sorties_depenses": _format_amount(metrics["total_sorties_depenses"]),
+            "solde_caisse": _format_amount(metrics["solde"]),
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("situation_caisse"),
+        },
+    )
+
+
+def situation_dg(request):
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+    metrics = _get_dg_metrics(date_from=date_from, date_to=date_to)
+    return render(
+        request,
+        "maintenance/situation_dg.html",
+        {
+            "filter_values": {
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            "mouvements": metrics["mouvements"],
+            "total_avances": _format_amount(metrics["total_avances"]),
+            "total_remboursements": _format_amount(metrics["total_remboursements"]),
+            "solde_dg": _format_amount(metrics["solde_dg"]),
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("situation_dg"),
+        },
+    )
+
+
 def rapport_maintenances(request):
+    user_role = get_user_role(request.user)
+    if user_role == "caissiere":
+        q = (request.GET.get("q") or "").strip()
+        date_from = (request.GET.get("date_from") or "").strip()
+        date_to = (request.GET.get("date_to") or "").strip()
+        type_depense = (request.GET.get("type_depense") or "").strip()
+
+        maintenance_qs = _maintenance_queryset().filter(
+            statut="payee",
+        ).filter(
+            Q(paiement_saisi_par=request.user)
+            | Q(paiement_saisi_par__isnull=True)
+        )
+        depenses_qs = Depense.objects.select_related(
+            "type_depense",
+            "fournisseur",
+            "operation",
+            "operation__camion",
+            "operation__chauffeur",
+            "commande",
+            "paiement_saisi_par",
+        ).filter(
+            statut=Depense.STATUT_PAYEE,
+            mode_reglement=Depense.MODE_ESPECE,
+            paiement_saisi_par=request.user,
+        )
+
+        if q:
+            maintenance_qs = maintenance_qs.filter(
+                Q(reference__icontains=q)
+                | Q(camion__numero_tracteur__icontains=q)
+                | Q(camion__numero_citerne__icontains=q)
+                | Q(prestataire__icontains=q)
+                | Q(fournisseur__nom_fournisseur__icontains=q)
+                | Q(numero_facture__icontains=q)
+                | Q(receveur_nom__icontains=q)
+            ).distinct()
+            depenses_qs = depenses_qs.filter(
+                Q(reference__icontains=q)
+                | Q(titre__icontains=q)
+                | Q(libelle_depense__icontains=q)
+                | Q(description__icontains=q)
+                | Q(type_depense__libelle__icontains=q)
+                | Q(fournisseur__nom_fournisseur__icontains=q)
+                | Q(numero_facture__icontains=q)
+                | Q(operation__numero_bl__icontains=q)
+                | Q(receveur_nom__icontains=q)
+            ).distinct()
+        if date_from:
+            maintenance_qs = maintenance_qs.filter(date_paiement__gte=date_from)
+            depenses_qs = depenses_qs.filter(date_paiement__gte=date_from)
+        if date_to:
+            maintenance_qs = maintenance_qs.filter(date_paiement__lte=date_to)
+            depenses_qs = depenses_qs.filter(date_paiement__lte=date_to)
+        if type_depense == "maintenance":
+            depenses_qs = depenses_qs.none()
+        elif type_depense == "bl":
+            maintenance_qs = maintenance_qs.none()
+            depenses_qs = depenses_qs.filter(source_depense=Depense.SOURCE_CHARGEMENT)
+        elif type_depense == "generale":
+            maintenance_qs = maintenance_qs.none()
+            depenses_qs = depenses_qs.filter(source_depense=Depense.SOURCE_GENERALE)
+
+        payment_rows = []
+        total_montant = Decimal("0")
+
+        for maintenance in maintenance_qs:
+            maintenance.invoice_rows = _maintenance_invoice_rows(maintenance)
+            fournisseur_label = "-"
+            facture_label = maintenance.numero_facture or "-"
+            invoice_details = []
+            if maintenance.invoice_rows:
+                first_invoice = maintenance.invoice_rows[0]
+                if isinstance(first_invoice, dict):
+                    fournisseur_label = str(first_invoice.get("fournisseur") or "-")
+                    facture_label = first_invoice.get("numero_facture") or facture_label
+                else:
+                    fournisseur_label = str(getattr(first_invoice, "fournisseur", None) or "-")
+                    facture_label = getattr(first_invoice, "numero_facture", "") or facture_label
+                for invoice in maintenance.invoice_rows:
+                    if isinstance(invoice, dict):
+                        fournisseur_value = str(invoice.get("fournisseur") or "-")
+                        numero_facture_value = invoice.get("numero_facture") or ""
+                    else:
+                        fournisseur_value = str(getattr(invoice, "fournisseur", None) or "-")
+                        numero_facture_value = getattr(invoice, "numero_facture", "") or ""
+                    invoice_details.append(
+                        " / ".join(
+                            part
+                            for part in [
+                                fournisseur_value,
+                                numero_facture_value,
+                            ]
+                            if part
+                        )
+                    )
+            elif maintenance.prestataire:
+                fournisseur_label = maintenance.prestataire
+            montant = maintenance.total_facture or Decimal("0")
+            total_montant += montant
+            detail_sections = []
+            designation_parts = [
+                f"Camion {maintenance.camion.numero_tracteur}",
+            ]
+            if maintenance.camion.numero_citerne:
+                designation_parts.append(f"Citerne {maintenance.camion.numero_citerne}")
+            if invoice_details:
+                detail_sections.append(
+                    {
+                        "label": "Factures",
+                        "items": invoice_details,
+                    }
+                )
+            if maintenance.observation:
+                detail_sections.append(
+                    {
+                        "label": "Observation",
+                        "items": [maintenance.observation],
+                    }
+                )
+            article_items = []
+            for ligne in maintenance.lignes.all():
+                sous_lignes = list(ligne.sous_lignes.all())
+                if sous_lignes:
+                    for sous_ligne in sous_lignes:
+                        article_items.append(
+                            f"{sous_ligne.libelle} - Qté {_format_amount(sous_ligne.quantite)} x PU {_format_amount(sous_ligne.prix_unitaire)} = {_format_amount(sous_ligne.montant)} GNF"
+                        )
+                else:
+                    article_items.append(
+                        f"{ligne.libelle} - Qté {_format_amount(ligne.quantite)} x PU {_format_amount(ligne.prix_unitaire)} = {_format_amount(ligne.montant)} GNF"
+                    )
+            if article_items:
+                detail_sections.append(
+                    {
+                        "label": "Pieces / travaux",
+                        "items": article_items,
+                    }
+                )
+            payment_rows.append(
+                {
+                    "famille": "Maintenance",
+                    "famille_key": "maintenance",
+                    "reference": maintenance.reference,
+                    "designation": " | ".join(designation_parts),
+                    "designation_lines": designation_parts,
+                    "detail_sections": detail_sections,
+                    "piece": facture_label,
+                    "montant": montant,
+                    "montant_display": _format_amount(montant),
+                    "date_paiement": maintenance.date_paiement,
+                    "mode_paiement": maintenance.mode_paiement or "Espece",
+                    "beneficiaire": maintenance.receveur_nom or "-",
+                }
+            )
+
+        for depense in depenses_qs:
+            montant = depense.montant_total or Decimal("0")
+            total_montant += montant
+            detail_sections = []
+            if depense.source_depense == Depense.SOURCE_CHARGEMENT:
+                famille = "Depense BL"
+                famille_key = "bl"
+                designation = depense.libelle_depense or depense.titre
+                designation_lines = [designation]
+                detail_parts = []
+                if depense.operation_id:
+                    detail_parts.append(f"BL {depense.operation.numero_bl}")
+                    if getattr(depense.operation, "camion", None):
+                        designation_lines.append(f"Camion {depense.operation.camion.numero_tracteur}")
+                    if getattr(depense.operation, "chauffeur", None):
+                        designation_lines.append(str(depense.operation.chauffeur))
+                if depense.commande_id:
+                    detail_parts.append(f"Commande {depense.commande.reference}")
+            else:
+                famille = "Depense generale"
+                famille_key = "generale"
+                designation = depense.libelle_depense or depense.titre
+                designation_lines = [designation]
+                detail_parts = []
+            if depense.type_depense_id:
+                detail_parts.append(f"Type {depense.type_depense.libelle}")
+            if depense.fournisseur_id:
+                detail_parts.append(f"Fournisseur {str(depense.fournisseur)}")
+            if depense.numero_facture:
+                detail_parts.append(f"Facture {depense.numero_facture}")
+            if depense.description:
+                detail_parts.append(f"Motif {depense.description}")
+            if detail_parts:
+                detail_sections.append(
+                    {
+                        "label": "Details",
+                        "items": detail_parts,
+                    }
+                )
+            ligne_items = [
+                f"{ligne.designation} - Qté {_format_amount(ligne.quantite)} x PU {_format_amount(ligne.prix_unitaire)} = {_format_amount(ligne.montant)} GNF"
+                for ligne in depense.lignes.all()
+            ]
+            if ligne_items:
+                detail_sections.append(
+                    {
+                        "label": "Lignes de depense",
+                        "items": ligne_items,
+                    }
+                )
+            payment_rows.append(
+                {
+                    "famille": famille,
+                    "famille_key": famille_key,
+                    "reference": depense.reference,
+                    "designation": designation,
+                    "designation_lines": designation_lines,
+                    "detail_sections": detail_sections,
+                    "piece": depense.numero_cheque or depense.numero_facture or "-",
+                    "montant": montant,
+                    "montant_display": _format_amount(montant),
+                    "date_paiement": depense.date_paiement,
+                    "mode_paiement": depense.get_mode_reglement_display(),
+                    "beneficiaire": depense.receveur_nom or "-",
+                }
+            )
+
+        payment_rows.sort(
+            key=lambda item: (
+                item["date_paiement"] or timezone.datetime.min.date(),
+                item["reference"],
+            ),
+            reverse=True,
+        )
+
+        filter_values = {
+            "q": q,
+            "date_from": date_from,
+            "date_to": date_to,
+            "type_depense": type_depense,
+        }
+        return render(
+            request,
+            "maintenance/rapport_caisse.html",
+            {
+                "payment_rows": payment_rows,
+                "filter_values": filter_values,
+                "total_paiements": len(payment_rows),
+                "total_montant": _format_amount(total_montant),
+                "total_maintenance": sum(1 for row in payment_rows if row["famille_key"] == "maintenance"),
+                "total_depenses_bl": sum(1 for row in payment_rows if row["famille_key"] == "bl"),
+                "total_depenses_generales": sum(1 for row in payment_rows if row["famille_key"] == "generale"),
+                "is_admin_maintenance": is_admin_user(request.user),
+                **_maintenance_tabs_context("rapports"),
+            },
+        )
+
     maintenances_qs = _maintenance_queryset()
     q = (request.GET.get("q") or "").strip()
     date_from = (request.GET.get("date_from") or "").strip()
@@ -1742,7 +2618,8 @@ def export_rapport_maintenances_xls(request):
 
 def fournisseurs_maintenance(request):
     query = (request.GET.get("q") or "").strip()
-    fournisseurs = Fournisseur.objects.all().order_by("nom_fournisseur", "entreprise")
+    portefeuille = _fournisseur_portefeuille_for_role(request.user)
+    fournisseurs = _fournisseurs_queryset_for_user(request.user)
     if query:
         fournisseurs = fournisseurs.filter(
             Q(nom_fournisseur__icontains=query)
@@ -1750,7 +2627,7 @@ def fournisseurs_maintenance(request):
             | Q(domaine_activite__icontains=query)
             | Q(numero_telephone__icontains=query)
         )
-    form = FournisseurForm()
+    form = FournisseurForm(portefeuille=portefeuille)
     return render(
         request,
         "maintenance/fournisseurs.html",
@@ -1759,6 +2636,7 @@ def fournisseurs_maintenance(request):
             "query": query,
             "form": form,
             "is_admin_maintenance": is_admin_user(request.user),
+            "fournisseur_portefeuille": portefeuille,
             **_maintenance_tabs_context("fournisseurs"),
         },
     )
@@ -1768,19 +2646,21 @@ def ajouter_fournisseur(request):
     if request.method != "POST":
         return redirect("fournisseurs_maintenance")
 
-    form = FournisseurForm(request.POST)
+    portefeuille = _fournisseur_portefeuille_for_role(request.user)
+    form = FournisseurForm(request.POST, portefeuille=portefeuille)
     if form.is_valid():
         fournisseur = form.save()
-        log_action(
+        journaliser_action(
             request.user,
-            "maintenance",
-            "creation fournisseur",
+            "Maintenance",
+            "Creation fournisseur",
+            str(fournisseur),
             f"{request.user.username} a cree le fournisseur {fournisseur}.",
         )
         messages.success(request, f"Le fournisseur {fournisseur} a ete cree.")
         return redirect("fournisseurs_maintenance")
 
-    fournisseurs = Fournisseur.objects.all().order_by("nom_fournisseur", "entreprise")
+    fournisseurs = _fournisseurs_queryset_for_user(request.user)
     messages.error(request, "Impossible de creer le fournisseur. Verifiez les champs puis reessayez.")
     return render(
         request,
@@ -1790,6 +2670,7 @@ def ajouter_fournisseur(request):
             "query": "",
             "form": form,
             "is_admin_maintenance": is_admin_user(request.user),
+            "fournisseur_portefeuille": portefeuille,
             **_maintenance_tabs_context("fournisseurs"),
         },
         status=400,
@@ -1797,22 +2678,24 @@ def ajouter_fournisseur(request):
 
 
 def modifier_fournisseur(request, id):
-    fournisseur = get_object_or_404(Fournisseur, pk=id)
+    portefeuille = _fournisseur_portefeuille_for_role(request.user)
+    fournisseur = get_object_or_404(_fournisseurs_queryset_for_user(request.user), pk=id)
     if request.method == "POST":
-        form = FournisseurForm(request.POST, instance=fournisseur)
+        form = FournisseurForm(request.POST, instance=fournisseur, portefeuille=portefeuille)
         if form.is_valid():
             fournisseur = form.save()
-            log_action(
+            journaliser_action(
                 request.user,
-                "maintenance",
-                "mise a jour fournisseur",
+                "Maintenance",
+                "Mise a jour fournisseur",
+                str(fournisseur),
                 f"{request.user.username} a modifie le fournisseur {fournisseur}.",
             )
             messages.success(request, f"Le fournisseur {fournisseur} a ete mis a jour.")
             return redirect("fournisseurs_maintenance")
         messages.error(request, "Impossible de mettre a jour le fournisseur. Verifiez les champs.")
     else:
-        form = FournisseurForm(instance=fournisseur)
+        form = FournisseurForm(instance=fournisseur, portefeuille=portefeuille)
 
     return render(
         request,
@@ -1821,6 +2704,7 @@ def modifier_fournisseur(request, id):
             "form": form,
             "fournisseur": fournisseur,
             "is_admin_maintenance": is_admin_user(request.user),
+            "fournisseur_portefeuille": portefeuille,
             **_maintenance_tabs_context("fournisseurs"),
         },
         status=400 if request.method == "POST" and form.errors else 200,
@@ -1833,13 +2717,14 @@ def supprimer_fournisseur(request, id):
         messages.error(request, "Seul l'administrateur peut supprimer un fournisseur.")
         return redirect("fournisseurs_maintenance")
 
-    fournisseur = get_object_or_404(Fournisseur, pk=id)
+    fournisseur = get_object_or_404(_fournisseurs_queryset_for_user(request.user), pk=id)
     label = str(fournisseur)
     fournisseur.delete()
-    log_action(
+    journaliser_action(
         request.user,
-        "maintenance",
-        "suppression fournisseur",
+        "Maintenance",
+        "Suppression fournisseur",
+        label,
         f"{request.user.username} a supprime le fournisseur {label}.",
     )
     messages.success(request, f"Le fournisseur {label} a ete supprime.")
@@ -1870,7 +2755,7 @@ def _render_garage_form(request, template_name, form, formset, **context):
 def _render_achat_form(request, template_name, form, **context):
     fournisseurs_catalog = [
         {"id": fournisseur.id, "label": str(fournisseur)}
-        for fournisseur in Fournisseur.objects.all()
+        for fournisseur in Fournisseur.objects.filter(portefeuille=Fournisseur.PORTEFEUILLE_LOGISTIQUE).order_by("nom_fournisseur", "entreprise")
     ]
     prestataires_catalog = [
         {"label": str(prestataire)}
@@ -2212,6 +3097,7 @@ def modifier_maintenance_achat(request, id):
                     maintenance_label,
                     f"{request.user.username} a mis a jour l'achat et les prix du diagnostic {maintenance_label}.",
                 )
+                messages.success(request, "Les prix ont ete enregistres.")
                 return redirect("achat_maintenances")
         messages.error(
             request,
@@ -2359,9 +3245,6 @@ def rejeter_maintenance_dg(request, id):
 
 
 def valider_maintenance_dg(request, id):
-    if request.method != "POST":
-        return redirect("garage_maintenances")
-
     maintenance = get_object_or_404(Maintenance, id=id)
     if get_user_role(request.user) != "directeur":
         messages.error(request, "Seul le role DG peut faire cette validation.")
@@ -2372,16 +3255,34 @@ def valider_maintenance_dg(request, id):
     if maintenance.is_validated_by_dg() and maintenance.statut != "attente_dg":
         messages.info(request, "Cette fiche est deja validee par le DG.")
         return redirect("garage_maintenances")
+    if request.method != "POST":
+        return redirect("apercu_validation_maintenance", id=maintenance.id)
+
+    decision_form = MaintenanceDecisionPaiementForm(request.POST)
+    chosen_mode = ""
+    if not maintenance.is_stock_only():
+        if not decision_form.is_valid():
+            messages.error(request, "Le mode de paiement choisi est invalide.")
+            return redirect("apercu_validation_maintenance", id=maintenance.id)
+        chosen_mode = decision_form.cleaned_data.get("mode_paiement") or ""
+        if chosen_mode not in {Maintenance.MODE_CHEQUE, Maintenance.MODE_ESPECE}:
+            messages.error(request, "Le DG doit choisir cheque ou espece.")
+            return redirect("apercu_validation_maintenance", id=maintenance.id)
 
     try:
         with transaction.atomic():
             _issue_stock_for_maintenance(maintenance, request.user)
             maintenance.validation_dg_at = timezone.now()
             maintenance.validation_dg_by = request.user
+            if not maintenance.is_stock_only():
+                maintenance.mode_paiement = chosen_mode
             maintenance.statut = "validee_stock" if maintenance.is_stock_only() else "attente_paiement"
             if not maintenance.date_fin:
                 maintenance.date_fin = timezone.now()
-            maintenance.save(update_fields=["validation_dg_at", "validation_dg_by", "statut", "date_fin"])
+            update_fields = ["validation_dg_at", "validation_dg_by", "statut", "date_fin"]
+            if not maintenance.is_stock_only():
+                update_fields.append("mode_paiement")
+            maintenance.save(update_fields=update_fields)
     except ValidationError as error:
         messages.error(request, str(error))
         return redirect("garage_maintenances")
@@ -2391,7 +3292,7 @@ def valider_maintenance_dg(request, id):
         "Maintenance",
         "Validation DG",
         maintenance.reference,
-        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau DG.",
+        f"{request.user.username} a valide la fiche {maintenance.reference} au niveau DG{f' en mode {chosen_mode}' if chosen_mode else ''}.",
     )
     return redirect("garage_maintenances")
 
@@ -2510,7 +3411,8 @@ def ajouter_fournisseur_modal(request):
             status=405,
         )
 
-    form = FournisseurForm(request.POST)
+    portefeuille = (request.POST.get("portefeuille") or "").strip() or _fournisseur_portefeuille_for_role(request.user)
+    form = FournisseurForm(request.POST, portefeuille=portefeuille)
     if form.is_valid():
         fournisseur = form.save()
         return JsonResponse(
@@ -2558,25 +3460,37 @@ def ajouter_prestataire_modal(request):
 
 def modifier_maintenance_paiement(request, id):
     maintenance = get_object_or_404(Maintenance, id=id)
-    can_edit_paiement = is_admin_user(request.user) or get_user_role(request.user) in ("comptable", "caissiere", "directeur")
+    can_edit_paiement = _maintenance_payment_allowed(request.user, maintenance)
+    payment_role = get_user_role(request.user)
+    caisse_metrics = _get_caisse_metrics(request.user) if maintenance.mode_paiement == Maintenance.MODE_ESPECE and payment_role == "caissiere" else None
+    montant_a_payer = maintenance.total_facture or Decimal("0")
+    solde_courant = caisse_metrics["solde"] if caisse_metrics else None
     if request.method == "POST":
         if not can_edit_paiement or maintenance.statut != "attente_paiement":
             messages.error(request, "Cette fiche n'est pas disponible pour le paiement.")
             return redirect("paiements_maintenances")
         form = MaintenancePaiementForm(request.POST, instance=maintenance)
         if form.is_valid():
-            maintenance = form.save(commit=False)
-            maintenance.statut = "payee"
-            maintenance.save()
-            journaliser_action(
-                request.user,
-                "Maintenance",
-                "Paiement maintenance",
-                maintenance.reference,
-                f"{request.user.username} a enregistre le paiement de la fiche {maintenance.reference}.",
-            )
-            messages.success(request, f"Le paiement de la fiche {maintenance.reference} a ete enregistre.")
-            return redirect("paiements_maintenances")
+            if caisse_metrics and solde_courant is not None and montant_a_payer > solde_courant:
+                form.add_error(
+                    None,
+                    f"Paiement impossible : le montant de { _format_amount(montant_a_payer) } GNF depasse le solde disponible de { _format_amount(solde_courant) } GNF.",
+                )
+            else:
+                maintenance = form.save(commit=False)
+                maintenance.statut = "payee"
+                maintenance.paiement_saisi_par = request.user
+                maintenance.paiement_saisi_le = timezone.now()
+                maintenance.save()
+                journaliser_action(
+                    request.user,
+                    "Maintenance",
+                    "Paiement maintenance",
+                    maintenance.reference,
+                    f"{request.user.username} a enregistre le paiement de la fiche {maintenance.reference}.",
+                )
+                messages.success(request, f"Le paiement de la fiche {maintenance.reference} a ete enregistre.")
+                return redirect("paiements_maintenances")
         messages.error(request, "Impossible d'enregistrer le paiement. Verifiez les champs.")
     else:
         form = MaintenancePaiementForm(instance=maintenance)
@@ -2590,6 +3504,16 @@ def modifier_maintenance_paiement(request, id):
         maintenance=maintenance,
         can_edit_paiement=can_edit_paiement and maintenance.statut == "attente_paiement",
         historique=maintenance.statut == "payee",
+        banques=Banque.objects.filter(actif=True).order_by("nom"),
+        banque_form=BanqueForm(),
+        type_piece_form=TypePieceIdentiteForm(),
+        type_pieces=TypePieceIdentite.objects.order_by("libelle"),
+        is_cheque_payment=maintenance.mode_paiement == Maintenance.MODE_CHEQUE,
+        is_espece_payment=maintenance.mode_paiement == Maintenance.MODE_ESPECE,
+        solde_courant_display=_format_amount(solde_courant) if solde_courant is not None else None,
+        montant_a_payer_display=_format_amount(montant_a_payer),
+        solde_apres_display=_format_amount((solde_courant - montant_a_payer) if solde_courant is not None else Decimal("0")) if solde_courant is not None else None,
+        caisse_insuffisante=bool(solde_courant is not None and montant_a_payer > solde_courant),
     )
 
 
@@ -2608,6 +3532,11 @@ def apercu_validation_maintenance(request, id):
         {
             **_build_validation_preview_context(maintenance),
             "user_role": user_role,
+            "decision_form": (
+                MaintenanceDecisionPaiementForm(initial={"mode_paiement": maintenance.mode_paiement})
+                if user_role == "directeur" and maintenance.statut == "attente_dg" and not maintenance.is_stock_only()
+                else None
+            ),
             **_maintenance_tabs_context("garage"),
         },
     )
@@ -2648,15 +3577,18 @@ def export_achat_pdf(request):
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
 garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(garage_maintenances)
 achat_maintenances = role_required("logistique", "directeur", "controleur")(achat_maintenances)
-paiements_maintenances = role_required("comptable", "caissiere", "directeur")(paiements_maintenances)
-modifier_maintenance_paiement = role_required("comptable", "caissiere", "directeur")(modifier_maintenance_paiement)
+paiements_maintenances = role_required("comptable", "comptable_sogefi", "caissiere", "directeur")(paiements_maintenances)
+modifier_maintenance_paiement = role_required("comptable", "comptable_sogefi", "caissiere", "directeur")(modifier_maintenance_paiement)
+appro_caisse = role_required("comptable_sogefi", "directeur")(appro_caisse)
+situation_caisse = role_required("caissiere", "comptable_sogefi", "directeur")(situation_caisse)
+situation_dg = role_required("comptable_sogefi", "directeur")(situation_dg)
 stock_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "invite", "controleur")(stock_maintenances)
 ajouter_article_stock = role_required("logistique", "directeur")(ajouter_article_stock)
 modifier_article_stock = role_required("logistique", "directeur")(modifier_article_stock)
 ajouter_mouvement_stock = role_required("logistique", "directeur")(ajouter_mouvement_stock)
-fournisseurs_maintenance = role_required("logistique", "directeur")(fournisseurs_maintenance)
-ajouter_fournisseur = role_required("logistique", "directeur")(ajouter_fournisseur)
-modifier_fournisseur = role_required("logistique", "directeur")(modifier_fournisseur)
+fournisseurs_maintenance = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(fournisseurs_maintenance)
+ajouter_fournisseur = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(ajouter_fournisseur)
+modifier_fournisseur = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(modifier_fournisseur)
 ajouter_maintenance_garage = role_required("logistique", "maintenancier", "directeur")(ajouter_maintenance_garage)
 modifier_maintenance_garage = role_required("logistique", "maintenancier")(modifier_maintenance_garage)
 modifier_maintenance_achat = role_required("logistique", "directeur", "controleur")(modifier_maintenance_achat)
@@ -2671,9 +3603,9 @@ imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "dire
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
 ajouter_panne_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_modal)
-ajouter_fournisseur_modal = role_required("logistique", "directeur")(ajouter_fournisseur_modal)
+ajouter_fournisseur_modal = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(ajouter_fournisseur_modal)
 ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)
-supprimer_fournisseur = role_required("logistique", "directeur")(supprimer_fournisseur)
+supprimer_fournisseur = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(supprimer_fournisseur)
 export_garage_xls = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_xls)
 export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
 export_achat_xls = role_required("logistique", "directeur")(export_achat_xls)

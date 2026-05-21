@@ -7,7 +7,7 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Facturation</p>
-<h1>BL livres a facturer</h1>
+<h1>BL liquides a facturer</h1>
 </div>
 <form method="get" class="search-form">
     <input type="text" name="q" value="{{ query }}" placeholder="Recherche par BL, commande ou client">
@@ -28,7 +28,7 @@
 <th>Client</th>
 <th>Produit</th>
 <th>Quantite</th>
-<th>Date livre</th>
+<th>Date liquidation / livraison</th>
 <th>Facture</th>
 <th>Montant</th>
 <th>Actions</th>
@@ -42,7 +42,7 @@
 <td>{{ operation.client.entreprise }}</td>
 <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
 <td>{{ operation.quantite|default:"-" }}</td>
-<td>{{ operation.date_bons_livres|default:"-" }}</td>
+<td>{% if operation.date_bons_livres %}{{ operation.date_bons_livres }}{% else %}{{ operation.date_bons_liquides|default:"-" }}{% endif %}</td>
 <td>
     {% if operation.remplace_par_id %}
     <span class="status-badge status-danger">BL invalide</span>
@@ -76,7 +76,7 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="9">Aucun BL livre disponible pour la facturation.</td>
+<td colspan="9">Aucun BL liquide disponible pour la facturation.</td>
 </tr>
 {% endfor %}
 </tbody>

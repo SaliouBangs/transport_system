@@ -374,8 +374,8 @@
 <div class="dashboard-page">
   <div class="page-header">
     <div>
-      <p class="eyebrow">Pilotage transverse</p>
-      <h1>Dashboard de la plateforme</h1>
+      <p class="eyebrow">{% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}Depenses internes{% else %}Pilotage transverse{% endif %}</p>
+      <h1>{% if user_role == "dga_sogefi" %}Dashboard DGA SOGEFI{% elif user_role == "responsable_achat" %}Dashboard Responsable achat{% else %}Dashboard de la plateforme{% endif %}</h1>
     </div>
   </div>
 
@@ -384,7 +384,7 @@
       <div class="dashboard-section-header" style="margin-bottom:0;">
         <div>
           <p class="eyebrow" style="margin-bottom:8px;">Vision d'ensemble</p>
-          <h2 class="dashboard-section-title" style="font-size:2rem;">{% if user_role == "transitaire" %}Lecture rapide du circuit transitaire{% elif user_role == "chef_chauffeur" %}Lecture rapide du circuit chauffeur{% elif user_role == "logistique" %}Lecture rapide du pilotage logistique{% elif user_role == "commercial" or user_role == "responsable_commercial" %}Lecture rapide du pilotage commercial et comptable{% elif user_role == "comptable" %}Lecture rapide du pilotage comptable{% else %}Une lecture rapide du circuit complet{% endif %}</h2>
+          <h2 class="dashboard-section-title" style="font-size:2rem;">{% if user_role == "transitaire" %}Lecture rapide du circuit transitaire{% elif user_role == "chef_chauffeur" %}Lecture rapide du circuit chauffeur{% elif user_role == "logistique" %}Lecture rapide du pilotage logistique{% elif user_role == "commercial" or user_role == "responsable_commercial" %}Lecture rapide du pilotage commercial et comptable{% elif user_role == "comptable" %}Lecture rapide du pilotage comptable{% elif user_role == "dga_sogefi" %}Lecture rapide des depenses internes{% elif user_role == "responsable_achat" %}Lecture rapide des achats internes{% else %}Une lecture rapide du circuit complet{% endif %}</h2>
           <p class="dashboard-section-subtitle">
             {% if user_role == "commercial" or user_role == "responsable_commercial" %}
             Cette vue synthetise le portefeuille clients, la prospection, les validations de commandes, la facturation et les encaissements.
@@ -395,6 +395,12 @@
             {% elif user_role == "comptable" %}
             Cette vue synthetise la creation des BL, la facturation des livraisons, le suivi des montants emis et les encaissements clients.
             L'objectif est de garder la comptabilite orientee sur les taches a traiter sans bruit inutile.
+            {% elif user_role == "dga_sogefi" %}
+            Cette vue se concentre sur les depenses internes : expression de besoin, saisie achat / prix, validation DGA SOGEFI, arbitrage DG et bascule vers le paiement.
+            L'objectif est de piloter uniquement ce circuit, sans afficher les sujets BL, flotte ou stock qui ne vous concernent pas.
+            {% elif user_role == "responsable_achat" %}
+            Cette vue se concentre sur les depenses internes a chiffrer : saisie achat / prix, fournisseurs, facture et transmission vers la validation DGA SOGEFI.
+            L'objectif est de travailler uniquement sur les dossiers internes, sans aucun affichage de commandes, BL ou logistique.
             {% else %}
             Ce tableau de bord résume l'état des commandes, BL, validations, transport, maintenance, stock et paiements.
             L'objectif est de garder chaque acteur orienté, sans surcharger l'écran.
@@ -419,6 +425,14 @@
           {% elif user_role == "comptable" %}
           <p class="dashboard-section-subtitle" style="margin-top:10px;">
             Les priorites ici sont claires : creer les BL, facturer les livraisons puis suivre les encaissements.
+          </p>
+          {% elif user_role == "dga_sogefi" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : verifier les dossiers chiffrés, valider les engagements internes, puis suivre leur transmission vers le DG et le paiement.
+          </p>
+          {% elif user_role == "responsable_achat" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : completer les lignes de depense, rattacher fournisseurs et factures, puis transmettre proprement les dossiers au DGA SOGEFI.
           </p>
           {% endif %}
         </div>
@@ -574,6 +588,120 @@
           <p class="dashboard-kpi-label">Encaissements</p>
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ comptable_encaissements_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Paiements clients deja enregistres</p>
+        </div>
+        {% elif user_role == "dga_sogefi" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Dossiers internes</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_total }}</p>
+          <p class="dashboard-kpi-note">Volume global des depenses internes lancees</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Saisie achat / prix</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_achat }}</p>
+          <p class="dashboard-kpi-note">Besoins en attente de chiffrage achat</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Validation DGA</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dga }}</p>
+          <p class="dashboard-kpi-note">Dossiers a arbitrer a votre niveau</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Validation DG</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dg }}</p>
+          <p class="dashboard-kpi-note">Dossiers deja transmis au DG</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Paiements internes</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_paiement }}</p>
+          <p class="dashboard-kpi-note">{{ depenses_internes_attente_caisse }} caisse / {{ depenses_internes_attente_comptable }} cheque</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Montant engage</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ depenses_internes_montant_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">{{ depenses_internes_montant_en_attente|floatformat:0 }} GNF encore en circuit</p>
+        </div>
+        {% elif user_role == "responsable_achat" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Dossiers internes</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_total }}</p>
+          <p class="dashboard-kpi-note">Expressions internes actuellement suivies</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">A chiffrer</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_achat }}</p>
+          <p class="dashboard-kpi-note">Dossiers a completer avec prix, fournisseur et facture</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Chez DGA SOGEFI</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dga }}</p>
+          <p class="dashboard-kpi-note">Dossiers deja transmis pour arbitrage</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Chez DG</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dg }}</p>
+          <p class="dashboard-kpi-note">Dossiers en validation finale</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">En paiement</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_paiement }}</p>
+          <p class="dashboard-kpi-note">Dossiers deja sortis de votre perimetre achat</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Montant chiffre</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ depenses_internes_montant_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Montant cumule des achats internes saisis</p>
+        </div>
+        {% elif user_role == "caissiere" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Solde initial</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_initial_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Montant de depart saisi pour la caisse</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Solde caisse</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_global|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Disponible apres les sorties deja saisies</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Appros recus</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_appro_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">{{ caisse_appro_count }} approvisionnement(s) enregistres</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Sorties maintenance</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_sorties_maintenance_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Paiements maintenance deja passes en caisse</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Sorties depenses</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_sorties_depenses_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Depenses espece deja reglees</p>
+        </div>
+        {% elif user_role == "comptable_sogefi" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Caisse disponible</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_global|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Solde global restant a la caissiere</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Approvisionnements</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_appro_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">{{ caisse_appro_count }} approvisionnement(s) saisis</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Sorties terrain</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_sorties_depenses_total|add:caisse_sorties_maintenance_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Maintenance et depenses deja sorties</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Cheques a traiter</p>
+          <p class="dashboard-kpi-value">{{ depenses_attente_cheque }}</p>
+          <p class="dashboard-kpi-note">Voir les alertes et paiements cheque en attente</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Solde DG</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ dg_solde_total|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">Total avances DG moins remboursements effectues</p>
         </div>
         {% else %}
         <div class="dashboard-kpi">
@@ -731,6 +859,102 @@
           <span>Encaissements clients</span>
           <strong>{{ comptable_encaissements_total|floatformat:0 }} GNF</strong>
         </div>
+        {% elif user_role == "dga_sogefi" %}
+        <div class="dashboard-summary-item">
+          <span>Saisie achat / prix</span>
+          <strong>{{ depenses_internes_attente_achat }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Validation DGA SOGEFI</span>
+          <strong>{{ depenses_internes_attente_dga }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Validation DG</span>
+          <strong>{{ depenses_internes_attente_dg }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Paiement caisse</span>
+          <strong>{{ depenses_internes_attente_caisse }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Paiement cheque</span>
+          <strong>{{ depenses_internes_attente_comptable }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Depenses payees</span>
+          <strong>{{ depenses_internes_payees }}</strong>
+        </div>
+        {% elif user_role == "responsable_achat" %}
+        <div class="dashboard-summary-item">
+          <span>Dossiers a chiffrer</span>
+          <strong>{{ depenses_internes_attente_achat }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Validation DGA SOGEFI</span>
+          <strong>{{ depenses_internes_attente_dga }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Validation DG</span>
+          <strong>{{ depenses_internes_attente_dg }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Paiement caisse</span>
+          <strong>{{ depenses_internes_attente_caisse }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Paiement cheque</span>
+          <strong>{{ depenses_internes_attente_comptable }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Montant en circuit</span>
+          <strong>{{ depenses_internes_montant_en_attente|floatformat:0 }} GNF</strong>
+        </div>
+        {% elif user_role == "caissiere" %}
+        <div class="dashboard-summary-item">
+          <span>Solde initial</span>
+          <strong>{{ caisse_solde_initial_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Solde disponible</span>
+          <strong>{{ caisse_solde_global|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Approvisionnements recus</span>
+          <strong>{{ caisse_appro_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Maintenance reglee</span>
+          <strong>{{ caisse_sorties_maintenance_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Depenses reglees</span>
+          <strong>{{ caisse_sorties_depenses_total|floatformat:0 }} GNF</strong>
+        </div>
+        {% elif user_role == "comptable_sogefi" %}
+        <div class="dashboard-summary-item">
+          <span>Solde caisse global</span>
+          <strong>{{ caisse_solde_global|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Approvisionnements saisis</span>
+          <strong>{{ caisse_appro_count }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Total appro</span>
+          <strong>{{ caisse_appro_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Sorties maintenance</span>
+          <strong>{{ caisse_sorties_maintenance_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Sorties depenses</span>
+          <strong>{{ caisse_sorties_depenses_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Solde DG</span>
+          <strong>{{ dg_solde_total|floatformat:0 }} GNF</strong>
+        </div>
         {% else %}
         <div class="dashboard-summary-item">
           <span>Commandes attente DGA</span>
@@ -803,7 +1027,243 @@
     </section>
   {% endif %}
 
-  {% if user_role == "logistique" %}
+  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}
+  <div class="dashboard-layout">
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Depenses internes</p>
+            <h2 class="dashboard-section-title">{% if user_role == "responsable_achat" %}Dossiers recents a chiffrer{% else %}Dossiers recents a piloter{% endif %}</h2>
+            <p class="dashboard-section-subtitle">
+              {% if user_role == "responsable_achat" %}
+              Cette liste vous montre uniquement les depenses internes qui passent par votre travail achat : lignes, prix, fournisseur, facture et transmission vers la validation DGA SOGEFI.
+              {% else %}
+              Cette liste vous montre uniquement les dossiers internes qui traversent votre circuit de validation, avec leur demandeur, leur niveau d'avancement et le montant engage.
+              {% endif %}
+            </p>
+          </div>
+          <div class="table-actions">
+            <a href="/depenses/" class="btn-secondary">Voir tous les dossiers</a>
+            <a href="/depenses/ajouter/" class="btn">{% if user_role == "responsable_achat" %}Nouvelle expression{% else %}Nouvelle expression{% endif %}</a>
+          </div>
+        </div>
+        <div class="dashboard-table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Demandeur</th>
+                <th>Libelle</th>
+                <th>Statut</th>
+                <th>Montant</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for depense in depenses_internes_recentes %}
+              <tr>
+                <td><strong>{{ depense.reference }}</strong></td>
+                <td>{{ depense.demandeur.get_full_name|default:depense.demandeur.username }}</td>
+                <td>{{ depense.libelle_depense|default:depense.titre|truncatechars:52 }}</td>
+                <td>{{ depense.get_statut_display }}</td>
+                <td><strong>{% if depense.montant_engage %}{{ depense.montant_engage|floatformat:0 }}{% else %}{{ depense.montant_estime|floatformat:0 }}{% endif %} GNF</strong></td>
+                <td>{{ depense.date_creation|date:"d/m/Y" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6">Aucune depense interne recente a afficher.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Lecture du circuit</p>
+            <h2 class="dashboard-section-title">Etapes de traitement</h2>
+            <p class="dashboard-section-subtitle">
+              {% if user_role == "responsable_achat" %}
+              Votre parcours achat est volontairement simple : reprendre l'expression interne, saisir le chiffrage, joindre la facture, puis transmettre au DGA SOGEFI.
+              {% else %}
+              Le parcours DGA SOGEFI est volontairement simple : expression, chiffrage achat, validation DGA, arbitrage DG, puis paiement.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Expression de besoin</h4>
+            <strong>{{ depenses_internes_total }}</strong>
+            <p>Demandes internes deja enregistrees dans la plateforme.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Saisie achat / prix</h4>
+            <strong>{{ depenses_internes_attente_achat }}</strong>
+            <p>Dossiers chez le responsable achat pour chiffrage et facture.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>{% if user_role == "responsable_achat" %}Transmission DGA SOGEFI{% else %}Validation DGA SOGEFI{% endif %}</h4>
+            <strong>{{ depenses_internes_attente_dga }}</strong>
+            <p>{% if user_role == "responsable_achat" %}Dossiers deja saisis et transmis pour arbitrage DGA SOGEFI.{% else %}Dossiers qui attendent votre decision avant transmission au DG.{% endif %}</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Validation DG</h4>
+            <strong>{{ depenses_internes_attente_dg }}</strong>
+            <p>Dossiers montes au DG pour choix cheque ou espece.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-stack">
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Actions rapides</p>
+            <h2 class="dashboard-section-title">Ce qui vous concerne aujourd'hui</h2>
+          </div>
+        </div>
+        <div class="dashboard-split-list">
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Achat / prix a surveiller</strong>
+              <span>Besoins deja exprimes qui attendent encore le chiffrage achat.</span>
+            </div>
+            <strong>{{ depenses_internes_attente_achat }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>{% if user_role == "responsable_achat" %}Dossiers transmis DGA SOGEFI{% else %}Dossiers a valider{% endif %}</strong>
+              <span>{% if user_role == "responsable_achat" %}Engagements deja saisis qui attendent la decision du DGA SOGEFI.{% else %}Engagements internes deja saisis et a arbitrer a votre niveau.{% endif %}</span>
+            </div>
+            <strong>{{ depenses_internes_attente_dga }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Transmission vers DG</strong>
+              <span>Dossiers en attente du choix final de paiement par le DG.</span>
+            </div>
+            <strong>{{ depenses_internes_attente_dg }}</strong>
+          </div>
+          <div class="dashboard-split-item">
+            <div>
+              <strong>Paiements internes</strong>
+              <span>Dossiers deja valides qui attendent encore caisse ou cheque.</span>
+            </div>
+            <strong>{{ depenses_internes_attente_paiement }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px;">Routage paiement</p>
+            <h2 class="dashboard-section-title">Sortie du circuit</h2>
+          </div>
+        </div>
+        <div class="dashboard-mini-grid">
+          <div class="dashboard-mini-card">
+            <h4>Vers la caissiere</h4>
+            <strong>{{ depenses_internes_attente_caisse }}</strong>
+            <p>Depenses internes que le DG a orientees en espece.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Vers le comptable</h4>
+            <strong>{{ depenses_internes_attente_comptable }}</strong>
+            <p>Depenses internes que le DG a orientees par cheque.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Montant en circuit</h4>
+            <strong>{{ depenses_internes_montant_en_attente|floatformat:0 }} GNF</strong>
+            <p>Montant encore en validation ou en attente de paiement.</p>
+          </div>
+          <div class="dashboard-mini-card">
+            <h4>Montant global engage</h4>
+            <strong>{{ depenses_internes_montant_total|floatformat:0 }} GNF</strong>
+            <p>Vision cumulee des engagements internes saisis.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  {% elif user_role == "caissiere" or user_role == "comptable_sogefi" %}
+  <div class="dashboard-layout">
+    <section class="dashboard-section">
+      <div class="dashboard-section-header">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px;">Caisse</p>
+          <h2 class="dashboard-section-title">Mouvements recents</h2>
+          <p class="dashboard-section-subtitle">Les derniers mouvements qui construisent le solde de caisse en temps reel.</p>
+        </div>
+        <div class="table-actions">
+          {% if user_role == "caissiere" %}
+          <a href="/maintenance/caisse/situation/" class="btn-secondary">Voir la situation complete</a>
+          {% else %}
+          <a href="/maintenance/caisse/appro/" class="btn-secondary">Saisir un appro</a>
+          <a href="/maintenance/caisse/situation/" class="btn">Voir la situation</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="dashboard-table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Reference</th>
+              <th>Designation</th>
+              <th>Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mouvement in caisse_recent_mouvements %}
+            <tr>
+              <td>{{ mouvement.date|date:"d/m/Y" }}</td>
+              <td>{{ mouvement.type }}</td>
+              <td>{{ mouvement.reference }}</td>
+              <td>{{ mouvement.designation }}</td>
+              <td><strong>{{ mouvement.montant|floatformat:0 }} GNF</strong></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Aucun mouvement recent de caisse a afficher.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <div class="dashboard-section-header">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px;">Approvisionnements</p>
+          <h2 class="dashboard-section-title">Derniers appros enregistres</h2>
+        </div>
+      </div>
+      <div class="dashboard-split-list">
+        {% for appro in caisse_recent_appros %}
+        <div class="dashboard-split-item">
+          <div>
+            <strong>{{ appro.reference }}</strong>
+            <span>{{ appro.caissiere.get_full_name|default:appro.caissiere.username }}</span>
+          </div>
+          <div style="text-align:right; color:#6a7f92;">
+            <div><strong>{{ appro.montant|floatformat:0 }} GNF</strong></div>
+            <div>{{ appro.date_approvisionnement|date:"d/m/Y" }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="dashboard-empty">Aucun approvisionnement recent enregistre.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  {% endif %}
+
+  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}
+  {% elif user_role == "logistique" %}
   <div class="dashboard-layout">
     <div class="dashboard-stack">
       <section class="dashboard-section">

@@ -25,8 +25,13 @@ class Client(models.Model):
 
     nom = models.CharField(max_length=200)
     fonction_contact = models.CharField(max_length=200, blank=True)
+    gerant = models.CharField(max_length=200, blank=True)
 
     telephone = models.CharField(max_length=20)
+    email_entreprise = models.EmailField(blank=True)
+    numero_entreprise = models.CharField(max_length=100, blank=True)
+    nif = models.CharField(max_length=100, blank=True)
+    rccm = models.CharField(max_length=100, blank=True)
     solde_initial = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     date_solde_initial = models.DateField(null=True, blank=True)
     delai_paiement_jours = models.PositiveIntegerField(default=0)

@@ -4,139 +4,776 @@
 
 {% include "maintenance/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Entretien flotte</p>
-<h1>{% if historique %}Historique paiement {{ maintenance.reference }}{% else %}Paiement de {{ maintenance.reference }}{% endif %}</h1>
-</div>
-<div class="table-actions">
-<a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour paiements</a>
-</div>
-</div>
-
-<div class="form-shell">
-<form method="post" class="app-form">
-    {% csrf_token %}
-
-    {% if form.non_field_errors %}
-    <div class="form-alert">
-        {% for error in form.non_field_errors %}
-        <p class="field-error">{{ error }}</p>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <div class="form-grid">
-        <div class="field">
-            <label>Reference</label>
-            <input type="text" value="{{ maintenance.reference }}" readonly>
-        </div>
-        <div class="field">
-            <label>Camion</label>
-            <input type="text" value="{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}" readonly>
-        </div>
-        <div class="field">
-            <label>Total facture</label>
-            <input type="text" value="{{ maintenance.total_facture }}" readonly>
-        </div>
-        <div class="field">
-            <label>Fournisseur / prestataire</label>
-            <input type="text" value="{% if invoice_rows %}{{ invoice_rows|length }} facture(s) fournisseur{% else %}{{ maintenance.prestataire|default:'-' }}{% endif %}" readonly>
-        </div>
-        <div class="field">
-            <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
-            {{ form.date_paiement }}
-            {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.receveur_nom.id_for_label }}">Nom du receveur</label>
-            {{ form.receveur_nom }}
-            {% if form.receveur_nom.errors %}<p class="field-error">{{ form.receveur_nom.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.receveur_poste.id_for_label }}">Poste du receveur</label>
-            {{ form.receveur_poste }}
-            {% if form.receveur_poste.errors %}<p class="field-error">{{ form.receveur_poste.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field">
-            <label for="{{ form.receveur_telephone.id_for_label }}">Numero de telephone</label>
-            {{ form.receveur_telephone }}
-            {% if form.receveur_telephone.errors %}<p class="field-error">{{ form.receveur_telephone.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="field field-full">
-            <label for="{{ form.observation.id_for_label }}">Observation paiement</label>
-            {{ form.observation }}
-            {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
-        </div>
-    </div>
-
-    <div class="form-actions">
-        <a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour</a>
-        {% if can_edit_paiement %}
-        <button type="submit" class="btn">Valider le paiement</button>
+<div class="cash-payment-page">
+  <div class="cash-payment-hero">
+    <div class="cash-payment-hero__content">
+      <p class="eyebrow">Caisse maintenance</p>
+      <h1>{% if historique %}Historique paiement {{ maintenance.reference }}{% else %}Paiement de {{ maintenance.reference }}{% endif %}</h1>
+      <p class="cash-payment-hero__text">
+        {% if is_espece_payment %}
+        Enregistrez la remise en espece avec le receveur, la date de sortie de caisse et une observation claire si necessaire.
+        {% else %}
+        Enregistrez le reglement par cheque avec les informations bancaires et l'identification du beneficiaire.
         {% endif %}
+      </p>
     </div>
-</form>
-</div>
-
-<div class="form-shell" style="margin-top:20px;">
-    <div class="summary-panel" style="margin-top:0;">
-        <h2>Recapitulatif du circuit</h2>
-        <table class="table summary-table">
-            <tbody>
-                <tr><th>Montant total</th><td>{{ montant_total_formatte }} GNF</td></tr>
-                <tr><th>Montant en lettres</th><td>{{ montant_en_lettres|capfirst }}</td></tr>
-                <tr>
-                    <th>Factures fournisseurs</th>
-                    <td>
-                        {% if invoice_rows %}
-                            {% for invoice in invoice_rows %}
-                            <div style="margin-bottom:6px;">
-                                {% if invoice.fournisseur %}<strong>{{ invoice.fournisseur }}</strong>{% else %}<strong>-</strong>{% endif %}
-                                {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
-                                {% if invoice.facture_fichier %}
-                                <div style="margin-top:4px;">
-                                    <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                </tr>
-                <tr><th>Prestataire</th><td>{{ maintenance.prestataire|default:"-" }}</td></tr>
-                <tr><th>Receveur</th><td>{{ maintenance.receveur_nom|default:"-" }}</td></tr>
-                <tr><th>Poste receveur</th><td>{{ maintenance.receveur_poste|default:"-" }}</td></tr>
-                <tr><th>Telephone receveur</th><td>{{ maintenance.receveur_telephone|default:"-" }}</td></tr>
-            </tbody>
-        </table>
+    <div class="cash-payment-hero__actions">
+      <a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour paiements</a>
     </div>
+  </div>
 
-    <div class="summary-panel">
-        <h2>Validation du circuit</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Etape</th>
-                    <th>Statut</th>
-                    <th>Utilisateur</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for step in validation_steps %}
-                <tr>
-                    <td>{{ step.label }}</td>
-                    <td>{{ step.status }}</td>
-                    <td>{{ step.by }}</td>
-                    <td>{{ step.at_display }}</td>
-                </tr>
+  <div class="cash-payment-kpis">
+    {% if solde_courant_display %}
+    <article class="cash-kpi cash-kpi--balance">
+      <span class="cash-kpi__label">Solde caisse courant</span>
+      <strong class="cash-kpi__value">{{ solde_courant_display }} GNF</strong>
+      <p class="cash-kpi__note">Disponible avant ce paiement.</p>
+    </article>
+    {% endif %}
+    <article class="cash-kpi {% if caisse_insuffisante %}cash-kpi--alert{% endif %}">
+      <span class="cash-kpi__label">Montant a payer</span>
+      <strong class="cash-kpi__value">{{ montant_a_payer_display }} GNF</strong>
+      <p class="cash-kpi__note">Montant decide et valide dans le circuit.</p>
+    </article>
+    {% if solde_apres_display %}
+    <article class="cash-kpi {% if caisse_insuffisante %}cash-kpi--alert{% else %}cash-kpi--after{% endif %}">
+      <span class="cash-kpi__label">Solde apres paiement</span>
+      <strong class="cash-kpi__value">{{ solde_apres_display }} GNF</strong>
+      <p class="cash-kpi__note">Projection de caisse apres validation.</p>
+    </article>
+    {% endif %}
+  </div>
+
+  {% if form.non_field_errors or caisse_insuffisante %}
+  <div class="cash-alert-box">
+    {% for error in form.non_field_errors %}
+    <p class="field-error">{{ error }}</p>
+    {% endfor %}
+    {% if caisse_insuffisante %}
+    <p class="field-error">Paiement impossible : le montant a payer depasse le solde disponible de la caisse.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="cash-payment-layout">
+    <section class="cash-panel cash-panel--form">
+      <div class="cash-panel__head">
+        <div>
+          <h2>{% if is_espece_payment %}Saisie de remise en espece{% else %}Saisie de reglement par cheque{% endif %}</h2>
+          <p>
+            {% if is_espece_payment %}
+            Renseignez uniquement les informations de remise utiles au controle de caisse.
+            {% else %}
+            Renseignez les informations bancaires et d'identification du beneficiaire.
+            {% endif %}
+          </p>
+        </div>
+        <span class="cash-mode-pill {% if is_cheque_payment %}cash-mode-pill--cheque{% else %}cash-mode-pill--espece{% endif %}">
+          {{ maintenance.get_mode_paiement_display|default:"-" }}
+        </span>
+      </div>
+
+      <form method="post" class="cash-payment-form">
+        {% csrf_token %}
+
+        <div class="cash-form-section">
+          <div class="cash-form-section__title">
+            <h3>Informations essentielles</h3>
+            <span>Ce bloc enregistre la sortie reelle de paiement.</span>
+          </div>
+          <div class="form-grid cash-form-grid">
+            <div class="field">
+              <label for="{{ form.date_paiement.id_for_label }}">Date de paiement</label>
+              {{ form.date_paiement }}
+              {% if form.date_paiement.errors %}<p class="field-error">{{ form.date_paiement.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.receveur_nom.id_for_label }}">Personne ayant recu l'argent</label>
+              {{ form.receveur_nom }}
+              {% if form.receveur_nom.errors %}<p class="field-error">{{ form.receveur_nom.errors.0 }}</p>{% endif %}
+            </div>
+
+            {% if is_espece_payment %}
+            <div class="field">
+              <label for="{{ form.receveur_poste.id_for_label }}">Fonction / poste</label>
+              {{ form.receveur_poste }}
+              {% if form.receveur_poste.errors %}<p class="field-error">{{ form.receveur_poste.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.receveur_telephone.id_for_label }}">Telephone</label>
+              {{ form.receveur_telephone }}
+              {% if form.receveur_telephone.errors %}<p class="field-error">{{ form.receveur_telephone.errors.0 }}</p>{% endif %}
+            </div>
+            {% endif %}
+
+            {% if is_cheque_payment %}
+            <div class="field">
+              <label for="{{ form.reference_cheque.id_for_label }}">Reference cheque</label>
+              {{ form.reference_cheque }}
+              {% if form.reference_cheque.errors %}<p class="field-error">{{ form.reference_cheque.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.date_cheque.id_for_label }}">Date cheque</label>
+              {{ form.date_cheque }}
+              {% if form.date_cheque.errors %}<p class="field-error">{{ form.date_cheque.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field field-full">
+              <label for="{{ form.banque_cheque.id_for_label }}">Banque</label>
+              <div class="cash-inline-action">
+                {{ form.banque_cheque }}
+                <button type="button" class="btn-secondary btn-inline-action" id="open-banque-modal">Ajouter banque</button>
+              </div>
+              {% if form.banque_cheque.errors %}<p class="field-error">{{ form.banque_cheque.errors.0 }}</p>{% endif %}
+              <datalist id="banques-paiement-list">
+                {% for banque in banques %}
+                <option value="{{ banque.nom }}"></option>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+              </datalist>
+            </div>
+            <div class="field">
+              <label for="{{ form.beneficiaire_cheque.id_for_label }}">Beneficiaire cheque</label>
+              {{ form.beneficiaire_cheque }}
+              {% if form.beneficiaire_cheque.errors %}<p class="field-error">{{ form.beneficiaire_cheque.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.type_piece_identite.id_for_label }}">Type de piece d'identite</label>
+              <div class="cash-inline-action">
+                {{ form.type_piece_identite }}
+                <button type="button" class="btn-secondary btn-inline-action" id="open-type-piece-modal">Ajouter type</button>
+              </div>
+              {% if form.type_piece_identite.errors %}<p class="field-error">{{ form.type_piece_identite.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.numero_piece_identite.id_for_label }}">Numero de piece</label>
+              {{ form.numero_piece_identite }}
+              {% if form.numero_piece_identite.errors %}<p class="field-error">{{ form.numero_piece_identite.errors.0 }}</p>{% endif %}
+            </div>
+            {% endif %}
+
+            <div class="field field-full">
+              <label for="{{ form.observation.id_for_label }}">Observation de paiement</label>
+              {{ form.observation }}
+              <p class="field-help">Precisez uniquement une information utile au controle : remise partielle, contexte, detail du receveur ou remarque de dossier.</p>
+              {% if form.observation.errors %}<p class="field-error">{{ form.observation.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions cash-form-actions">
+          <a href="{% if historique %}/maintenance/paiements/?scope=historique{% else %}/maintenance/paiements/{% endif %}" class="btn-secondary">Retour</a>
+          {% if can_edit_paiement %}
+          <button type="submit" class="btn">Valider le paiement</button>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <aside class="cash-panel cash-panel--aside">
+      <div class="cash-aside-card cash-aside-card--primary">
+        <span class="cash-aside-card__eyebrow">Dossier</span>
+        <h3>{{ maintenance.reference }}</h3>
+        <p>{{ maintenance.camion.numero_tracteur }}{% if maintenance.camion.numero_citerne %} / {{ maintenance.camion.numero_citerne }}{% endif %}</p>
+        <ul class="cash-compact-list">
+          <li><span>Montant</span><strong>{{ montant_total_formatte }} GNF</strong></li>
+          <li><span>Mode decide par DG</span><strong>{{ maintenance.get_mode_paiement_display|default:"-" }}</strong></li>
+          <li><span>Prestataire</span><strong>{{ maintenance.prestataire|default:"-" }}</strong></li>
+        </ul>
+      </div>
+
+      <div class="cash-aside-card">
+        <div class="cash-aside-card__head">
+          <h3>Factures rattachees</h3>
+          <span>{{ invoice_rows|length }} element(s)</span>
+        </div>
+        <div class="cash-doc-list">
+          {% if invoice_rows %}
+            {% for invoice in invoice_rows %}
+            <article class="cash-doc-item">
+              <strong>{{ invoice.fournisseur|default:"-" }}</strong>
+              <p>{{ invoice.numero_facture|default:"Sans numero" }}</p>
+              {% if invoice.facture_fichier %}
+              <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer">Voir facture</a>
+              {% endif %}
+            </article>
+            {% endfor %}
+          {% else %}
+          <p class="cash-empty-note">Aucune facture fournisseur rattachee.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="cash-aside-card">
+        <div class="cash-aside-card__head">
+          <h3>Lecture rapide</h3>
+        </div>
+        <ul class="cash-read-list">
+          <li>Le montant en lettres : <strong>{{ montant_en_lettres|capfirst }}</strong>.</li>
+          {% if is_espece_payment %}
+          <li>Le controle porte surtout sur le receveur, sa fonction et la date de remise.</li>
+          <li>Si le solde de caisse est insuffisant, l'enregistrement reste bloque.</li>
+          {% else %}
+          <li>Le reglement cheque exige la banque, la reference cheque et l'identification du beneficiaire.</li>
+          <li>Le comptable doit renseigner une trace exploitable pour la remise.</li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <div class="cash-aside-card">
+        <div class="cash-aside-card__head">
+          <h3>Circuit de validation</h3>
+        </div>
+        <div class="cash-timeline">
+          {% for step in validation_steps %}
+          <div class="cash-timeline__item">
+            <span class="cash-timeline__dot {% if step.variant == 'ok' %}is-ok{% elif step.variant == 'pending' %}is-pending{% endif %}"></span>
+            <div>
+              <strong>{{ step.label }}</strong>
+              <p>{{ step.status }}{% if step.by and step.by != "-" %} par {{ step.by }}{% endif %}</p>
+              <small>{{ step.at_display }}</small>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+  </div>
 </div>
+
+<dialog id="banque-modal">
+  <form method="dialog" style="min-width:320px;">
+    <h3 style="margin-top:0;">Ajouter une banque</h3>
+    <div class="field">
+      <label for="banque_nom_modal">Nom</label>
+      <input type="text" id="banque_nom_modal" autocomplete="off">
+    </div>
+    <div class="form-actions" style="margin-top:16px;">
+      <button type="button" class="btn-secondary" id="close-banque-modal">Annuler</button>
+      <button type="button" class="btn" id="save-banque-modal">Enregistrer</button>
+    </div>
+    <p class="field-error" id="banque-modal-error" style="display:none;"></p>
+  </form>
+</dialog>
+
+<dialog id="type-piece-modal">
+  <form method="dialog" style="min-width:320px;">
+    <h3 style="margin-top:0;">Ajouter un type de piece</h3>
+    <div class="field">
+      <label for="type_piece_modal">Libelle</label>
+      <input type="text" id="type_piece_modal" autocomplete="off">
+    </div>
+    <div class="form-actions" style="margin-top:16px;">
+      <button type="button" class="btn-secondary" id="close-type-piece-modal">Annuler</button>
+      <button type="button" class="btn" id="save-type-piece-modal">Enregistrer</button>
+    </div>
+    <p class="field-error" id="type-piece-modal-error" style="display:none;"></p>
+  </form>
+</dialog>
+
+<style>
+.cash-payment-page {
+  display: grid;
+  gap: 20px;
+}
+
+.cash-payment-hero,
+.cash-panel,
+.cash-kpi,
+.cash-alert-box {
+  border: 1px solid rgba(191, 216, 236, 0.92);
+  border-radius: 26px;
+  box-shadow: 0 18px 46px rgba(18, 48, 71, 0.08);
+}
+
+.cash-payment-hero {
+  padding: 28px 30px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  background:
+    radial-gradient(circle at top right, rgba(36, 175, 148, 0.14), transparent 32%),
+    linear-gradient(135deg, rgba(14, 46, 69, 0.98) 0%, rgba(26, 78, 111, 0.96) 52%, rgba(33, 128, 126, 0.92) 100%);
+  color: #fff;
+}
+
+.cash-payment-hero h1 {
+  margin: 8px 0 0;
+  color: #fff;
+}
+
+.cash-payment-hero .eyebrow {
+  color: rgba(210, 255, 242, 0.92);
+}
+
+.cash-payment-hero__text {
+  margin: 12px 0 0;
+  max-width: 760px;
+  color: rgba(236, 247, 255, 0.94);
+}
+
+.cash-payment-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cash-kpi {
+  padding: 20px 22px;
+  background:
+    radial-gradient(circle at top right, rgba(79, 179, 191, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(243,248,252,0.94));
+}
+
+.cash-kpi--balance {
+  background:
+    radial-gradient(circle at top right, rgba(36, 175, 148, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(245, 255, 251, 0.98), rgba(232, 248, 241, 0.96));
+}
+
+.cash-kpi--after {
+  background:
+    radial-gradient(circle at top right, rgba(44, 107, 152, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(245, 250, 255, 0.98), rgba(233, 242, 249, 0.96));
+}
+
+.cash-kpi--alert {
+  border-color: rgba(227, 132, 112, 0.35);
+  background:
+    radial-gradient(circle at top right, rgba(227, 132, 112, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 248, 246, 0.98), rgba(253, 235, 229, 0.96));
+}
+
+.cash-kpi__label {
+  display: block;
+  margin-bottom: 10px;
+  color: #678096;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cash-kpi__value {
+  display: block;
+  color: #123047;
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.cash-kpi__note {
+  margin: 10px 0 0;
+  color: #698094;
+}
+
+.cash-alert-box {
+  padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(255, 246, 245, 0.98), rgba(255, 238, 233, 0.96));
+}
+
+.cash-alert-box .field-error:last-child {
+  margin-bottom: 0;
+}
+
+.cash-payment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(330px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.cash-panel {
+  background:
+    radial-gradient(circle at top right, rgba(79, 179, 191, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,250,253,0.98));
+}
+
+.cash-panel--form {
+  padding: 24px 24px 22px;
+}
+
+.cash-panel--aside {
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.cash-panel__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.cash-panel__head h2 {
+  margin: 0;
+  color: #123047;
+}
+
+.cash-panel__head p {
+  margin: 8px 0 0;
+  color: #62798c;
+}
+
+.cash-mode-pill {
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.cash-mode-pill--espece {
+  background: rgba(31, 157, 122, 0.12);
+  color: #14775e;
+}
+
+.cash-mode-pill--cheque {
+  background: rgba(63, 143, 214, 0.12);
+  color: #2d6892;
+}
+
+.cash-form-section {
+  border: 1px solid rgba(198, 220, 238, 0.9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 20px;
+}
+
+.cash-form-section__title {
+  margin-bottom: 18px;
+}
+
+.cash-form-section__title h3 {
+  margin: 0;
+  color: #123047;
+}
+
+.cash-form-section__title span {
+  display: block;
+  margin-top: 6px;
+  color: #6a8091;
+}
+
+.cash-form-grid {
+  gap: 18px 16px;
+}
+
+.cash-inline-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-inline-action {
+  min-width: auto;
+  padding: 12px 14px;
+  white-space: nowrap;
+}
+
+.cash-form-actions {
+  margin-top: 18px;
+}
+
+.cash-payment-form input.cash-widget,
+.cash-payment-form select.cash-widget,
+.cash-payment-form textarea.cash-widget,
+.cash-payment-form .cash-inline-action input,
+.cash-payment-form .cash-inline-action select {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(177, 203, 223, 0.95);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,250,252,0.98));
+  box-shadow: inset 0 1px 2px rgba(18, 48, 71, 0.03);
+  color: #123047;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-sizing: border-box;
+}
+
+.cash-payment-form textarea.cash-widget,
+.cash-payment-form .cash-widget--textarea {
+  min-height: 150px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.cash-payment-form select.cash-widget,
+.cash-payment-form .cash-widget--select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #4d6780 50%),
+    linear-gradient(135deg, #4d6780 50%, transparent 50%),
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,250,252,0.98));
+  background-position:
+    calc(100% - 22px) calc(50% - 3px),
+    calc(100% - 16px) calc(50% - 3px),
+    0 0;
+  background-size: 6px 6px, 6px 6px, 100% 100%;
+  background-repeat: no-repeat;
+  padding-right: 42px;
+}
+
+.cash-payment-form input.cash-widget:focus,
+.cash-payment-form select.cash-widget:focus,
+.cash-payment-form textarea.cash-widget:focus,
+.cash-payment-form .cash-inline-action input:focus,
+.cash-payment-form .cash-inline-action select:focus {
+  outline: none;
+  border-color: rgba(36, 175, 148, 0.85);
+  box-shadow: 0 0 0 4px rgba(36, 175, 148, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(244,252,249,1));
+}
+
+.cash-payment-form input.cash-widget::placeholder,
+.cash-payment-form textarea.cash-widget::placeholder {
+  color: #8ba0b2;
+  font-weight: 500;
+}
+
+.cash-payment-form input[type="date"].cash-widget {
+  padding-right: 12px;
+}
+
+.cash-payment-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: #123047;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.field-help {
+  margin: 8px 0 0;
+  color: #6d8395;
+  font-size: 0.9rem;
+}
+
+.cash-aside-card {
+  border: 1px solid rgba(198, 220, 238, 0.9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 18px;
+}
+
+.cash-aside-card--primary {
+  background:
+    radial-gradient(circle at top right, rgba(79, 179, 191, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(18, 48, 71, 0.96), rgba(34, 94, 127, 0.94));
+  color: #fff;
+}
+
+.cash-aside-card--primary h3,
+.cash-aside-card--primary p,
+.cash-aside-card--primary strong,
+.cash-aside-card--primary span {
+  color: #fff;
+}
+
+.cash-aside-card__eyebrow {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(223, 242, 255, 0.92);
+}
+
+.cash-aside-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cash-aside-card__head h3 {
+  margin: 0;
+  color: #123047;
+}
+
+.cash-compact-list,
+.cash-read-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.cash-compact-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.16);
+}
+
+.cash-doc-list {
+  display: grid;
+  gap: 12px;
+}
+
+.cash-doc-item {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(245, 249, 252, 0.9);
+  border: 1px solid rgba(214, 227, 237, 0.9);
+}
+
+.cash-doc-item p {
+  margin: 6px 0 10px;
+  color: #60788d;
+}
+
+.cash-empty-note {
+  margin: 0;
+  color: #6c8294;
+}
+
+.cash-read-list li {
+  color: #4f6679;
+  line-height: 1.5;
+}
+
+.cash-timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.cash-timeline__item {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.cash-timeline__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #d3dde6;
+  margin-top: 4px;
+}
+
+.cash-timeline__dot.is-ok {
+  background: #1f9d7a;
+}
+
+.cash-timeline__dot.is-pending {
+  background: #f0a83a;
+}
+
+.cash-timeline__item p,
+.cash-timeline__item small {
+  margin: 4px 0 0;
+  color: #647b8f;
+}
+
+@media (max-width: 1180px) {
+  .cash-payment-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-payment-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .cash-payment-hero,
+  .cash-panel__head {
+    flex-direction: column;
+  }
+
+  .cash-inline-action {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+(() => {
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+    const banqueModal = document.getElementById("banque-modal");
+    const banqueField = document.getElementById("{{ form.banque_cheque.auto_id }}");
+    const banquesList = document.getElementById("banques-paiement-list");
+    const banqueError = document.getElementById("banque-modal-error");
+    const banqueInput = document.getElementById("banque_nom_modal");
+    const typePieceModal = document.getElementById("type-piece-modal");
+    const typePieceField = document.getElementById("{{ form.type_piece_identite.auto_id }}");
+    const typePieceError = document.getElementById("type-piece-modal-error");
+    const typePieceInput = document.getElementById("type_piece_modal");
+
+    async function postForm(url, payload) {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-CSRFToken": csrfToken,
+            },
+            body: new URLSearchParams(payload),
+        });
+        return response.json();
+    }
+
+    document.getElementById("open-banque-modal")?.addEventListener("click", () => banqueModal.showModal());
+    document.getElementById("close-banque-modal")?.addEventListener("click", () => banqueModal.close());
+    document.getElementById("save-banque-modal")?.addEventListener("click", async () => {
+        banqueError.style.display = "none";
+        const nom = (banqueInput.value || "").trim();
+        if (!nom) {
+            banqueError.textContent = "Le nom de la banque est obligatoire.";
+            banqueError.style.display = "block";
+            return;
+        }
+        const result = await postForm("/clients/banques/ajouter-modal/", { nom });
+        if (!result.success) {
+            banqueError.textContent = Object.values(result.errors || {}).flat().join(" ");
+            banqueError.style.display = "block";
+            return;
+        }
+        const option = document.createElement("option");
+        option.value = result.banque.label;
+        banquesList?.appendChild(option);
+        if (banqueField) {
+            banqueField.value = result.banque.label;
+        }
+        banqueInput.value = "";
+        banqueModal.close();
+    });
+
+    document.getElementById("open-type-piece-modal")?.addEventListener("click", () => typePieceModal.showModal());
+    document.getElementById("close-type-piece-modal")?.addEventListener("click", () => typePieceModal.close());
+    document.getElementById("save-type-piece-modal")?.addEventListener("click", async () => {
+        typePieceError.style.display = "none";
+        const libelle = (typePieceInput.value || "").trim();
+        if (!libelle) {
+            typePieceError.textContent = "Le libelle est obligatoire.";
+            typePieceError.style.display = "block";
+            return;
+        }
+        const result = await postForm("/depenses/types-piece/ajouter-modal/", { libelle });
+        if (!result.success) {
+            typePieceError.textContent = Object.values(result.errors || {}).flat().join(" ");
+            typePieceError.style.display = "block";
+            return;
+        }
+        const option = document.createElement("option");
+        option.value = result.type_piece.id;
+        option.textContent = result.type_piece.label;
+        typePieceField?.appendChild(option);
+        if (typePieceField) {
+            typePieceField.value = result.type_piece.id;
+        }
+        typePieceInput.value = "";
+        typePieceModal.close();
+    });
+})();
+</script>
 
 {% endblock %}

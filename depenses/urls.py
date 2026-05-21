@@ -34,5 +34,6 @@ urlpatterns = [
     path("engagement/valider-dg/<int:id>/", views.valider_engagement_dg, name="valider_engagement_dg"),
     path("engagement/rejeter-dg/<int:id>/", views.rejeter_engagement_dg, name="rejeter_engagement_dg"),
     path("types/ajouter-modal/", views.ajouter_type_depense_modal, name="ajouter_type_depense_modal"),
+    path("types-piece/ajouter-modal/", views.ajouter_type_piece_identite_modal, name="ajouter_type_piece_identite_modal"),
     path("lieux/ajouter-modal/", views.ajouter_lieu_projet_modal, name="ajouter_lieu_projet_modal"),
 ]

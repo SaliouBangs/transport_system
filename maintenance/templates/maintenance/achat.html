@@ -73,7 +73,7 @@
 </td>
 <td>{{ maintenance.lignes.count }}</td>
 <td>{{ maintenance.total_facture }}</td>
-<td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">{% if maintenance.is_stock_only %}Valider le stock{% else %}Saisir les prix{% endif %}</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
+<td>{% if maintenance.can_edit_prices %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-edit">{{ maintenance.pricing_action_label }}</a>{% else %}<a href="/maintenance/achat/modifier/{{ maintenance.id }}/" class="btn-secondary">Consulter</a>{% endif %}</td>
 </tr>
 {% empty %}
 <tr>

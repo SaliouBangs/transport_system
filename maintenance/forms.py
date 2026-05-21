@@ -3,9 +3,13 @@ from django.forms import inlineformset_factory
 from django.utils import timezone
 from decimal import Decimal
 
+from clients.models import Banque
+from depenses.models import TypePieceIdentite
+
 from .models import (
     ArticleStock,
     ArticleStockConversion,
+    ApprovisionnementCaisse,
     Fournisseur,
     Maintenance,
     MaintenanceFacture,
@@ -13,8 +17,13 @@ from .models import (
     MouvementStock,
     PanneCatalogue,
     Prestataire,
+    SoldeInitialCaisse,
     TypeMaintenance,
 )
+
+
+def _fournisseurs_queryset(portefeuille):
+    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
 
 
 class MaintenanceForm(forms.ModelForm):
@@ -68,23 +77,218 @@ class MaintenanceAchatForm(forms.ModelForm):
 
 class MaintenancePaiementForm(forms.ModelForm):
     date_paiement = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}),
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    date_cheque = forms.DateField(
+        required=False,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.instance.pk or not self.instance.date_paiement:
-            self.fields["date_paiement"].initial = timezone.localdate()
+            self.initial["date_paiement"] = timezone.localdate().isoformat()
+        if not self.instance.pk or not self.instance.date_cheque:
+            self.initial["date_cheque"] = timezone.localdate().isoformat()
+        base_input_attrs = {
+            "class": "cash-widget",
+        }
+        for field_name in [
+            "date_paiement",
+            "reference_cheque",
+            "banque_cheque",
+            "date_cheque",
+            "beneficiaire_cheque",
+            "numero_piece_identite",
+            "receveur_nom",
+            "receveur_poste",
+            "receveur_telephone",
+        ]:
+            self.fields[field_name].widget.attrs.update(base_input_attrs)
+        self.fields["type_piece_identite"].widget.attrs.update({"class": "cash-widget cash-widget--select"})
+        self.fields["observation"].widget.attrs.update(
+            {
+                "class": "cash-widget cash-widget--textarea",
+                "rows": 5,
+                "placeholder": "Ajoutez une remarque utile uniquement si elle aide au controle ou a la justification du paiement.",
+            }
+        )
+        self.fields["banque_cheque"].required = False
+        self.fields["banque_cheque"].widget.attrs.update(
+            {
+                "list": "banques-paiement-list",
+                "placeholder": "Selectionnez ou ajoutez une banque",
+                "autocomplete": "off",
+            }
+        )
+        self.fields["type_piece_identite"].queryset = TypePieceIdentite.objects.order_by("libelle")
+        is_cheque = self.instance.mode_paiement == Maintenance.MODE_CHEQUE
+        cheque_fields = [
+            "reference_cheque",
+            "banque_cheque",
+            "date_cheque",
+            "beneficiaire_cheque",
+            "type_piece_identite",
+            "numero_piece_identite",
+        ]
+        for field_name in cheque_fields:
+            self.fields[field_name].required = is_cheque
+        self.fields["receveur_nom"].required = True
 
     class Meta:
         model = Maintenance
         fields = [
             "date_paiement",
+            "reference_cheque",
+            "banque_cheque",
+            "date_cheque",
+            "beneficiaire_cheque",
+            "type_piece_identite",
+            "numero_piece_identite",
             "receveur_nom",
             "receveur_poste",
             "receveur_telephone",
             "observation",
         ]
+        widgets = {
+            "date_cheque": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        }
+
+    @property
+    def banques(self):
+        return Banque.objects.filter(actif=True).order_by("nom")
+
+
+class MaintenanceDecisionPaiementForm(forms.Form):
+    mode_paiement = forms.ChoiceField(
+        label="Mode de reglement decide par le DG",
+        choices=Maintenance.MODE_PAIEMENT_CHOICES,
+        required=False,
+    )
+
+
+class ApprovisionnementCaisseForm(forms.ModelForm):
+    date_approvisionnement = forms.DateField(
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    montant = forms.CharField(
+        widget=forms.TextInput(
+            attrs={
+                "inputmode": "numeric",
+                "autocomplete": "off",
+                "data-money-input": "true",
+                "placeholder": "0",
+            }
+        )
+    )
+    date_cheque = forms.DateField(
+        required=False,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    class Meta:
+        model = ApprovisionnementCaisse
+        fields = [
+            "caissiere",
+            "date_approvisionnement",
+            "mode_approvisionnement",
+            "nature_approvisionnement",
+            "montant",
+            "reference_cheque",
+            "banque_cheque",
+            "date_cheque",
+            "observation",
+        ]
+        widgets = {
+            "montant": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+            "observation": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, caissiere_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk or not self.instance.date_approvisionnement:
+            self.initial["date_approvisionnement"] = timezone.localdate().isoformat()
+        if not self.instance.pk or not self.instance.date_cheque:
+            self.initial["date_cheque"] = timezone.localdate().isoformat()
+        if caissiere_queryset is not None:
+            self.fields["caissiere"].queryset = caissiere_queryset
+        self.fields["reference_cheque"].required = False
+        self.fields["banque_cheque"].required = False
+        self.fields["banque_cheque"].widget.attrs.update(
+            {
+                "list": "banques-appro-list",
+                "placeholder": "Selectionnez ou ajoutez une banque",
+                "autocomplete": "off",
+            }
+        )
+        current_amount = getattr(self.instance, "montant", None)
+        if current_amount not in (None, ""):
+            self.initial["montant"] = f"{Decimal(current_amount):,.0f}".replace(",", " ")
+
+    def clean_montant(self):
+        raw_value = (self.cleaned_data.get("montant") or "").strip()
+        normalized = raw_value.replace(" ", "").replace("\u00a0", "").replace(",", "")
+        if not normalized:
+            raise forms.ValidationError("Le montant est obligatoire.")
+        try:
+            value = Decimal(normalized)
+        except Exception:
+            raise forms.ValidationError("Saisissez un montant valide.")
+        if value <= 0:
+            raise forms.ValidationError("Le montant d'approvisionnement doit etre superieur a zero.")
+        return value
+
+
+class SoldeInitialCaisseForm(forms.ModelForm):
+    date_reference = forms.DateField(
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    montant_initial = forms.CharField(
+        widget=forms.TextInput(
+            attrs={
+                "inputmode": "numeric",
+                "autocomplete": "off",
+                "data-money-input": "true",
+                "placeholder": "0",
+            }
+        )
+    )
+
+    class Meta:
+        model = SoldeInitialCaisse
+        fields = ["caissiere", "date_reference", "montant_initial", "observation"]
+        widgets = {
+            "montant_initial": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "observation": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, caissiere_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk or not self.instance.date_reference:
+            self.initial["date_reference"] = timezone.localdate().isoformat()
+        if caissiere_queryset is not None:
+            self.fields["caissiere"].queryset = caissiere_queryset
+        current_amount = getattr(self.instance, "montant_initial", None)
+        if current_amount not in (None, ""):
+            self.initial["montant_initial"] = f"{Decimal(current_amount):,.0f}".replace(",", " ")
+
+    def clean_montant_initial(self):
+        raw_value = (self.cleaned_data.get("montant_initial") or "").strip()
+        normalized = raw_value.replace(" ", "").replace("\u00a0", "").replace(",", "")
+        if not normalized:
+            raise forms.ValidationError("Le montant initial est obligatoire.")
+        try:
+            value = Decimal(normalized)
+        except Exception:
+            raise forms.ValidationError("Saisissez un montant valide.")
+        if value < 0:
+            raise forms.ValidationError("Le solde initial ne peut pas etre negatif.")
+        return value
 
 
 class FournisseurForm(forms.ModelForm):
@@ -98,6 +302,17 @@ class FournisseurForm(forms.ModelForm):
             "domaine_activite",
             "mode_paiement",
         ]
+
+    def __init__(self, *args, portefeuille=None, **kwargs):
+        self.portefeuille = portefeuille or Fournisseur.PORTEFEUILLE_LOGISTIQUE
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.portefeuille = self.portefeuille
+        if commit:
+            instance.save()
+        return instance
 
 
 class PrestataireForm(forms.ModelForm):
@@ -126,6 +341,7 @@ class MaintenanceFactureForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["fournisseur"].required = True
+        self.fields["fournisseur"].queryset = _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_LOGISTIQUE)
         self.fields["numero_facture"].required = True
         self.fields["facture_fichier"].required = not bool(getattr(self.instance, "facture_fichier", None))
 
@@ -183,6 +399,8 @@ class ArticleStockForm(forms.ModelForm):
 
     def __init__(self, *args, unite_choices=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if "fournisseur" in self.fields:
+            self.fields["fournisseur"].queryset = _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_LOGISTIQUE)
         choices = unite_choices or []
         if not choices:
             current_unit = (self.initial.get("unite") or getattr(self.instance, "unite", "") or "piece").strip().lower()
@@ -244,6 +462,8 @@ class MouvementStockForm(forms.ModelForm):
 
     def __init__(self, *args, article=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if "fournisseur" in self.fields:
+            self.fields["fournisseur"].queryset = _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_LOGISTIQUE)
         article = article or getattr(self.instance, "article", None)
         self.fields["type_mouvement"].choices = [
             ("entree", "Entree"),

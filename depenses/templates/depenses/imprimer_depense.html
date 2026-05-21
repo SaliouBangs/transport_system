@@ -250,8 +250,7 @@ td{
         <div class="box">
             <strong>Decision finale</strong>
             Mode decide par DG : {{ depense.get_mode_reglement_display|default:"-" }}<br>
-            Mode effectif : {{ depense.mode_paiement_effectif|default:"-" }}<br>
-            Reference paiement : {{ depense.reference_paiement|default:"-" }}
+            Reference cheque : {{ depense.numero_cheque|default:"-" }}
         </div>
         {% endif %}
         <div class="box">

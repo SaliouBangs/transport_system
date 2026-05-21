@@ -45,6 +45,14 @@ ETATS_LOGISTIQUE_RECEPTION = {"attente_reception_logistique"}
 ETATS_LOGISTIQUE_TRAITEMENT = {"liquide_logistique", "liquide_chauffeur", "charge", "livre"}
 ETATS_CHEF_CHAUFFEUR = {"liquide_chauffeur", "charge"}
 ETATS_CHEF_CHAUFFEUR_HISTORIQUE = {"livre"}
+ETATS_FACTURATION = {
+    "liquide",
+    "attente_reception_logistique",
+    "liquide_logistique",
+    "liquide_chauffeur",
+    "charge",
+    "livre",
+}
 
 
 def _parse_decimal_input(value):
@@ -217,6 +225,10 @@ def _facture_totals(operation, avec_tva=False, utiliser_quantite_livree=False):
         "montant_tva": montant_tva,
         "montant_ttc": montant_ttc.quantize(Decimal("0.01")),
     }
+
+
+def _operation_est_facturable(operation):
+    return bool(operation and operation.etat_bon in ETATS_FACTURATION)
 
 
 def _format_amount(value):
@@ -1668,7 +1680,7 @@ def supprimer_operation_comptable(request, id):
 def facturation_operations(request):
     query = request.GET.get("q", "").strip()
     statut = request.GET.get("statut_facture", "").strip()
-    operations = Operation.objects.select_related("commande", "client", "produit", "remplace_par", "camion").filter(etat_bon="livre")
+    operations = Operation.objects.select_related("commande", "client", "produit", "remplace_par", "camion").filter(etat_bon__in=ETATS_FACTURATION)
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -1693,7 +1705,7 @@ def facturation_operations(request):
 
 
 def modifier_operation_facturation(request, id):
-    operation = get_object_or_404(Operation, id=id, etat_bon="livre")
+    operation = get_object_or_404(Operation, id=id, etat_bon__in=ETATS_FACTURATION)
     if operation.remplace_par_id:
         messages.error(request, "Ce BL n'est plus valide suite au changement de camion. Il reste visible mais n'est plus facturable.")
         return redirect("facturation_operations")
@@ -1732,7 +1744,7 @@ def imprimer_facture_sans_tva(request, id):
     operation = get_object_or_404(
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
-        etat_bon="livre",
+        etat_bon__in=ETATS_FACTURATION,
     )
     return _build_facture_pdf(operation, avec_tva=False, utiliser_quantite_livree=False)
 
@@ -1741,7 +1753,7 @@ def imprimer_facture_avec_tva(request, id):
     operation = get_object_or_404(
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
-        etat_bon="livre",
+        etat_bon__in=ETATS_FACTURATION,
     )
     return _build_facture_pdf(operation, avec_tva=True, utiliser_quantite_livree=False)
 
@@ -1750,7 +1762,7 @@ def imprimer_facture_sans_tva_manquant(request, id):
     operation = get_object_or_404(
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
-        etat_bon="livre",
+        etat_bon__in=ETATS_FACTURATION,
     )
     return _build_facture_pdf(operation, avec_tva=False, utiliser_quantite_livree=True)
 
@@ -1759,7 +1771,7 @@ def imprimer_facture_avec_tva_manquant(request, id):
     operation = get_object_or_404(
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
-        etat_bon="livre",
+        etat_bon__in=ETATS_FACTURATION,
     )
     return _build_facture_pdf(operation, avec_tva=True, utiliser_quantite_livree=True)
 

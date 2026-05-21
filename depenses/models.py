@@ -9,11 +9,26 @@ from maintenance.models import Fournisseur
 
 
 class TypeDepense(models.Model):
-    libelle = models.CharField(max_length=150, unique=True)
+    PORTEFEUILLE_LOGISTIQUE = "logistique"
+    PORTEFEUILLE_INTERNE = "interne"
+    PORTEFEUILLE_CHOICES = [
+        (PORTEFEUILLE_LOGISTIQUE, "Logistique"),
+        (PORTEFEUILLE_INTERNE, "Depenses internes"),
+    ]
+
+    libelle = models.CharField(max_length=150)
     montant_defaut = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    portefeuille = models.CharField(
+        max_length=20,
+        choices=PORTEFEUILLE_CHOICES,
+        default=PORTEFEUILLE_LOGISTIQUE,
+    )
 
     class Meta:
         ordering = ["libelle"]
+        constraints = [
+            models.UniqueConstraint(fields=["libelle", "portefeuille"], name="unique_type_depense_par_portefeuille")
+        ]
 
     def __str__(self):
         return self.libelle
@@ -26,6 +41,16 @@ class TypeDepense(models.Model):
 
 class LieuProjet(models.Model):
     libelle = models.CharField(max_length=180, unique=True)
+
+    class Meta:
+        ordering = ["libelle"]
+
+    def __str__(self):
+        return self.libelle
+
+
+class TypePieceIdentite(models.Model):
+    libelle = models.CharField(max_length=120, unique=True)
 
     class Meta:
         ordering = ["libelle"]
@@ -130,6 +155,7 @@ class Depense(models.Model):
     libelle_depense = models.CharField(max_length=200, blank=True)
     description = models.TextField()
     montant_estime = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    date_expression = models.DateField(default=timezone.localdate)
     date_bon_conso = models.DateField(null=True, blank=True)
     quantite_a_consommer = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     statut = models.CharField(
@@ -234,6 +260,14 @@ class Depense(models.Model):
     numero_cheque = models.CharField(max_length=80, blank=True)
     banque_cheque = models.CharField(max_length=120, blank=True)
     beneficiaire_cheque = models.CharField(max_length=150, blank=True)
+    type_piece_identite = models.ForeignKey(
+        TypePieceIdentite,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="depenses",
+    )
+    numero_piece_identite = models.CharField(max_length=120, blank=True)
     receveur_nom = models.CharField(max_length=150, blank=True)
     receveur_fonction = models.CharField(max_length=120, blank=True)
     receveur_telephone = models.CharField(max_length=50, blank=True)
@@ -318,6 +352,7 @@ class Depense(models.Model):
         self.numero_cheque = (self.numero_cheque or "").strip()
         self.banque_cheque = (self.banque_cheque or "").strip()
         self.beneficiaire_cheque = (self.beneficiaire_cheque or "").strip()
+        self.numero_piece_identite = (self.numero_piece_identite or "").strip()
         self.receveur_nom = (self.receveur_nom or "").strip()
         self.receveur_fonction = (self.receveur_fonction or "").strip()
         self.receveur_telephone = (self.receveur_telephone or "").strip()
@@ -396,8 +431,6 @@ class Depense(models.Model):
         if self.statut in {self.STATUT_ATTENTE_PAIEMENT_COMPTABLE, self.STATUT_ATTENTE_PAIEMENT_CAISSIERE, self.STATUT_PAYEE}:
             if self.mode_reglement not in {self.MODE_CHEQUE, self.MODE_ESPECE}:
                 raise ValidationError({"mode_reglement": "Le DG doit preciser cheque ou espece."})
-        if self.source_depense == self.SOURCE_CHARGEMENT and self.mode_reglement == self.MODE_CHEQUE:
-            raise ValidationError({"mode_reglement": "Les depenses liees au chargement sont reglees uniquement en espece."})
 
         if self.mode_reglement == self.MODE_CHEQUE and self.statut == self.STATUT_PAYEE:
             missing = {}
@@ -407,6 +440,10 @@ class Depense(models.Model):
                 missing["numero_cheque"] = "Le numero de cheque est obligatoire."
             if not self.banque_cheque:
                 missing["banque_cheque"] = "La banque est obligatoire."
+            if not self.type_piece_identite_id:
+                missing["type_piece_identite"] = "Le type de piece d'identite est obligatoire."
+            if not self.numero_piece_identite:
+                missing["numero_piece_identite"] = "Le numero de piece d'identite est obligatoire."
             if missing:
                 raise ValidationError(missing)
 
