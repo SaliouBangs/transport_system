@@ -61,16 +61,7 @@ function createSublineItem(prefix, value = {}) {
         '<option value="">Piece hors stock</option>';
     const isStock = Boolean(value.article_stock_id);
     const wrapper = document.createElement("div");
-    wrapper.className = "subline-item";
-    wrapper.style.display = "grid";
-    wrapper.style.gridTemplateColumns = "minmax(220px, 240px) 90px minmax(220px, 1fr) auto";
-    wrapper.style.gap = "8px";
-    wrapper.style.alignItems = "end";
-    wrapper.style.marginBottom = "10px";
-    wrapper.style.padding = "12px";
-    wrapper.style.border = "1px solid #d9e2e8";
-    wrapper.style.borderRadius = "14px";
-    wrapper.style.background = "#f8fbfd";
+    wrapper.className = "subline-item maintenance-subline";
     wrapper.innerHTML = `
         <input type="hidden" name="subline-${prefix}-ids" value="${value.id || ""}">
         <div>
