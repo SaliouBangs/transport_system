@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Types de lignes de maintenance</h1>
+</div>
+<div class="table-actions">
+<a href="{{ return_url }}" class="btn-secondary">Retour garage</a>
+</div>
+</div>
+
+<div class="card" style="padding:24px; margin-bottom:18px;">
+<h2 style="margin-top:0;">Nouveau type</h2>
+<form method="post" action="/maintenance/types-maintenance/" class="app-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ return_url }}">
+    <div class="form-grid form-grid-2">
+        <div>
+            <label for="{{ form.libelle.id_for_label }}">Libelle</label>
+            {{ form.libelle }}
+            {% if form.libelle.errors %}<p class="field-error">{{ form.libelle.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ query }}" placeholder="Rechercher un type de maintenance" autocomplete="off" spellcheck="false">
+<input type="hidden" name="next" value="{{ return_url }}">
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/types-maintenance/?next={{ return_url|urlencode }}" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<table class="table">
+<thead>
+<tr>
+<th>Libelle</th>
+<th>Etat</th>
+<th>Pannes liees</th>
+<th>Lignes maintenance liees</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for type_maintenance in types_maintenance %}
+<tr>
+<td>{{ type_maintenance.libelle }}</td>
+<td>
+    {% if type_maintenance.actif %}
+    <span class="status-badge status-ok">Actif</span>
+    {% else %}
+    <span class="status-badge status-warning">Archive</span>
+    {% endif %}
+</td>
+<td>{{ type_maintenance.pannes_catalogue.count }}</td>
+<td>{{ type_maintenance.lignes_maintenance.count }}</td>
+<td>
+    <div class="table-actions">
+        <a href="/maintenance/types-maintenance/modifier/{{ type_maintenance.id }}/?next={{ return_url|urlencode }}" class="btn-edit">Modifier</a>
+        <form method="post" action="/maintenance/types-maintenance/supprimer/{{ type_maintenance.id }}/" onsubmit="return confirm('{% if type_maintenance.actif %}Archiver{% else %}Reactiver{% endif %} ce type de maintenance ?');">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ return_url }}">
+            <button type="submit" class="{% if type_maintenance.actif %}btn-delete{% else %}btn-secondary{% endif %}">{% if type_maintenance.actif %}Archiver{% else %}Reactiver{% endif %}</button>
+        </form>
+    </div>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="5">Aucun type de maintenance trouve.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}

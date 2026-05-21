@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Entretien flotte</p>
+<h1>Modifier le type {{ type_maintenance.libelle }}</h1>
+</div>
+<div class="table-actions">
+<a href="/maintenance/types-maintenance/?next={{ return_url|urlencode }}" class="btn-secondary">Retour</a>
+</div>
+</div>
+
+<div class="form-shell" style="max-width:760px;">
+<form method="post" class="app-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ return_url }}">
+    <div class="form-grid form-grid-2">
+        <div class="field field-full">
+            <label for="{{ form.libelle.id_for_label }}">Libelle</label>
+            {{ form.libelle }}
+            {% if form.libelle.errors %}<p class="field-error">{{ form.libelle.errors.0 }}</p>{% endif %}
+        </div>
+    </div>
+    <div class="form-actions">
+        <a href="/maintenance/types-maintenance/?next={{ return_url|urlencode }}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn">Enregistrer</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

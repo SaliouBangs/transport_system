@@ -52,6 +52,7 @@ from .models import (
     MouvementStock,
     Prestataire,
     SoldeInitialCaisse,
+    TypeMaintenance,
 )
 
 
@@ -2731,6 +2732,123 @@ def supprimer_fournisseur(request, id):
     return redirect("fournisseurs_maintenance")
 
 
+def types_maintenance(request):
+    return_url = request.GET.get("next") or "/maintenance/garage/"
+    query = (request.GET.get("q") or "").strip()
+    types_qs = TypeMaintenance.objects.all()
+    if query:
+        types_qs = types_qs.filter(libelle__icontains=query)
+    return render(
+        request,
+        "maintenance/types_maintenance.html",
+        {
+            "types_maintenance": types_qs.order_by("libelle"),
+            "query": query,
+            "return_url": return_url,
+            "form": TypeMaintenanceForm(),
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("garage"),
+        },
+    )
+
+
+def ajouter_type_maintenance(request):
+    if request.method != "POST":
+        return redirect("types_maintenance")
+
+    return_url = request.POST.get("next") or "/maintenance/garage/"
+    form = TypeMaintenanceForm(request.POST)
+    if form.is_valid():
+        type_maintenance = form.save()
+        journaliser_action(
+            request.user,
+            "Maintenance",
+            "Creation type de maintenance",
+            str(type_maintenance),
+            f"{request.user.username} a cree le type de maintenance {type_maintenance}.",
+        )
+        messages.success(request, f"Le type {type_maintenance.libelle} a ete cree.")
+        return redirect(f"/maintenance/types-maintenance/?next={return_url}")
+
+    messages.error(request, "Impossible de creer ce type de maintenance. Verifiez le libelle.")
+    return render(
+        request,
+        "maintenance/types_maintenance.html",
+        {
+            "types_maintenance": TypeMaintenance.objects.all().order_by("libelle"),
+            "query": "",
+            "return_url": return_url,
+            "form": form,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("garage"),
+        },
+        status=400,
+    )
+
+
+def modifier_type_maintenance(request, id):
+    type_maintenance = get_object_or_404(TypeMaintenance, pk=id)
+    return_url = request.GET.get("next") or request.POST.get("next") or "/maintenance/garage/"
+    if request.method == "POST":
+        form = TypeMaintenanceForm(request.POST, instance=type_maintenance)
+        if form.is_valid():
+            type_maintenance = form.save()
+            journaliser_action(
+                request.user,
+                "Maintenance",
+                "Mise a jour type de maintenance",
+                str(type_maintenance),
+                f"{request.user.username} a modifie le type de maintenance {type_maintenance}.",
+            )
+            messages.success(request, f"Le type {type_maintenance.libelle} a ete mis a jour.")
+            return redirect(f"/maintenance/types-maintenance/?next={return_url}")
+        messages.error(request, "Impossible de modifier ce type de maintenance.")
+    else:
+        form = TypeMaintenanceForm(instance=type_maintenance)
+
+    return render(
+        request,
+        "maintenance/modifier_type_maintenance.html",
+        {
+            "form": form,
+            "type_maintenance": type_maintenance,
+            "return_url": return_url,
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("garage"),
+        },
+        status=400 if request.method == "POST" and form.errors else 200,
+    )
+
+
+@require_POST
+def supprimer_type_maintenance(request, id):
+    type_maintenance = get_object_or_404(TypeMaintenance, pk=id)
+    return_url = request.POST.get("next") or "/maintenance/garage/"
+    label = type_maintenance.libelle
+    type_maintenance.actif = not type_maintenance.actif
+    type_maintenance.save(update_fields=["actif"])
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Archivage type de maintenance" if not type_maintenance.actif else "Reactivation type de maintenance",
+        label,
+        (
+            f"{request.user.username} a archive le type de maintenance {label}."
+            if not type_maintenance.actif
+            else f"{request.user.username} a reactive le type de maintenance {label}."
+        ),
+    )
+    messages.success(
+        request,
+        (
+            f"Le type {label} a ete archive. Il ne sera plus propose dans les nouvelles fiches."
+            if not type_maintenance.actif
+            else f"Le type {label} a ete reactive."
+        ),
+    )
+    return redirect(f"/maintenance/types-maintenance/?next={return_url}")
+
+
 def _render_garage_form(request, template_name, form, formset, **context):
     _attach_subline_values(formset, request=request)
     pannes_catalog = _build_pannes_catalog()
@@ -3602,6 +3720,10 @@ apercu_validation_maintenance = role_required("dga", "directeur")(apercu_validat
 imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "invite", "controleur")(imprimer_maintenance)
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
+types_maintenance = role_required("logistique", "maintenancier", "directeur")(types_maintenance)
+ajouter_type_maintenance = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance)
+modifier_type_maintenance = role_required("logistique", "maintenancier", "directeur")(modifier_type_maintenance)
+supprimer_type_maintenance = role_required("logistique", "maintenancier", "directeur")(supprimer_type_maintenance)
 ajouter_panne_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi")(ajouter_fournisseur_modal)
 ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)

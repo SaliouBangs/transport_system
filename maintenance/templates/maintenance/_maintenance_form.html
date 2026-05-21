@@ -130,8 +130,32 @@
 
     <div class="form-grid">
         <div class="field">
-            <label for="{{ form.camion.id_for_label }}">Numero du camion</label>
-            {{ form.camion }}
+            <label for="camion-search-input">Numero du camion</label>
+            {{ form.camion.as_hidden }}
+            <input
+                type="text"
+                id="camion-search-input"
+                list="camions-catalog"
+                class="garage-camion-select"
+                placeholder="Saisir ou rechercher un camion SOGEFI"
+                value="{% if form.camion.value %}{% for camion in camions_catalog %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% endif %}{% endfor %}{% endif %}"
+                autocomplete="off"
+                {% if read_only %}readonly{% endif %}
+            >
+            <datalist id="camions-catalog">
+                {% for camion in camions_catalog %}
+                <option
+                    value="{{ camion.numero_tracteur }}"
+                    label="{% if camion.numero_citerne %}{{ camion.numero_citerne }} - {% endif %}{{ camion.capacite }} L - {{ camion.chauffeur|default:'Camion non affecte' }}"
+                    data-id="{{ camion.id }}"
+                    data-code="{{ camion.code_camion }}"
+                    data-tracteur="{{ camion.numero_tracteur }}"
+                    data-citerne="{{ camion.numero_citerne }}"
+                    data-capacite="{{ camion.capacite }}"
+                    data-chauffeur="{{ camion.chauffeur|default:'' }}"
+                >{{ camion.numero_tracteur }}{% if camion.numero_citerne %} / {{ camion.numero_citerne }}{% endif %} - {{ camion.capacite }} L - {{ camion.chauffeur|default:"Camion non affecte" }}</option>
+                {% endfor %}
+            </datalist>
             {% if form.camion.errors %}<p class="field-error">{{ form.camion.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
@@ -196,6 +220,7 @@
             </div>
             {% if not read_only and allow_structure_changes|default:True %}
             <div class="table-actions">
+                <a href="/maintenance/types-maintenance/?next={{ request.path|urlencode }}" class="btn-secondary">Gerer les types</a>
                 <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
                 <button type="button" class="btn-secondary" data-modal-target="panne-maintenance-modal" id="open-panne-modal-btn">Nouvelle panne</button>
                 <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>
@@ -353,46 +378,60 @@
 
 <script>
 (function () {
-    const camionSelect = document.getElementById("{{ form.camion.id_for_label }}");
+    const searchInput = document.getElementById("camion-search-input");
+    const hiddenSelect = document.getElementById("{{ form.camion.id_for_label }}");
+    const catalog = document.getElementById("camions-catalog");
     const infoDisplay = document.getElementById("camion-info-display");
 
-    if (!camionSelect || !infoDisplay) {
+    if (!searchInput || !hiddenSelect || !catalog || !infoDisplay) {
         return;
     }
 
-    const camionsById = {
-        {% for camion in camions_catalog %}
-        "{{ camion.id }}": {
-            tracteur: "{{ camion.numero_tracteur|escapejs }}",
-            citerne: "{{ camion.numero_citerne|default:''|escapejs }}",
-            code: "{{ camion.code_camion|default:''|escapejs }}",
-            chauffeur: "{{ camion.chauffeur|default:''|escapejs }}",
-            capacite: "{{ camion.capacite|default:''|escapejs }}"
-        },
-        {% endfor %}
-    };
+    const options = Array.from(catalog.options);
 
-    function renderCamionInfo(camionId) {
-        const camion = camionsById[camionId];
-        if (!camion) {
+    function renderCamionInfo(option) {
+        if (!option) {
             infoDisplay.textContent = "Selectionnez un camion pour afficher le chauffeur et la capacite.";
             return;
         }
 
-        const citerne = camion.citerne ? " / " + camion.citerne : "";
-        const code = camion.code || "-";
-        const chauffeur = camion.chauffeur || "Non affecte";
-        const capacite = camion.capacite ? camion.capacite + " L" : "-";
+        const citerne = option.dataset.citerne ? " / " + option.dataset.citerne : "";
+        const code = option.dataset.code || "-";
+        const chauffeur = option.dataset.chauffeur || "Non affecte";
+        const capacite = option.dataset.capacite ? option.dataset.capacite + " L" : "-";
 
         infoDisplay.innerHTML =
-            "<strong>Camion :</strong> " + camion.tracteur + citerne +
+            "<strong>Camion :</strong> " + option.dataset.tracteur + citerne +
             " &nbsp;|&nbsp; <strong>Code :</strong> " + code +
             " &nbsp;|&nbsp; <strong>Chauffeur :</strong> " + chauffeur +
             " &nbsp;|&nbsp; <strong>Capacite :</strong> " + capacite;
     }
 
-    camionSelect.addEventListener("change", () => renderCamionInfo(camionSelect.value));
-    renderCamionInfo(camionSelect.value);
+    function syncCamionSelection() {
+        const typedValue = searchInput.value.trim().toLowerCase();
+        const match = options.find((option) => {
+            const value = (option.value || "").trim().toLowerCase();
+            const tracteur = (option.dataset.tracteur || "").trim().toLowerCase();
+            return typedValue && (typedValue === value || typedValue === tracteur);
+        });
+        if (!match) {
+            hiddenSelect.value = "";
+            renderCamionInfo(null);
+            return;
+        }
+
+        hiddenSelect.value = match.dataset.id;
+        renderCamionInfo(match);
+    }
+
+    const initialOption = options.find((option) => option.dataset.id === hiddenSelect.value);
+    if (initialOption && !searchInput.value) {
+        searchInput.value = initialOption.value;
+    }
+    renderCamionInfo(initialOption || null);
+
+    searchInput.addEventListener("input", syncCamionSelection);
+    searchInput.addEventListener("change", syncCamionSelection);
 })();
 </script>
 

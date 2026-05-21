@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 
 class TypeMaintenance(models.Model):
     libelle = models.CharField(max_length=120, unique=True)
+    actif = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["libelle"]

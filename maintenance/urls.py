@@ -40,6 +40,10 @@ urlpatterns = [
     path("fournisseurs/ajouter/", views.ajouter_fournisseur, name="ajouter_fournisseur"),
     path("fournisseurs/modifier/<int:id>/", views.modifier_fournisseur, name="modifier_fournisseur"),
     path("fournisseurs/supprimer/<int:id>/", views.supprimer_fournisseur, name="supprimer_fournisseur"),
+    path("types-maintenance/", views.types_maintenance, name="types_maintenance"),
+    path("types-maintenance/ajouter/", views.ajouter_type_maintenance, name="ajouter_type_maintenance"),
+    path("types-maintenance/modifier/<int:id>/", views.modifier_type_maintenance, name="modifier_type_maintenance"),
+    path("types-maintenance/supprimer/<int:id>/", views.supprimer_type_maintenance, name="supprimer_type_maintenance"),
     path("supprimer/<int:id>/", views.supprimer_maintenance, name="supprimer_maintenance"),
     path(
         "types/ajouter-modal/",

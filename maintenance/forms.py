@@ -349,6 +349,14 @@ class TypeMaintenanceForm(forms.ModelForm):
 
 
 class PanneCatalogueForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        queryset = TypeMaintenance.objects.filter(actif=True).order_by("libelle")
+        instance_type_id = getattr(getattr(self, "instance", None), "type_maintenance_id", None)
+        if instance_type_id:
+            queryset = (queryset | TypeMaintenance.objects.filter(pk=instance_type_id)).distinct()
+        self.fields["type_maintenance"].queryset = queryset
+
     class Meta:
         model = PanneCatalogue
         fields = ["type_maintenance", "libelle"]
@@ -548,6 +556,14 @@ class ArticleStockConversionForm(forms.ModelForm):
 
 
 class MaintenanceLigneForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        queryset = TypeMaintenance.objects.filter(actif=True).order_by("libelle")
+        instance_type_id = getattr(getattr(self, "instance", None), "type_maintenance_id", None)
+        if instance_type_id:
+            queryset = (queryset | TypeMaintenance.objects.filter(pk=instance_type_id)).distinct()
+        self.fields["type_maintenance"].queryset = queryset
+
     class Meta:
         model = MaintenanceLigne
         fields = [
@@ -563,6 +579,14 @@ class MaintenanceLigneForm(forms.ModelForm):
 
 
 class MaintenanceGarageLigneForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        queryset = TypeMaintenance.objects.filter(actif=True).order_by("libelle")
+        instance_type_id = getattr(getattr(self, "instance", None), "type_maintenance_id", None)
+        if instance_type_id:
+            queryset = (queryset | TypeMaintenance.objects.filter(pk=instance_type_id)).distinct()
+        self.fields["type_maintenance"].queryset = queryset
+
     class Meta:
         model = MaintenanceLigne
         fields = [
