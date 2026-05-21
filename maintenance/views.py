@@ -2735,7 +2735,7 @@ def supprimer_fournisseur(request, id):
 def types_maintenance(request):
     return_url = request.GET.get("next") or "/maintenance/garage/"
     query = (request.GET.get("q") or "").strip()
-    types_qs = TypeMaintenance.objects.all()
+    types_qs = TypeMaintenance.objects.prefetch_related("pannes_catalogue")
     if query:
         types_qs = types_qs.filter(libelle__icontains=query)
     return render(

@@ -4,6 +4,58 @@
 
 {% include "maintenance/_tabs.html" %}
 
+<style>
+.panne-toggle-btn{
+    border:none;
+    background:transparent;
+    color:#123047;
+    font:inherit;
+    font-weight:700;
+    cursor:pointer;
+    padding:0;
+    text-decoration:underline;
+}
+
+.panne-details-row{
+    display:none;
+}
+
+.panne-details-row.is-open{
+    display:table-row;
+}
+
+.panne-details-cell{
+    background:#f8fbfd;
+    padding:0 !important;
+}
+
+.panne-details-card{
+    padding:18px 20px;
+    border-top:1px solid #d9e2e8;
+}
+
+.panne-details-title{
+    margin:0 0 10px 0;
+    font-size:1rem;
+    color:#123047;
+}
+
+.panne-details-list{
+    margin:0;
+    padding-left:18px;
+    color:#486173;
+}
+
+.panne-details-list li + li{
+    margin-top:6px;
+}
+
+.panne-empty{
+    color:#6d8090;
+    font-style:italic;
+}
+</style>
+
 <div class="page-header">
 <div>
 <p class="eyebrow">Entretien flotte</p>
@@ -60,7 +112,11 @@
     <span class="status-badge status-warning">Archive</span>
     {% endif %}
 </td>
-<td>{{ type_maintenance.pannes_catalogue.count }}</td>
+<td>
+    <button type="button" class="panne-toggle-btn" data-panne-toggle="type-{{ type_maintenance.id }}">
+        {{ type_maintenance.pannes_catalogue.count }}
+    </button>
+</td>
 <td>{{ type_maintenance.lignes_maintenance.count }}</td>
 <td>
     <div class="table-actions">
@@ -73,6 +129,22 @@
     </div>
 </td>
 </tr>
+<tr class="panne-details-row" id="type-{{ type_maintenance.id }}">
+<td colspan="5" class="panne-details-cell">
+    <div class="panne-details-card">
+        <h3 class="panne-details-title">Pannes liees a {{ type_maintenance.libelle }}</h3>
+        {% if type_maintenance.pannes_catalogue.all %}
+        <ul class="panne-details-list">
+            {% for panne in type_maintenance.pannes_catalogue.all %}
+            <li>{{ panne.libelle }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="panne-empty">Aucune panne liee a ce type.</p>
+        {% endif %}
+    </div>
+</td>
+</tr>
 {% empty %}
 <tr>
 <td colspan="5">Aucun type de maintenance trouve.</td>
@@ -80,5 +152,18 @@
 {% endfor %}
 </tbody>
 </table>
+
+<script>
+document.querySelectorAll("[data-panne-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-panne-toggle");
+        const row = document.getElementById(targetId);
+        if (!row) {
+            return;
+        }
+        row.classList.toggle("is-open");
+    });
+});
+</script>
 
 {% endblock %}
