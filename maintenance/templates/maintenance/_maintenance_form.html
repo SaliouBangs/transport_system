@@ -1,23 +1,30 @@
 <style>
+.maintenance-form-shell{
+    width: 100%;
+    max-width: 1360px;
+    margin: 0 auto;
+}
+
 .maintenance-lines-table{
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .maintenance-lines-table th:nth-child(1),
 .maintenance-lines-table td:nth-child(1){
-    width: 16%;
-    min-width: 130px;
+    width: 21%;
+    min-width: 210px;
 }
 
 .maintenance-lines-table th:nth-child(2),
 .maintenance-lines-table td:nth-child(2){
-    width: 18%;
-    min-width: 160px;
+    width: 19%;
+    min-width: 180px;
 }
 
 .maintenance-lines-table th:nth-child(3),
 .maintenance-lines-table td:nth-child(3){
-    width: 56%;
+    width: 50%;
+    min-width: 440px;
 }
 
 .maintenance-lines-table th:nth-child(4),
@@ -26,26 +33,66 @@
     min-width: 110px;
 }
 
+.maintenance-lines-table td{
+    vertical-align: top;
+}
+
 .maintenance-lines-table td select,
 .maintenance-lines-table td input{
     min-height: 42px;
 }
 
+.maintenance-lines-table .subline-stack{
+    min-width: 0;
+}
+
 .maintenance-subline{
     display:grid;
-    grid-template-columns:minmax(260px, 300px) 110px minmax(280px, 1fr) auto;
-    gap:10px;
+    grid-template-columns:minmax(165px, 1fr) 72px minmax(170px, 1.2fr) 42px;
+    gap:8px;
     align-items:end;
-    margin-bottom:10px;
-    padding:12px;
+    margin-bottom:8px;
+    padding:10px;
     border:1px solid #d9e2e8;
     border-radius:14px;
     background:#f8fbfd;
+    width:100%;
+    box-sizing:border-box;
+}
+
+.maintenance-subline > div{
+    min-width:0;
+}
+
+.maintenance-subline .stock-label-input,
+.maintenance-subline .stock-article-select{
+    min-width:0;
+}
+
+.maintenance-subline label{
+    font-size:0.82rem !important;
+    line-height:1.2;
+}
+
+.maintenance-subline .subline-mode-badge{
+    font-size:0.74rem;
+    padding:4px 8px;
+}
+
+.maintenance-subline .btn-delete{
+    width:42px;
+    min-width:42px;
+    height:42px;
+    padding:0;
 }
 
 @media (max-width: 1100px){
+    .maintenance-form-shell{
+        max-width: 100%;
+    }
+
     .maintenance-subline{
-        grid-template-columns:minmax(220px, 1fr) 100px minmax(240px, 1fr) auto;
+        grid-template-columns:minmax(150px, 1fr) 72px minmax(150px, 1fr) 42px;
     }
 }
 
@@ -56,7 +103,7 @@
 }
 </style>
 
-<div class="form-shell">
+<div class="form-shell maintenance-form-shell">
 <form method="post" class="app-form" id="maintenance-form">
     {% csrf_token %}
 
