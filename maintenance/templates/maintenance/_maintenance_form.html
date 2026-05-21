@@ -79,6 +79,11 @@
     padding:4px 8px;
 }
 
+.garage-camion-select{
+    min-height:48px !important;
+    font-weight:600;
+}
+
 .maintenance-subline .btn-delete{
     width:42px;
     min-width:42px;
@@ -125,30 +130,8 @@
 
     <div class="form-grid">
         <div class="field">
-            <label for="camion-search-input">Numero du camion</label>
-            {{ form.camion.as_hidden }}
-            <input
-                type="text"
-                id="camion-search-input"
-                list="camions-catalog"
-                placeholder="Rechercher camion, citerne ou code interne"
-                value="{% if form.camion.value %}{% for camion in camions_catalog %}{% if camion.id|stringformat:'s' == form.camion.value|stringformat:'s' %}{{ camion.numero_tracteur }}{% endif %}{% endfor %}{% endif %}"
-                autocomplete="off"
-                {% if read_only %}readonly{% endif %}
-            >
-            <datalist id="camions-catalog">
-                {% for camion in camions_catalog %}
-                <option
-                    value="{{ camion.numero_tracteur }}"
-                    data-id="{{ camion.id }}"
-                    data-code="{{ camion.code_camion }}"
-                    data-tracteur="{{ camion.numero_tracteur }}"
-                    data-citerne="{{ camion.numero_citerne }}"
-                    data-capacite="{{ camion.capacite }}"
-                    data-chauffeur="{{ camion.chauffeur|default:'' }}"
-                ></option>
-                {% endfor %}
-            </datalist>
+            <label for="{{ form.camion.id_for_label }}">Numero du camion</label>
+            {{ form.camion }}
             {% if form.camion.errors %}<p class="field-error">{{ form.camion.errors.0 }}</p>{% endif %}
         </div>
         <div class="field field-full">
@@ -370,55 +353,46 @@
 
 <script>
 (function () {
-    const searchInput = document.getElementById("camion-search-input");
-    const hiddenSelect = document.getElementById("{{ form.camion.id_for_label }}");
-    const catalog = document.getElementById("camions-catalog");
+    const camionSelect = document.getElementById("{{ form.camion.id_for_label }}");
     const infoDisplay = document.getElementById("camion-info-display");
 
-    if (!searchInput || !hiddenSelect || !catalog || !infoDisplay) {
+    if (!camionSelect || !infoDisplay) {
         return;
     }
 
-    const options = Array.from(catalog.options);
+    const camionsById = {
+        {% for camion in camions_catalog %}
+        "{{ camion.id }}": {
+            tracteur: "{{ camion.numero_tracteur|escapejs }}",
+            citerne: "{{ camion.numero_citerne|default:''|escapejs }}",
+            code: "{{ camion.code_camion|default:''|escapejs }}",
+            chauffeur: "{{ camion.chauffeur|default:''|escapejs }}",
+            capacite: "{{ camion.capacite|default:''|escapejs }}"
+        },
+        {% endfor %}
+    };
 
-    function renderCamionInfo(option) {
-        if (!option) {
+    function renderCamionInfo(camionId) {
+        const camion = camionsById[camionId];
+        if (!camion) {
             infoDisplay.textContent = "Selectionnez un camion pour afficher le chauffeur et la capacite.";
             return;
         }
 
-        const citerne = option.dataset.citerne ? " / " + option.dataset.citerne : "";
-        const code = option.dataset.code || "-";
-        const chauffeur = option.dataset.chauffeur || "Non affecte";
-        const capacite = option.dataset.capacite ? option.dataset.capacite + " L" : "-";
+        const citerne = camion.citerne ? " / " + camion.citerne : "";
+        const code = camion.code || "-";
+        const chauffeur = camion.chauffeur || "Non affecte";
+        const capacite = camion.capacite ? camion.capacite + " L" : "-";
 
         infoDisplay.innerHTML =
-            "<strong>Camion :</strong> " + option.dataset.tracteur + citerne +
+            "<strong>Camion :</strong> " + camion.tracteur + citerne +
             " &nbsp;|&nbsp; <strong>Code :</strong> " + code +
             " &nbsp;|&nbsp; <strong>Chauffeur :</strong> " + chauffeur +
             " &nbsp;|&nbsp; <strong>Capacite :</strong> " + capacite;
     }
 
-    function syncCamionSelection() {
-        const match = options.find((option) => option.value === searchInput.value.trim());
-        if (!match) {
-            hiddenSelect.value = "";
-            renderCamionInfo(null);
-            return;
-        }
-
-        hiddenSelect.value = match.dataset.id;
-        renderCamionInfo(match);
-    }
-
-    const initialOption = options.find((option) => option.dataset.id === hiddenSelect.value);
-    if (initialOption && !searchInput.value) {
-        searchInput.value = initialOption.value;
-    }
-    renderCamionInfo(initialOption || null);
-
-    searchInput.addEventListener("input", syncCamionSelection);
-    searchInput.addEventListener("change", syncCamionSelection);
+    camionSelect.addEventListener("change", () => renderCamionInfo(camionSelect.value));
+    renderCamionInfo(camionSelect.value);
 })();
 </script>
 

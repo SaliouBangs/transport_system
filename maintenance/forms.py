@@ -3,6 +3,7 @@ from django.forms import inlineformset_factory
 from django.utils import timezone
 from decimal import Decimal
 
+from chauffeurs.models import Chauffeur
 from clients.models import Banque
 from depenses.models import TypePieceIdentite
 
@@ -44,7 +45,27 @@ class MaintenanceForm(forms.ModelForm):
             instance_camion_id = getattr(getattr(self, "instance", None), "camion_id", None)
             if instance_camion_id:
                 queryset = (queryset | self.fields["camion"].queryset.filter(pk=instance_camion_id)).distinct()
-            self.fields["camion"].queryset = queryset.order_by("numero_tracteur")
+            queryset = queryset.order_by("numero_tracteur")
+            self.fields["camion"].queryset = queryset
+            chauffeurs_by_camion = {
+                chauffeur.camion_id: chauffeur.nom
+                for chauffeur in Chauffeur.objects.filter(camion__in=queryset).select_related("camion")
+            }
+            self.fields["camion"].empty_label = "Choisir un camion SOGEFI"
+            self.fields["camion"].label_from_instance = lambda camion: " - ".join(
+                part
+                for part in [
+                    f"{camion.numero_tracteur}{' / ' + camion.numero_citerne if camion.numero_citerne else ''}",
+                    f"{camion.capacite:,.0f} L".replace(",", " "),
+                    chauffeurs_by_camion.get(camion.id, "Camion non affecte"),
+                ]
+                if part
+            )
+            self.fields["camion"].widget.attrs.update(
+                {
+                    "class": "garage-camion-select",
+                }
+            )
 
     class Meta:
         model = Maintenance
