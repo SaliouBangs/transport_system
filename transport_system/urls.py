@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, include
+from django.views.static import serve as media_serve
 from utilisateurs import views as utilisateurs_views
 
 urlpatterns = [
@@ -19,9 +20,8 @@ urlpatterns = [
     path('depenses/', include('depenses.urls')),
     path('documents/', include('documents.urls')),
     path('operations/', include('operations.urls')),
+    path('media/<path:path>', media_serve, {"document_root": settings.MEDIA_ROOT}),
 ]
-
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
