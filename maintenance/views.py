@@ -7,12 +7,13 @@ from django.db.models import Case, Count, DecimalField, F, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.safestring import mark_safe
+from django.utils.text import get_valid_filename
 import json
 
 from clients.forms import BanqueForm
@@ -63,6 +64,17 @@ def _maintenance_queryset():
         "lignes__type_maintenance",
         "lignes__sous_lignes__article_stock",
     )
+
+
+def _safe_file_response(field_file):
+    if not field_file:
+        raise Http404("Fichier introuvable.")
+    storage = field_file.storage
+    name = field_file.name
+    if not name or not storage.exists(name):
+        raise Http404("Fichier introuvable.")
+    filename = get_valid_filename(name.split("/")[-1]) or "facture"
+    return FileResponse(storage.open(name, "rb"), as_attachment=False, filename=filename)
 
 
 def _fournisseur_portefeuille_for_role(user, fallback=Fournisseur.PORTEFEUILLE_LOGISTIQUE):
@@ -824,6 +836,12 @@ def _get_caisse_metrics(caissiere, date_from="", date_to=""):
     }
 
 
+@role_required("logistique", "maintenancier", "caissiere", "comptable_sogefi", "responsable_achat", "dga_sogefi", "directeur", "admin")
+def voir_facture_maintenance(request, id):
+    facture = get_object_or_404(MaintenanceFacture, pk=id)
+    return _safe_file_response(facture.facture_fichier)
+
+
 def _get_dg_metrics(date_from="", date_to=""):
     dg_qs = ApprovisionnementCaisse.objects.filter(
         nature_approvisionnement__in=[
@@ -1467,7 +1485,7 @@ def paiements_maintenances(request):
                     "date_display": date_format(maintenance.date_paiement if historique and maintenance.date_paiement else maintenance.date_debut, "d/m/Y"),
                     "action_url": f"/maintenance/paiements/modifier/{maintenance.id}/",
                     "action_label": "Consulter" if historique else "Payer",
-                    "support_url": invoice_rows[0].facture_fichier.url if invoice_rows and getattr(invoice_rows[0], "facture_fichier", None) else "",
+                    "support_url": f"/maintenance/facture/{invoice_rows[0].id}/" if invoice_rows and getattr(invoice_rows[0], "facture_fichier", None) else "",
                     "is_cash_item": is_cash_item,
                     "balance_warning": bool(not historique and is_cash_item and current_cash_balance is not None and montant > current_cash_balance),
                     "destination_label": "Caissiere" if is_cash_item else "Comptable SOGEFI",
@@ -1517,7 +1535,7 @@ def paiements_maintenances(request):
                     "date_display": date_format(depense.date_paiement if historique and depense.date_paiement else depense.date_creation, "d/m/Y"),
                     "action_url": f"/depenses/paiement/{depense.id}/",
                     "action_label": "Consulter" if historique else "Payer",
-                    "support_url": depense.piece_justificative.url if depense.piece_justificative else "",
+                    "support_url": f"/depenses/piece/{depense.id}/" if depense.piece_justificative else "",
                     "is_cash_item": is_cash_item,
                     "balance_warning": bool(not historique and is_cash_item and current_cash_balance is not None and montant > current_cash_balance),
                     "destination_label": "Caissiere" if is_cash_item else "Comptable SOGEFI",

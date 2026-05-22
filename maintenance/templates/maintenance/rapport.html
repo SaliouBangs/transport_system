@@ -101,7 +101,7 @@
         {% for invoice in maintenance.invoice_rows %}
         <div style="margin-bottom:6px;">
             {% if invoice.facture_fichier %}
-            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+            <a href="/maintenance/facture/{{ invoice.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
             {% else %}
             -
             {% endif %}

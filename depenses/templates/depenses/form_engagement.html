@@ -104,7 +104,7 @@
         <label for="{{ form.piece_justificative.id_for_label }}">Piece justificative (facture en photo)</label>
         {{ form.piece_justificative }}
         {% if depense.piece_justificative %}
-        <p><a href="{{ depense.piece_justificative.url }}" target="_blank">Voir la piece actuelle</a></p>
+        <p><a href="/depenses/piece/{{ depense.id }}/" target="_blank">Voir la piece actuelle</a></p>
         {% endif %}
         {% if form.piece_justificative.errors %}<p class="field-error">{{ form.piece_justificative.errors|join:", " }}</p>{% endif %}
       </div>

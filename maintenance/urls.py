@@ -20,6 +20,7 @@ urlpatterns = [
     path("garage/export/pdf/", views.export_garage_pdf, name="export_garage_pdf"),
     path("achat/", views.achat_maintenances, name="achat_maintenances"),
     path("achat/modifier/<int:id>/", views.modifier_maintenance_achat, name="modifier_maintenance_achat"),
+    path("facture/<int:id>/", views.voir_facture_maintenance, name="voir_facture_maintenance"),
     path("achat/export/xls/", views.export_achat_xls, name="export_achat_xls"),
     path("achat/export/pdf/", views.export_achat_pdf, name="export_achat_pdf"),
     path("paiements/", views.paiements_maintenances, name="paiements_maintenances"),

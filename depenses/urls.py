@@ -18,6 +18,7 @@ urlpatterns = [
     path("modifier/<int:id>/", views.modifier_depense, name="modifier_depense"),
     path("apercu/<int:id>/", views.apercu_depense, name="apercu_depense"),
     path("imprimer/<int:id>/", views.imprimer_depense, name="imprimer_depense"),
+    path("piece/<int:id>/", views.voir_piece_depense, name="voir_piece_depense"),
     path("bon-consommation/<int:id>/", views.bon_consommation_depense, name="bon_consommation_depense"),
     path("engagement/<int:id>/", views.engagement_depense, name="engagement_depense"),
     path("paiement/<int:id>/", views.paiement_depense, name="paiement_depense"),

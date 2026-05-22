@@ -62,7 +62,7 @@
         {% if invoice.numero_facture %}<br>{{ invoice.numero_facture }}{% endif %}
         {% if invoice.facture_fichier %}
         <div style="margin-top:4px;">
-            <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
+            <a href="/maintenance/facture/{{ invoice.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="padding:6px 10px; min-width:auto;">Voir facture</a>
         </div>
         {% endif %}
     </div>

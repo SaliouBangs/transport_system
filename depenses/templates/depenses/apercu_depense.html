@@ -162,7 +162,7 @@
         Numero facture : {{ depense.numero_facture|default:"-" }}<br>
         Piece justificative :
         {% if depense.piece_justificative %}
-        <a href="{{ depense.piece_justificative.url }}" target="_blank">Voir la piece</a>
+        <a href="/depenses/piece/{{ depense.id }}/" target="_blank">Voir la piece</a>
         {% else %}
         -
         {% endif %}<br>

@@ -192,7 +192,7 @@
               <strong>{{ invoice.fournisseur|default:"-" }}</strong>
               <p>{{ invoice.numero_facture|default:"Sans numero" }}</p>
               {% if invoice.facture_fichier %}
-              <a href="{{ invoice.facture_fichier.url }}" class="btn-secondary" target="_blank" rel="noopener noreferrer">Voir facture</a>
+              <a href="/maintenance/facture/{{ invoice.id }}/" class="btn-secondary" target="_blank" rel="noopener noreferrer">Voir facture</a>
               {% endif %}
             </article>
             {% endfor %}

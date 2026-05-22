@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Q, Sum
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.text import get_valid_filename
 from django.utils import timezone
 
 from clients.forms import BanqueForm
@@ -25,6 +26,23 @@ from .forms import (
 )
 from .models import Depense, DepenseLigne, LieuProjet, TypeDepense, TypePieceIdentite
 from operations.models import Operation
+
+
+def _safe_file_response(field_file):
+    if not field_file:
+        raise Http404("Fichier introuvable.")
+    storage = field_file.storage
+    name = field_file.name
+    if not name or not storage.exists(name):
+        raise Http404("Fichier introuvable.")
+    filename = get_valid_filename(name.split("/")[-1]) or "piece-jointe"
+    return FileResponse(storage.open(name, "rb"), as_attachment=False, filename=filename)
+
+
+@role_required("caissiere", "comptable_sogefi", "responsable_achat", "dga_sogefi", "directeur", "admin")
+def voir_piece_depense(request, id):
+    depense = get_object_or_404(Depense, pk=id)
+    return _safe_file_response(depense.piece_justificative)
 
 
 def _format_amount(amount):

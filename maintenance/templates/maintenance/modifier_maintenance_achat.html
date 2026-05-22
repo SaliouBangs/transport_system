@@ -117,7 +117,7 @@
                         {% if invoice_form.facture_fichier.errors %}<p class="field-error">{{ invoice_form.facture_fichier.errors.0 }}</p>{% endif %}
                         {% if invoice_form.instance.pk and invoice_form.instance.facture_fichier %}
                         <p style="margin-top:8px;">
-                            <a href="{{ invoice_form.instance.facture_fichier.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Ouvrir le fichier actuel</a>
+                            <a href="/maintenance/facture/{{ invoice_form.instance.id }}/" target="_blank" rel="noopener noreferrer" class="btn-secondary">Ouvrir le fichier actuel</a>
                         </p>
                         {% endif %}
                     </div>
