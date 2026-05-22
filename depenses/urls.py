@@ -5,6 +5,9 @@ from . import views
 
 urlpatterns = [
     path("", views.liste_depenses, name="liste_depenses"),
+    path("rapport/", views.rapport_depenses_internes, name="rapport_depenses_internes"),
+    path("rapport/export/excel/", views.export_rapport_depenses_internes_xls, name="export_rapport_depenses_internes_xls"),
+    path("rapport/export/pdf/", views.export_rapport_depenses_internes_pdf, name="export_rapport_depenses_internes_pdf"),
     path("types/", views.liste_types_depense, name="liste_types_depense"),
     path("types/<int:id>/modifier/", views.modifier_type_depense, name="modifier_type_depense"),
     path("types/<int:id>/supprimer/", views.supprimer_type_depense, name="supprimer_type_depense"),

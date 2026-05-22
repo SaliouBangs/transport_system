@@ -1023,6 +1023,7 @@ min-width:0;
     <a href="/depenses/ajouter/" class="{% if '/depenses/ajouter/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9998;</span>Nouvelle expression</span></a>
     <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
     <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
+    <a href="/depenses/rapport/" class="{% if '/depenses/rapport/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapports</span></a>
     <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
     <a href="/depenses/types/" class="{% if '/depenses/types/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Types de depense</span></a>
 </div>

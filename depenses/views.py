@@ -1,9 +1,11 @@
 from decimal import Decimal
+from io import BytesIO
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Q, Sum
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.text import get_valid_filename
 from django.utils import timezone
@@ -553,6 +555,215 @@ def _build_context(user, queryset):
         "can_access_paiement": role in {"comptable_sogefi", "caissiere"} or is_admin_user(user),
         "can_create_internal_depense": _internal_expression_creation_allowed(user),
     }
+
+
+def _build_internal_report_queryset(request):
+    queryset = _depenses_queryset_for_user(request.user).filter(source_depense=Depense.SOURCE_GENERALE)
+    q = (request.GET.get("q") or "").strip()
+    statut = (request.GET.get("statut") or "").strip()
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
+
+    if q:
+        queryset = queryset.filter(
+            Q(reference__icontains=q)
+            | Q(titre__icontains=q)
+            | Q(description__icontains=q)
+            | Q(demandeur__username__icontains=q)
+            | Q(fournisseur__nom_fournisseur__icontains=q)
+            | Q(fournisseur__entreprise__icontains=q)
+            | Q(type_depense__libelle__icontains=q)
+            | Q(lieu_ou_projet__icontains=q)
+            | Q(numero_facture__icontains=q)
+        )
+    if statut:
+        queryset = queryset.filter(statut=statut)
+    if date_from:
+        queryset = queryset.filter(date_expression__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(date_expression__lte=date_to)
+
+    return queryset.order_by("-date_expression", "-date_creation"), {
+        "q": q,
+        "statut": statut,
+        "date_from": date_from,
+        "date_to": date_to,
+    }
+
+
+def _build_internal_report_context(request):
+    queryset, filters = _build_internal_report_queryset(request)
+    depenses = list(queryset)
+    total_montant = Decimal("0")
+    total_quantite = Decimal("0")
+
+    for depense in depenses:
+        depense.date_expression_affichee = depense.date_expression.strftime("%d/%m/%Y") if depense.date_expression else "-"
+        depense.montant_affiche = _format_amount(depense.montant_total)
+        depense.quantite_affichee = _format_amount(depense.quantite_totale)
+        depense.type_affiche = str(depense.type_depense) if depense.type_depense_id else "-"
+        depense.fournisseur_affiche = str(depense.fournisseur) if depense.fournisseur_id else "-"
+        depense.lieu_affiche = depense.lieu_ou_projet or (str(depense.lieu_projet_ref) if depense.lieu_projet_ref_id else "-")
+        depense.mode_affiche = depense.get_mode_reglement_display() if depense.mode_reglement else "-"
+        total_montant += depense.montant_total or Decimal("0")
+        total_quantite += depense.quantite_totale or Decimal("0")
+
+    current_filters = urlencode({key: value for key, value in filters.items() if value})
+
+    return {
+        "depenses": depenses,
+        "counts": _summary_counts(queryset),
+        "total_montant_affiche": _format_amount(total_montant),
+        "total_quantite_affichee": _format_amount(total_quantite),
+        "search_query": filters["q"],
+        "statut_filter": filters["statut"],
+        "date_from": filters["date_from"],
+        "date_to": filters["date_to"],
+        "statut_choices": Depense.STATUT_CHOICES,
+        "current_filters": current_filters,
+        **_build_context(request.user, queryset),
+    }
+
+
+def _internal_report_export_rows(queryset):
+    rows = []
+    for depense in queryset:
+        rows.append(
+            [
+                depense.reference,
+                depense.date_expression.strftime("%Y-%m-%d") if depense.date_expression else "",
+                depense.demandeur.username if depense.demandeur_id else "",
+                depense.titre,
+                str(depense.type_depense) if depense.type_depense_id else "",
+                depense.lieu_ou_projet or (str(depense.lieu_projet_ref) if depense.lieu_projet_ref_id else ""),
+                str(depense.fournisseur) if depense.fournisseur_id else "",
+                depense.numero_facture or "",
+                float(depense.quantite_totale) if depense.quantite_totale is not None else "",
+                float(depense.montant_total) if depense.montant_total is not None else "",
+                depense.get_statut_display(),
+                depense.get_mode_reglement_display() if depense.mode_reglement else "",
+                depense.date_paiement.strftime("%Y-%m-%d") if depense.date_paiement else "",
+            ]
+        )
+    return rows
+
+
+def rapport_depenses_internes(request):
+    return render(
+        request,
+        "depenses/rapport_depenses_internes.html",
+        _build_internal_report_context(request),
+    )
+
+
+def export_rapport_depenses_internes_xls(request):
+    try:
+        from openpyxl import Workbook
+    except ImportError:
+        return HttpResponse(
+            "Le module openpyxl n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    queryset, _filters = _build_internal_report_queryset(request)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Achats internes"
+    sheet.append(
+        [
+            "Reference",
+            "Date expression",
+            "Demandeur",
+            "Titre",
+            "Type de depense",
+            "Lieu / projet",
+            "Fournisseur",
+            "Numero facture",
+            "Quantite",
+            "Montant",
+            "Statut",
+            "Mode DG",
+            "Date paiement",
+        ]
+    )
+    for row in _internal_report_export_rows(queryset):
+        sheet.append(row)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="rapport_achats_internes.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_rapport_depenses_internes_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+    except ImportError:
+        return HttpResponse(
+            "Le module reportlab n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    queryset, _filters = _build_internal_report_queryset(request)
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    data = [[
+        "Reference",
+        "Date",
+        "Demandeur",
+        "Titre",
+        "Type",
+        "Lieu / projet",
+        "Fournisseur",
+        "Facture",
+        "Qte",
+        "Montant",
+        "Statut",
+        "Mode DG",
+    ]]
+    for depense in queryset:
+        data.append(
+            [
+                depense.reference,
+                depense.date_expression.strftime("%d/%m/%Y") if depense.date_expression else "",
+                depense.demandeur.username if depense.demandeur_id else "",
+                depense.titre,
+                str(depense.type_depense) if depense.type_depense_id else "",
+                depense.lieu_ou_projet or (str(depense.lieu_projet_ref) if depense.lieu_projet_ref_id else ""),
+                str(depense.fournisseur) if depense.fournisseur_id else "",
+                depense.numero_facture or "",
+                _format_amount(depense.quantite_totale),
+                _format_amount(depense.montant_total),
+                depense.get_statut_display(),
+                depense.get_mode_reglement_display() if depense.mode_reglement else "-",
+            ]
+        )
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d9e2e8")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f8fb")]),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("PADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    doc.build([table])
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="rapport_achats_internes.pdf"'
+    response.write(buffer.getvalue())
+    return response
 
 
 def _build_preview_context(depense):
@@ -1977,3 +2188,6 @@ bon_consommation_depense = role_required(
     "transitaire",
     "invite",
 )(bon_consommation_depense)
+rapport_depenses_internes = role_required("responsable_achat", "dga_sogefi", "directeur")(rapport_depenses_internes)
+export_rapport_depenses_internes_xls = role_required("responsable_achat", "dga_sogefi", "directeur")(export_rapport_depenses_internes_xls)
+export_rapport_depenses_internes_pdf = role_required("responsable_achat", "dga_sogefi", "directeur")(export_rapport_depenses_internes_pdf)
