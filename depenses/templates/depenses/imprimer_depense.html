@@ -215,7 +215,11 @@ td{
 
     <div class="header">
         <div class="brand">
+            {% if depense.source_depense == "generale" and depense.entite_depense == "soni" %}
+            <img src="{% static 'utilisateurs/soni-logo.png' %}" alt="Logo SONI Energy">
+            {% else %}
             <img src="{% static 'maintenance/sogefi-logo.png' %}" alt="Logo SOGEFI">
+            {% endif %}
             <div>
                 <p class="eyebrow">Depenses / etat recapitulatif</p>
                 <h1>Etat {{ depense.reference }}</h1>
