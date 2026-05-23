@@ -17,12 +17,18 @@ def _is_carburant_label(label):
 CARBURANT_PRIX_UNITAIRE = Decimal("12000")
 
 
-def _types_depense_queryset(portefeuille):
-    return TypeDepense.objects.filter(portefeuille=portefeuille).order_by("libelle")
+def _types_depense_queryset(portefeuille, entite_reference=None):
+    queryset = TypeDepense.objects.filter(portefeuille=portefeuille)
+    if portefeuille == TypeDepense.PORTEFEUILLE_INTERNE and entite_reference:
+        queryset = queryset.filter(entite_reference=entite_reference)
+    return queryset.order_by("libelle")
 
 
-def _fournisseurs_queryset(portefeuille):
-    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
+def _fournisseurs_queryset(portefeuille, entite_reference=None):
+    queryset = Fournisseur.objects.filter(portefeuille=portefeuille)
+    if portefeuille == Fournisseur.PORTEFEUILLE_INTERNE and entite_reference:
+        queryset = queryset.filter(entite_reference=entite_reference)
+    return queryset.order_by("nom_fournisseur", "entreprise")
 
 
 class DepenseExpressionForm(forms.ModelForm):
@@ -100,8 +106,9 @@ class TypeDepenseForm(forms.ModelForm):
         model = TypeDepense
         fields = ["libelle", "montant_defaut"]
 
-    def __init__(self, *args, portefeuille=None, **kwargs):
+    def __init__(self, *args, portefeuille=None, entite_reference="", **kwargs):
         self.portefeuille = portefeuille or TypeDepense.PORTEFEUILLE_LOGISTIQUE
+        self.entite_reference = entite_reference or ""
         super().__init__(*args, **kwargs)
         self.fields["montant_defaut"].required = False
         self.fields["montant_defaut"].initial = self.initial.get("montant_defaut", 0)
@@ -109,6 +116,7 @@ class TypeDepenseForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.portefeuille = self.portefeuille
+        instance.entite_reference = self.entite_reference if self.portefeuille == TypeDepense.PORTEFEUILLE_INTERNE else ""
         if instance.montant_defaut in (None, ""):
             instance.montant_defaut = Decimal("0")
         if commit:
@@ -120,6 +128,17 @@ class LieuProjetForm(forms.ModelForm):
     class Meta:
         model = LieuProjet
         fields = ["libelle"]
+
+    def __init__(self, *args, entite_reference=TypeDepense.ENTITE_SOGEFI, **kwargs):
+        self.entite_reference = entite_reference
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.entite_reference = self.entite_reference
+        if commit:
+            instance.save()
+        return instance
 
 
 class DepenseEngagementForm(forms.ModelForm):
@@ -146,11 +165,12 @@ class DepenseEngagementForm(forms.ModelForm):
             "fournisseur": forms.HiddenInput(),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, entite_reference=TypeDepense.ENTITE_SOGEFI, **kwargs):
+        self.entite_reference = entite_reference
         super().__init__(*args, **kwargs)
-        self.type_depenses = list(_types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE))
-        self.lieux_projets = list(LieuProjet.objects.order_by("libelle"))
-        self.fournisseurs = list(_fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE))
+        self.type_depenses = list(_types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE, self.entite_reference))
+        self.lieux_projets = list(LieuProjet.objects.filter(entite_reference=self.entite_reference).order_by("libelle"))
+        self.fournisseurs = list(_fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference))
         if self.instance.pk and self.instance.fournisseur_id:
             self.fields["fournisseur_search"].initial = str(self.instance.fournisseur)
         if self.instance.pk and self.instance.type_depense_id:
@@ -163,14 +183,14 @@ class DepenseEngagementForm(forms.ModelForm):
         type_depense = cleaned_data.get("type_depense")
         type_search = (cleaned_data.get("type_depense_search") or "").strip()
         if not type_depense and type_search:
-            type_depense = _types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE).filter(libelle__iexact=type_search).first()
+            type_depense = _types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE, self.entite_reference).filter(libelle__iexact=type_search).first()
             if type_depense:
                 cleaned_data["type_depense"] = type_depense
 
         lieu_ref = cleaned_data.get("lieu_projet_ref")
         lieu_search = (cleaned_data.get("lieu_ou_projet_search") or "").strip()
         if not lieu_ref and lieu_search:
-            lieu_ref = LieuProjet.objects.filter(libelle__iexact=lieu_search).first()
+            lieu_ref = LieuProjet.objects.filter(entite_reference=self.entite_reference, libelle__iexact=lieu_search).first()
             if lieu_ref:
                 cleaned_data["lieu_projet_ref"] = lieu_ref
         if lieu_ref and not cleaned_data.get("lieu_ou_projet"):
@@ -182,9 +202,9 @@ class DepenseEngagementForm(forms.ModelForm):
         search = (cleaned_data.get("fournisseur_search") or "").strip()
         if not fournisseur and search:
             fournisseur = (
-                _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(nom_fournisseur__iexact=search).first()
-                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(entreprise__iexact=search).first()
-                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE).filter(numero_telephone__iexact=search).first()
+                _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(nom_fournisseur__iexact=search).first()
+                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(entreprise__iexact=search).first()
+                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(numero_telephone__iexact=search).first()
             )
             if fournisseur:
                 cleaned_data["fournisseur"] = fournisseur

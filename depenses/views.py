@@ -393,6 +393,11 @@ def _internal_entity_label(entity_code):
     return "SOGEFI"
 
 
+def _reference_entity_for_user(user):
+    entity = _internal_entity_for_user(user)
+    return entity or Depense.ENTITE_SOGEFI
+
+
 def _internal_dga_label(depense):
     return "DGA SONI" if depense.entite_depense == Depense.ENTITE_SONI else "DGA SOGEFI"
 
@@ -415,6 +420,8 @@ def _types_depense_queryset_for_user(user):
     queryset = TypeDepense.objects.order_by("libelle")
     if portefeuille:
         queryset = queryset.filter(portefeuille=portefeuille)
+    if portefeuille == TypeDepense.PORTEFEUILLE_INTERNE:
+        queryset = queryset.filter(entite_reference=_reference_entity_for_user(user))
     return queryset
 
 
@@ -1034,7 +1041,7 @@ def liste_types_depense(request):
         return redirect("liste_depenses")
 
     portefeuille = _type_depense_portefeuille_for_role(request.user)
-    form = TypeDepenseForm(request.POST or None, portefeuille=portefeuille)
+    form = TypeDepenseForm(request.POST or None, portefeuille=portefeuille, entite_reference=_reference_entity_for_user(request.user))
     if request.method == "POST" and form.is_valid():
         type_depense = form.save()
         messages.success(request, f"Le type de depense {type_depense.libelle} a ete ajoute.")
@@ -1063,7 +1070,7 @@ def modifier_type_depense(request, id):
 
     portefeuille = _type_depense_portefeuille_for_role(request.user)
     type_depense = get_object_or_404(_types_depense_queryset_for_user(request.user), id=id)
-    form = TypeDepenseForm(request.POST or None, instance=type_depense, portefeuille=portefeuille)
+    form = TypeDepenseForm(request.POST or None, instance=type_depense, portefeuille=portefeuille, entite_reference=_reference_entity_for_user(request.user))
     if request.method == "POST" and form.is_valid():
         type_depense = form.save()
         messages.success(request, f"Le type de depense {type_depense.libelle} a ete mis a jour.")
@@ -1475,7 +1482,7 @@ def engagement_depense(request, id):
         return redirect("liste_depenses")
 
     if request.method == "POST":
-        form = DepenseEngagementForm(request.POST, request.FILES, instance=depense)
+        form = DepenseEngagementForm(request.POST, request.FILES, instance=depense, entite_reference=depense.entite_depense)
         ligne_values = _build_ligne_values(depense, request=request)
         if form.is_valid():
             lignes, ligne_errors = _validate_lignes(request)
@@ -1501,7 +1508,7 @@ def engagement_depense(request, id):
                 messages.success(request, f"L'engagement a ete enregistre et transmis au {_internal_dga_label(depense)}.")
                 return redirect("liste_depenses")
     else:
-        form = DepenseEngagementForm(instance=depense)
+        form = DepenseEngagementForm(instance=depense, entite_reference=depense.entite_depense)
         ligne_values = _build_ligne_values(depense)
 
     return render(
@@ -1511,8 +1518,8 @@ def engagement_depense(request, id):
             "form": form,
             "depense": depense,
             "internal_dga_label": _internal_dga_label(depense),
-            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_INTERNE),
-            "lieu_projet_form": LieuProjetForm(),
+            "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_INTERNE, entite_reference=depense.entite_depense),
+            "lieu_projet_form": LieuProjetForm(entite_reference=depense.entite_depense),
             "ligne_values": ligne_values,
         },
     )
@@ -2121,7 +2128,8 @@ def ajouter_type_depense_modal(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "errors": {"__all__": ["Requete invalide."]}}, status=405)
     portefeuille = (request.POST.get("portefeuille") or "").strip() or _type_depense_portefeuille_for_role(request.user)
-    form = TypeDepenseForm(request.POST, portefeuille=portefeuille)
+    entite_reference = _reference_entity_for_user(request.user)
+    form = TypeDepenseForm(request.POST, portefeuille=portefeuille, entite_reference=entite_reference)
     if form.is_valid():
         type_depense = form.save()
         return JsonResponse(
@@ -2145,7 +2153,7 @@ def ajouter_type_depense_modal(request):
 def ajouter_lieu_projet_modal(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "errors": {"__all__": ["Requete invalide."]}}, status=405)
-    form = LieuProjetForm(request.POST)
+    form = LieuProjetForm(request.POST, entite_reference=_reference_entity_for_user(request.user))
     if form.is_valid():
         lieu = form.save()
         return JsonResponse(

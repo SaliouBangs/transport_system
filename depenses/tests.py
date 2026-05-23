@@ -2,7 +2,9 @@ from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.urls import reverse
 
+from depenses.forms import DepenseEngagementForm
 from depenses.models import Depense, TypeDepense
+from depenses.models import LieuProjet
 from maintenance.models import Fournisseur
 
 
@@ -37,11 +39,28 @@ class DepenseDgaAccessTests(TestCase):
         self.type_depense_interne = TypeDepense.objects.create(
             libelle="Fournitures internes",
             portefeuille=TypeDepense.PORTEFEUILLE_INTERNE,
+            entite_reference=TypeDepense.ENTITE_SOGEFI,
         )
         self.fournisseur_interne = Fournisseur.objects.create(
             nom_fournisseur="Fournisseur Test",
             entreprise="Entreprise Test",
             portefeuille=Fournisseur.PORTEFEUILLE_INTERNE,
+            entite_reference=Fournisseur.ENTITE_SOGEFI,
+        )
+        self.type_depense_soni = TypeDepense.objects.create(
+            libelle="Internet SONI",
+            portefeuille=TypeDepense.PORTEFEUILLE_INTERNE,
+            entite_reference=TypeDepense.ENTITE_SONI,
+        )
+        self.lieu_soni = LieuProjet.objects.create(
+            libelle="Depot SONI Test",
+            entite_reference=TypeDepense.ENTITE_SONI,
+        )
+        self.fournisseur_soni = Fournisseur.objects.create(
+            nom_fournisseur="Fournisseur SONI",
+            entreprise="Entreprise SONI",
+            portefeuille=Fournisseur.PORTEFEUILLE_INTERNE,
+            entite_reference=Fournisseur.ENTITE_SONI,
         )
 
     def test_dga_ne_voit_pas_les_depenses_internes_dans_la_liste(self):
@@ -128,3 +147,21 @@ class DepenseDgaAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, depense_soni.reference)
         self.assertNotContains(response, depense_sogefi.reference)
+
+    def test_formulaire_engagement_soni_ne_charge_que_les_references_soni(self):
+        depense_soni = Depense.objects.create(
+            demandeur=self.logistique_user,
+            titre="Depense engagement SONI",
+            description="Depense SONI pour test de references.",
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=Depense.ENTITE_SONI,
+            statut=Depense.STATUT_ATTENTE_ENGAGEMENT,
+        )
+
+        form = DepenseEngagementForm(instance=depense_soni, entite_reference=Depense.ENTITE_SONI)
+
+        self.assertIn(self.type_depense_soni, form.type_depenses)
+        self.assertNotIn(self.type_depense_interne, form.type_depenses)
+        self.assertIn(self.lieu_soni, form.lieux_projets)
+        self.assertNotIn(self.fournisseur_interne, form.fournisseurs)
+        self.assertIn(self.fournisseur_soni, form.fournisseurs)

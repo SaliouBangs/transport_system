@@ -84,9 +84,22 @@ def _fournisseur_portefeuille_for_role(user, fallback=Fournisseur.PORTEFEUILLE_L
     return fallback
 
 
+def _fournisseur_entite_for_user(user, portefeuille):
+    if portefeuille != Fournisseur.PORTEFEUILLE_INTERNE:
+        return ""
+    role = get_user_role(user)
+    if role in {"logistique", "dga", "comptable", "caissiere_soni"}:
+        return Fournisseur.ENTITE_SONI
+    return Fournisseur.ENTITE_SOGEFI
+
+
 def _fournisseurs_queryset_for_user(user):
     portefeuille = _fournisseur_portefeuille_for_role(user)
-    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
+    queryset = Fournisseur.objects.filter(portefeuille=portefeuille)
+    entite_reference = _fournisseur_entite_for_user(user, portefeuille)
+    if entite_reference:
+        queryset = queryset.filter(entite_reference=entite_reference)
+    return queryset.order_by("nom_fournisseur", "entreprise")
 
 
 def _normalize_stock_only_workflow():
@@ -2716,7 +2729,11 @@ def ajouter_fournisseur(request):
         return redirect("fournisseurs_maintenance")
 
     portefeuille = _fournisseur_portefeuille_for_role(request.user)
-    form = FournisseurForm(request.POST, portefeuille=portefeuille)
+    form = FournisseurForm(
+        request.POST,
+        portefeuille=portefeuille,
+        entite_reference=_fournisseur_entite_for_user(request.user, portefeuille),
+    )
     if form.is_valid():
         fournisseur = form.save()
         journaliser_action(

@@ -23,8 +23,11 @@ from .models import (
 )
 
 
-def _fournisseurs_queryset(portefeuille):
-    return Fournisseur.objects.filter(portefeuille=portefeuille).order_by("nom_fournisseur", "entreprise")
+def _fournisseurs_queryset(portefeuille, entite_reference=None):
+    queryset = Fournisseur.objects.filter(portefeuille=portefeuille)
+    if portefeuille == Fournisseur.PORTEFEUILLE_INTERNE and entite_reference:
+        queryset = queryset.filter(entite_reference=entite_reference)
+    return queryset.order_by("nom_fournisseur", "entreprise")
 
 
 class MaintenanceForm(forms.ModelForm):
@@ -324,13 +327,15 @@ class FournisseurForm(forms.ModelForm):
             "mode_paiement",
         ]
 
-    def __init__(self, *args, portefeuille=None, **kwargs):
+    def __init__(self, *args, portefeuille=None, entite_reference="", **kwargs):
         self.portefeuille = portefeuille or Fournisseur.PORTEFEUILLE_LOGISTIQUE
+        self.entite_reference = entite_reference or ""
         super().__init__(*args, **kwargs)
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.portefeuille = self.portefeuille
+        instance.entite_reference = self.entite_reference if self.portefeuille == Fournisseur.PORTEFEUILLE_INTERNE else ""
         if commit:
             instance.save()
         return instance

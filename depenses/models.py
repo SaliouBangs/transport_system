@@ -11,9 +11,17 @@ from maintenance.models import Fournisseur
 class TypeDepense(models.Model):
     PORTEFEUILLE_LOGISTIQUE = "logistique"
     PORTEFEUILLE_INTERNE = "interne"
+    ENTITE_SOGEFI = "sogefi"
+    ENTITE_SONI = "soni"
+    ENTITE_AVENA = "avena"
     PORTEFEUILLE_CHOICES = [
         (PORTEFEUILLE_LOGISTIQUE, "Logistique"),
         (PORTEFEUILLE_INTERNE, "Depenses internes"),
+    ]
+    ENTITE_CHOICES = [
+        (ENTITE_SOGEFI, "SOGEFI"),
+        (ENTITE_SONI, "SONI"),
+        (ENTITE_AVENA, "Avena"),
     ]
 
     libelle = models.CharField(max_length=150)
@@ -23,6 +31,7 @@ class TypeDepense(models.Model):
         choices=PORTEFEUILLE_CHOICES,
         default=PORTEFEUILLE_LOGISTIQUE,
     )
+    entite_reference = models.CharField(max_length=20, choices=ENTITE_CHOICES, blank=True)
 
     class Meta:
         ordering = ["libelle"]
@@ -41,6 +50,11 @@ class TypeDepense(models.Model):
 
 class LieuProjet(models.Model):
     libelle = models.CharField(max_length=180, unique=True)
+    entite_reference = models.CharField(
+        max_length=20,
+        choices=TypeDepense.ENTITE_CHOICES,
+        default=TypeDepense.ENTITE_SOGEFI,
+    )
 
     class Meta:
         ordering = ["libelle"]
