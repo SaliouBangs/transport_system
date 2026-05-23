@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Depenses internes</p>
     <h1>Saisie achat / prix {{ depense.reference }}</h1>
-    <p class="page-subtitle">Le responsable achat renseigne les lignes, les fournisseurs et la facture avant la validation DGA SOGEFI.</p>
+    <p class="page-subtitle">Le profil charge du chiffrage renseigne les lignes, les fournisseurs et la facture avant la validation {{ internal_dga_label }}.</p>
   </div>
 </div>
 
@@ -151,7 +151,7 @@
     </div>
     <div class="form-actions">
       <a href="/depenses/" class="btn-secondary">Retour</a>
-      <button type="submit" class="btn">Transmettre au DGA SOGEFI</button>
+      <button type="submit" class="btn">Transmettre au {{ internal_dga_label }}</button>
     </div>
   </form>
 </div>

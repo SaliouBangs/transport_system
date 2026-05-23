@@ -81,7 +81,7 @@
             Circuit interne:
             {% if depense.engagement_saisi_le %}<span class="status-badge status-ok">Achat saisi</span>{% else %}<span class="status-badge status-danger">Achat en attente</span>{% endif %}
             /
-            {% if depense.engagement_decision_dga == "validee" %}<span class="status-badge status-ok">DGA SOGEFI Validee</span>{% elif depense.engagement_decision_dga == "rejetee" %}<span class="status-badge status-danger">DGA SOGEFI Rejetee</span>{% else %}<span class="status-badge status-danger">DGA SOGEFI en attente</span>{% endif %}
+            {% if depense.engagement_decision_dga == "validee" %}<span class="status-badge status-ok">{{ depense.internal_dga_label }} Validee</span>{% elif depense.engagement_decision_dga == "rejetee" %}<span class="status-badge status-danger">{{ depense.internal_dga_label }} Rejetee</span>{% else %}<span class="status-badge status-danger">{{ depense.internal_dga_label }} en attente</span>{% endif %}
             /
             {% if depense.engagement_decision_dg == "validee" %}<span class="status-badge status-ok">DG Validee</span>{% elif depense.engagement_decision_dg == "rejetee" %}<span class="status-badge status-danger">DG Rejetee</span>{% else %}<span class="status-badge status-danger">DG en attente</span>{% endif %}
           </small>
@@ -111,7 +111,7 @@
           {% endif %}
 
           {% if can_validate_dga and depense.statut == "attente_validation_dga_engagement" %}
-          <span class="status-badge status-danger">Decision DGA SOGEFI attendue</span>
+          <span class="status-badge status-danger">Decision DGA attendue</span>
           {% endif %}
 
           {% if can_validate_dg and depense.statut == "attente_validation_dg_engagement" %}

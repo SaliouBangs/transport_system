@@ -9,6 +9,7 @@ ROLE_DGA = "dga"
 ROLE_DGA_SOGEFI = "dga_sogefi"
 ROLE_DIRECTEUR = "directeur"
 ROLE_CAISSIERE = "caissiere"
+ROLE_CAISSIERE_SONI = "caissiere_soni"
 ROLE_RESPONSABLE_ACHAT = "responsable_achat"
 ROLE_COMPTABLE_SOGEFI = "comptable_sogefi"
 ROLE_TRANSITAIRE = "transitaire"
@@ -27,6 +28,7 @@ ROLE_CHOICES = [
     (ROLE_DGA_SOGEFI, "DGA SOGEFI"),
     (ROLE_DIRECTEUR, "Directeur"),
     (ROLE_CAISSIERE, "Caissiere"),
+    (ROLE_CAISSIERE_SONI, "Caissiere SONI"),
     (ROLE_RESPONSABLE_ACHAT, "Responsable achat"),
     (ROLE_COMPTABLE_SOGEFI, "Comptable SOGEFI"),
     (ROLE_TRANSITAIRE, "Transitaire"),

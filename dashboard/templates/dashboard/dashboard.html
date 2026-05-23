@@ -651,7 +651,7 @@
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ depenses_internes_montant_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Montant cumule des achats internes saisis</p>
         </div>
-        {% elif user_role == "caissiere" %}
+        {% elif user_role == "caissiere" or user_role == "caissiere_soni" %}
         <div class="dashboard-kpi">
           <p class="dashboard-kpi-label">Solde initial</p>
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_initial_total|floatformat:0 }} GNF</p>
@@ -677,7 +677,7 @@
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_sorties_depenses_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Depenses espece deja reglees</p>
         </div>
-        {% elif user_role == "comptable_sogefi" %}
+        {% elif user_role == "comptable_sogefi" or user_role == "comptable" %}
         <div class="dashboard-kpi">
           <p class="dashboard-kpi-label">Caisse disponible</p>
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_global|floatformat:0 }} GNF</p>
@@ -1189,7 +1189,7 @@
       </section>
     </div>
   </div>
-  {% elif user_role == "caissiere" or user_role == "comptable_sogefi" %}
+  {% elif user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "comptable_sogefi" or user_role == "comptable" %}
   <div class="dashboard-layout">
     <section class="dashboard-section">
       <div class="dashboard-section-header">

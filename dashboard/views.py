@@ -171,7 +171,7 @@ def dashboard(request):
         depenses_internes_queryset.order_by("-date_creation", "-id")[:6]
     )
     caissiere_user_ids = list(
-        User.objects.filter(groups__name="caissiere", is_active=True).values_list("id", flat=True).distinct()
+        User.objects.filter(groups__name__in=["caissiere", "caissiere_soni"], is_active=True).values_list("id", flat=True).distinct()
     )
     caisse_solde_initial_total = SoldeInitialCaisse.objects.aggregate(total=Sum("montant_initial")).get("total") or Decimal("0.00")
     caisse_appro_total = ApprovisionnementCaisse.objects.filter(
@@ -215,7 +215,7 @@ def dashboard(request):
         ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par").order_by("-date_approvisionnement", "-id")[:6]
     )
     caisse_recent_mouvements = []
-    if user_role == "caissiere":
+    if user_role in {"caissiere", "caissiere_soni"}:
         caissiere_user_ids = [request.user.id]
         caisse_solde_initial_total = (
             SoldeInitialCaisse.objects.filter(caissiere=request.user).aggregate(total=Sum("montant_initial")).get("total")
@@ -253,7 +253,7 @@ def dashboard(request):
             .select_related("caissiere", "saisi_par")
             .order_by("-date_approvisionnement", "-id")[:6]
         )
-    if user_role in {"caissiere", "comptable_sogefi"}:
+    if user_role in {"caissiere", "caissiere_soni", "comptable", "comptable_sogefi"}:
         maintenance_caisse_qs = Maintenance.objects.filter(
             statut="payee",
             paiement_saisi_par_id__in=caissiere_user_ids,
@@ -684,12 +684,34 @@ def dashboard(request):
                 "/maintenance/garage/",
                 "danger",
             )
-    elif user_role == "caissiere":
+        depenses_internes_soni_dga = Depense.objects.filter(
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=Depense.ENTITE_SONI,
+            statut=Depense.STATUT_ATTENTE_VALIDATION_DGA,
+        ).count()
+        if depenses_internes_soni_dga:
+            add_alert(
+                "Depenses internes SONI",
+                f"{depenses_internes_soni_dga} depense(s) internes SONI attendent votre validation DGA.",
+                "Ouvrir les depenses",
+                "/depenses/?statut=attente_validation_dga_engagement",
+                "warning",
+            )
+    elif user_role in {"caissiere", "caissiere_soni"}:
         maintenances_espece = Maintenance.objects.filter(
             statut="attente_paiement",
             mode_paiement=Maintenance.MODE_ESPECE,
         ).count()
-        depenses_espece = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE).count()
+        depenses_espece = Depense.objects.filter(
+            statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+            **(
+                {"source_depense": Depense.SOURCE_GENERALE, "entite_depense": Depense.ENTITE_SONI}
+                if user_role == "caissiere_soni"
+                else {}
+            ),
+        ).count()
+        if user_role == "caissiere_soni":
+            maintenances_espece = 0
         total_paiements_caisse = maintenances_espece + depenses_espece
         if total_paiements_caisse:
             add_alert(
@@ -700,6 +722,19 @@ def dashboard(request):
                 "ok",
             )
     elif user_role == "comptable":
+        depenses_cheque_soni = Depense.objects.filter(
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=Depense.ENTITE_SONI,
+            statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+        ).count()
+        if depenses_cheque_soni:
+            add_alert(
+                "Paiements SONI par cheque",
+                f"{depenses_cheque_soni} depense(s) internes SONI attendent votre traitement comptable.",
+                "Ouvrir les paiements",
+                "/maintenance/paiements/",
+                "warning",
+            )
         commandes_a_transformer = Commande.objects.filter(statut="planifiee").exclude(operations__isnull=False).count()
         if commandes_a_transformer:
             add_alert(
@@ -1087,6 +1122,7 @@ dashboard = role_required(
     "responsable_commercial",
     "comptable",
     "caissiere",
+    "caissiere_soni",
     "invite",
     "logistique",
     "maintenancier",

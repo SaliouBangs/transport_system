@@ -935,7 +935,7 @@ min-width:0;
 {% if not is_admin_user and user_role == 'secretaire' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>{% endif %}
 {% if can_access_operations_secretaire %}<a href="/operations/secretaire/" class="sidebar-standalone {% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire</span></a>{% endif %}
-{% elif not is_admin_user and user_role == 'caissiere' %}
+{% elif not is_admin_user and user_role == 'caissiere' or not is_admin_user and user_role == 'caissiere_soni' %}
 <div class="sidebar-section" data-sidebar-section>
 <button type="button" class="sidebar-section__toggle {% if '/maintenance/paiements/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Caisse</span>

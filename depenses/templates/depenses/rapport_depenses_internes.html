@@ -4,7 +4,10 @@
 <div class="page-header">
   <div>
     <p class="eyebrow">Depenses internes</p>
-    <h1>Rapport achats internes</h1>
+    <h1>Etat des achats internes</h1>
+    <p style="margin:10px 0 0; color:var(--muted); max-width:760px;">
+      Ce rapport regroupe uniquement les dossiers internes transmis a l'achat, avec les montants correspondant aux filtres actifs.
+    </p>
   </div>
   <div style="display:flex; gap:12px; flex-wrap:wrap;">
     <a href="/depenses/rapport/export/excel/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn-secondary">Excel</a>
@@ -13,11 +16,11 @@
 </div>
 
 <div class="cards">
-  <div class="card"><h3>Dossiers</h3><p>{{ counts.total }}</p></div>
-  <div class="card"><h3>Montant total</h3><p>{{ total_montant_affiche }}</p></div>
+  <div class="card"><h3>Dossiers filtres</h3><p>{{ counts.total }}</p></div>
+  <div class="card"><h3>Montant total filtre</h3><p>{{ total_montant_affiche }}</p></div>
   <div class="card"><h3>Quantite totale</h3><p>{{ total_quantite_affichee }}</p></div>
   <div class="card"><h3>Saisie achat / prix</h3><p>{{ counts.attente_engagement }}</p></div>
-  <div class="card"><h3>Attente DGA SOGEFI</h3><p>{{ counts.attente_dga }}</p></div>
+  <div class="card"><h3>Attente DGA</h3><p>{{ counts.attente_dga }}</p></div>
   <div class="card"><h3>Attente DG</h3><p>{{ counts.attente_dg }}</p></div>
   <div class="card"><h3>En attente paiement</h3><p>{{ counts.attente_cheque|add:counts.attente_espece }}</p></div>
   <div class="card"><h3>Payees</h3><p>{{ counts.payees }}</p></div>
@@ -42,16 +45,13 @@
     <tr>
       <th>Reference</th>
       <th>Date</th>
-      <th>Demandeur</th>
       <th>Titre</th>
       <th>Type</th>
-      <th>Lieu / projet</th>
       <th>Fournisseur</th>
       <th>Facture</th>
       <th>Quantite</th>
       <th>Montant</th>
       <th>Statut</th>
-      <th>Mode DG</th>
       <th>Action</th>
     </tr>
   </thead>
@@ -60,10 +60,8 @@
     <tr>
       <td>{{ depense.reference }}</td>
       <td>{{ depense.date_expression_affichee }}</td>
-      <td>{{ depense.demandeur.username }}</td>
       <td>{{ depense.titre }}</td>
       <td>{{ depense.type_affiche }}</td>
-      <td>{{ depense.lieu_affiche }}</td>
       <td>{{ depense.fournisseur_affiche }}</td>
       <td>{{ depense.numero_facture|default:"-" }}</td>
       <td>{{ depense.quantite_affichee }}</td>
@@ -77,7 +75,6 @@
         {{ depense.get_statut_display }}
         {% endif %}
       </td>
-      <td>{{ depense.mode_affiche }}</td>
       <td>
         <div class="table-actions">
           <a href="/depenses/apercu/{{ depense.id }}/" class="btn-secondary">Apercu</a>
@@ -86,7 +83,7 @@
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="13">Aucune depense interne pour ces filtres.</td></tr>
+    <tr><td colspan="10">Aucune depense interne pour ces filtres.</td></tr>
     {% endfor %}
   </tbody>
 </table>

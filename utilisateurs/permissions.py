@@ -6,6 +6,7 @@ from django.shortcuts import redirect
 
 from .constants import (
     ROLE_CAISSIERE,
+    ROLE_CAISSIERE_SONI,
     ROLE_CHEF_CHAUFFEUR,
     ROLE_CHOICES,
     ROLE_COMMERCIAL,
@@ -113,7 +114,7 @@ def build_user_permissions(user):
     is_boss = is_admin_user(user)
     role = get_user_role(user)
     is_directeur_role = role == ROLE_DIRECTEUR
-    is_caissiere = role == ROLE_CAISSIERE
+    is_caissiere = role in {ROLE_CAISSIERE, ROLE_CAISSIERE_SONI}
     return {
         "user_role": role,
         "user_role_label": get_user_role_label(user),
@@ -151,6 +152,7 @@ def build_user_permissions(user):
             user,
             ROLE_COMPTABLE,
             ROLE_CAISSIERE,
+            ROLE_CAISSIERE_SONI,
             ROLE_CONTROLEUR,
             ROLE_LOGISTIQUE,
             ROLE_MAINTENANCIER,
@@ -162,6 +164,7 @@ def build_user_permissions(user):
             user,
             ROLE_COMPTABLE,
             ROLE_CAISSIERE,
+            ROLE_CAISSIERE_SONI,
             ROLE_DIRECTEUR,
         ),
         "can_access_depenses": bool(getattr(user, "is_authenticated", False) and not is_caissiere),
@@ -177,5 +180,5 @@ def build_user_permissions(user):
         "can_access_depenses_expression_validation": user_has_role(user, ROLE_DGA_SOGEFI, ROLE_DIRECTEUR),
         "can_access_depenses_engagement": user_has_role(user, ROLE_RESPONSABLE_ACHAT, ROLE_DIRECTEUR),
         "can_access_depenses_payment_cheque": user_has_role(user, ROLE_COMPTABLE_SOGEFI, ROLE_DIRECTEUR),
-        "can_access_depenses_payment_espece": user_has_role(user, ROLE_CAISSIERE, ROLE_DIRECTEUR),
+        "can_access_depenses_payment_espece": user_has_role(user, ROLE_CAISSIERE, ROLE_CAISSIERE_SONI, ROLE_DIRECTEUR),
     }

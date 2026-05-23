@@ -62,6 +62,9 @@ class TypePieceIdentite(models.Model):
 class Depense(models.Model):
     SOURCE_GENERALE = "generale"
     SOURCE_CHARGEMENT = "chargement"
+    ENTITE_SOGEFI = "sogefi"
+    ENTITE_SONI = "soni"
+    ENTITE_AVENA = "avena"
     PORTEE_BL = "bl"
     PORTEE_COMMANDE = "commande"
 
@@ -94,19 +97,24 @@ class Depense(models.Model):
         (STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA, "En attente validation depense chargement DGA"),
         (STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG, "En attente validation depense chargement DG"),
         (STATUT_REJETEE_CHARGEMENT, "Depense de chargement rejetee"),
-        (STATUT_ATTENTE_ENGAGEMENT, "En attente d'engagement achat"),
-        (STATUT_ATTENTE_VALIDATION_DGA, "En attente validation DGA SOGEFI"),
+        (STATUT_ATTENTE_ENGAGEMENT, "En attente de saisie achat / prix"),
+        (STATUT_ATTENTE_VALIDATION_DGA, "En attente validation DGA"),
         (STATUT_ATTENTE_VALIDATION_DG, "En attente validation DG"),
-        (STATUT_REJETEE_DGA, "Engagement rejete par DGA SOGEFI"),
+        (STATUT_REJETEE_DGA, "Engagement rejete par DGA"),
         (STATUT_REJETEE_DG, "Engagement rejete par DG"),
-        (STATUT_ATTENTE_PAIEMENT_COMPTABLE, "En attente traitement comptable SOGEFI"),
-        (STATUT_ATTENTE_PAIEMENT_CAISSIERE, "En attente traitement caissiere"),
+        (STATUT_ATTENTE_PAIEMENT_COMPTABLE, "En attente traitement comptable"),
+        (STATUT_ATTENTE_PAIEMENT_CAISSIERE, "En attente traitement caisse"),
         (STATUT_PAYEE, "Payee"),
     ]
 
     MODE_PAIEMENT_CHOICES = [
         (MODE_CHEQUE, "Cheque"),
         (MODE_ESPECE, "Espece"),
+    ]
+    ENTITE_CHOICES = [
+        (ENTITE_SOGEFI, "SOGEFI"),
+        (ENTITE_SONI, "SONI"),
+        (ENTITE_AVENA, "Avena"),
     ]
     SOURCE_CHOICES = [
         (SOURCE_GENERALE, "Depense generale"),
@@ -126,6 +134,11 @@ class Depense(models.Model):
         max_length=20,
         choices=SOURCE_CHOICES,
         default=SOURCE_GENERALE,
+    )
+    entite_depense = models.CharField(
+        max_length=20,
+        choices=ENTITE_CHOICES,
+        default=ENTITE_SOGEFI,
     )
     operation = models.ForeignKey(
         "operations.Operation",
@@ -470,6 +483,12 @@ class Depense(models.Model):
 
     def est_depense_chargement(self):
         return self.source_depense == self.SOURCE_CHARGEMENT
+
+    def est_depense_interne_soni(self):
+        return self.source_depense == self.SOURCE_GENERALE and self.entite_depense == self.ENTITE_SONI
+
+    def est_depense_interne_sogefi(self):
+        return self.source_depense == self.SOURCE_GENERALE and self.entite_depense == self.ENTITE_SOGEFI
 
     def engagement_decide_par_dga(self):
         return bool(self.engagement_decision_dga)

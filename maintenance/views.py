@@ -661,16 +661,29 @@ def _maintenance_tabs_context(active_tab):
 
 
 def _caissiere_users_queryset():
-    return User.objects.filter(groups__name="caissiere", is_active=True).order_by("first_name", "last_name", "username").distinct()
+    return User.objects.filter(groups__name__in=["caissiere", "caissiere_soni"], is_active=True).order_by("first_name", "last_name", "username").distinct()
+
+
+def _caissiere_users_queryset_for_user(user):
+    role = get_user_role(user)
+    if is_admin_user(user) or role == "directeur":
+        return _caissiere_users_queryset()
+    if role == "comptable_sogefi":
+        return User.objects.filter(groups__name="caissiere", is_active=True).order_by("first_name", "last_name", "username").distinct()
+    if role == "comptable":
+        return User.objects.filter(groups__name="caissiere_soni", is_active=True).order_by("first_name", "last_name", "username").distinct()
+    if role in {"caissiere", "caissiere_soni"}:
+        return User.objects.filter(id=user.id, is_active=True)
+    return _caissiere_users_queryset()
 
 
 def _resolve_caissiere_for_request(request):
     role = get_user_role(request.user)
-    if role == "caissiere":
+    if role in {"caissiere", "caissiere_soni"}:
         return request.user
 
     caissiere_id = (request.GET.get("caissiere") or request.POST.get("caissiere") or "").strip()
-    queryset = _caissiere_users_queryset()
+    queryset = _caissiere_users_queryset_for_user(request.user)
     if caissiere_id:
         selected = queryset.filter(id=caissiere_id).first()
         if selected:
@@ -1368,6 +1381,10 @@ def paiements_maintenances(request):
     if not is_admin_user(request.user):
         if role == "caissiere":
             maintenances = maintenances.filter(mode_paiement=Maintenance.MODE_ESPECE)
+        elif role == "caissiere_soni":
+            maintenances = maintenances.none()
+        elif role == "comptable":
+            maintenances = maintenances.none()
         elif role == "comptable_sogefi":
             maintenances = maintenances.filter(mode_paiement=Maintenance.MODE_CHEQUE)
 
@@ -1421,9 +1438,42 @@ def paiements_maintenances(request):
                     paiement_saisi_par=request.user,
                 )
             else:
-                depenses = depenses.filter(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE)
+                depenses = depenses.filter(
+                    Q(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE, source_depense=Depense.SOURCE_CHARGEMENT)
+                    | Q(
+                        statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                        source_depense=Depense.SOURCE_GENERALE,
+                        entite_depense=Depense.ENTITE_SOGEFI,
+                    )
+                )
+        elif role == "caissiere_soni":
+            if historique:
+                depenses = depenses.filter(
+                    statut=Depense.STATUT_PAYEE,
+                    source_depense=Depense.SOURCE_GENERALE,
+                    entite_depense=Depense.ENTITE_SONI,
+                    mode_reglement=Depense.MODE_ESPECE,
+                    paiement_saisi_par=request.user,
+                )
+            else:
+                depenses = depenses.filter(
+                    statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                    source_depense=Depense.SOURCE_GENERALE,
+                    entite_depense=Depense.ENTITE_SONI,
+                )
+        elif role == "comptable":
+            depenses = depenses.filter(
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SONI,
+                mode_reglement=Depense.MODE_CHEQUE,
+            )
         elif role == "comptable_sogefi":
-            depenses = depenses.filter(mode_reglement=Depense.MODE_CHEQUE)
+            depenses = depenses.filter(
+                mode_reglement=Depense.MODE_CHEQUE,
+            ).exclude(
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SONI,
+            )
 
     if q:
         depenses = depenses.filter(
@@ -1447,7 +1497,7 @@ def paiements_maintenances(request):
 
     payment_items = []
     current_cash_balance = None
-    if role == "caissiere":
+    if role in {"caissiere", "caissiere_soni"}:
         current_cash_balance = _get_caisse_metrics(request.user)["solde"]
 
     if payment_type in {"maintenance", ""}:
@@ -1574,7 +1624,7 @@ def paiements_maintenances(request):
 
 
 def appro_caisse(request):
-    caissieres = _caissiere_users_queryset()
+    caissieres = _caissiere_users_queryset_for_user(request.user)
     if request.method == "POST" and request.POST.get("form_type") == "solde_initial":
         solde_instance = None
         selected_solde_caissiere_id = (request.POST.get("caissiere") or "").strip()
@@ -3713,10 +3763,10 @@ def export_achat_pdf(request):
 liste_maintenances = role_required("logistique", "maintenancier", "directeur")(garage_maintenances)
 garage_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(garage_maintenances)
 achat_maintenances = role_required("logistique", "directeur", "controleur")(achat_maintenances)
-paiements_maintenances = role_required("comptable", "comptable_sogefi", "caissiere", "directeur")(paiements_maintenances)
-modifier_maintenance_paiement = role_required("comptable", "comptable_sogefi", "caissiere", "directeur")(modifier_maintenance_paiement)
-appro_caisse = role_required("comptable_sogefi", "directeur")(appro_caisse)
-situation_caisse = role_required("caissiere", "comptable_sogefi", "directeur")(situation_caisse)
+paiements_maintenances = role_required("comptable", "comptable_sogefi", "caissiere", "caissiere_soni", "directeur")(paiements_maintenances)
+modifier_maintenance_paiement = role_required("comptable", "comptable_sogefi", "caissiere", "caissiere_soni", "directeur")(modifier_maintenance_paiement)
+appro_caisse = role_required("comptable", "comptable_sogefi", "directeur")(appro_caisse)
+situation_caisse = role_required("caissiere", "caissiere_soni", "comptable", "comptable_sogefi", "directeur")(situation_caisse)
 situation_dg = role_required("comptable_sogefi", "directeur")(situation_dg)
 stock_maintenances = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "invite", "controleur")(stock_maintenances)
 ajouter_article_stock = role_required("logistique", "directeur")(ajouter_article_stock)
@@ -3735,7 +3785,7 @@ valider_maintenance_dga = role_required("dga")(valider_maintenance_dga)
 rejeter_maintenance_dg = role_required("directeur")(rejeter_maintenance_dg)
 valider_maintenance_dg = role_required("directeur")(valider_maintenance_dg)
 apercu_validation_maintenance = role_required("dga", "directeur")(apercu_validation_maintenance)
-imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "invite", "controleur")(imprimer_maintenance)
+imprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur", "comptable", "caissiere", "caissiere_soni", "invite", "controleur")(imprimer_maintenance)
 supprimer_maintenance = role_required("logistique", "maintenancier", "dga", "directeur")(supprimer_maintenance)
 ajouter_type_maintenance_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance_modal)
 types_maintenance = role_required("logistique", "maintenancier", "directeur")(types_maintenance)
@@ -3750,5 +3800,5 @@ export_garage_xls = role_required("logistique", "maintenancier", "dga", "directe
 export_garage_pdf = role_required("logistique", "maintenancier", "dga", "directeur")(export_garage_pdf)
 export_achat_xls = role_required("logistique", "directeur")(export_achat_xls)
 export_achat_pdf = role_required("logistique", "directeur")(export_achat_pdf)
-rapport_maintenances = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(rapport_maintenances)
-export_rapport_maintenances_xls = role_required("comptable", "caissiere", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(export_rapport_maintenances_xls)
+rapport_maintenances = role_required("comptable", "caissiere", "caissiere_soni", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(rapport_maintenances)
+export_rapport_maintenances_xls = role_required("comptable", "caissiere", "caissiere_soni", "logistique", "maintenancier", "dga", "directeur", "invite", "controleur")(export_rapport_maintenances_xls)

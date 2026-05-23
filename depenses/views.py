@@ -41,9 +41,9 @@ def _safe_file_response(field_file):
     return FileResponse(storage.open(name, "rb"), as_attachment=False, filename=filename)
 
 
-@role_required("caissiere", "comptable_sogefi", "responsable_achat", "dga_sogefi", "directeur", "admin")
+@role_required("caissiere", "caissiere_soni", "comptable", "comptable_sogefi", "responsable_achat", "dga", "dga_sogefi", "directeur", "logistique", "admin")
 def voir_piece_depense(request, id):
-    depense = get_object_or_404(Depense, pk=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), pk=id)
     return _safe_file_response(depense.piece_justificative)
 
 
@@ -357,7 +357,7 @@ def _decision_expression_allowed(user):
 
 
 def _decision_engagement_dga_allowed(user):
-    return is_admin_user(user) or get_user_role(user) == "dga_sogefi"
+    return is_admin_user(user) or get_user_role(user) in {"dga", "dga_sogefi"}
 
 
 def _decision_engagement_dg_allowed(user):
@@ -365,15 +365,40 @@ def _decision_engagement_dg_allowed(user):
 
 
 def _engagement_allowed(user):
-    return is_admin_user(user) or get_user_role(user) == "responsable_achat"
+    return is_admin_user(user) or get_user_role(user) in {"responsable_achat", "logistique"}
 
 
 def _internal_expression_creation_allowed(user):
-    return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "directeur"}
+    return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "logistique", "directeur"}
 
 
 def _type_depense_management_allowed(user):
     return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "directeur"}
+
+
+def _internal_entity_for_user(user):
+    role = get_user_role(user)
+    if role in {"dga_sogefi", "responsable_achat", "comptable_sogefi", "caissiere"}:
+        return Depense.ENTITE_SOGEFI
+    if role in {"logistique", "dga", "comptable", "caissiere_soni"}:
+        return Depense.ENTITE_SONI
+    return None
+
+
+def _internal_entity_label(entity_code):
+    if entity_code == Depense.ENTITE_SONI:
+        return "SONI"
+    if entity_code == Depense.ENTITE_AVENA:
+        return "Avena"
+    return "SOGEFI"
+
+
+def _internal_dga_label(depense):
+    return "DGA SONI" if depense.entite_depense == Depense.ENTITE_SONI else "DGA SOGEFI"
+
+
+def _internal_cashier_label(depense):
+    return "Caissiere SONI" if depense.entite_depense == Depense.ENTITE_SONI else "Caissiere"
 
 
 def _type_depense_portefeuille_for_role(user, fallback=None):
@@ -398,8 +423,16 @@ def _paiement_allowed(user, depense):
     if is_admin_user(user):
         return True
     if depense.mode_reglement == Depense.MODE_CHEQUE:
+        if depense.source_depense == Depense.SOURCE_CHARGEMENT:
+            return role == "comptable_sogefi"
+        if depense.entite_depense == Depense.ENTITE_SONI:
+            return role == "comptable"
         return role == "comptable_sogefi"
     if depense.mode_reglement == Depense.MODE_ESPECE:
+        if depense.source_depense == Depense.SOURCE_CHARGEMENT:
+            return role == "caissiere"
+        if depense.entite_depense == Depense.ENTITE_SONI:
+            return role == "caissiere_soni"
         return role == "caissiere"
     return False
 
@@ -504,21 +537,55 @@ def _depenses_queryset_for_user(user):
     )
     if role == "caissiere":
         return queryset.filter(
-            Q(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE)
+            Q(statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE, source_depense=Depense.SOURCE_CHARGEMENT)
+            | Q(
+                statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SOGEFI,
+            )
             | Q(
                 statut=Depense.STATUT_PAYEE,
                 mode_reglement=Depense.MODE_ESPECE,
                 paiement_saisi_par=user,
             )
         )
+    if role == "caissiere_soni":
+        return queryset.filter(
+            Q(
+                statut=Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SONI,
+            )
+            | Q(
+                statut=Depense.STATUT_PAYEE,
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SONI,
+                mode_reglement=Depense.MODE_ESPECE,
+                paiement_saisi_par=user,
+            )
+        )
     if role in {"dga_sogefi", "responsable_achat"}:
-        return queryset.filter(source_depense=Depense.SOURCE_GENERALE)
+        return queryset.filter(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SOGEFI)
+    if role == "dga":
+        return queryset.filter(
+            Q(source_depense=Depense.SOURCE_CHARGEMENT)
+            | Q(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SONI)
+        )
+    if role == "logistique":
+        return queryset.filter(
+            Q(source_depense=Depense.SOURCE_CHARGEMENT)
+            | Q(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SONI)
+        )
+    if role == "comptable":
+        return queryset.filter(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SONI)
+    if role == "comptable_sogefi":
+        return queryset.filter(
+            Q(source_depense=Depense.SOURCE_CHARGEMENT)
+            | Q(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SOGEFI)
+        )
     if is_admin_user(user) or role in {
-        "dga",
         "directeur",
         "responsable_achat",
-        "comptable_sogefi",
-        "logistique",
     }:
         return queryset
     return queryset.filter(demandeur=user)
@@ -542,9 +609,11 @@ def _summary_counts(queryset):
 
 def _build_context(user, queryset):
     role = get_user_role(user)
+    internal_entity = _internal_entity_for_user(user)
     return {
         "user_role": role,
         "internal_depense_scope": role in {"dga_sogefi", "responsable_achat"},
+        "internal_entity_label": _internal_entity_label(internal_entity) if internal_entity else "",
         "dga_sogefi_scope": role == "dga_sogefi",
         "counts": _summary_counts(queryset),
         "can_validate_expression": _decision_expression_allowed(user),
@@ -552,13 +621,16 @@ def _build_context(user, queryset):
         "can_manage_engagement": _engagement_allowed(user),
         "can_validate_dga": _decision_engagement_dga_allowed(user),
         "can_validate_dg": _decision_engagement_dg_allowed(user),
-        "can_access_paiement": role in {"comptable_sogefi", "caissiere"} or is_admin_user(user),
+        "can_access_paiement": role in {"comptable", "comptable_sogefi", "caissiere", "caissiere_soni"} or is_admin_user(user),
         "can_create_internal_depense": _internal_expression_creation_allowed(user),
     }
 
 
 def _build_internal_report_queryset(request):
     queryset = _depenses_queryset_for_user(request.user).filter(source_depense=Depense.SOURCE_GENERALE)
+    internal_entity = _internal_entity_for_user(request.user)
+    if internal_entity:
+        queryset = queryset.filter(entite_depense=internal_entity)
     q = (request.GET.get("q") or "").strip()
     statut = (request.GET.get("statut") or "").strip()
     date_from = (request.GET.get("date_from") or "").strip()
@@ -702,7 +774,8 @@ def export_rapport_depenses_internes_pdf(request):
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except ImportError:
         return HttpResponse(
             "Le module reportlab n'est pas installe sur cet environnement Python.",
@@ -710,38 +783,37 @@ def export_rapport_depenses_internes_pdf(request):
             content_type="text/plain; charset=utf-8",
         )
 
-    queryset, _filters = _build_internal_report_queryset(request)
+    queryset, filters = _build_internal_report_queryset(request)
+    total_montant = sum(((depense.montant_total or Decimal("0")) for depense in queryset), Decimal("0"))
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    styles = getSampleStyleSheet()
+    title_style = styles["Heading2"]
+    title_style.textColor = colors.HexColor("#123047")
+    info_style = styles["BodyText"]
     data = [[
         "Reference",
         "Date",
-        "Demandeur",
         "Titre",
         "Type",
-        "Lieu / projet",
         "Fournisseur",
         "Facture",
         "Qte",
         "Montant",
         "Statut",
-        "Mode DG",
     ]]
     for depense in queryset:
         data.append(
             [
                 depense.reference,
                 depense.date_expression.strftime("%d/%m/%Y") if depense.date_expression else "",
-                depense.demandeur.username if depense.demandeur_id else "",
                 depense.titre,
                 str(depense.type_depense) if depense.type_depense_id else "",
-                depense.lieu_ou_projet or (str(depense.lieu_projet_ref) if depense.lieu_projet_ref_id else ""),
                 str(depense.fournisseur) if depense.fournisseur_id else "",
                 depense.numero_facture or "",
                 _format_amount(depense.quantite_totale),
                 _format_amount(depense.montant_total),
                 depense.get_statut_display(),
-                depense.get_mode_reglement_display() if depense.mode_reglement else "-",
             ]
         )
 
@@ -758,7 +830,25 @@ def export_rapport_depenses_internes_pdf(request):
             ]
         )
     )
-    doc.build([table])
+    filters_parts = []
+    if filters.get("date_from") or filters.get("date_to"):
+        filters_parts.append(
+            f"Periode : {filters.get('date_from') or '-'} au {filters.get('date_to') or '-'}"
+        )
+    if filters.get("statut"):
+        filters_parts.append(f"Statut : {dict(Depense.STATUT_CHOICES).get(filters['statut'], filters['statut'])}")
+    if filters.get("q"):
+        filters_parts.append(f"Recherche : {filters['q']}")
+
+    elements = [
+        Paragraph("Rapport des achats internes", title_style),
+        Spacer(1, 8),
+        Paragraph(f"Montant total filtre : <b>{_format_amount(total_montant)} GNF</b>", info_style),
+    ]
+    if filters_parts:
+        elements.append(Paragraph(" | ".join(filters_parts), info_style))
+    elements.extend([Spacer(1, 10), table])
+    doc.build(elements)
 
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="rapport_achats_internes.pdf"'
@@ -884,6 +974,9 @@ def _build_preview_context(depense):
         "montant_en_lettres": montant_en_lettres,
         "validation_steps": validation_steps,
         "is_charge_related": _is_charge_related(depense),
+        "internal_dga_label": _internal_dga_label(depense),
+        "internal_cashier_label": _internal_cashier_label(depense),
+        "internal_entity_label": _internal_entity_label(depense.entite_depense),
         "is_fuel_related": depense.est_depense_carburant(),
         "can_print_bon_conso": _depense_has_carburant_line(depense),
         "return_url": f"/operations/logisticien/{depense.operation_id}/modifier/" if depense.source_depense == Depense.SOURCE_CHARGEMENT and depense.operation_id else "/depenses/",
@@ -918,6 +1011,7 @@ def liste_depenses(request):
             depense.type_affiche = "Depenses camion"
         else:
             depense.type_affiche = str(depense.type_depense) if depense.type_depense_id else "-"
+            depense.internal_dga_label = _internal_dga_label(depense)
         depense.montant_affiche = _format_amount(depense.montant_total)
         depenses.append(depense)
 
@@ -1012,7 +1106,7 @@ def supprimer_type_depense(request, id):
 
 def ajouter_depense(request):
     if not _internal_expression_creation_allowed(request.user):
-        messages.error(request, "Seuls le DGA SOGEFI, le responsable achat ou le DG peuvent creer une depense interne.")
+        messages.error(request, "Seuls les profils autorises peuvent creer une depense interne.")
         return redirect("liste_depenses")
     if request.method == "POST":
         form = DepenseExpressionForm(request.POST)
@@ -1026,6 +1120,7 @@ def ajouter_depense(request):
                 depense = form.save(commit=False)
                 depense.demandeur = request.user
                 depense.source_depense = Depense.SOURCE_GENERALE
+                depense.entite_depense = _internal_entity_for_user(request.user) or Depense.ENTITE_SOGEFI
                 depense.statut = Depense.STATUT_ATTENTE_ENGAGEMENT
                 depense.save()
                 _save_depense_lignes(depense, lignes)
@@ -1036,7 +1131,7 @@ def ajouter_depense(request):
                     depense.reference,
                     f"{request.user.username} a cree la depense interne {depense.reference}.",
                 )
-                messages.success(request, "La depense interne a ete creee et transmise au responsable achat pour la saisie des prix.")
+                messages.success(request, "La depense interne a ete creee et transmise pour la saisie des prix.")
                 return redirect("liste_depenses")
     else:
         form = DepenseExpressionForm()
@@ -1055,7 +1150,7 @@ def ajouter_depense(request):
 
 
 def modifier_depense(request, id):
-    depense = get_object_or_404(Depense, id=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), id=id)
     can_edit = (
         depense.source_depense != Depense.SOURCE_GENERALE
         and depense.demandeur_id == request.user.id
@@ -1374,7 +1469,7 @@ def modifier_ligne_depense_chargement(request, operation_id, ligne_id):
 
 
 def engagement_depense(request, id):
-    depense = get_object_or_404(Depense, id=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), id=id)
     if depense.statut != Depense.STATUT_ATTENTE_ENGAGEMENT and not is_admin_user(request.user):
         messages.error(request, "Cette fiche n'est pas disponible pour l'engagement achat.")
         return redirect("liste_depenses")
@@ -1403,7 +1498,7 @@ def engagement_depense(request, id):
                     depense.reference,
                     f"{request.user.username} a saisi l'engagement detaille de la depense {depense.reference}.",
                 )
-                messages.success(request, "L'engagement a ete enregistre et transmis au DGA SOGEFI.")
+                messages.success(request, f"L'engagement a ete enregistre et transmis au {_internal_dga_label(depense)}.")
                 return redirect("liste_depenses")
     else:
         form = DepenseEngagementForm(instance=depense)
@@ -1415,6 +1510,7 @@ def engagement_depense(request, id):
         {
             "form": form,
             "depense": depense,
+            "internal_dga_label": _internal_dga_label(depense),
             "type_depense_form": TypeDepenseForm(portefeuille=TypeDepense.PORTEFEUILLE_INTERNE),
             "lieu_projet_form": LieuProjetForm(),
             "ligne_values": ligne_values,
@@ -1730,12 +1826,20 @@ def rejeter_depense_chargement_dg(request, id):
 
 
 def valider_engagement_dga(request, id):
-    depense = get_object_or_404(Depense, id=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), id=id)
     if request.method != "POST":
         return redirect("liste_depenses")
     if depense.statut != Depense.STATUT_ATTENTE_VALIDATION_DGA:
-        messages.error(request, "Cette depense n'est pas en attente de validation DGA SOGEFI.")
+        messages.error(request, "Cette depense n'est pas en attente de validation DGA.")
         return redirect("liste_depenses")
+    role = get_user_role(request.user)
+    if not is_admin_user(request.user):
+        if depense.entite_depense == Depense.ENTITE_SONI and role != "dga":
+            messages.error(request, "Seul le DGA SONI peut valider cette depense.")
+            return redirect("liste_depenses")
+        if depense.entite_depense == Depense.ENTITE_SOGEFI and role != "dga_sogefi":
+            messages.error(request, "Seul le DGA SOGEFI peut valider cette depense.")
+            return redirect("liste_depenses")
     depense.validation_dga_par = request.user
     depense.validation_dga_le = timezone.now()
     depense.engagement_decision_dga = Depense.DECISION_VALIDEE
@@ -1745,22 +1849,30 @@ def valider_engagement_dga(request, id):
     journaliser_action(
         request.user,
         "Depenses",
-        "Validation engagement DGA SOGEFI",
+        f"Validation engagement {_internal_dga_label(depense)}",
         depense.reference,
         f"{request.user.username} a valide l'engagement de la depense {depense.reference}.",
     )
-    messages.success(request, "L'engagement a ete valide par le DGA SOGEFI.")
+    messages.success(request, f"L'engagement a ete valide par le {_internal_dga_label(depense)}.")
     return redirect("liste_depenses")
 
 
 def rejeter_engagement_dga(request, id):
-    depense = get_object_or_404(Depense, id=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), id=id)
     if request.method != "POST":
         return redirect("liste_depenses")
     form = DepenseDecisionExpressionForm(request.POST)
     if depense.statut != Depense.STATUT_ATTENTE_VALIDATION_DGA:
-        messages.error(request, "Cette depense n'est pas en attente de validation DGA SOGEFI.")
+        messages.error(request, "Cette depense n'est pas en attente de validation DGA.")
         return redirect("liste_depenses")
+    role = get_user_role(request.user)
+    if not is_admin_user(request.user):
+        if depense.entite_depense == Depense.ENTITE_SONI and role != "dga":
+            messages.error(request, "Seul le DGA SONI peut rejeter cette depense.")
+            return redirect("liste_depenses")
+        if depense.entite_depense == Depense.ENTITE_SOGEFI and role != "dga_sogefi":
+            messages.error(request, "Seul le DGA SOGEFI peut rejeter cette depense.")
+            return redirect("liste_depenses")
     if form.is_valid():
         motif = (form.cleaned_data.get("motif_rejet") or "").strip()
         if not motif:
@@ -1783,11 +1895,11 @@ def rejeter_engagement_dga(request, id):
         journaliser_action(
             request.user,
             "Depenses",
-            "Rejet engagement DGA SOGEFI",
+            f"Rejet engagement {_internal_dga_label(depense)}",
             depense.reference,
             f"{request.user.username} a rejete l'engagement de la depense {depense.reference}.",
         )
-        messages.success(request, "Decision DGA SOGEFI enregistree et engagement transmis au DG.")
+        messages.success(request, f"Decision {_internal_dga_label(depense)} enregistree et engagement transmis au DG.")
     else:
         messages.error(request, "Le motif de rejet est invalide.")
     return redirect("liste_depenses")
@@ -1940,7 +2052,7 @@ def bon_consommation_depense(request, id):
 
 
 def paiement_depense(request, id):
-    depense = get_object_or_404(Depense, id=id)
+    depense = get_object_or_404(_depenses_queryset_for_user(request.user), id=id)
     if not _paiement_allowed(request.user, depense):
         messages.error(request, "Vous n'avez pas acces a ce paiement.")
         return redirect("paiements_maintenances")
@@ -1951,7 +2063,7 @@ def paiement_depense(request, id):
     caisse_metrics = None
     solde_courant = None
     montant_a_payer = depense.montant_total or Decimal("0")
-    if depense.mode_reglement == Depense.MODE_ESPECE and payment_role == "caissiere":
+    if depense.mode_reglement == Depense.MODE_ESPECE and payment_role in {"caissiere", "caissiere_soni"}:
         from maintenance.views import _get_caisse_metrics
         caisse_metrics = _get_caisse_metrics(request.user)
         solde_courant = caisse_metrics["solde"]
@@ -2077,6 +2189,7 @@ liste_depenses = role_required(
     "comptable",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "controleur",
     "dga",
     "dga_sogefi",
@@ -2096,6 +2209,7 @@ ajouter_depense = role_required(
     "comptable",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "controleur",
     "dga",
     "dga_sogefi",
@@ -2113,6 +2227,7 @@ modifier_depense = role_required(
     "comptable",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "controleur",
     "dga",
     "dga_sogefi",
@@ -2124,7 +2239,7 @@ modifier_depense = role_required(
     "transitaire",
 )(modifier_depense)
 modifier_ligne_depense_chargement = role_required("logistique")(modifier_ligne_depense_chargement)
-engagement_depense = role_required("responsable_achat", "directeur")(engagement_depense)
+engagement_depense = role_required("responsable_achat", "logistique", "directeur")(engagement_depense)
 valider_expression_depense = role_required("dga_sogefi", "directeur")(valider_expression_depense)
 rejeter_expression_depense = role_required("dga_sogefi", "directeur")(rejeter_expression_depense)
 valider_expression_depense_dg = role_required("directeur")(valider_expression_depense_dg)
@@ -2133,13 +2248,13 @@ valider_depense_chargement_dga = role_required("dga")(valider_depense_chargement
 rejeter_depense_chargement_dga = role_required("dga")(rejeter_depense_chargement_dga)
 valider_depense_chargement_dg = role_required("directeur")(valider_depense_chargement_dg)
 rejeter_depense_chargement_dg = role_required("directeur")(rejeter_depense_chargement_dg)
-valider_engagement_dga = role_required("dga_sogefi")(valider_engagement_dga)
-rejeter_engagement_dga = role_required("dga_sogefi")(rejeter_engagement_dga)
+valider_engagement_dga = role_required("dga", "dga_sogefi")(valider_engagement_dga)
+rejeter_engagement_dga = role_required("dga", "dga_sogefi")(rejeter_engagement_dga)
 valider_engagement_dg = role_required("directeur")(valider_engagement_dg)
 rejeter_engagement_dg = role_required("directeur")(rejeter_engagement_dg)
-paiement_depense = role_required("comptable_sogefi", "caissiere")(paiement_depense)
+paiement_depense = role_required("comptable", "comptable_sogefi", "caissiere", "caissiere_soni")(paiement_depense)
 ajouter_type_depense_modal = role_required("responsable_achat", "directeur", "logistique", "dga_sogefi")(ajouter_type_depense_modal)
-ajouter_lieu_projet_modal = role_required("responsable_achat", "directeur", "dga_sogefi")(ajouter_lieu_projet_modal)
+ajouter_lieu_projet_modal = role_required("responsable_achat", "directeur", "dga_sogefi", "logistique")(ajouter_lieu_projet_modal)
 apercu_depense = role_required(
     "dga",
     "dga_sogefi",
@@ -2147,6 +2262,7 @@ apercu_depense = role_required(
     "responsable_achat",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "commercial",
     "responsable_commercial",
     "comptable",
@@ -2163,6 +2279,7 @@ imprimer_depense = role_required(
     "responsable_achat",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "commercial",
     "responsable_commercial",
     "comptable",
@@ -2179,6 +2296,7 @@ bon_consommation_depense = role_required(
     "responsable_achat",
     "comptable_sogefi",
     "caissiere",
+    "caissiere_soni",
     "commercial",
     "responsable_commercial",
     "comptable",
@@ -2188,6 +2306,6 @@ bon_consommation_depense = role_required(
     "transitaire",
     "invite",
 )(bon_consommation_depense)
-rapport_depenses_internes = role_required("responsable_achat", "dga_sogefi", "directeur")(rapport_depenses_internes)
-export_rapport_depenses_internes_xls = role_required("responsable_achat", "dga_sogefi", "directeur")(export_rapport_depenses_internes_xls)
-export_rapport_depenses_internes_pdf = role_required("responsable_achat", "dga_sogefi", "directeur")(export_rapport_depenses_internes_pdf)
+rapport_depenses_internes = role_required("responsable_achat", "logistique", "dga", "dga_sogefi", "comptable", "comptable_sogefi", "directeur")(rapport_depenses_internes)
+export_rapport_depenses_internes_xls = role_required("responsable_achat", "logistique", "dga", "dga_sogefi", "comptable", "comptable_sogefi", "directeur")(export_rapport_depenses_internes_xls)
+export_rapport_depenses_internes_pdf = role_required("responsable_achat", "logistique", "dga", "dga_sogefi", "comptable", "comptable_sogefi", "directeur")(export_rapport_depenses_internes_pdf)
