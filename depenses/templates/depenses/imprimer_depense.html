@@ -266,9 +266,9 @@ td{
         <div class="box">
             <strong>Facturation / justificatif</strong>
             Numero facture : {{ depense.numero_facture|default:"-" }}<br>
-            Piece justificative :
-            {% if depense.piece_justificative %}
-            disponible
+            Pieces justificatives :
+            {% if depense.justificatifs %}
+            {{ depense.justificatifs|length }} fichier(s)
             {% else %}
             -
             {% endif %}<br>

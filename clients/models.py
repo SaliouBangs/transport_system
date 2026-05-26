@@ -7,6 +7,19 @@ from django.db.models import DecimalField, Q, Sum
 from django.db.models.functions import Coalesce
 
 
+class VillePerequation(models.Model):
+    nom = models.CharField(max_length=150, unique=True)
+    tarif_gnf_litre = models.DecimalField(max_digits=12, decimal_places=2)
+    actif = models.BooleanField(default=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nom"]
+
+    def __str__(self):
+        return self.nom
+
+
 class Client(models.Model):
     commercial = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -233,6 +246,13 @@ class ClientDestinationAdresse(models.Model):
         related_name="destinations",
     )
     adresse = models.CharField(max_length=255)
+    ville_perequation = models.ForeignKey(
+        VillePerequation,
+        on_delete=models.PROTECT,
+        related_name="destinations_clients",
+        null=True,
+        blank=True,
+    )
     date_creation = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -270,12 +290,9 @@ def latest_operation_for_commande(commande):
         for operation in sorted_operations:
             if getattr(operation, "remplace_par_id", None) is None:
                 return operation
-        return sorted_operations[0] if sorted_operations else None
+        return None
 
-    return (
-        operations_manager.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-        or operations_manager.order_by("-date_creation").first()
-    )
+    return operations_manager.filter(remplace_par__isnull=True).order_by("-date_creation").first()
 
 
 def commande_est_facturee(commande):

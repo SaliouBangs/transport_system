@@ -4,7 +4,140 @@
 <style>
   .commandes-page {
     display: grid;
-    gap: 20px;
+    gap: 16px;
+  }
+
+  .commandes-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(210, 224, 235, 0.9);
+  }
+
+  .commandes-pagination-meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .commandes-pagination-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .commandes-pagination-page {
+    min-width: 42px;
+    height: 42px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    border: 1px solid #d3e2ee;
+    background: linear-gradient(180deg, #ffffff, #f3f8fc);
+    color: var(--navy);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .commandes-pagination-page.is-active {
+    background: linear-gradient(135deg, var(--green), #48ba90);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 12px 26px rgba(72, 186, 144, 0.24);
+  }
+
+  .commandes-page--commercial {
+    gap: 12px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(220px, 0.78fr) minmax(520px, 1.55fr);
+    align-items: start;
+  }
+
+  .commandes-page--dga {
+    gap: 12px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(220px, 0.78fr) minmax(520px, 1.55fr);
+    align-items: start;
+  }
+
+  .commandes-page--dg {
+    gap: 12px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(220px, 0.78fr) minmax(520px, 1.55fr);
+    align-items: start;
+  }
+
+  .commandes-page--logistique {
+    gap: 12px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(220px, 0.78fr) minmax(520px, 1.55fr);
+    align-items: start;
+  }
+
+  .commandes-page--commercial .page-header,
+  .commandes-page--commercial .commandes-toolbar,
+  .commandes-page--commercial .commandes-table-shell {
+    grid-column: 1 / -1;
+  }
+
+  .commandes-page--dga .page-header,
+  .commandes-page--dga .commandes-toolbar,
+  .commandes-page--dga .commandes-table-shell {
+    grid-column: 1 / -1;
+  }
+
+  .commandes-page--dg .page-header,
+  .commandes-page--dg .commandes-toolbar,
+  .commandes-page--dg .commandes-table-shell {
+    grid-column: 1 / -1;
+  }
+
+  .commandes-page--logistique .page-header,
+  .commandes-page--logistique .commandes-toolbar,
+  .commandes-page--logistique .commandes-table-shell {
+    grid-column: 1 / -1;
+  }
+
+  .commandes-page--commercial .commandes-hero {
+    grid-column: 1 / span 2;
+  }
+
+  .commandes-page--dga .commandes-hero {
+    grid-column: 1 / span 2;
+  }
+
+  .commandes-page--dg .commandes-hero {
+    grid-column: 1 / span 2;
+  }
+
+  .commandes-page--logistique .commandes-hero {
+    grid-column: 1 / span 2;
+  }
+
+  .commandes-page--commercial .commandes-filter-shell {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
+  .commandes-page--dga .commandes-filter-shell {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
+  .commandes-page--dg .commandes-filter-shell {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
+  .commandes-page--logistique .commandes-filter-shell {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: stretch;
   }
 
   .commandes-page--historique {
@@ -24,6 +157,62 @@
       linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(236, 245, 250, 0.95) 100%);
     border: 1px solid rgba(214, 228, 238, 0.9);
     box-shadow: 0 24px 48px rgba(18, 48, 71, 0.12);
+  }
+
+  .commandes-page--commercial .commandes-hero {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 24px;
+  }
+
+  .commandes-page--dga .commandes-hero {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 24px;
+  }
+
+  .commandes-page--dg .commandes-hero {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 24px;
+  }
+
+  .commandes-page--logistique .commandes-hero {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 24px;
+  }
+
+  .commandes-page--commercial .commandes-hero::after {
+    width: 160px;
+    height: 160px;
+    right: -48px;
+    top: -58px;
+  }
+
+  .commandes-page--dga .commandes-hero::after {
+    width: 160px;
+    height: 160px;
+    right: -48px;
+    top: -58px;
+  }
+
+  .commandes-page--dg .commandes-hero::after {
+    width: 160px;
+    height: 160px;
+    right: -48px;
+    top: -58px;
+  }
+
+  .commandes-page--logistique .commandes-hero::after {
+    width: 160px;
+    height: 160px;
+    right: -48px;
+    top: -58px;
   }
 
   .commandes-hero--compact {
@@ -56,6 +245,22 @@
     gap: 18px;
   }
 
+  .commandes-page--commercial .commandes-hero-main {
+    gap: 10px;
+  }
+
+  .commandes-page--dga .commandes-hero-main {
+    gap: 10px;
+  }
+
+  .commandes-page--dg .commandes-hero-main {
+    gap: 10px;
+  }
+
+  .commandes-page--logistique .commandes-hero-main {
+    gap: 10px;
+  }
+
   .commandes-hero--compact .commandes-hero-main {
     gap: 12px;
   }
@@ -68,12 +273,76 @@
     flex-wrap: wrap;
   }
 
+  .commandes-page--commercial .commandes-hero-top {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .commandes-page--dga .commandes-hero-top {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .commandes-page--dg .commandes-hero-top {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .commandes-page--logistique .commandes-hero-top {
+    align-items: center;
+    gap: 12px;
+  }
+
   .commandes-hero-title h3,
   .commandes-hero-side h3,
   .commandes-block-title {
     margin: 6px 0 6px;
     color: var(--navy);
     font-size: 1.35rem;
+  }
+
+  .commandes-page--commercial .commandes-hero-title h3,
+  .commandes-page--commercial .commandes-hero-side h3 {
+    font-size: 1.08rem;
+    margin: 2px 0;
+  }
+
+  .commandes-page--dga .commandes-hero-title h3,
+  .commandes-page--dga .commandes-hero-side h3 {
+    font-size: 1.08rem;
+    margin: 2px 0;
+  }
+
+  .commandes-page--dg .commandes-hero-title h3,
+  .commandes-page--dg .commandes-hero-side h3 {
+    font-size: 1.08rem;
+    margin: 2px 0;
+  }
+
+  .commandes-page--logistique .commandes-hero-title h3,
+  .commandes-page--logistique .commandes-hero-side h3 {
+    font-size: 1.08rem;
+    margin: 2px 0;
+  }
+
+  .commandes-page--commercial .commandes-hero-title p,
+  .commandes-page--commercial .commandes-hero-side p {
+    display: none;
+  }
+
+  .commandes-page--dga .commandes-hero-title p,
+  .commandes-page--dga .commandes-hero-side p {
+    display: none;
+  }
+
+  .commandes-page--dg .commandes-hero-title p,
+  .commandes-page--dg .commandes-hero-side p {
+    display: none;
+  }
+
+  .commandes-page--logistique .commandes-hero-title p,
+  .commandes-page--logistique .commandes-hero-side p {
+    display: none;
   }
 
   .commandes-hero--compact .commandes-hero-title h3,
@@ -97,6 +366,17 @@
     background: linear-gradient(135deg, rgba(18, 48, 71, 0.96), rgba(29, 73, 104, 0.92));
     color: white;
     box-shadow: 0 18px 34px rgba(18, 48, 71, 0.18);
+  }
+
+  .commandes-page--commercial .commandes-truck-badge {
+    min-width: 122px;
+    padding: 9px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--commercial .commandes-truck-badge strong {
+    margin-top: 4px;
+    font-size: 1.5rem;
   }
 
   .commandes-hero--compact .commandes-truck-badge {
@@ -130,6 +410,26 @@
     gap: 16px;
   }
 
+  .commandes-page--commercial .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commandes-page--dga .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commandes-page--dg .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .commandes-page--logistique .commandes-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   .commandes-hero--compact .commandes-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -143,6 +443,26 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   }
 
+  .commandes-page--commercial .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--dga .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--dg .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--logistique .commandes-stat-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
   .commandes-hero--compact .commandes-stat-card {
     padding: 12px 14px;
     border-radius: 18px;
@@ -154,6 +474,22 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 12px;
+  }
+
+  .commandes-page--commercial .commandes-stat-head {
+    margin-bottom: 4px;
+  }
+
+  .commandes-page--dga .commandes-stat-head {
+    margin-bottom: 4px;
+  }
+
+  .commandes-page--dg .commandes-stat-head {
+    margin-bottom: 4px;
+  }
+
+  .commandes-page--logistique .commandes-stat-head {
+    margin-bottom: 4px;
   }
 
   .commandes-hero--compact .commandes-stat-head {
@@ -180,6 +516,26 @@
     gap: 14px;
   }
 
+  .commandes-page--commercial .commandes-stat-body {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .commandes-page--dga .commandes-stat-body {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .commandes-page--dg .commandes-stat-body {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .commandes-page--logistique .commandes-stat-body {
+    align-items: center;
+    gap: 8px;
+  }
+
   .commandes-hero--compact .commandes-stat-body {
     gap: 10px;
     align-items: center;
@@ -195,6 +551,22 @@
     background: linear-gradient(180deg, #eef5fb 0%, #d8e4ee 100%);
     box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.44);
     flex-shrink: 0;
+  }
+
+  .commandes-page--commercial .commandes-barrel {
+    display: none;
+  }
+
+  .commandes-page--dga .commandes-barrel {
+    display: none;
+  }
+
+  .commandes-page--dg .commandes-barrel {
+    display: none;
+  }
+
+  .commandes-page--logistique .commandes-barrel {
+    display: none;
   }
 
   .commandes-hero--compact .commandes-barrel {
@@ -235,6 +607,10 @@
     line-height: 1.04;
   }
 
+  .commandes-page--commercial .commandes-stat-figure {
+    font-size: 1.3rem;
+  }
+
   .commandes-hero--compact .commandes-stat-figure {
     font-size: 1.4rem;
   }
@@ -247,6 +623,26 @@
     color: var(--muted);
   }
 
+  .commandes-page--commercial .commandes-empty-hero {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--dga .commandes-empty-hero {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--dg .commandes-empty-hero {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .commandes-page--logistique .commandes-empty-hero {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
   .commandes-hero-side {
     display: grid;
     gap: 14px;
@@ -255,6 +651,30 @@
     background: linear-gradient(180deg, #123047 0%, #163d58 100%);
     color: white;
     box-shadow: 0 20px 38px rgba(18, 48, 71, 0.2);
+  }
+
+  .commandes-page--commercial .commandes-hero-side {
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .commandes-page--dga .commandes-hero-side {
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .commandes-page--dg .commandes-hero-side {
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .commandes-page--logistique .commandes-hero-side {
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 20px;
   }
 
   .commandes-hero--compact .commandes-hero-side {
@@ -268,6 +688,26 @@
     gap: 12px;
   }
 
+  .commandes-page--commercial .commandes-summary-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commandes-page--dga .commandes-summary-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commandes-page--dg .commandes-summary-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commandes-page--logistique .commandes-summary-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .commandes-hero--compact .commandes-summary-grid {
     gap: 8px;
   }
@@ -277,6 +717,26 @@
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .commandes-page--commercial .commandes-summary-card {
+    padding: 11px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--dga .commandes-summary-card {
+    padding: 11px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--dg .commandes-summary-card {
+    padding: 11px 12px;
+    border-radius: 16px;
+  }
+
+  .commandes-page--logistique .commandes-summary-card {
+    padding: 11px 12px;
+    border-radius: 16px;
   }
 
   .commandes-hero--compact .commandes-summary-card {
@@ -299,6 +759,26 @@
     line-height: 1;
   }
 
+  .commandes-page--commercial .commandes-summary-card strong {
+    margin-top: 5px;
+    font-size: 1.32rem;
+  }
+
+  .commandes-page--dga .commandes-summary-card strong {
+    margin-top: 5px;
+    font-size: 1.32rem;
+  }
+
+  .commandes-page--dg .commandes-summary-card strong {
+    margin-top: 5px;
+    font-size: 1.32rem;
+  }
+
+  .commandes-page--logistique .commandes-summary-card strong {
+    margin-top: 5px;
+    font-size: 1.32rem;
+  }
+
   .commandes-hero--compact .commandes-summary-card strong {
     margin-top: 6px;
     font-size: 1.45rem;
@@ -309,12 +789,48 @@
     color: #d8e7f1;
   }
 
+  .commandes-page--commercial .commandes-summary-card p {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
+  .commandes-page--dga .commandes-summary-card p {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
+  .commandes-page--dg .commandes-summary-card p {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
+  .commandes-page--logistique .commandes-summary-card p {
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+
   .commandes-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
+  }
+
+  .commandes-page--commercial .commandes-toolbar {
+    gap: 10px;
+  }
+
+  .commandes-page--dga .commandes-toolbar {
+    gap: 10px;
+  }
+
+  .commandes-page--dg .commandes-toolbar {
+    gap: 10px;
+  }
+
+  .commandes-page--logistique .commandes-toolbar {
+    gap: 10px;
   }
 
   .commandes-page--historique .commandes-toolbar {
@@ -461,6 +977,11 @@
     box-shadow: 0 12px 24px rgba(18, 48, 71, 0.08);
   }
 
+  .commandes-page--commercial .commandes-switcher {
+    padding: 6px;
+    border-radius: 14px;
+  }
+
   .commandes-switcher .btn,
   .commandes-switcher .btn-secondary {
     margin: 0;
@@ -474,6 +995,9 @@
   .commandes-filter-shell {
     overflow: hidden;
     padding: 0;
+    background:
+      radial-gradient(circle at top right, rgba(79, 191, 159, 0.12), transparent 36%),
+      linear-gradient(135deg, rgba(18, 48, 71, 0.03), rgba(79, 191, 159, 0.08));
   }
 
   .commandes-filter-header {
@@ -487,6 +1011,58 @@
     background: linear-gradient(135deg, rgba(18, 48, 71, 0.04), rgba(79, 191, 159, 0.09));
   }
 
+  .commandes-page--commercial .commandes-filter-header {
+    padding: 12px 16px;
+  }
+
+  .commandes-page--dga .commandes-filter-header {
+    padding: 12px 16px;
+  }
+
+  .commandes-page--dg .commandes-filter-header {
+    padding: 12px 16px;
+  }
+
+  .commandes-page--logistique .commandes-filter-header {
+    padding: 12px 16px;
+  }
+
+  .commandes-page--commercial .commandes-filter-header .commandes-block-title {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+
+  .commandes-page--dga .commandes-filter-header .commandes-block-title {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+
+  .commandes-page--dg .commandes-filter-header .commandes-block-title {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+
+  .commandes-page--logistique .commandes-filter-header .commandes-block-title {
+    font-size: 1.15rem;
+    margin: 4px 0;
+  }
+
+  .commandes-page--commercial .commandes-filter-header .commandes-muted {
+    font-size: 0.9rem;
+  }
+
+  .commandes-page--dga .commandes-filter-header .commandes-muted {
+    font-size: 0.9rem;
+  }
+
+  .commandes-page--dg .commandes-filter-header .commandes-muted {
+    font-size: 0.9rem;
+  }
+
+  .commandes-page--logistique .commandes-filter-header .commandes-muted {
+    font-size: 0.9rem;
+  }
+
   .commandes-filter-chip {
     display: inline-flex;
     align-items: center;
@@ -498,12 +1074,188 @@
     font-weight: 700;
   }
 
+  .commandes-page--commercial .commandes-filter-chip {
+    padding: 8px 12px;
+  }
+
+  .commandes-page--dga .commandes-filter-chip {
+    padding: 8px 12px;
+  }
+
+  .commandes-page--dg .commandes-filter-chip {
+    padding: 8px 12px;
+  }
+
+  .commandes-page--logistique .commandes-filter-chip {
+    padding: 8px 12px;
+  }
+
   .commandes-filter-body {
     padding: 22px;
   }
 
+  .commandes-page--commercial .commandes-filter-body {
+    padding: 12px 14px;
+  }
+
+  .commandes-page--dga .commandes-filter-body {
+    padding: 12px 14px;
+  }
+
+  .commandes-page--dg .commandes-filter-body {
+    padding: 12px 14px;
+  }
+
+  .commandes-page--logistique .commandes-filter-body {
+    padding: 12px 14px;
+  }
+
   .commandes-filter-grid {
     grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr;
+  }
+
+  .commandes-page--commercial .commandes-filter-grid {
+    grid-template-columns: 1.35fr 0.95fr 0.95fr 0.85fr 0.85fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .commandes-page--dga .commandes-filter-grid {
+    grid-template-columns: 1.35fr 0.95fr 0.95fr 0.85fr 0.85fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .commandes-page--dg .commandes-filter-grid {
+    grid-template-columns: 1.35fr 0.95fr 0.95fr 0.85fr 0.85fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .commandes-page--logistique .commandes-filter-grid {
+    grid-template-columns: 1.35fr 0.95fr 0.95fr 0.85fr 0.85fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .commandes-page--commercial .commandes-filter-grid .field label {
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+  }
+
+  .commandes-page--dga .commandes-filter-grid .field label {
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+  }
+
+  .commandes-page--dg .commandes-filter-grid .field label {
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+  }
+
+  .commandes-page--logistique .commandes-filter-grid .field label {
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+  }
+
+  .commandes-page--commercial .commandes-filter-grid .field input,
+  .commandes-page--commercial .commandes-filter-grid .field select {
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .commandes-page--dga .commandes-filter-grid .field input,
+  .commandes-page--dga .commandes-filter-grid .field select {
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .commandes-page--dg .commandes-filter-grid .field input,
+  .commandes-page--dg .commandes-filter-grid .field select {
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .commandes-page--logistique .commandes-filter-grid .field input,
+  .commandes-page--logistique .commandes-filter-grid .field select {
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .commandes-page--commercial .commandes-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 46px;
+    padding-bottom: 1px;
+  }
+
+  .commandes-page--dga .commandes-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 46px;
+    padding-bottom: 1px;
+  }
+
+  .commandes-page--dg .commandes-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 46px;
+    padding-bottom: 1px;
+  }
+
+  .commandes-page--logistique .commandes-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 46px;
+    padding-bottom: 1px;
+  }
+
+  .commandes-page--commercial .commandes-filter-actions .btn,
+  .commandes-page--commercial .commandes-filter-actions .btn-secondary {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .commandes-page--dga .commandes-filter-actions .btn,
+  .commandes-page--dga .commandes-filter-actions .btn-secondary {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .commandes-page--dg .commandes-filter-actions .btn,
+  .commandes-page--dg .commandes-filter-actions .btn-secondary {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .commandes-page--logistique .commandes-filter-actions .btn,
+  .commandes-page--logistique .commandes-filter-actions .btn-secondary {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .commandes-page--commercial .form-actions {
+    display: none;
+  }
+
+  .commandes-page--dga .form-actions {
+    display: none;
+  }
+
+  .commandes-page--dg .form-actions {
+    display: none;
+  }
+
+  .commandes-page--logistique .form-actions {
+    display: none;
   }
 
   .commandes-table-shell {
@@ -518,6 +1270,42 @@
     gap: 16px;
     flex-wrap: wrap;
     padding: 20px 22px 0;
+  }
+
+  .commandes-page--commercial .commandes-table-top {
+    padding: 14px 16px 0;
+  }
+
+  .commandes-page--dga .commandes-table-top {
+    padding: 14px 16px 0;
+  }
+
+  .commandes-page--dg .commandes-table-top {
+    padding: 14px 16px 0;
+  }
+
+  .commandes-page--logistique .commandes-table-top {
+    padding: 14px 16px 0;
+  }
+
+  .commandes-page--commercial .commandes-table-top .commandes-block-title {
+    font-size: 1.15rem;
+    margin-top: 2px;
+  }
+
+  .commandes-page--dga .commandes-table-top .commandes-block-title {
+    font-size: 1.15rem;
+    margin-top: 2px;
+  }
+
+  .commandes-page--dg .commandes-table-top .commandes-block-title {
+    font-size: 1.15rem;
+    margin-top: 2px;
+  }
+
+  .commandes-page--logistique .commandes-table-top .commandes-block-title {
+    font-size: 1.15rem;
+    margin-top: 2px;
   }
 
   .commandes-table-wrap {
@@ -544,6 +1332,14 @@
     background: linear-gradient(135deg, #fff3e7, #fff8f1);
   }
 
+  .commandes-highlight-row-old {
+    background: linear-gradient(135deg, #ffe1e1, #fff1f1);
+  }
+
+  .commandes-highlight-row-active {
+    background: linear-gradient(135deg, #fff3e7, #fff8f1);
+  }
+
   .commandes-cell-note {
     display: block;
     margin-top: 4px;
@@ -564,12 +1360,88 @@
   }
 
   @media (max-width: 1180px) {
+    .commandes-page--commercial {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-page--dga {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-page--dg {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-page--logistique {
+      grid-template-columns: 1fr;
+    }
+
+    .commandes-page--commercial .commandes-hero,
+    .commandes-page--commercial .commandes-filter-shell {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .commandes-page--dga .commandes-hero,
+    .commandes-page--dga .commandes-filter-shell {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .commandes-page--dg .commandes-hero,
+    .commandes-page--dg .commandes-filter-shell {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .commandes-page--logistique .commandes-hero,
+    .commandes-page--logistique .commandes-filter-shell {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
     .commandes-hero {
       grid-template-columns: 1fr;
     }
 
     .commandes-filter-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commandes-page--commercial .commandes-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commandes-page--dga .commandes-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commandes-page--dg .commandes-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commandes-page--logistique .commandes-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .commandes-page--commercial .commandes-filter-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+    }
+
+    .commandes-page--dga .commandes-filter-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+    }
+
+    .commandes-page--dg .commandes-filter-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+    }
+
+    .commandes-page--logistique .commandes-filter-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-end;
     }
   }
 
@@ -590,6 +1462,54 @@
       grid-template-columns: 1fr;
     }
 
+    .commandes-page--commercial .commandes-filter-actions {
+      grid-column: auto;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .commandes-page--dga .commandes-filter-actions {
+      grid-column: auto;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .commandes-page--dg .commandes-filter-actions {
+      grid-column: auto;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .commandes-page--logistique .commandes-filter-actions {
+      grid-column: auto;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .commandes-page--commercial .commandes-filter-actions .btn,
+    .commandes-page--commercial .commandes-filter-actions .btn-secondary {
+      flex: 1;
+      text-align: center;
+    }
+
+    .commandes-page--dga .commandes-filter-actions .btn,
+    .commandes-page--dga .commandes-filter-actions .btn-secondary {
+      flex: 1;
+      text-align: center;
+    }
+
+    .commandes-page--dg .commandes-filter-actions .btn,
+    .commandes-page--dg .commandes-filter-actions .btn-secondary {
+      flex: 1;
+      text-align: center;
+    }
+
+    .commandes-page--logistique .commandes-filter-actions .btn,
+    .commandes-page--logistique .commandes-filter-actions .btn-secondary {
+      flex: 1;
+      text-align: center;
+    }
+
     .commandes-switcher {
       width: 100%;
       justify-content: space-between;
@@ -603,7 +1523,7 @@
   }
 </style>
 
-<div class="commandes-page {% if scope == 'historique' %}commandes-page--historique{% endif %}">
+<div class="commandes-page {% if scope == 'historique' %}commandes-page--historique{% endif %}{% if page_user_role == 'commercial' or page_user_role == 'responsable_commercial' %} commandes-page--commercial{% endif %}{% if page_user_role == 'dga' %} commandes-page--dga{% endif %}{% if page_user_role == 'directeur' %} commandes-page--dg{% endif %}{% if page_user_role == 'logistique' %} commandes-page--logistique{% endif %}">
   <div class="page-header">
     <div>
       <p class="eyebrow">Exploitation</p>
@@ -636,17 +1556,13 @@
     </div>
   </div>
 
-  <section class="commandes-hero {% if scope == 'historique' %}commandes-hero--compact{% endif %}">
+  <section class="commandes-hero {% if scope == 'historique' or page_user_role == 'commercial' or page_user_role == 'responsable_commercial' %}commandes-hero--compact{% endif %}">
     <div class="commandes-hero-main">
       <div class="commandes-hero-top">
         <div class="commandes-hero-title">
           <div class="section-label">Statistiques</div>
           <h3>{{ commandes_stats.title }}</h3>
           <p>{{ commandes_stats.period }}</p>
-        </div>
-        <div class="commandes-truck-badge">
-          <span>Nombre de camions</span>
-          <strong>{{ commandes_stats.truck_count }}</strong>
         </div>
       </div>
 
@@ -669,9 +1585,8 @@
             </div>
             <div>
               <div class="commandes-muted">Quantite totale</div>
-              <div class="commandes-stat-figure">{{ item.display_quantity }}</div>
               <div class="commandes-muted" style="margin-top:6px;">
-                {% if scope == "historique" %}
+                {% if scope == "historique" or page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
                 {{ item.unit|default:"-" }} filtres
                 {% else %}
                 {{ item.unit|default:"-" }} sur la periode filtree
@@ -694,7 +1609,7 @@
         <div class="section-label" style="color:#8ce4c8;">Synthese</div>
         <h3 style="color:white;">Vue rapide</h3>
         <p>
-          {% if scope == "historique" %}
+          {% if scope == "historique" or page_user_role == "commercial" or page_user_role == "responsable_commercial" %}
           Resume rapide de la selection courante.
           {% else %}
           Une lecture immediate des volumes et de la couverture camion sur la selection courante.
@@ -764,39 +1679,54 @@
     <div class="commandes-filter-body">
       <form method="get" class="app-form">
         <input type="hidden" name="scope" value="{{ scope }}">
-        <div class="form-grid commandes-filter-grid">
-          <div class="field">
-            <label for="id_q">Recherche</label>
-            <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Ref, BL, client, produit, destination">
+          <div class="form-grid commandes-filter-grid">
+            <div class="field">
+              <label for="id_q">Recherche</label>
+              <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Ref, BL, client, produit, destination">
+            </div>
+
+            <div class="field">
+              <label for="id_statut">Statut</label>
+              <select id="id_statut" name="statut">
+                <option value="">Tous les statuts</option>
+                {% for value, label in statut_choices %}
+                <option value="{{ value }}" {% if statut == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="id_produit">Produit</label>
+              <select id="id_produit" name="produit">
+                <option value="">Tous les produits</option>
+                {% for item in produit_choices %}
+                <option value="{{ item.id }}" {% if produit == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="id_date_debut">Date debut</label>
+              <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
+            </div>
+
+            <div class="field">
+              <label for="id_date_fin">Date fin</label>
+              <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
+            </div>
+
+            <div class="commandes-filter-actions">
+              <a href="/commandes/?scope={{ scope }}" class="btn-secondary">Reinitialiser</a>
+              <button type="submit" class="btn">Filtrer</button>
+            </div>
           </div>
 
-          <div class="field">
-            <label for="id_statut">Statut</label>
-            <select id="id_statut" name="statut">
-              <option value="">Tous les statuts</option>
-              {% for value, label in statut_choices %}
-              <option value="{{ value }}" {% if statut == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
+          <div class="form-actions">
+            <a href="/commandes/?scope={{ scope }}" class="btn-secondary">Reinitialiser</a>
+            <button type="submit" class="btn">Filtrer</button>
           </div>
-
-          <div class="field">
-            <label for="id_date_debut">Date debut</label>
-            <input id="id_date_debut" type="date" name="date_debut" value="{{ date_debut }}">
-          </div>
-
-          <div class="field">
-            <label for="id_date_fin">Date fin</label>
-            <input id="id_date_fin" type="date" name="date_fin" value="{{ date_fin }}">
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <a href="/commandes/" class="btn-secondary">Reinitialiser</a>
-          <button type="submit" class="btn">Filtrer</button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
   </section>
 
   <section class="form-shell commandes-shell commandes-table-shell">
@@ -828,7 +1758,7 @@
         <tbody>
           {% if page_user_role == "logistique" %}
           {% for row in logistique_rows %}
-          <tr{% if row.has_reaffectation %} class="commandes-highlight-row"{% endif %}>
+          <tr{% if row.is_old_reaffectation %} class="commandes-highlight-row-old"{% elif row.is_active_reaffectation %} class="commandes-highlight-row-active"{% elif row.has_reaffectation %} class="commandes-highlight-row"{% endif %}>
             <td>{{ row.commande.date_commande|date:"Y-m-d" }}</td>
             <td>{{ row.commande.reference_affichee }}</td>
             <td>{% if row.operation %}{{ row.operation.numero_bl }}{% else %}-{% endif %}</td>
@@ -876,7 +1806,13 @@
               </div>
               {% if row.has_reaffectation %}
               <div style="margin-top:8px;">
+                {% if row.is_old_reaffectation %}
+                <span class="status-badge status-danger">BL change - ancienne version</span>
+                {% elif row.is_active_reaffectation %}
+                <span class="status-badge" style="background:#fff3cd;color:#8a5a00;">Nouveau BL actif</span>
+                {% else %}
                 <span class="status-badge status-danger">Camion change sur ce BL</span>
+                {% endif %}
               </div>
               {% endif %}
             </td>
@@ -970,6 +1906,31 @@
         </tbody>
       </table>
     </div>
+
+    {% if page_obj %}
+    <div class="commandes-pagination">
+      <div class="commandes-pagination-meta">
+        {{ total_resultats }} resultat(s) • page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      </div>
+      <div class="commandes-pagination-links">
+        {% if page_obj.has_previous %}
+        <a href="/commandes/?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn-secondary">Precedent</a>
+        {% endif %}
+
+        {% for page_num in page_obj.paginator.page_range %}
+          {% if page_num == page_obj.number %}
+          <span class="commandes-pagination-page is-active">{{ page_num }}</span>
+          {% elif page_num >= page_obj.number|add:"-2" and page_num <= page_obj.number|add:"2" %}
+          <a href="/commandes/?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_num }}" class="commandes-pagination-page">{{ page_num }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <a href="/commandes/?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn-secondary">Suivant</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </section>
 </div>
 {% endblock %}

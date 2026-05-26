@@ -7,11 +7,14 @@ ROLE_CHEF_CHAUFFEUR = "chef_chauffeur"
 ROLE_MAINTENANCIER = "maintenancier"
 ROLE_DGA = "dga"
 ROLE_DGA_SOGEFI = "dga_sogefi"
+ROLE_DGA_AVENA = "dga_avena"
 ROLE_DIRECTEUR = "directeur"
 ROLE_CAISSIERE = "caissiere"
 ROLE_CAISSIERE_SONI = "caissiere_soni"
+ROLE_CAISSIERE_AVENA = "caissiere_avena"
 ROLE_RESPONSABLE_ACHAT = "responsable_achat"
 ROLE_COMPTABLE_SOGEFI = "comptable_sogefi"
+ROLE_COMPTABLE_AVENA = "comptable_avena"
 ROLE_TRANSITAIRE = "transitaire"
 ROLE_INVITE = "invite"
 ROLE_CONTROLEUR = "controleur"
@@ -26,11 +29,14 @@ ROLE_CHOICES = [
     (ROLE_MAINTENANCIER, "Maintenancier"),
     (ROLE_DGA, "DGA"),
     (ROLE_DGA_SOGEFI, "DGA SOGEFI"),
+    (ROLE_DGA_AVENA, "DGA Avena"),
     (ROLE_DIRECTEUR, "Directeur"),
     (ROLE_CAISSIERE, "Caissiere"),
     (ROLE_CAISSIERE_SONI, "Caissiere SONI"),
+    (ROLE_CAISSIERE_AVENA, "Caissiere Avena"),
     (ROLE_RESPONSABLE_ACHAT, "Responsable achat"),
     (ROLE_COMPTABLE_SOGEFI, "Comptable SOGEFI"),
+    (ROLE_COMPTABLE_AVENA, "Comptable Avena"),
     (ROLE_TRANSITAIRE, "Transitaire"),
     (ROLE_INVITE, "Invite"),
     (ROLE_CONTROLEUR, "Controleur"),

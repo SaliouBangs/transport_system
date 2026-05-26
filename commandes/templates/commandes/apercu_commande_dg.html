@@ -1,9 +1,117 @@
 {% extends "base.html" %}
-{% load client_extras %}
+{% load static client_extras %}
 
 {% block content %}
 
 <style>
+.commande-sheet {
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+    border-radius: 26px;
+    border: 1px solid rgba(214, 228, 238, 0.92);
+    background:
+        radial-gradient(circle at top right, rgba(79, 191, 159, 0.18), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 247, 251, 0.96));
+    box-shadow: 0 24px 48px rgba(18, 48, 71, 0.10);
+}
+
+.commande-sheet::after {
+    content: "";
+    position: absolute;
+    right: -70px;
+    top: -80px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79, 191, 159, 0.16), transparent 70%);
+    pointer-events: none;
+}
+
+.commande-sheet-header {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    padding-bottom: 18px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid rgba(214, 228, 238, 0.92);
+}
+
+.commande-sheet-logo {
+    width: 88px;
+    height: auto;
+}
+
+.commande-sheet-title h2 {
+    margin: 4px 0 6px;
+    color: #123047;
+    font-size: 1.65rem;
+}
+
+.commande-sheet-title p {
+    margin: 0;
+    color: #5f7183;
+}
+
+.commande-sheet-meta {
+    min-width: 220px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.96), rgba(29, 73, 104, 0.92));
+    color: white;
+    box-shadow: 0 18px 34px rgba(18, 48, 71, 0.18);
+}
+
+.commande-sheet-meta span {
+    display: block;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(216, 231, 241, 0.86);
+}
+
+.commande-sheet-meta strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.55rem;
+    line-height: 1.05;
+}
+
+.commande-sheet-kpis {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.commande-kpi-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(214, 228, 238, 0.95);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 252, 0.95));
+}
+
+.commande-kpi-card span {
+    display: block;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #0f8a66;
+}
+
+.commande-kpi-card strong {
+    display: block;
+    margin-top: 6px;
+    color: var(--navy);
+    font-size: 1.18rem;
+}
+
 .commande-review-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
@@ -16,6 +124,17 @@
 
 .commande-review-card {
     height: 100%;
+}
+
+.commande-review-summary-shell {
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid rgba(214, 228, 238, 0.95);
+}
+
+.commande-review-summary-shell h3 {
+    margin-bottom: 14px;
 }
 
 .commande-review-note {
@@ -105,6 +224,8 @@
 }
 
 @media (max-width: 1100px) {
+    .commande-sheet-header,
+    .commande-sheet-kpis,
     .commande-review-layout,
     .commande-review-actions {
         grid-template-columns: 1fr;
@@ -124,89 +245,128 @@
 <div class="page-header">
 <div>
 <p class="eyebrow">Direction generale</p>
-<h1>Apercu de la commande {{ commande.reference }}</h1>
+<h1>Apercu DG de la commande {{ commande.reference_affichee }}</h1>
 </div>
 </div>
 
 <div class="form-shell" style="max-width:1480px; width:100%;">
-    <div class="commande-review-layout">
-        {% if dma_alert.depasse_dma %}
-        <div class="commande-review-wide">
-            <div class="commande-review-alert">
-                <strong>Client hors seuil DMA</strong>
-                Le risque projete de ce client atteint {{ dma_alert.risque_projete|gnf }} pour une DMA de
-                {{ dma_alert.plafond_dma|gnf }}. Le depassement estime est de
-                {{ dma_alert.depassement_dma|gnf }}. La decision finale DG doit tenir compte de ce depassement.
+    <div class="commande-sheet">
+        <div class="commande-sheet-header">
+            <img src="{% static 'utilisateurs/soni-logo.png' %}" alt="SONI Energy" class="commande-sheet-logo">
+            <div class="commande-sheet-title">
+                <div class="section-label">Etat de fiche de commande</div>
+                <h2>Fiche de validation DG</h2>
+                <p>Commande {{ commande.reference_affichee }} - decision finale sur la commande.</p>
+            </div>
+            <div class="commande-sheet-meta">
+                <span>Statut actuel</span>
+                <strong>{{ commande.get_statut_display }}</strong>
             </div>
         </div>
-        {% endif %}
 
-        <div class="summary-card commande-review-card">
-            <h3>Resume de la commande</h3>
-            <div class="commande-review-note">
-                <div class="commande-review-detail-grid">
-                    <strong>Reference</strong><span>{{ commande.reference }}</span>
-                    <strong>Date commande</strong><span>{{ commande.date_commande|date:"Y-m-d" }}</span>
-                    <strong>Commercial affecte</strong><span>{% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}-{% endif %}</span>
-                    <strong>Client</strong><span>{{ commande.client.entreprise }}</span>
-                    <strong>Description</strong><span>{{ commande.description }}</span>
-                    <strong>Produit</strong><span>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</span>
-                    <strong>Quantite</strong><span>{{ commande.quantite|default:"-" }}</span>
-                    <strong>Prix negocie</strong><span>{{ commande.prix_negocie|default:"-" }}</span>
-                    <strong>Trajet</strong><span>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</span>
-                    <strong>Livraison prevue</strong><span>{{ commande.date_livraison_prevue|date:"Y-m-d" }}</span>
-                    <strong>Camion affecte</strong><span>{% if commande.camion %}{{ commande.camion.numero_tracteur }}{% else %}-{% endif %}</span>
-                    <strong>Chauffeur affecte</strong><span>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</span>
-                    <strong>Statut</strong><span><span class="status-badge status-ok">{{ commande.get_statut_display }}</span></span>
+        <div class="commande-sheet-kpis">
+            <article class="commande-kpi-card">
+                <span>Client</span>
+                <strong>{{ commande.client.entreprise }}</strong>
+            </article>
+            <article class="commande-kpi-card">
+                <span>Produit</span>
+                <strong>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</strong>
+            </article>
+            <article class="commande-kpi-card">
+                <span>Quantite</span>
+                <strong>{{ commande.quantite|default:"-" }}</strong>
+            </article>
+            <article class="commande-kpi-card">
+                <span>Prix negocie</span>
+                <strong>{{ commande.prix_negocie|default:"-" }}</strong>
+            </article>
+        </div>
+
+        <div class="commande-review-layout">
+            {% if dma_alert.depasse_dma %}
+            <div class="commande-review-wide">
+                <div class="commande-review-alert">
+                    <strong>Client hors seuil DMA</strong>
+                    Le risque projete de ce client atteint {{ dma_alert.risque_projete|gnf }} pour une DMA de
+                    {{ dma_alert.plafond_dma|gnf }}. Le depassement estime est de
+                    {{ dma_alert.depassement_dma|gnf }}. La decision finale DG doit tenir compte de ce depassement.
                 </div>
             </div>
-        </div>
+            {% endif %}
 
-        <div class="commande-review-note">
-            <h3>Avis du DGA</h3>
-            <p><strong>Decision :</strong> {% if commande.decision_dga %}{{ commande.get_decision_dga_display }}{% else %}-{% endif %}</p>
-            <p><strong>Observation :</strong> {{ commande.observation_dga|default:"-" }}</p>
-            <p><strong>Motif de rejet :</strong> {{ commande.motif_rejet_dga|default:"-" }}</p>
-            {% if commande.date_validation_dga %}
-            <p><strong>Date avis DGA :</strong> {{ commande.date_validation_dga|date:"Y-m-d" }}</p>
+            <div class="summary-card commande-review-card">
+                <div class="commande-review-summary-shell">
+                    <h3>Resume de la commande</h3>
+                    <div class="commande-review-note">
+                        <div class="commande-review-detail-grid">
+                            <strong>Reference</strong><span>{{ commande.reference_affichee }}</span>
+                            <strong>Date commande</strong><span>{{ commande.date_commande|date:"Y-m-d" }}</span>
+                            <strong>Commercial affecte</strong><span>{% if commande.client.commercial %}{{ commande.client.commercial.get_full_name|default:commande.client.commercial.username }}{% else %}-{% endif %}</span>
+                            <strong>Client</strong><span>{{ commande.client.entreprise }}</span>
+                            <strong>Description</strong><span>{{ commande.description|default:"-" }}</span>
+                            <strong>Produit</strong><span>{% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</span>
+                            <strong>Quantite</strong><span>{{ commande.quantite|default:"-" }}</span>
+                            <strong>Prix negocie</strong><span>{{ commande.prix_negocie|default:"-" }}</span>
+                            <strong>Trajet</strong><span>{{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</span>
+                            <strong>Perequation</strong><span>{% if commande.ville_perequation_id %}{{ commande.ville_perequation.nom }} - {{ commande.tarif_perequation_gnf_litre|floatformat:2 }} GNF/L{% else %}-{% endif %}</span>
+                            <strong>Livraison prevue</strong><span>{{ commande.date_livraison_prevue|date:"Y-m-d" }}</span>
+                            <strong>Camion affecte</strong><span>{% if commande.camion %}{{ commande.camion.numero_tracteur }}{% else %}-{% endif %}</span>
+                            <strong>Chauffeur affecte</strong><span>{% if commande.chauffeur %}{{ commande.chauffeur.nom }}{% else %}-{% endif %}</span>
+                            <strong>Statut</strong><span><span class="status-badge status-ok">{{ commande.get_statut_display }}</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="commande-review-note">
+                <h3>Avis du DGA et contexte</h3>
+                <p><strong>Decision DGA :</strong> {% if commande.decision_dga %}{{ commande.get_decision_dga_display }}{% else %}-{% endif %}</p>
+                <p><strong>Observation DGA :</strong> {{ commande.observation_dga|default:"-" }}</p>
+                <p><strong>Motif de rejet DGA :</strong> {{ commande.motif_rejet_dga|default:"-" }}</p>
+                {% if commande.date_validation_dga %}
+                <p><strong>Date avis DGA :</strong> {{ commande.date_validation_dga|date:"Y-m-d" }}</p>
+                {% endif %}
+                <p><strong>DMA client :</strong> {{ commande.client.decouvert_maximum_autorise|gnf }}</p>
+                <p><strong>Risque projete :</strong> {{ dma_alert.risque_projete|gnf }}</p>
+            </div>
+
+            {% if commande.statut == "attente_validation_dg" %}
+            <div class="commande-review-wide">
+                <div class="commande-review-actions">
+                    <form method="post" action="/commandes/valider-dg/{{ commande.id }}/" class="commande-action-card is-approve">
+                        {% csrf_token %}
+                        <h3>Validation DG</h3>
+                        <p>Cette decision est la decision finale prise en compte pour la suite du circuit.</p>
+                        <div class="field field-full">
+                            <label for="observation_dg_valider">Observation DG</label>
+                            <textarea id="observation_dg_valider" name="observation_dg" rows="6" placeholder="Observation ou commentaire de validation"></textarea>
+                        </div>
+                        <div class="form-actions" style="justify-content:flex-start;">
+                            <button type="submit" class="btn">Valider la commande</button>
+                        </div>
+                    </form>
+
+                    <form method="post" action="/commandes/rejeter-dg/{{ commande.id }}/" class="commande-action-card is-reject">
+                        {% csrf_token %}
+                        <h3>Rejet DG</h3>
+                        <p>Si vous rejetez la commande, votre decision devient la decision finale du circuit.</p>
+                        <div class="field field-full">
+                            <label for="motif_rejet_dg">Motif de rejet DG</label>
+                            <textarea id="motif_rejet_dg" name="motif_rejet_dg" rows="4" placeholder="Motif du rejet" required></textarea>
+                        </div>
+                        <div class="field field-full">
+                            <label for="observation_dg_rejet">Observation DG</label>
+                            <textarea id="observation_dg_rejet" name="observation_dg" rows="3" placeholder="Observation complementaire"></textarea>
+                        </div>
+                        <div class="form-actions" style="justify-content:flex-start;">
+                            <button type="submit" class="btn-delete" onclick="return confirm('Rejeter cette commande ?')">Rejeter la commande</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             {% endif %}
         </div>
-
-        {% if commande.statut == "attente_validation_dg" %}
-        <div class="commande-review-wide">
-            <div class="commande-review-actions">
-                <form method="post" action="/commandes/valider-dg/{{ commande.id }}/" class="commande-action-card is-approve">
-                    {% csrf_token %}
-                    <h3>Validation DG</h3>
-                    <p>Cette decision est la decision finale prise en compte pour la suite du circuit.</p>
-                    <div class="field field-full">
-                        <label for="observation_dg_valider">Observation DG</label>
-                        <textarea id="observation_dg_valider" name="observation_dg" rows="6" placeholder="Observation ou commentaire de validation"></textarea>
-                    </div>
-                    <div class="form-actions" style="justify-content:flex-start;">
-                        <button type="submit" class="btn">Valider la commande</button>
-                    </div>
-                </form>
-
-                <form method="post" action="/commandes/rejeter-dg/{{ commande.id }}/" class="commande-action-card is-reject">
-                    {% csrf_token %}
-                    <h3>Rejet DG</h3>
-                    <p>Si vous rejetez la commande, votre decision devient la decision finale du circuit.</p>
-                    <div class="field field-full">
-                        <label for="motif_rejet_dg">Motif de rejet DG</label>
-                        <textarea id="motif_rejet_dg" name="motif_rejet_dg" rows="4" placeholder="Motif du rejet" required></textarea>
-                    </div>
-                    <div class="field field-full">
-                        <label for="observation_dg_rejet">Observation DG</label>
-                        <textarea id="observation_dg_rejet" name="observation_dg" rows="3" placeholder="Observation complementaire"></textarea>
-                    </div>
-                    <div class="form-actions" style="justify-content:flex-start;">
-                        <button type="submit" class="btn-delete" onclick="return confirm('Rejeter cette commande ?')">Rejeter la commande</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        {% endif %}
     </div>
 
     <div class="commande-review-footer">

@@ -7,9 +7,9 @@
 <style>
 .logistique-hero{
     display:grid;
-    grid-template-columns:1.18fr .92fr;
-    gap:20px;
-    margin-bottom:22px;
+    grid-template-columns:minmax(320px, .72fr) minmax(760px, 1.28fr);
+    gap:18px;
+    margin-bottom:18px;
 }
 .logistique-panel{
     background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(241,250,247,.96));
@@ -18,31 +18,38 @@
     box-shadow:0 18px 44px rgba(18,48,71,.08);
     padding:24px;
 }
+.logistique-panel--compact{
+    padding:20px 20px 18px;
+}
+.logistique-panel--overview{
+    padding:20px;
+}
 .logistique-hero-title{
-    margin:0 0 10px;
-    font-size:2.2rem;
+    margin:0 0 8px;
+    font-size:1.85rem;
     line-height:1.08;
 }
 .logistique-hero-copy{
     margin:0;
     color:#4d6678;
-    line-height:1.65;
-    max-width:760px;
+    line-height:1.45;
+    max-width:560px;
+    font-size:.95rem;
 }
 .logistique-badges{
     display:flex;
     gap:10px;
     flex-wrap:wrap;
-    margin-top:18px;
+    margin-top:14px;
 }
 .logistique-badge{
     display:inline-flex;
     align-items:center;
     gap:8px;
     border-radius:999px;
-    padding:10px 14px;
+    padding:8px 12px;
     font-weight:700;
-    font-size:.92rem;
+    font-size:.84rem;
 }
 .logistique-badge-soft{
     background:#eaf3ff;
@@ -54,14 +61,15 @@
 }
 .logistique-kpis{
     display:grid;
-    grid-template-columns:repeat(5, minmax(0, 1fr));
-    gap:12px;
+    grid-template-columns:repeat(5, minmax(120px, 1fr));
+    gap:10px;
 }
 .logistique-kpi{
     border-radius:20px;
-    padding:16px 16px 14px;
+    padding:14px 14px 12px;
     background:#fff;
     border:1px solid #dbe8f2;
+    min-width:0;
 }
 .logistique-kpi-label{
     margin:0 0 8px;
@@ -73,14 +81,21 @@
 }
 .logistique-kpi-value{
     margin:0;
-    font-size:1.9rem;
+    font-size:clamp(1.45rem, 1.55vw, 1.9rem);
     font-weight:800;
     color:#123047;
+    line-height:1.18;
+    white-space:nowrap;
+    letter-spacing:0;
+}
+.logistique-kpi-value--money{
+    font-size:clamp(1.05rem, 1.18vw, 1.35rem);
 }
 .logistique-kpi-note{
     margin:8px 0 0;
     color:#6c8191;
-    font-size:.88rem;
+    font-size:.82rem;
+    line-height:1.35;
 }
 .logistique-filter-shell{
     margin-bottom:18px;
@@ -100,7 +115,7 @@
 }
 .logistique-filter-grid{
     display:grid;
-    grid-template-columns:minmax(220px,1.35fr) minmax(180px,.72fr) minmax(180px,.72fr) minmax(150px,.62fr) minmax(150px,.62fr) auto;
+    grid-template-columns:minmax(220px,1.35fr) repeat(3, minmax(160px,.72fr)) repeat(2, minmax(140px,.62fr)) auto;
     gap:12px;
     align-items:end;
 }
@@ -170,6 +185,12 @@
 }
 .logistique-filter-tools .table-actions{
     margin-left:auto;
+}
+.btn-secondary.is-disabled{
+    cursor:not-allowed;
+    opacity:.72;
+    background:#eef4f8;
+    color:#627a8d;
 }
 .logistique-card{
     background:#fff;
@@ -315,7 +336,7 @@
         grid-template-columns:1fr;
     }
     .logistique-kpis{
-        grid-template-columns:1fr;
+        grid-template-columns:repeat(2, minmax(0, 1fr));
     }
     .logistique-filter-actions{
         justify-content:stretch;
@@ -325,16 +346,22 @@
         flex:1 1 180px;
     }
 }
+@media (max-width: 760px){
+    .logistique-kpis{
+        grid-template-columns:1fr;
+    }
+    .logistique-kpi-value{
+        white-space:normal;
+    }
+}
 </style>
 
 <section class="logistique-hero">
-    <div class="logistique-panel">
+    <div class="logistique-panel logistique-panel--compact">
         <p class="eyebrow">Exploitation</p>
         <h1 class="logistique-hero-title">Suivi logistique BL</h1>
         <p class="logistique-hero-copy">
-            Cette vue concentre la reception logistique, le suivi des BL pris en charge par la logistique
-            et l'etat d'avancement des depenses rattachees. L'objectif est d'aller a l'essentiel, avec
-            des filtres rapides et une lecture plus nette du travail en cours.
+            Reception logistique, remise chauffeur, chargement, livraison et depenses BL en une seule lecture.
         </p>
         <div class="logistique-badges">
             <span class="logistique-badge logistique-badge-soft">Reception groupee disponible</span>
@@ -342,7 +369,7 @@
         </div>
     </div>
 
-    <div class="logistique-panel">
+    <div class="logistique-panel logistique-panel--overview">
         <p class="eyebrow" style="margin-bottom:12px;">Vue d'ensemble</p>
         <div class="logistique-kpis">
             <div class="logistique-kpi">
@@ -352,7 +379,7 @@
             </div>
             <div class="logistique-kpi">
                 <p class="logistique-kpi-label">Montant periode</p>
-                <p class="logistique-kpi-value" style="font-size:1.35rem;">{{ total_montant_depenses_display }}</p>
+                <p class="logistique-kpi-value logistique-kpi-value--money">{{ total_montant_depenses_display }}</p>
                 <p class="logistique-kpi-note">Total des depenses BL sur la selection courante</p>
             </div>
             <div class="logistique-kpi">
@@ -405,11 +432,20 @@
             <label for="id_depense_niveau_logistique">Niveau depense BL</label>
             <select id="id_depense_niveau_logistique" name="depense_niveau">
                 <option value="">Tous les niveaux</option>
+                <option value="action_requise" {% if depense_niveau == "action_requise" %}selected{% endif %}>Action requise</option>
                 <option value="logistique" {% if depense_niveau == "logistique" %}selected{% endif %}>Chez logistique</option>
                 <option value="dga" {% if depense_niveau == "dga" %}selected{% endif %}>Chez DGA</option>
                 <option value="dg" {% if depense_niveau == "dg" %}selected{% endif %}>Chez DG</option>
                 <option value="paiement" {% if depense_niveau == "paiement" %}selected{% endif %}>Chez paiement</option>
                 <option value="payee" {% if depense_niveau == "payee" %}selected{% endif %}>Payee</option>
+            </select>
+        </div>
+        <div class="logistique-filter-field">
+            <label for="id_retour_logistique">Bon retour</label>
+            <select id="id_retour_logistique" name="retour">
+                <option value="">Tous</option>
+                <option value="attendu" {% if retour == "attendu" %}selected{% endif %}>Retour attendu</option>
+                <option value="retourne" {% if retour == "retourne" %}selected{% endif %}>Livre / retourne</option>
             </select>
         </div>
         <div class="logistique-filter-field">
@@ -491,10 +527,14 @@
                         <div class="logistique-subinfo">{{ operation.client.entreprise }}</div>
                         {% if operation.commande_group_is_multi %}
                         <div class="logistique-group-chip">{{ operation.commande_group_count }} BL</div>
+                        {% if not operation.date_bon_retour %}
                         <div class="logistique-group-actions">
                             <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-secondary">Mettre a jour le groupe</a>
                         </div>
                         <div class="logistique-group-hint">La reception logistique et la remise au chauffeur seront repercutees sur les BL de cette meme commande quand ils sont au meme stade.</div>
+                        {% else %}
+                        <div class="logistique-group-hint">Cycle logistique cloture pour ce BL.</div>
+                        {% endif %}
                         {% endif %}
                     </td>
                     {% endif %}
@@ -529,7 +569,11 @@
                         </div>
                     </td>
                     <td>
+                        {% if operation.date_bon_retour %}
+                        <span class="btn-secondary is-disabled">Cycle termine</span>
+                        {% else %}
                         <a href="/operations/logisticien/{{ operation.id }}/modifier/" class="btn-secondary">{% if operation.commande_group_is_multi %}Ouvrir BL{% else %}Mettre a jour{% endif %}</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}

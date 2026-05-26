@@ -35,6 +35,12 @@
     <option value="{{ value }}"{% if statut_filter == value %} selected{% endif %}>{{ label }}</option>
     {% endfor %}
   </select>
+  <select name="entreprise">
+    <option value="">Toutes les entreprises</option>
+    {% for value, label in entreprise_choices %}
+    <option value="{{ value }}"{% if entreprise_filter == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
   <button type="submit" class="btn-secondary">Filtrer</button>
 </form>
 
@@ -42,6 +48,7 @@
   <thead>
     <tr>
       <th>Reference</th>
+      <th>Entreprise</th>
       <th>Demandeur</th>
       <th>Titre</th>
       <th>Type</th>
@@ -55,6 +62,7 @@
     {% for depense in depenses %}
     <tr>
       <td>{{ depense.reference }}</td>
+      <td><span class="status-badge status-info">{{ depense.entreprise_label }}</span></td>
       <td>{{ depense.demandeur.username }}</td>
       <td>{{ depense.titre }}</td>
       <td>{% if depense.source_depense == "chargement" %}{{ depense.type_affiche|default:"Depenses camion" }}{% else %}{{ depense.type_depense|default:"Depense interne" }}{% endif %}</td>
@@ -128,7 +136,7 @@
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="8">Aucune depense pour le moment.</td></tr>
+    <tr><td colspan="9">Aucune depense pour le moment.</td></tr>
     {% endfor %}
   </tbody>
 </table>

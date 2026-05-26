@@ -81,13 +81,322 @@ font-weight:600;
 .topbar-user{
 display:inline-flex;
 align-items:center;
-gap:8px;
-padding:8px 14px;
+}
+
+.topbar-user-button{
+border:0;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+padding:4px;
 border-radius:999px;
-background:rgba(255,255,255,0.12);
-font-size:0.92rem;
-font-weight:700;
-white-space:nowrap;
+background:transparent;
+color:white;
+font:inherit;
+font-weight:800;
+cursor:pointer;
+}
+
+.topbar-user-button:hover .user-avatar{
+box-shadow:0 0 0 3px rgba(79,191,159,0.28), inset 0 0 0 2px rgba(255,255,255,0.32);
+transform:translateY(-1px);
+}
+
+.user-avatar,
+.profile-avatar{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+border-radius:999px;
+background:linear-gradient(135deg, var(--mint) 0%, #3f8fd6 100%);
+color:white;
+font-weight:800;
+letter-spacing:0;
+text-transform:uppercase;
+flex:none;
+}
+
+.user-avatar{
+width:32px;
+height:32px;
+font-size:0.78rem;
+box-shadow:inset 0 0 0 2px rgba(255,255,255,0.28);
+transition:transform 0.18s ease, box-shadow 0.18s ease;
+position:relative;
+}
+
+.profile-avatar-large{
+width:92px;
+height:92px;
+font-size:1.5rem;
+box-shadow:var(--shadow);
+}
+
+.user-avatar img,
+.profile-avatar img{
+width:100%;
+height:100%;
+object-fit:cover;
+display:block;
+}
+
+.profile-drawer-backdrop{
+position:fixed;
+inset:0;
+background:rgba(8,21,32,0.34);
+opacity:0;
+pointer-events:none;
+transition:opacity 0.22s ease;
+z-index:58;
+}
+
+.profile-drawer{
+position:fixed;
+top:0;
+right:0;
+height:100vh;
+width:min(420px, calc(100vw - 22px));
+background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,249,252,0.98));
+border-left:1px solid rgba(188,210,226,0.95);
+box-shadow:-24px 0 48px rgba(18,48,71,0.22);
+transform:translateX(104%);
+transition:transform 0.28s ease;
+z-index:60;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+color:var(--text);
+}
+
+body.profile-drawer-open{
+overflow:hidden;
+}
+
+body.profile-drawer-open .profile-drawer{
+transform:translateX(0);
+}
+
+body.profile-drawer-open .profile-drawer-backdrop{
+opacity:1;
+pointer-events:auto;
+}
+
+.profile-drawer__close{
+position:absolute;
+top:18px;
+right:18px;
+width:36px;
+height:36px;
+border:0;
+border-radius:999px;
+background:rgba(18,48,71,0.08);
+color:var(--text);
+font-size:1.1rem;
+font-weight:800;
+cursor:pointer;
+}
+
+.profile-drawer__close:hover{
+background:rgba(18,48,71,0.14);
+}
+
+.profile-drawer__hero{
+padding:56px 28px 28px;
+text-align:center;
+background:
+radial-gradient(circle at top right, rgba(79,191,159,0.16), transparent 34%),
+linear-gradient(160deg, rgba(18,48,71,0.96), rgba(29,73,104,0.92));
+color:white;
+}
+
+.profile-drawer__avatar-wrap{
+position:relative;
+width:120px;
+height:120px;
+margin:0 auto 18px;
+}
+
+.profile-drawer__avatar{
+width:120px;
+height:120px;
+font-size:2rem;
+box-shadow:0 16px 34px rgba(0,0,0,0.24), inset 0 0 0 4px rgba(255,255,255,0.84);
+}
+
+.profile-drawer__status-dot{
+position:absolute;
+right:10px;
+bottom:10px;
+width:20px;
+height:20px;
+border-radius:999px;
+background:#21c783;
+box-shadow:0 0 0 4px rgba(18,48,71,0.92);
+}
+
+.profile-drawer__name{
+margin:0;
+font-size:1.35rem;
+line-height:1.2;
+font-weight:900;
+}
+
+.profile-drawer__email{
+margin:8px 0 0;
+color:rgba(255,255,255,0.82);
+font-size:0.94rem;
+overflow-wrap:anywhere;
+}
+
+.profile-drawer__body{
+padding:22px 24px 28px;
+display:grid;
+gap:18px;
+overflow-y:auto;
+}
+
+.profile-drawer__status{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+padding:14px 16px;
+border-radius:16px;
+background:#effaf5;
+border:1px solid rgba(33,199,131,0.26);
+color:#126a44;
+font-weight:900;
+}
+
+.profile-drawer__status-pill{
+display:inline-flex;
+align-items:center;
+gap:8px;
+padding:7px 10px;
+border-radius:999px;
+background:#20bf7a;
+color:white;
+font-size:0.82rem;
+}
+
+.profile-drawer__status-pill::before{
+content:"";
+width:8px;
+height:8px;
+border-radius:999px;
+background:white;
+}
+
+.profile-info-grid{
+display:grid;
+gap:10px;
+}
+
+.profile-info-row{
+padding:13px 14px;
+border-radius:14px;
+background:rgba(255,255,255,0.92);
+border:1px solid rgba(188,210,226,0.9);
+display:grid;
+gap:5px;
+}
+
+.profile-info-row span{
+color:var(--muted);
+font-size:0.78rem;
+font-weight:800;
+text-transform:uppercase;
+letter-spacing:0.05em;
+}
+
+.profile-info-row strong{
+color:var(--text);
+font-size:0.98rem;
+overflow-wrap:anywhere;
+}
+
+.profile-drawer__actions{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.profile-drawer__theme{
+padding:15px 16px;
+border-radius:16px;
+background:rgba(255,255,255,0.92);
+border:1px solid rgba(188,210,226,0.9);
+display:grid;
+gap:10px;
+}
+
+.profile-drawer__theme label{
+color:var(--muted);
+font-size:0.78rem;
+font-weight:900;
+text-transform:uppercase;
+letter-spacing:0.05em;
+}
+
+.profile-drawer__theme select{
+width:100%;
+height:42px;
+border:1px solid rgba(188,210,226,0.95);
+border-radius:12px;
+background:white;
+color:var(--text);
+font-weight:800;
+padding:0 12px;
+}
+
+.profile-drawer__edit,
+.profile-drawer__logout{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-height:42px;
+padding:0 16px;
+border-radius:12px;
+font-weight:900;
+text-decoration:none;
+}
+
+.profile-drawer__edit{
+background:var(--mint-dark);
+color:white;
+}
+
+.profile-drawer__logout{
+background:rgba(18,48,71,0.08);
+color:var(--text);
+}
+
+body.theme-dark .profile-drawer{
+background:linear-gradient(180deg, #121a20, #1b242a);
+border-left-color:#303a41;
+}
+
+body.theme-dark .profile-drawer__status{
+background:rgba(33,199,131,0.12);
+border-color:rgba(33,199,131,0.28);
+color:#8af0c4;
+}
+
+body.theme-dark .profile-info-row{
+background:rgba(255,255,255,0.05);
+border-color:rgba(255,255,255,0.11);
+}
+
+body.theme-dark .profile-drawer__theme{
+background:rgba(255,255,255,0.05);
+border-color:rgba(255,255,255,0.11);
+}
+
+body.theme-dark .profile-drawer__theme select{
+background:#16242e;
+border-color:#324652;
+color:var(--text);
 }
 
 .topbar-tools{
@@ -96,6 +405,104 @@ align-items:center;
 gap:12px;
 flex-wrap:wrap;
 justify-content:flex-end;
+}
+
+.topbar-notifications{
+display:inline-flex;
+align-items:center;
+gap:8px;
+flex-wrap:wrap;
+justify-content:flex-end;
+}
+
+.topbar-notification{
+display:inline-flex;
+align-items:center;
+gap:7px;
+min-height:34px;
+padding:6px 9px 6px 12px;
+border-radius:999px;
+background:rgba(255,255,255,0.12);
+color:white;
+text-decoration:none;
+font-size:0.82rem;
+font-weight:800;
+white-space:nowrap;
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.topbar-notification:hover{
+background:rgba(255,255,255,0.2);
+}
+
+.topbar-notification__count{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-width:22px;
+height:22px;
+padding:0 7px;
+border-radius:999px;
+background:#f5fbff;
+color:var(--navy);
+font-size:0.78rem;
+line-height:1;
+}
+
+.topbar-notification--warning .topbar-notification__count{
+background:#ffe8b7;
+color:#8a5700;
+}
+
+.topbar-notification--danger .topbar-notification__count{
+background:#ffd2ce;
+color:#a52018;
+}
+
+.topbar-notification--info .topbar-notification__count{
+background:#dff1ff;
+color:#0e4e7a;
+}
+
+.entity-switcher{
+display:inline-flex;
+align-items:center;
+gap:8px;
+min-height:34px;
+padding:5px 8px 5px 12px;
+border-radius:999px;
+background:rgba(255,255,255,0.13);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.entity-switcher label{
+font-size:0.78rem;
+font-weight:900;
+text-transform:uppercase;
+letter-spacing:0.04em;
+color:rgba(255,255,255,0.82);
+white-space:nowrap;
+}
+
+.entity-switcher select{
+height:28px;
+border:0;
+border-radius:999px;
+background:#f5fbff;
+color:var(--navy);
+font-weight:900;
+padding:0 30px 0 10px;
+}
+
+.entity-switcher select:focus{
+outline:2px solid rgba(79,191,159,0.42);
+outline-offset:2px;
+}
+
+.entity-switcher strong{
+color:white;
+font-size:0.82rem;
+white-space:nowrap;
 }
 
 .theme-switcher{
@@ -287,6 +694,7 @@ background:var(--paper);
 border-radius:18px;
 overflow:hidden;
 box-shadow:var(--shadow);
+counter-reset:table-row-number;
 }
 
 .table th{
@@ -299,6 +707,31 @@ text-align:left;
 .table td{
 padding:14px 16px;
 border-bottom:1px solid var(--border);
+}
+
+.table tbody tr:not(:has(td[colspan])){
+counter-increment:table-row-number;
+}
+
+.table tbody tr:not(:has(td[colspan])) td:first-child::before{
+content:counter(table-row-number);
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-width:24px;
+height:24px;
+margin-right:10px;
+border-radius:999px;
+background:#edf5fb;
+color:var(--navy);
+font-size:0.78rem;
+font-weight:900;
+vertical-align:middle;
+}
+
+body.theme-dark .table tbody tr:not(:has(td[colspan])) td:first-child::before{
+background:#233847;
+color:#dcecf8;
 }
 
 .btn{
@@ -426,6 +859,39 @@ border-radius:24px;
 padding:28px;
 box-shadow:var(--shadow);
 max-width:980px;
+}
+
+.profile-layout{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+gap:22px;
+align-items:start;
+}
+
+.profile-layout .form-shell{
+max-width:none;
+}
+
+.profile-photo-field{
+display:flex;
+align-items:center;
+gap:18px;
+flex-wrap:wrap;
+padding:14px;
+border:1px solid var(--border);
+border-radius:18px;
+background:rgba(255,255,255,0.72);
+}
+
+.profile-photo-input{
+flex:1;
+min-width:240px;
+}
+
+.section-title{
+margin:0 0 18px 0;
+font-size:1.25rem;
+color:var(--navy);
 }
 
 .app-form input,
@@ -800,8 +1266,17 @@ color:var(--text);
 border:1px solid var(--border);
 }
 
+body.theme-dark .profile-photo-field{
+background:#0d1820;
+border-color:var(--border);
+}
+
 body.theme-dark .subtab{
 color:#c5d9e5;
+}
+
+body.theme-dark .section-title{
+color:#e5f0f7;
 }
 
 body.theme-dark .subtab:hover{
@@ -935,17 +1410,21 @@ min-width:0;
 {% if not is_admin_user and user_role == 'secretaire' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>{% endif %}
 {% if can_access_operations_secretaire %}<a href="/operations/secretaire/" class="sidebar-standalone {% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire</span></a>{% endif %}
-{% elif not is_admin_user and user_role == 'caissiere' or not is_admin_user and user_role == 'caissiere_soni' %}
+{% elif not is_admin_user and user_role == 'caissiere' or not is_admin_user and user_role == 'caissiere_soni' or not is_admin_user and user_role == 'caissiere_avena' %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/maintenance/paiements/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Caisse</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/maintenance/paiements/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/depenses/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Mouvements caisse</span></a>
     <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Paiements</span></a>
+    <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport caisse</span></a>
     <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation de caisse</span></a>
+    <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
 </div>
 </div>
+{% if user_role == 'caissiere' %}
 <div class="sidebar-section" data-sidebar-section>
 <button type="button" class="sidebar-section__toggle {% if '/maintenance/rapports/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9643;</span>Maintenance</span>
@@ -955,6 +1434,7 @@ min-width:0;
     <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport maintenance</span></a>
 </div>
 </div>
+{% endif %}
 {% elif not is_admin_user and user_role == 'comptable_sogefi' %}
 <div class="sidebar-section" data-sidebar-section>
 <button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path or '/maintenance/paiements/' in request.path %}active{% endif %}" data-sidebar-toggle>
@@ -966,6 +1446,31 @@ min-width:0;
     <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements</span></a>
     <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
     <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+</div>
+</div>
+{% elif not is_admin_user and user_role == 'comptable_avena' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/depenses/' in request.path or '/maintenance/fournisseurs/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses Avena</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/depenses/' in request.path or '/maintenance/fournisseurs/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
+    <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
+    <a href="/depenses/rapport/" class="{% if '/depenses/rapport/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapports</span></a>
+    <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
+    <a href="/depenses/types/" class="{% if '/depenses/types/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Types de depense</span></a>
+</div>
+</div>
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/paiements/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Caisse Avena</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/paiements/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Approvisionnements</span></a>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
 </div>
 </div>
 {% elif not is_admin_user and user_role == 'commercial' or not is_admin_user and user_role == 'responsable_commercial' %}
@@ -1001,10 +1506,35 @@ min-width:0;
 </div>
 </div>
 {% endif %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9679;</span>Caisse SONI</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Approvisionnements</span></a>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements caisse</span></a>
+    <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport caisse</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+    <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+</div>
+</div>
 {% elif not is_admin_user and user_role == 'dga_sogefi' %}
 <div class="sidebar-section" data-sidebar-section>
 <button type="button" class="sidebar-section__toggle {% if '/depenses/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses internes</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/depenses/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/depenses/ajouter/" class="{% if '/depenses/ajouter/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9998;</span>Nouvelle expression</span></a>
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
+    <a href="/depenses/?statut=attente_validation_dga_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dga_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Validation</span></a>
+</div>
+</div>
+{% elif not is_admin_user and user_role == 'dga_avena' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/depenses/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses Avena</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
 <div class="sidebar-section__panel {% if '/depenses/' in request.path %}is-open{% endif %}" data-sidebar-panel>
@@ -1074,6 +1604,105 @@ min-width:0;
 {% elif not is_admin_user and user_role == 'chef_chauffeur' %}
 {% if can_access_reports_center %}<a href="/camions/rapports/" class="sidebar-standalone {% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>{% endif %}
 {% if can_access_operations_chef_chauffeur %}<a href="/operations/chef-chauffeur/" class="sidebar-standalone {% if '/operations/chef-chauffeur/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Chef chauffeur</span></a>{% endif %}
+{% else %}
+{% if sidebar_entity_mode %}
+    {% if sidebar_entity_is_sogefi %}
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Dossiers SOGEFI</span></a>
+    <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
+    <a href="/depenses/?statut=attente_validation_dga_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dga_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Validation DGA SOGEFI</span></a>
+    <a href="/depenses/?statut=attente_validation_dg_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dg_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Validation DG</span></a>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements SOGEFI</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+    <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+    <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
+    {% elif sidebar_entity_is_avena %}
+    <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Dossiers Avena</span></a>
+    <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
+    <a href="/depenses/?statut=attente_validation_dga_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dga_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Validation DGA Avena</span></a>
+    <a href="/depenses/?statut=attente_validation_dg_engagement" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_validation_dg_engagement' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Validation DG</span></a>
+    <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements Avena</span></a>
+    <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Approvisionnements</span></a>
+    <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+    <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
+    {% elif sidebar_entity_is_soni %}
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Rapports</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/commandes/rapport-global/" class="{% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>
+            <a href="/camions/rapports/" class="{% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>
+            <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Rapports maintenance</span></a>
+            <a href="/maintenance/stock/rapports/" class="{% if '/maintenance/stock/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapports stock</span></a>
+            <a href="/maintenance/rapports/pannes/" class="{% if '/maintenance/rapports/pannes/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Pannes / main d'oeuvre</span></a>
+        </div>
+    </div>
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9688;</span>Commercial</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/prospects/" class="{% if '/prospects/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9676;</span>Prospects</span></a>
+            <a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>
+            <a href="/commandes/" class="{% if '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Commandes</span></a>
+        </div>
+    </div>
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/operations/secretaire/' in request.path or '/operations/comptable/' in request.path or '/operations/facturation/' in request.path or '/clients/encaissements/' in request.path or '/maintenance/caisse/appro/' in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Comptabilite</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/operations/secretaire/' in request.path or '/operations/comptable/' in request.path or '/operations/facturation/' in request.path or '/clients/encaissements/' in request.path or '/maintenance/caisse/appro/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/operations/secretaire/" class="{% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire BL</span></a>
+            <a href="/operations/comptable/" class="{% if '/operations/comptable/' in request.path and '/operations/comptable/sommiers/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Operation comptable</span></a>
+            <a href="/operations/comptable/sommiers/" class="{% if '/operations/comptable/sommiers/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Sommiers</span></a>
+            <a href="/operations/facturation/" class="{% if '/operations/facturation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Facturation</span></a>
+            <a href="/clients/encaissements/" class="{% if '/clients/encaissements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Encaissements clients</span></a>
+            <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Appro caisse</span></a>
+        </div>
+    </div>
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9679;</span>Caissiere</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/maintenance/caisse/appro/' in request.path or '/maintenance/paiements/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/caisse/situation/' in request.path or '/maintenance/caisse/dg/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/maintenance/caisse/appro/" class="{% if '/maintenance/caisse/appro/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Mouvements caisse</span></a>
+            <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements caisse</span></a>
+            <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport caisse</span></a>
+            <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+            <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+        </div>
+    </div>
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/operations/logisticien/' in request.path or '/operations/transitaire/' in request.path or '/operations/chef-chauffeur/' in request.path or '/camions/' in request.path and '/camions/rapports/' not in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9672;</span>Logistique</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/operations/logisticien/' in request.path or '/operations/transitaire/' in request.path or '/operations/chef-chauffeur/' in request.path or '/camions/' in request.path and '/camions/rapports/' not in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/operations/transitaire/" class="{% if '/operations/transitaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8644;</span>Transitaire</span></a>
+            <a href="/operations/logisticien/" class="{% if '/operations/logisticien/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8646;</span>Chargement / Livraison</span></a>
+            <a href="/operations/chef-chauffeur/" class="{% if '/operations/chef-chauffeur/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Chef chauffeur</span></a>
+            <a href="/camions/" class="{% if '/camions/' in request.path and '/camions/rapports/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Parc automobile</span></a>
+            <a href="/chauffeurs/" class="{% if '/chauffeurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9675;</span>Chauffeurs</span></a>
+            <a href="/documents/" class="{% if '/documents/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Documents</span></a>
+        </div>
+    </div>
+    <div class="sidebar-section sidebar-subsection" data-sidebar-section>
+        <button type="button" class="sidebar-section__toggle {% if '/maintenance/' in request.path or '/depenses/' in request.path %}active{% endif %}" data-sidebar-toggle>
+            <span class="sidebar-label"><span class="sidebar-menu-icon">&#9689;</span>Maintenance</span>
+            <span class="sidebar-section__icon">&#9662;</span>
+        </button>
+        <div class="sidebar-section__panel {% if '/maintenance/' in request.path or '/depenses/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+            <a href="/maintenance/paiements/" class="{% if '/maintenance/paiements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Paiements SONI</span></a>
+            <a href="/maintenance/" class="{% if request.path == '/maintenance/' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Maintenance</span></a>
+            <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
+            <a href="/depenses/" class="{% if '/depenses/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses SONI</span></a>
+        </div>
+    </div>
+    {% endif %}
 {% else %}
 {% if can_access_reports_center %}
 <div class="sidebar-section" data-sidebar-section>
@@ -1156,6 +1785,7 @@ min-width:0;
 </div>
 </div>
 {% endif %}
+{% endif %}
 
 {% if can_access_settings or can_access_operations_general %}
 <div class="sidebar-section" data-sidebar-section>
@@ -1180,24 +1810,103 @@ min-width:0;
 <div class="topbar">
 <div class="topbar-message">Utiliser l'application en version demo pour vos tests et validations.</div>
 <div class="topbar-tools">
-<div class="theme-switcher">
-Theme
-<select id="theme-select" aria-label="Choisir le theme">
-<option value="light">Clair</option>
-<option value="dark">Sombre</option>
+{% if can_use_global_entity_selector %}
+<form method="post" action="/comptes/entite-supervision/" class="entity-switcher" id="entity-switcher-form">
+{% csrf_token %}
+<input type="hidden" name="next" value="{{ request.get_full_path }}">
+<label for="entity-switcher-select">Entite</label>
+<select name="entity" id="entity-switcher-select" aria-label="Choisir l'entite de supervision">
+{% for entity_value, entity_label in supervision_entity_choices %}
+<option value="{{ entity_value }}" {% if active_supervision_entity == entity_value %}selected{% endif %}>{{ entity_label }}</option>
+{% endfor %}
 </select>
+</form>
+{% elif active_supervision_entity_label %}
+<span class="entity-switcher" aria-label="Entite active"><label>Entite</label><strong>{{ active_supervision_entity_label }}</strong></span>
+{% endif %}
+{% if topbar_notifications %}
+<div class="topbar-notifications" aria-label="Notifications">
+{% for notification in topbar_notifications %}
+<a href="{{ notification.url }}" class="topbar-notification topbar-notification--{{ notification.tone }}" title="{{ notification.label }} : {{ notification.count }}">
+<span>{{ notification.label }}</span>
+<span class="topbar-notification__count">{{ notification.count }}</span>
+</a>
+{% endfor %}
 </div>
+{% endif %}
 <div class="topbar-user">
-Utilisateur :
 {% if request.user.is_authenticated %}
-{{ request.user.username }}{% if user_role_label %} ({{ user_role_label }}){% endif %}
-<a href="/comptes/deconnexion/" style="color:white; text-decoration:none; margin-left:8px;">Quitter</a>
+<button type="button" class="topbar-user-button" id="profile-drawer-open" aria-controls="profile-drawer" aria-expanded="false">
+<span class="user-avatar" aria-hidden="true">
+{% if current_user_profile.photo %}
+<img src="{{ current_user_profile.photo.url }}" alt="">
+{% else %}
+<span>{{ current_user_initials }}</span>
+{% endif %}
+</span>
+</button>
 {% else %}
 <a href="/comptes/connexion/" style="color:white; text-decoration:none;">Connexion</a>
 {% endif %}
 </div>
 </div>
 </div>
+
+{% if request.user.is_authenticated %}
+<div class="profile-drawer-backdrop" id="profile-drawer-backdrop"></div>
+<aside class="profile-drawer" id="profile-drawer" aria-hidden="true" aria-labelledby="profile-drawer-title">
+<button type="button" class="profile-drawer__close" id="profile-drawer-close" aria-label="Fermer le profil">x</button>
+<div class="profile-drawer__hero">
+<div class="profile-drawer__avatar-wrap">
+<span class="profile-avatar profile-drawer__avatar" aria-hidden="true">
+{% if current_user_profile.photo %}
+<img src="{{ current_user_profile.photo.url }}" alt="">
+{% else %}
+<span>{{ current_user_initials }}</span>
+{% endif %}
+</span>
+{% if request.user.is_active %}<span class="profile-drawer__status-dot" title="Compte actif"></span>{% endif %}
+</div>
+<h2 class="profile-drawer__name" id="profile-drawer-title">{{ request.user.get_full_name|default:request.user.username }}</h2>
+<p class="profile-drawer__email">{{ request.user.email|default:"Aucun email renseigne" }}</p>
+</div>
+<div class="profile-drawer__body">
+<div class="profile-drawer__status">
+<span>Etat du compte</span>
+<span class="profile-drawer__status-pill">{% if request.user.is_active %}Actif{% else %}Inactif{% endif %}</span>
+</div>
+<div class="profile-info-grid">
+<div class="profile-info-row">
+<span>Nom complet</span>
+<strong>{{ request.user.get_full_name|default:"Non renseigne" }}</strong>
+</div>
+<div class="profile-info-row">
+<span>Login</span>
+<strong>{{ request.user.username }}</strong>
+</div>
+<div class="profile-info-row">
+<span>Email</span>
+<strong>{{ request.user.email|default:"Non renseigne" }}</strong>
+</div>
+<div class="profile-info-row">
+<span>Poste</span>
+<strong>{{ user_role_label|default:"Aucun role" }}</strong>
+</div>
+</div>
+<div class="profile-drawer__theme">
+<label for="theme-select">Theme</label>
+<select id="theme-select" aria-label="Choisir le theme">
+<option value="light">Mode clair</option>
+<option value="dark">Mode sombre</option>
+</select>
+</div>
+<div class="profile-drawer__actions">
+<a href="/comptes/profil/" class="profile-drawer__edit">Modifier</a>
+<a href="/comptes/deconnexion/" class="profile-drawer__logout">Se deconnecter</a>
+</div>
+</div>
+</aside>
+{% endif %}
 
 <div class="content">
 
@@ -1223,6 +1932,11 @@ Utilisateur :
 const mobileNavToggle = document.getElementById("mobile-nav-toggle");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
 const themeSelect = document.getElementById("theme-select");
+const entitySwitcherSelect = document.getElementById("entity-switcher-select");
+const profileDrawer = document.getElementById("profile-drawer");
+const profileDrawerOpen = document.getElementById("profile-drawer-open");
+const profileDrawerClose = document.getElementById("profile-drawer-close");
+const profileDrawerBackdrop = document.getElementById("profile-drawer-backdrop");
 
 function toggleSidebar(forceOpen) {
     const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !document.body.classList.contains("sidebar-open");
@@ -1241,8 +1955,28 @@ function applyTheme(theme) {
 mobileNavToggle?.addEventListener("click", () => toggleSidebar());
 sidebarOverlay?.addEventListener("click", () => toggleSidebar(false));
 themeSelect?.addEventListener("change", (event) => applyTheme(event.target.value));
+entitySwitcherSelect?.addEventListener("change", () => document.getElementById("entity-switcher-form")?.submit());
 
 applyTheme(localStorage.getItem("mst-theme") || "light");
+
+function toggleProfileDrawer(forceOpen) {
+    if (!profileDrawer || !profileDrawerOpen) {
+        return;
+    }
+    const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !document.body.classList.contains("profile-drawer-open");
+    document.body.classList.toggle("profile-drawer-open", shouldOpen);
+    profileDrawer.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+    profileDrawerOpen.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+}
+
+profileDrawerOpen?.addEventListener("click", () => toggleProfileDrawer());
+profileDrawerClose?.addEventListener("click", () => toggleProfileDrawer(false));
+profileDrawerBackdrop?.addEventListener("click", () => toggleProfileDrawer(false));
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        toggleProfileDrawer(false);
+    }
+});
 
 document.querySelectorAll("[data-modal-target]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1262,7 +1996,7 @@ const sidebarSections = document.querySelectorAll("[data-sidebar-section]");
 
 function closeOtherSidebarSections(currentSection) {
     sidebarSections.forEach((section) => {
-        if (section === currentSection) {
+        if (section === currentSection || section.contains(currentSection) || currentSection.contains(section)) {
             return;
         }
         section.querySelector("[data-sidebar-toggle]")?.classList.remove("active");

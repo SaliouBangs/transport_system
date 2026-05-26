@@ -8,13 +8,13 @@
   <div class="cash-hero">
     <div class="cash-hero__main">
       <p class="cash-eyebrow">Caisse</p>
-      <h1>Approvisionnement de la caisse</h1>
+      <h1>Mouvements de caisse</h1>
       <p class="cash-hero__subtitle">
-        Le comptable pilote ici les avances de caisse, suit les sorties deja consommees
-        et garde une lecture immediate du disponible.
+        La caisse peut enregistrer un emprunt DG en espece, un remboursement DG,
+        un retour en caisse ou un approvisionnement classique selon le profil connecte.
       </p>
       <p class="cash-hero__subtitle" style="margin-top:10px;">
-        Les avances du DG et ses remboursements sont suivis a part dans l'onglet <strong>Compte DG</strong>.
+        Les emprunts DG et leurs remboursements alimentent aussi l'onglet <strong>Compte DG</strong>.
       </p>
     </div>
     <div class="cash-hero__badge">
@@ -31,9 +31,9 @@
       <small class="cash-kpi__hint">Montant de depart de la caisse</small>
     </article>
     <article class="cash-kpi cash-kpi--soft">
-      <span class="cash-kpi__label">Approvisionnements</span>
+      <span class="cash-kpi__label">Entrees caisse</span>
       <strong class="cash-kpi__value">{{ total_appro }} GNF</strong>
-      <small class="cash-kpi__hint">Montants injectes dans la caisse</small>
+      <small class="cash-kpi__hint">Emprunts, approvisionnements et retours</small>
     </article>
     <article class="cash-kpi cash-kpi--warning">
       <span class="cash-kpi__label">Sorties caisse</span>
@@ -53,7 +53,7 @@
       <div class="cash-card__header">
         <div>
           <p class="cash-section-label">Nouvel appro</p>
-          <h2>Enregistrer un approvisionnement</h2>
+          <h2>Enregistrer un mouvement</h2>
         </div>
         <div class="cash-icon-bubble">+</div>
       </div>
@@ -116,7 +116,7 @@
         </div>
         <div class="cash-inline-note">
           <strong>Rappel :</strong>
-          <span>Avance DG en espece : caisse + compte DG. Remboursement DG par cheque : compte DG seulement. Approvisionnement caisse par cheque : caisse seulement.</span>
+          <span>Emprunt DG : entree caisse + dette DG. Remboursement DG en espece : sortie caisse + baisse dette DG. Retour en caisse : entree caisse seule.</span>
         </div>
         <div class="cash-field">
           <label for="{{ form.observation.id_for_label }}">Observation</label>
@@ -124,7 +124,7 @@
           {{ form.observation.errors }}
         </div>
       <div class="cash-form__footer">
-          <button type="submit" class="cash-submit">Enregistrer l'approvisionnement</button>
+          <button type="submit" class="cash-submit">Enregistrer le mouvement</button>
           <span class="cash-helper">Chaque appro est conserve dans l'historique de caisse.</span>
         </div>
       </form>
@@ -237,7 +237,7 @@
     <div class="cash-card__header">
       <div>
         <p class="cash-section-label">Historique</p>
-        <h2>Derniers approvisionnements</h2>
+        <h2>Derniers mouvements</h2>
       </div>
       <div class="cash-history-tag">{{ approvisionnements|length }} ligne(s)</div>
     </div>
@@ -280,7 +280,7 @@
             <td class="cash-money"><strong>{{ appro.montant|floatformat:0 }} GNF</strong></td>
           </tr>
           {% empty %}
-          <tr><td colspan="8">Aucun approvisionnement enregistre pour cette selection.</td></tr>
+          <tr><td colspan="8">Aucun mouvement enregistre pour cette selection.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -962,7 +962,7 @@
     }
 
     const natureOptionsByMode = {
-        espece: ["urgence_dg_espece"],
+        espece: ["urgence_dg_espece", "remboursement_dg_espece", "retour_caisse"],
         cheque: ["retrait_remboursement", "cheque_direct"]
     };
 
@@ -977,7 +977,7 @@
     };
 
     const syncModeWithNature = () => {
-        if (natureField.value === "urgence_dg_espece") {
+        if (natureField.value === "urgence_dg_espece" || natureField.value === "remboursement_dg_espece" || natureField.value === "retour_caisse") {
             modeField.value = "espece";
         } else if (natureField.value === "retrait_remboursement" || natureField.value === "cheque_direct") {
             modeField.value = "cheque";

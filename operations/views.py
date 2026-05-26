@@ -1,9 +1,11 @@
 from datetime import date
 from io import BytesIO
+from pathlib import Path
 from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.db.models import Exists
@@ -33,10 +35,11 @@ from .forms import (
     RegimeDouanierForm,
     SommierForm,
 )
-from .models import HistoriqueAffectationOperation, Operation, Produit, Sommier
+from .models import DemandeNouveauBL, HistoriqueAffectationOperation, Operation, Produit, Sommier
 
 
 TVA_RATE = Decimal("0.18")
+SECRETAIRE_PER_PAGE = 25
 
 ETATS_TRANSITAIRE_RECEPTION = {"attente_reception_transitaire"}
 ETATS_TRANSITAIRE_TRAITEMENT = {"transmis", "declare", "liquide", "attente_reception_logistique"}
@@ -275,12 +278,12 @@ def _apply_logistique_group_expense_display(operations):
         for item in items:
             depenses = list(getattr(item, "depenses_chargement_items", []))
             item.depenses_bl_total = sum(
-                (Decimal(depense.montant_total or depense.montant_estime or 0)
+                (Decimal(depense.montant_comptable or 0)
                  for depense in depenses if depense.portee_chargement == Depense.PORTEE_BL),
                 Decimal("0"),
             )
             item.depenses_commande_total = sum(
-                (Decimal(depense.montant_total or depense.montant_estime or 0)
+                (Decimal(depense.montant_comptable or 0)
                  for depense in depenses if depense.portee_chargement == Depense.PORTEE_COMMANDE),
                 Decimal("0"),
             )
@@ -313,7 +316,7 @@ def _apply_logistique_group_expense_display(operations):
 
 def _commande_sibling_operations(operation, expected_state=None):
     if not operation.commande_id:
-        queryset = Operation.objects.filter(id=operation.id)
+        queryset = Operation.objects.filter(id=operation.id, remplace_par__isnull=True)
     else:
         queryset = Operation.objects.filter(
             commande_id=operation.commande_id,
@@ -586,7 +589,7 @@ def _operations_queryset(request):
         "chauffeur",
         "produit",
         "commande",
-    )
+    ).filter(remplace_par__isnull=True)
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -610,7 +613,7 @@ def _secretaire_queryset(request):
     etat = request.GET.get("etat", "").strip()
     date_from = request.GET.get("date_from", "").strip()
     date_to = request.GET.get("date_to", "").strip()
-    operations = Operation.objects.select_related("commande", "client", "camion", "chauffeur", "produit")
+    operations = Operation.objects.select_related("commande", "client", "camion", "chauffeur", "produit").filter(remplace_par__isnull=True)
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -633,7 +636,7 @@ def _transitaire_queryset(request):
     etat = request.GET.get("etat", "").strip()
     date_from = request.GET.get("date_from", "").strip()
     date_to = request.GET.get("date_to", "").strip()
-    operations = Operation.objects.select_related("client", "camion", "chauffeur", "commande")
+    operations = Operation.objects.select_related("client", "camion", "chauffeur", "commande").filter(remplace_par__isnull=True)
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -656,7 +659,7 @@ def _transitaire_history_queryset(request):
     etat = request.GET.get("etat", "").strip()
     date_from = request.GET.get("date_from", "").strip()
     date_to = request.GET.get("date_to", "").strip()
-    operations = Operation.objects.select_related("client", "camion", "chauffeur", "commande")
+    operations = Operation.objects.select_related("client", "camion", "chauffeur", "commande").filter(remplace_par__isnull=True)
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -906,7 +909,7 @@ def ajouter_operation(request):
 
 
 def modifier_operation(request, id):
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     if request.method == "POST":
         form = OperationForm(request.POST, instance=operation)
         if form.is_valid():
@@ -930,7 +933,7 @@ def modifier_operation(request, id):
 
 
 def supprimer_operation(request, id):
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     operation.delete()
     return redirect("operations")
 
@@ -943,6 +946,15 @@ def comptable_operations(request):
         statut="planifiee"
     )
     operations = Operation.objects.select_related("commande", "client", "produit", "camion", "chauffeur", "remplace_par").prefetch_related("anciennes_versions")
+    demandes_nouveau_bl = DemandeNouveauBL.objects.select_related(
+        "ancienne_operation",
+        "commande",
+        "commande__client",
+        "commande__produit",
+        "nouveau_camion",
+        "nouveau_chauffeur",
+        "cree_par",
+    ).filter(statut=DemandeNouveauBL.STATUT_EN_ATTENTE)
 
     if query:
         commandes_pretes_queryset = commandes_pretes_queryset.filter(
@@ -955,6 +967,12 @@ def comptable_operations(request):
             Q(numero_bl__icontains=query)
             | Q(commande__reference__icontains=query)
             | Q(client__entreprise__icontains=query)
+        )
+        demandes_nouveau_bl = demandes_nouveau_bl.filter(
+            Q(ancienne_operation__numero_bl__icontains=query)
+            | Q(commande__reference__icontains=query)
+            | Q(commande__client__entreprise__icontains=query)
+            | Q(nouveau_camion__numero_tracteur__icontains=query)
         )
 
     commandes_pretes = []
@@ -978,12 +996,109 @@ def comptable_operations(request):
         "operations/comptable.html",
         {
             "commandes_pretes": commandes_pretes,
+            "demandes_nouveau_bl": demandes_nouveau_bl,
             "operations": operations,
             "query": query,
             "scope": scope,
             "active_tab": "comptable",
         },
     )
+
+
+def _generate_archived_bl_number(numero_bl):
+    base = numero_bl or "BL"
+    suffix = 1
+    candidate = f"{base}-ANCIEN"
+    while Operation.objects.filter(numero_bl=candidate).exists():
+        suffix += 1
+        candidate = f"{base}-ANCIEN-{suffix}"
+    return candidate
+
+
+def creer_bl_depuis_demande(request, id):
+    if request.method != "POST":
+        return redirect("comptable_operations")
+
+    demande = get_object_or_404(
+        DemandeNouveauBL.objects.select_related(
+            "ancienne_operation",
+            "ancienne_operation__camion",
+            "ancienne_operation__chauffeur",
+            "commande",
+            "nouveau_camion",
+            "nouveau_chauffeur",
+        ),
+        id=id,
+        statut=DemandeNouveauBL.STATUT_EN_ATTENTE,
+    )
+    ancienne_operation = demande.ancienne_operation
+    if ancienne_operation.remplace_par_id:
+        demande.statut = DemandeNouveauBL.STATUT_ANNULEE
+        demande.processed_at = timezone.now()
+        demande.traitee_par = request.user
+        demande.save(update_fields=["statut", "processed_at", "traitee_par"])
+        messages.info(request, "Cette demande avait deja ete traitee.")
+        return redirect("comptable_operations")
+
+    with transaction.atomic():
+        ancienne_operation = Operation.objects.select_for_update().select_related(
+            "commande",
+            "client",
+            "produit",
+            "camion",
+            "chauffeur",
+            "regime_douanier",
+            "depot",
+            "sommier",
+        ).get(pk=ancienne_operation.pk)
+        demande = DemandeNouveauBL.objects.select_for_update().get(pk=demande.pk)
+
+        numero_bl_original = ancienne_operation.numero_bl
+        ancienne_operation.numero_bl = _generate_archived_bl_number(numero_bl_original)
+        ancienne_operation.save(update_fields=["numero_bl"])
+
+        nouvelle_operation = Operation.objects.create(
+            numero_bl=numero_bl_original,
+            etat_bon="initie",
+            commande=ancienne_operation.commande,
+            reference_externe=ancienne_operation.reference_externe,
+            regime_douanier=ancienne_operation.regime_douanier,
+            depot=ancienne_operation.depot,
+            sommier=ancienne_operation.sommier,
+            client=ancienne_operation.client,
+            destination=ancienne_operation.destination,
+            camion=demande.nouveau_camion,
+            chauffeur=demande.nouveau_chauffeur,
+            produit=ancienne_operation.produit,
+            quantite=ancienne_operation.quantite,
+            date_bl=ancienne_operation.date_bl,
+            observation=ancienne_operation.observation,
+            stock_sommier_deduit=False,
+        )
+        ancienne_operation.remplace_par = nouvelle_operation
+        ancienne_operation.save(update_fields=["remplace_par"])
+        HistoriqueAffectationOperation.objects.create(
+            operation=nouvelle_operation,
+            ancien_camion=ancienne_operation.camion,
+            ancien_chauffeur=ancienne_operation.chauffeur,
+            ancien_livreur=ancienne_operation.livreur,
+            ancienne_date_decharge_chauffeur=ancienne_operation.date_decharge_chauffeur,
+            ancienne_heure_decharge_chauffeur=ancienne_operation.heure_decharge_chauffeur,
+            ancien_etat_bon=ancienne_operation.etat_bon,
+            nouveau_camion=demande.nouveau_camion,
+            nouveau_chauffeur=demande.nouveau_chauffeur,
+        )
+        demande.nouvelle_operation = nouvelle_operation
+        demande.statut = DemandeNouveauBL.STATUT_TRAITEE
+        demande.traitee_par = request.user
+        demande.processed_at = timezone.now()
+        demande.save(update_fields=["nouvelle_operation", "statut", "traitee_par", "processed_at"])
+
+    messages.success(
+        request,
+        f"Le nouveau BL {nouvelle_operation.numero_bl} a ete cree et envoye au circuit secretaire.",
+    )
+    return redirect("comptable_operations")
 
 
 def secretaire_operations(request):
@@ -993,6 +1108,31 @@ def secretaire_operations(request):
     operations_transmitted = list(
         operations.exclude(etat_bon="initie").order_by("-date_transmission_depot", "-date_creation")
     )
+    total_essence = sum(
+        (operation.quantite or Decimal("0.00"))
+        for operation in operations_transmitted
+        if (
+            (operation.produit and (operation.produit.nom or "").upper() == "ESSENCE")
+            or (
+                operation.commande
+                and operation.commande.produit
+                and (operation.commande.produit.nom or "").upper() == "ESSENCE"
+            )
+        )
+    )
+    total_gasoil = sum(
+        (operation.quantite or Decimal("0.00"))
+        for operation in operations_transmitted
+        if (
+            (operation.produit and (operation.produit.nom or "").upper() == "GASOIL")
+            or (
+                operation.commande
+                and operation.commande.produit
+                and (operation.commande.produit.nom or "").upper() == "GASOIL"
+            )
+        )
+    )
+    total_quantite = sum((operation.quantite or Decimal("0.00")) for operation in operations_transmitted)
     total_to_transmit = len(operations_to_transmit)
     total_transmitted = len(operations_transmitted)
     total_today = sum(
@@ -1001,12 +1141,24 @@ def secretaire_operations(request):
         if operation.date_transmission_depot and operation.date_transmission_depot == timezone.localdate()
     )
 
+    initie_page_number = request.GET.get("page_initie") or 1
+    historique_page_number = request.GET.get("page_historique") or 1
+
+    initie_paginator = Paginator(operations_to_transmit, SECRETAIRE_PER_PAGE)
+    historique_paginator = Paginator(operations_transmitted, SECRETAIRE_PER_PAGE)
+    initie_page_obj = initie_paginator.get_page(initie_page_number)
+    historique_page_obj = historique_paginator.get_page(historique_page_number)
+
+    pagination_params = request.GET.copy()
+    pagination_params.pop("page_initie", None)
+    pagination_params.pop("page_historique", None)
+
     return render(
         request,
         "operations/secretaire.html",
         {
-            "operations_to_transmit": operations_to_transmit,
-            "operations_transmitted": operations_transmitted,
+            "operations_to_transmit": list(initie_page_obj.object_list),
+            "operations_transmitted": list(historique_page_obj.object_list),
             "query": query,
             "etat": etat,
             "date_from": date_from,
@@ -1014,8 +1166,14 @@ def secretaire_operations(request):
             "total_to_transmit": total_to_transmit,
             "total_transmitted": total_transmitted,
             "total_today": total_today,
+            "total_essence": total_essence,
+            "total_gasoil": total_gasoil,
+            "total_quantite": total_quantite,
             "active_tab": "secretaire",
             "current_filters": request.GET.urlencode(),
+            "initie_page_obj": initie_page_obj,
+            "historique_page_obj": historique_page_obj,
+            "pagination_query": pagination_params.urlencode(),
         },
     )
 
@@ -1023,24 +1181,24 @@ def secretaire_operations(request):
 def export_secretaire_xls(request):
     operations, _, _, _, _ = _secretaire_queryset(request)
     rows = []
-    for operation in operations.order_by("-date_creation"):
+    for index, operation in enumerate(operations.order_by("-date_transmission_depot", "-date_bl", "-date_creation"), start=1):
         rows.append(
             [
-                operation.numero_bl,
-                operation.commande.reference if operation.commande else "",
+                index,
+                operation.date_bl.strftime("%d/%m/%Y") if operation.date_bl else "",
+                operation.date_transmission_depot.strftime("%d/%m/%Y") if operation.date_transmission_depot else "",
                 operation.client.entreprise,
+                operation.produit.nom if operation.produit else (operation.commande.produit.nom if operation.commande and operation.commande.produit else ""),
+                float(operation.quantite) if operation.quantite is not None else "",
+                operation.numero_bl,
                 operation.camion.numero_tracteur if operation.camion else "",
-                operation.chauffeur.nom if operation.chauffeur else "",
-                operation.get_etat_bon_display(),
-                operation.date_creation.strftime("%Y-%m-%d") if operation.date_creation else "",
-                operation.date_transmission_depot.strftime("%Y-%m-%d") if operation.date_transmission_depot else "",
-                operation.date_reception_transitaire.strftime("%Y-%m-%d") if operation.date_reception_transitaire else "",
+                operation.destination,
             ]
         )
     return _build_operations_excel_response(
         "rapport_secretaire.xlsx",
         rows,
-        ["BL", "Commande", "Client", "Camion", "Chauffeur", "Etat", "Creation", "Transmission depot", "Reception transitaire"],
+        ["N°", "DATE BL", "DATE TRANSM", "CLIENT", "PRODUIT", "QUANTITE", "BL", "CAMION", "DESTINATION"],
         "Secretaire BL",
     )
 
@@ -1048,24 +1206,145 @@ def export_secretaire_xls(request):
 def export_secretaire_pdf(request):
     operations, _, _, _, _ = _secretaire_queryset(request)
     rows = []
-    for operation in operations.order_by("-date_creation"):
+    ordered_operations = list(operations.order_by("-date_transmission_depot", "-date_bl", "-date_creation"))
+    total_essence = sum(
+        (operation.quantite or Decimal("0.00"))
+        for operation in ordered_operations
+        if (
+            (operation.produit and (operation.produit.nom or "").upper() == "ESSENCE")
+            or (
+                operation.commande
+                and operation.commande.produit
+                and (operation.commande.produit.nom or "").upper() == "ESSENCE"
+            )
+        )
+    )
+    total_gasoil = sum(
+        (operation.quantite or Decimal("0.00"))
+        for operation in ordered_operations
+        if (
+            (operation.produit and (operation.produit.nom or "").upper() == "GASOIL")
+            or (
+                operation.commande
+                and operation.commande.produit
+                and (operation.commande.produit.nom or "").upper() == "GASOIL"
+            )
+        )
+    )
+    total_quantite = sum((operation.quantite or Decimal("0.00")) for operation in ordered_operations)
+
+    for index, operation in enumerate(ordered_operations, start=1):
         rows.append(
             [
-                operation.numero_bl,
-                operation.commande.reference if operation.commande else "",
-                operation.client.entreprise,
-                operation.get_etat_bon_display(),
-                operation.camion.numero_tracteur if operation.camion else "",
+                index,
+                operation.date_bl.strftime("%d/%m/%Y") if operation.date_bl else "-",
                 operation.date_transmission_depot.strftime("%d/%m/%Y") if operation.date_transmission_depot else "-",
-                operation.date_reception_transitaire.strftime("%d/%m/%Y") if operation.date_reception_transitaire else "-",
+                operation.client.entreprise,
+                operation.produit.nom if operation.produit else (operation.commande.produit.nom if operation.commande and operation.commande.produit else "-"),
+                str(int(operation.quantite)) if operation.quantite == int(operation.quantite or 0) else str(operation.quantite or "-"),
+                operation.numero_bl,
+                operation.camion.numero_tracteur if operation.camion else "",
+                operation.destination or "-",
             ]
         )
-    return _build_operations_pdf_response(
-        "rapport_secretaire.pdf",
-        rows,
-        ["BL", "Commande", "Client", "Etat", "Camion", "Transmission", "Reception"],
-        "Rapport secretaire BL",
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse(
+            "Le module reportlab n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    def _format_number(value):
+        value = Decimal(value or "0.00")
+        return f"{value:,.0f}".replace(",", " ")
+
+    def _metric_html(label, value):
+        return (
+            f'<para align="center"><font size="8" color="#2f7d75">{label}</font><br/>'
+            f'<font size="13"><b>{value}</b></font></para>'
+        )
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
     )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "SecretairePdfTitle",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=16,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor("#123047"),
+    )
+    metric_style = ParagraphStyle(
+        "SecretairePdfMetric",
+        parent=styles["BodyText"],
+        alignment=TA_CENTER,
+        leading=13,
+    )
+
+    logo_path = Path(__file__).resolve().parents[1] / "utilisateurs" / "static" / "utilisateurs" / "soni-logo.png"
+    logo = Image(str(logo_path), width=28 * mm, height=28 * mm) if logo_path.exists() else Paragraph("", styles["BodyText"])
+
+    header_table = Table(
+        [[
+            logo,
+            Paragraph("ETAT DE TRANSMISSION DES BL", title_style),
+            Paragraph(_metric_html("Total essence", _format_number(total_essence)), metric_style),
+            Paragraph(_metric_html("Total gasoil", _format_number(total_gasoil)), metric_style),
+            Paragraph(_metric_html("Qte totale", _format_number(total_quantite)), metric_style),
+        ]],
+        colWidths=[32 * mm, 105 * mm, 38 * mm, 38 * mm, 38 * mm],
+    )
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (2, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+
+    data = [["N°", "DATE BL", "DATE TRANSM", "CLIENT", "PRODUIT", "QUANTITE", "BL", "CAMION", "DESTINATION"]] + rows
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d9e2e8")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f8fb")]),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("LEADING", (0, 0), (-1, -1), 10),
+                ("PADDING", (0, 0), (-1, -1), 5),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+
+    doc.build([header_table, Spacer(1, 8), table])
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="rapport_secretaire.pdf"'
+    response.write(buffer.getvalue())
+    return response
 
 
 def transmettre_bons_secretaire(request):
@@ -1090,7 +1369,7 @@ def transmettre_bons_secretaire(request):
         return redirect("secretaire_operations")
 
     updated_count = 0
-    for operation in Operation.objects.filter(id__in=selected_ids):
+    for operation in Operation.objects.filter(id__in=selected_ids, remplace_par__isnull=True):
         if operation.etat_bon != "initie":
             continue
         operation.date_transmission_depot = action_date
@@ -1106,6 +1385,37 @@ def transmettre_bons_secretaire(request):
         messages.success(request, f"{updated_count} BL transmis au depot et envoyes au transitaire.")
     else:
         messages.error(request, "Aucun BL n'a pu etre transmis.")
+
+    return redirect("secretaire_operations")
+
+
+def annuler_transmission_secretaire(request, id):
+    if request.method != "POST":
+        return redirect("secretaire_operations")
+
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
+
+    if operation.etat_bon != "attente_reception_transitaire" or operation.date_reception_transitaire:
+        messages.error(
+            request,
+            "Cette transmission ne peut plus etre annulee car le transitaire a deja pris en charge ce BL.",
+        )
+        return redirect("secretaire_operations")
+
+    updated = Operation.objects.filter(
+        id=id,
+        etat_bon="attente_reception_transitaire",
+        date_reception_transitaire__isnull=True,
+        remplace_par__isnull=True,
+    ).update(
+        date_transmission_depot=None,
+        etat_bon="initie",
+    )
+
+    if updated:
+        messages.success(request, f"La transmission du BL {operation.numero_bl} a ete annulee.")
+    else:
+        messages.error(request, "Impossible d'annuler cette transmission pour le moment.")
 
     return redirect("secretaire_operations")
 
@@ -1149,7 +1459,7 @@ def sommiers_operations(request):
         )
 
     sorties_queryset = (
-        Operation.objects.filter(etat_bon="liquide", date_bons_liquides=stats_date)
+        Operation.objects.filter(etat_bon="liquide", date_bons_liquides=stats_date, remplace_par__isnull=True)
         .values("produit__nom")
         .annotate(total_sortie=Sum("quantite"))
         .order_by("produit__nom")
@@ -1407,7 +1717,7 @@ def ajouter_operation_comptable(request):
 
 
 def modifier_operation_comptable(request, id):
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     if not _comptable_operation_can_edit(operation):
         messages.error(
             request,
@@ -1646,7 +1956,7 @@ def modifier_operation_comptable(request, id):
 
 
 def supprimer_operation_comptable(request, id):
-    operation = get_object_or_404(Operation.objects.select_related("commande"), id=id)
+    operation = get_object_or_404(Operation.objects.select_related("commande"), id=id, remplace_par__isnull=True)
     if request.method != "POST":
         return redirect("/operations/comptable/?scope=historique")
 
@@ -1660,7 +1970,7 @@ def supprimer_operation_comptable(request, id):
     numero_bl = operation.numero_bl
     commande_reference = operation.commande.reference if operation.commande_id else ""
     with transaction.atomic():
-        locked_operation = Operation.objects.select_for_update().select_related("commande").get(pk=operation.pk)
+        locked_operation = Operation.objects.select_for_update().select_related("commande").get(pk=operation.pk, remplace_par__isnull=True)
         if not _comptable_operation_can_edit(locked_operation):
             messages.error(
                 request,
@@ -1680,7 +1990,10 @@ def supprimer_operation_comptable(request, id):
 def facturation_operations(request):
     query = request.GET.get("q", "").strip()
     statut = request.GET.get("statut_facture", "").strip()
-    operations = Operation.objects.select_related("commande", "client", "produit", "remplace_par", "camion").filter(etat_bon__in=ETATS_FACTURATION)
+    operations = Operation.objects.select_related("commande", "client", "produit", "remplace_par", "camion").filter(
+        etat_bon__in=ETATS_FACTURATION,
+        remplace_par__isnull=True,
+    )
     if query:
         operations = operations.filter(
             Q(numero_bl__icontains=query)
@@ -1705,10 +2018,7 @@ def facturation_operations(request):
 
 
 def modifier_operation_facturation(request, id):
-    operation = get_object_or_404(Operation, id=id, etat_bon__in=ETATS_FACTURATION)
-    if operation.remplace_par_id:
-        messages.error(request, "Ce BL n'est plus valide suite au changement de camion. Il reste visible mais n'est plus facturable.")
-        return redirect("facturation_operations")
+    operation = get_object_or_404(Operation, id=id, etat_bon__in=ETATS_FACTURATION, remplace_par__isnull=True)
     if request.method == "POST":
         form = FacturationOperationForm(request.POST, instance=operation)
         if form.is_valid():
@@ -1745,6 +2055,7 @@ def imprimer_facture_sans_tva(request, id):
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
         etat_bon__in=ETATS_FACTURATION,
+        remplace_par__isnull=True,
     )
     return _build_facture_pdf(operation, avec_tva=False, utiliser_quantite_livree=False)
 
@@ -1754,6 +2065,7 @@ def imprimer_facture_avec_tva(request, id):
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
         etat_bon__in=ETATS_FACTURATION,
+        remplace_par__isnull=True,
     )
     return _build_facture_pdf(operation, avec_tva=True, utiliser_quantite_livree=False)
 
@@ -1763,6 +2075,7 @@ def imprimer_facture_sans_tva_manquant(request, id):
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
         etat_bon__in=ETATS_FACTURATION,
+        remplace_par__isnull=True,
     )
     return _build_facture_pdf(operation, avec_tva=False, utiliser_quantite_livree=True)
 
@@ -1772,6 +2085,7 @@ def imprimer_facture_avec_tva_manquant(request, id):
         Operation.objects.select_related("client", "commande", "produit", "camion", "chauffeur"),
         id=id,
         etat_bon__in=ETATS_FACTURATION,
+        remplace_par__isnull=True,
     )
     return _build_facture_pdf(operation, avec_tva=True, utiliser_quantite_livree=True)
 
@@ -1797,6 +2111,7 @@ def logistique_operations(request):
                 HistoriqueAffectationOperation.objects.filter(operation_id=OuterRef("pk"))
             )
         )
+        .filter(remplace_par__isnull=True)
     )
     if scope == "historique":
         operations = operations.filter(camion__isnull=False)
@@ -1823,7 +2138,7 @@ def logistique_operations(request):
 
 
 def modifier_operation_logistique(request, id):
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     camion_capacites = {
         camion.id: {
             "capacite": camion.capacite,
@@ -1935,6 +2250,25 @@ def transitaire_operations(request):
         operation.can_liquide = operation.etat_bon == "declare" and not operation.transitaire_dates_locked
         operation.can_transfer_logistique = operation.etat_bon == "liquide" and not operation.transitaire_dates_locked
         operation.can_charge_direct = operation.etat_bon == "liquide" and not operation.transitaire_dates_locked
+        operation.can_cancel_reception = (
+            operation.etat_bon == "transmis"
+            and not operation.transitaire_dates_locked
+            and not operation.date_bons_declares
+        )
+        operation.can_cancel_declaration = (
+            operation.etat_bon == "declare"
+            and not operation.transitaire_dates_locked
+            and not operation.date_bons_liquides
+        )
+        operation.can_cancel_liquidation = (
+            operation.etat_bon == "liquide"
+            and not operation.transitaire_dates_locked
+            and not operation.date_transfert_logistique
+            and not operation.date_reception_logistique
+            and not operation.date_remise_chauffeur
+            and not operation.date_bons_charges
+            and not operation.date_bons_livres
+        )
         operation.status_label = _operation_status_label(operation)
 
     total_pending_reception = len(operations_pending_reception)
@@ -2148,7 +2482,7 @@ def valider_reception_transitaire(request):
         return redirect("transitaire_operations")
 
     updated_count = 0
-    for operation in Operation.objects.filter(id__in=target_ids):
+    for operation in Operation.objects.filter(id__in=target_ids, remplace_par__isnull=True):
         if operation.etat_bon != "attente_reception_transitaire":
             continue
         if not operation.date_transmission_depot:
@@ -2170,6 +2504,86 @@ def valider_reception_transitaire(request):
     else:
         messages.error(request, "Aucun BL selectionne n'est eligible a la reception transitaire.")
 
+    return redirect("transitaire_operations")
+
+
+def annuler_reception_transitaire(request, id):
+    if request.method != "POST":
+        return redirect("transitaire_operations")
+
+    updated = Operation.objects.filter(
+        id=id,
+        etat_bon="transmis",
+        date_bons_declares__isnull=True,
+        remplace_par__isnull=True,
+    ).update(
+        etat_bon="attente_reception_transitaire",
+        date_reception_transitaire=None,
+    )
+
+    if updated:
+        messages.success(request, "La reception transitaire a ete annulee.")
+    else:
+        messages.error(request, "Impossible d'annuler cette reception, l'etape suivante est deja engagee.")
+    return redirect("transitaire_operations")
+
+
+def annuler_declaration_transitaire(request, id):
+    if request.method != "POST":
+        return redirect("transitaire_operations")
+
+    updated = Operation.objects.filter(
+        id=id,
+        etat_bon="declare",
+        date_bons_liquides__isnull=True,
+        remplace_par__isnull=True,
+    ).update(
+        etat_bon="transmis",
+        date_bons_declares=None,
+    )
+
+    if updated:
+        messages.success(request, "La declaration a ete annulee.")
+    else:
+        messages.error(request, "Impossible d'annuler cette declaration, l'etape suivante est deja engagee.")
+    return redirect("transitaire_operations")
+
+
+def annuler_liquidation_transitaire(request, id):
+    if request.method != "POST":
+        return redirect("transitaire_operations")
+
+    try:
+        with transaction.atomic():
+            operation = (
+                Operation.objects.select_for_update()
+                .filter(
+                    id=id,
+                    etat_bon="liquide",
+                    date_transfert_logistique__isnull=True,
+                    date_reception_logistique__isnull=True,
+                    date_remise_chauffeur__isnull=True,
+                    date_bons_charges__isnull=True,
+                    date_bons_livres__isnull=True,
+                    remplace_par__isnull=True,
+                )
+                .first()
+            )
+            if not operation:
+                messages.error(request, "Impossible d'annuler cette liquidation, l'etape suivante est deja engagee.")
+                return redirect("transitaire_operations")
+
+            _restore_operation_sommier_stock(operation)
+            Operation.objects.filter(id=operation.id, remplace_par__isnull=True).update(
+                etat_bon="declare",
+                date_bons_liquides=None,
+                stock_sommier_deduit=False,
+            )
+    except ValidationError:
+        messages.error(request, "Impossible d'annuler cette liquidation pour le moment.")
+        return redirect("transitaire_operations")
+
+    messages.success(request, "La liquidation a ete annulee.")
     return redirect("transitaire_operations")
 
 
@@ -2237,7 +2651,7 @@ def action_groupee_transitaire(request, action_name):
         messages.error(request, "La date saisie est invalide.")
         return redirect("transitaire_operations")
 
-    operations = Operation.objects.filter(id__in=selected_ids).order_by("id")
+    operations = Operation.objects.filter(id__in=selected_ids, remplace_par__isnull=True).order_by("id")
     updated_count, skipped_count = _apply_transitaire_bulk_action(request, operations, action_name, action_date)
 
     labels = {
@@ -2263,7 +2677,7 @@ def changer_etat_transitaire(request, id, etat):
     if request.method != "POST":
         return redirect("transitaire_operations")
 
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     date_raw = (request.POST.get("date_action") or "").strip()
     action_date = None
 
@@ -2314,7 +2728,7 @@ def transferer_liquide_logistique(request, id):
     if request.method != "POST":
         return redirect("transitaire_operations")
 
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     date_raw = (request.POST.get("date_action") or "").strip()
 
     if operation.etat_bon != "liquide":
@@ -2347,7 +2761,7 @@ def charger_bon_direct(request, id):
     if request.method != "POST":
         return redirect("transitaire_operations")
 
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     date_raw = (request.POST.get("date_action") or "").strip()
 
     if operation.etat_bon != "liquide":
@@ -2381,7 +2795,7 @@ def _decorate_logistique_operation(operation):
         _depenses_chargement_queryset_for_operation(operation)
     )
     operation.depenses_chargement_items = depenses_chargement
-    montant_depenses = sum(Decimal(depense.montant_total or depense.montant_estime or 0) for depense in depenses_chargement)
+    montant_depenses = sum(Decimal(depense.montant_comptable or 0) for depense in depenses_chargement)
     operation.montant_depenses_chargement = montant_depenses
     operation.montant_depenses_display = (
         _format_amount(montant_depenses) + " GNF"
@@ -2443,12 +2857,13 @@ def _logisticien_queryset(request):
     query = request.GET.get("q", "").strip()
     etat = request.GET.get("etat", "").strip()
     depense_niveau = request.GET.get("depense_niveau", "").strip()
+    retour = request.GET.get("retour", "").strip()
     date_from = request.GET.get("date_from", "").strip()
     date_to = request.GET.get("date_to", "").strip()
     operations = (
         Operation.objects.select_related("client", "camion", "chauffeur", "commande", "produit")
         .annotate(commande_reference_compact=Replace("commande__reference", Value(" "), Value("")))
-        .filter(etat_bon__in=(ETATS_LOGISTIQUE_RECEPTION | ETATS_LOGISTIQUE_TRAITEMENT))
+        .filter(etat_bon__in=(ETATS_LOGISTIQUE_RECEPTION | ETATS_LOGISTIQUE_TRAITEMENT), remplace_par__isnull=True)
     )
     if query:
         compact_query = "".join(query.split())
@@ -2462,6 +2877,10 @@ def _logisticien_queryset(request):
         )
     if etat:
         operations = operations.filter(etat_bon=etat)
+    if retour == "attendu":
+        operations = operations.filter(etat_bon="livre", date_bon_retour__isnull=True)
+    elif retour == "retourne":
+        operations = operations.filter(etat_bon="livre", date_bon_retour__isnull=False)
     if date_from:
         operations = operations.filter(date_reception_logistique__gte=date_from)
     if date_to:
@@ -2469,15 +2888,21 @@ def _logisticien_queryset(request):
 
     operation_list = list(operations.order_by("commande_id", "date_creation", "numero_bl"))
     operation_list = [_decorate_logistique_operation(operation) for operation in operation_list]
-    if depense_niveau:
+    if depense_niveau == "action_requise":
+        operation_list = [
+            operation
+            for operation in operation_list
+            if operation.depenses_stage_key in {"logistique", "dga", "dg", "paiement"}
+        ]
+    elif depense_niveau:
         operation_list = [operation for operation in operation_list if operation.depenses_stage_key == depense_niveau]
     _annotate_commande_groups(operation_list)
     _apply_logistique_group_expense_display(operation_list)
-    return operation_list, query, etat, depense_niveau, date_from, date_to
+    return operation_list, query, etat, depense_niveau, retour, date_from, date_to
 
 
 def export_logisticien_xls(request):
-    operations, _, _, _, _, _ = _logisticien_queryset(request)
+    operations, _, _, _, _, _, _ = _logisticien_queryset(request)
     rows = []
     for operation in operations:
         detail_depense = (
@@ -2510,7 +2935,7 @@ def export_logisticien_xls(request):
 
 
 def export_logisticien_pdf(request):
-    operations, _, _, _, _, _ = _logisticien_queryset(request)
+    operations, _, _, _, _, _, _ = _logisticien_queryset(request)
     rows = []
     for operation in operations:
         detail_depense = (
@@ -2540,7 +2965,7 @@ def export_logisticien_pdf(request):
 
 
 def logisticien_operations(request):
-    operation_list, query, etat, depense_niveau, date_from, date_to = _logisticien_queryset(request)
+    operation_list, query, etat, depense_niveau, retour, date_from, date_to = _logisticien_queryset(request)
 
     total_receptions_logistique = sum(1 for operation in operation_list if operation.can_validate_logistique)
     depenses_uniques = {}
@@ -2548,7 +2973,7 @@ def logisticien_operations(request):
         for depense in getattr(operation, "depenses_chargement_items", []):
             depenses_uniques[depense.id] = depense
     total_montant_depenses = sum(
-        (Decimal(depense.montant_total or depense.montant_estime or 0) for depense in depenses_uniques.values()),
+        (Decimal(depense.montant_comptable or 0) for depense in depenses_uniques.values()),
         Decimal("0"),
     )
     total_quantite = sum((Decimal(operation.quantite or 0) for operation in operation_list), Decimal("0"))
@@ -2569,6 +2994,7 @@ def logisticien_operations(request):
             "query": query,
             "etat": etat,
             "depense_niveau": depense_niveau,
+            "retour": retour,
             "date_from": date_from,
             "date_to": date_to,
             "active_tab": "logisticien",
@@ -2607,13 +3033,13 @@ def valider_receptions_logistiques(request):
         return redirect("logisticien_operations")
 
     base_operations = list(
-        Operation.objects.select_related("commande").filter(id__in=selected_ids, etat_bon="attente_reception_logistique")
+        Operation.objects.select_related("commande").filter(id__in=selected_ids, etat_bon="attente_reception_logistique", remplace_par__isnull=True)
     )
     expanded_ids = set()
     for operation in base_operations:
         sibling_ids = _commande_sibling_operations(operation, expected_state="attente_reception_logistique").values_list("id", flat=True)
         expanded_ids.update(sibling_ids)
-    operations = Operation.objects.filter(id__in=expanded_ids or selected_ids, etat_bon="attente_reception_logistique")
+    operations = Operation.objects.filter(id__in=expanded_ids or selected_ids, etat_bon="attente_reception_logistique", remplace_par__isnull=True)
     if not operations.exists():
         messages.error(request, "Aucun BL selectionne n'est en attente de reception logistique.")
         return redirect("logisticien_operations")
@@ -2642,7 +3068,8 @@ def _chef_chauffeur_queryset(request, historique=False):
     date_to = request.GET.get("date_to", "").strip()
     etats_cibles = ETATS_CHEF_CHAUFFEUR_HISTORIQUE if historique else ETATS_CHEF_CHAUFFEUR
     operations = Operation.objects.select_related("client", "camion", "chauffeur").filter(
-        etat_bon__in=etats_cibles
+        etat_bon__in=etats_cibles,
+        remplace_par__isnull=True,
     )
     if query:
         operations = operations.filter(
@@ -2761,7 +3188,7 @@ def action_chef_chauffeur(request, id, action):
     if request.method != "POST":
         return redirect("chef_chauffeur_operations")
 
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     date_raw = (request.POST.get("date_action") or "").strip()
     if not date_raw:
         messages.error(request, "Merci de renseigner la date de l'action chauffeur.")
@@ -2816,7 +3243,7 @@ def action_chef_chauffeur(request, id, action):
 
 
 def modifier_operation_logisticien(request, id):
-    operation = get_object_or_404(Operation, id=id)
+    operation = get_object_or_404(Operation, id=id, remplace_par__isnull=True)
     user_role = get_user_role(request.user)
     is_logistique = user_role == "logistique" or bool(getattr(request.user, "is_superuser", False))
     is_chef_chauffeur = user_role == "chef_chauffeur"
@@ -2828,8 +3255,8 @@ def modifier_operation_logisticien(request, id):
     if is_chef_chauffeur:
         messages.info(request, "Le suivi chauffeur se fait maintenant directement depuis le tableau Charge / Livre.")
         return redirect(list_view_name)
-    if operation.remplace_par_id:
-        messages.error(request, "Cet ancien BL n'est plus modifiable, car le camion a deja ete change.")
+    if is_logistique and operation.date_bon_retour:
+        messages.info(request, "Ce BL est deja livre et retourne : le cycle logistique est cloture.")
         return redirect(list_view_name)
     if is_chef_chauffeur and operation.etat_bon == "livre":
         messages.error(request, "Ce BL est deja livre. Le chef chauffeur ne peut plus le mettre a jour.")
@@ -3025,7 +3452,7 @@ def modifier_operation_logisticien(request, id):
     dga_decision_exists = any(depense.expression_decision_dga for depense in depenses_camion)
     commande_multi_bl = len(commande_operations_group) > 1
     for depense in depenses_camion:
-        depense.montant_affiche = _format_amount(depense.montant_total)
+        depense.montant_affiche = _format_amount(depense.montant_comptable)
         depense.portee_affichee = "Commande" if depense.portee_chargement == Depense.PORTEE_COMMANDE else "BL"
         depense.portee_badge_class = "status-info" if depense.portee_chargement == Depense.PORTEE_COMMANDE else "status-ok"
         depense.scope_detail = (
@@ -3246,6 +3673,7 @@ def imprimer_bon_livraison(request, id):
             "depot",
         ),
         id=id,
+        remplace_par__isnull=True,
     )
     if not operation.camion_id:
         return HttpResponse(
@@ -3500,8 +3928,10 @@ secretaire_operations = role_required("secretaire")(secretaire_operations)
 export_secretaire_xls = role_required("secretaire")(export_secretaire_xls)
 export_secretaire_pdf = role_required("secretaire")(export_secretaire_pdf)
 transmettre_bons_secretaire = role_required("secretaire")(transmettre_bons_secretaire)
+annuler_transmission_secretaire = role_required("secretaire")(annuler_transmission_secretaire)
 sommiers_operations = role_required("comptable", "dga", "directeur")(sommiers_operations)
 ajouter_operation_comptable = role_required("comptable")(ajouter_operation_comptable)
+creer_bl_depuis_demande = role_required("comptable")(creer_bl_depuis_demande)
 modifier_operation_comptable = role_required("comptable")(modifier_operation_comptable)
 supprimer_operation_comptable = role_required("comptable")(supprimer_operation_comptable)
 facturation_operations = role_required("comptable")(facturation_operations)
@@ -3520,6 +3950,9 @@ export_transitaire_historique_xls = role_required("transitaire")(export_transita
 export_transitaire_historique_pdf = role_required("transitaire")(export_transitaire_historique_pdf)
 historique_transitaire_operations = role_required("transitaire")(historique_transitaire_operations)
 valider_reception_transitaire = role_required("transitaire")(valider_reception_transitaire)
+annuler_reception_transitaire = role_required("transitaire")(annuler_reception_transitaire)
+annuler_declaration_transitaire = role_required("transitaire")(annuler_declaration_transitaire)
+annuler_liquidation_transitaire = role_required("transitaire")(annuler_liquidation_transitaire)
 changer_etat_transitaire = role_required("transitaire")(changer_etat_transitaire)
 transferer_liquide_logistique = role_required("transitaire")(transferer_liquide_logistique)
 charger_bon_direct = role_required("transitaire")(charger_bon_direct)

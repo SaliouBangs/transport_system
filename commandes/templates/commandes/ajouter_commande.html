@@ -194,6 +194,16 @@
                 </div>
 
                 <div class="field">
+                    <label for="commande-ville-perequation">Ville de perequation</label>
+                    <input type="text" id="commande-ville-perequation" readonly value="-">
+                </div>
+
+                <div class="field">
+                    <label for="commande-tarif-perequation">Tarif perequation (GNF/L)</label>
+                    <input type="text" id="commande-tarif-perequation" readonly value="-">
+                </div>
+
+                <div class="field">
                     <label for="{{ form.date_livraison_prevue.id_for_label }}">Livraison prevue</label>
                     {{ form.date_livraison_prevue }}
                     {% if form.date_livraison_prevue.errors %}<p class="field-error">{{ form.date_livraison_prevue.errors.0 }}</p>{% endif %}
@@ -396,6 +406,7 @@ const clientDateFinFilter = document.getElementById("client-date-fin-filter");
 const commandeForm = document.querySelector(".commande-main form.app-form");
 
 let selectedClientData = null;
+let destinationMetadata = [];
 
 function formatGNF(value) {
     if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) {
@@ -522,20 +533,42 @@ function syncClientDestinations(destinations) {
 
     destinationList.innerHTML = "";
     const cleanDestinations = Array.isArray(destinations)
-        ? destinations.filter((item) => typeof item === "string" && item.trim())
+        ? destinations.filter((item) => item && typeof item.adresse === "string" && item.adresse.trim())
         : [];
+    destinationMetadata = cleanDestinations;
 
     cleanDestinations.forEach((destination) => {
         const option = document.createElement("option");
-        option.value = destination;
+        option.value = destination.adresse;
         destinationList.appendChild(option);
     });
 
     if (cleanDestinations.length === 1) {
-        destinationInput.value = cleanDestinations[0];
-    } else if (destinationInput.value && !cleanDestinations.includes(destinationInput.value)) {
+        destinationInput.value = cleanDestinations[0].adresse;
+    } else if (destinationInput.value && !cleanDestinations.some((item) => item.adresse === destinationInput.value)) {
         destinationInput.value = "";
     }
+    updatePerequationFields();
+}
+
+function updatePerequationFields() {
+    const villePerequationInput = document.getElementById("commande-ville-perequation");
+    const tarifPerequationInput = document.getElementById("commande-tarif-perequation");
+    if (!villePerequationInput || !tarifPerequationInput) {
+        return;
+    }
+
+    const selectedDestination = destinationMetadata.find((item) => item.adresse === destinationInput?.value);
+    if (!selectedDestination) {
+        villePerequationInput.value = "-";
+        tarifPerequationInput.value = "-";
+        return;
+    }
+
+    villePerequationInput.value = selectedDestination.ville_perequation || "-";
+    tarifPerequationInput.value = selectedDestination.tarif_gnf_litre
+        ? `${Number(selectedDestination.tarif_gnf_litre).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GNF/L`
+        : "-";
 }
 
 function applyRiskVisual(ratio, niveau) {
@@ -688,6 +721,8 @@ function syncClientSelectionFromSearch() {
 
 clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
 clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
+destinationInput?.addEventListener("input", updatePerequationFields);
+destinationInput?.addEventListener("change", updatePerequationFields);
 quantiteInput?.addEventListener("input", refreshCommandeIndicators);
 prixInput?.addEventListener("input", refreshCommandeIndicators);
 dateLivraisonInput?.addEventListener("change", refreshCommandeIndicators);

@@ -1,14 +1,27 @@
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-from .forms import UtilisateurCreationForm, UtilisateurModificationForm
+from .forms import (
+    MotDePasseUtilisateurForm,
+    ProfilUtilisateurForm,
+    UtilisateurCreationForm,
+    UtilisateurModificationForm,
+)
 from .models import HistoriqueAction, journaliser_action
 from .permissions import (
+    ENTITY_SESSION_KEY,
+    PERMISSION_KEYS,
+    PERMISSION_LABELS,
     ensure_role_groups,
+    build_user_permissions,
+    can_use_global_entity_selector,
     get_default_landing_url,
+    get_allowed_supervision_entities,
     get_user_role_label,
     is_admin_user,
 )
@@ -59,6 +72,64 @@ def parametres_view(request):
 def deconnexion_view(request):
     logout(request)
     return redirect("connexion")
+
+
+@login_required(login_url="/comptes/connexion/")
+@require_POST
+def changer_entite_supervision(request):
+    if not can_use_global_entity_selector(request.user):
+        messages.error(request, "Ce selecteur est reserve a la supervision.")
+        return redirect(get_default_landing_url(request.user))
+
+    selected_entity = (request.POST.get("entity") or "").strip()
+    allowed_entities = {key for key, _ in get_allowed_supervision_entities(request.user)}
+    if selected_entity not in allowed_entities:
+        messages.error(request, "Entite de supervision invalide.")
+        return redirect(request.POST.get("next") or get_default_landing_url(request.user))
+
+    request.session[ENTITY_SESSION_KEY] = selected_entity
+    return redirect(request.POST.get("next") or get_default_landing_url(request.user))
+
+
+@login_required(login_url="/comptes/connexion/")
+def profil_view(request):
+    profil_form = ProfilUtilisateurForm(instance=request.user)
+    password_form = MotDePasseUtilisateurForm(user=request.user)
+
+    if request.method == "POST":
+        if "modifier_profil" in request.POST:
+            profil_form = ProfilUtilisateurForm(request.POST, request.FILES, instance=request.user)
+            if profil_form.is_valid():
+                utilisateur = profil_form.save()
+                journaliser_action(
+                    request.user,
+                    "Profil",
+                    "Modification du profil",
+                    utilisateur.username,
+                    f"{utilisateur.username} a modifie ses informations de profil.",
+                )
+                messages.success(request, "Votre profil a ete mis a jour.")
+                return redirect("profil")
+        elif "modifier_mot_de_passe" in request.POST:
+            password_form = MotDePasseUtilisateurForm(user=request.user, data=request.POST)
+            if password_form.is_valid():
+                utilisateur = password_form.save()
+                update_session_auth_hash(request, utilisateur)
+                journaliser_action(
+                    utilisateur,
+                    "Profil",
+                    "Modification du mot de passe",
+                    utilisateur.username,
+                    f"{utilisateur.username} a modifie son mot de passe.",
+                )
+                messages.success(request, "Votre mot de passe a ete mis a jour.")
+                return redirect("profil")
+
+    return render(
+        request,
+        "utilisateurs/profil.html",
+        {"profil_form": profil_form, "password_form": password_form},
+    )
 
 
 def historique_actions_view(request):
@@ -136,19 +207,36 @@ def liste_utilisateurs(request):
         return redirect(get_default_landing_url(request.user))
 
     ensure_role_groups()
-    utilisateurs = User.objects.prefetch_related("groups").order_by("username")
-    utilisateurs_data = [
-        {
+    utilisateurs = User.objects.prefetch_related("groups").select_related("profil_utilisateur").order_by("username")
+    utilisateurs_data = []
+    for user in utilisateurs:
+        user_permissions = build_user_permissions(user)
+        active_permission_labels = [
+            PERMISSION_LABELS[key]
+            for key in PERMISSION_KEYS
+            if user_permissions.get(key)
+        ]
+        utilisateurs_data.append(
+            {
             "id": user.id,
             "username": user.username,
+            "initiales": getattr(getattr(user, "profil_utilisateur", None), "initiales", (user.username[:2] or "U").upper()),
+            "photo_url": getattr(getattr(user, "profil_utilisateur", None), "photo_url", ""),
             "nom_complet": f"{user.first_name} {user.last_name}".strip() or "-",
             "email": user.email or "-",
             "role": get_user_role_label(user),
             "is_active": user.is_active,
             "is_superuser": user.is_superuser,
-        }
-        for user in utilisateurs
-    ]
+            "active_permissions_count": sum(
+                1
+                for key in PERMISSION_KEYS
+                if user_permissions.get(key)
+            ),
+            "permissions_count": len(PERMISSION_KEYS),
+            "permission_summary": ", ".join(active_permission_labels[:4]),
+            "remaining_permissions_count": max(len(active_permission_labels) - 4, 0),
+            }
+        )
     return render(
         request,
         "utilisateurs/utilisateurs.html",
@@ -162,7 +250,7 @@ def ajouter_utilisateur(request):
         return redirect(get_default_landing_url(request.user))
 
     if request.method == "POST":
-        form = UtilisateurCreationForm(request.POST)
+        form = UtilisateurCreationForm(request.POST, request.FILES)
         if form.is_valid():
             utilisateur = form.save()
             journaliser_action(
@@ -187,7 +275,7 @@ def modifier_utilisateur(request, id):
 
     utilisateur = get_object_or_404(User, id=id)
     if request.method == "POST":
-        form = UtilisateurModificationForm(request.POST, instance=utilisateur)
+        form = UtilisateurModificationForm(request.POST, request.FILES, instance=utilisateur)
         if form.is_valid():
             utilisateur = form.save()
             journaliser_action(

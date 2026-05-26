@@ -23,6 +23,48 @@
 </div>
 </div>
 
+{% if demandes_nouveau_bl %}
+<div class="form-shell" style="max-width:none; margin-bottom:22px; border-left:6px solid #f0a83a;">
+    <div class="page-header" style="margin-bottom:12px;">
+        <div>
+            <p class="eyebrow">Alerte logistique</p>
+            <h2 class="section-title" style="margin:0;">Nouveaux BL a creer apres changement de camion</h2>
+        </div>
+    </div>
+    <table class="table" style="margin-top:0;">
+        <thead>
+            <tr>
+                <th>Ancien BL</th>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>Nouveau camion</th>
+                <th>Nouveau chauffeur</th>
+                <th>Quantite</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for demande in demandes_nouveau_bl %}
+            <tr>
+                <td><strong>{{ demande.ancienne_operation.numero_bl }}</strong></td>
+                <td>{{ demande.commande.reference_affichee }}</td>
+                <td>{{ demande.commande.client.entreprise }}</td>
+                <td>{{ demande.nouveau_camion.numero_tracteur }}</td>
+                <td>{{ demande.nouveau_chauffeur.nom }}</td>
+                <td>{{ demande.ancienne_operation.quantite|default:"-" }}</td>
+                <td>
+                    <form method="post" action="/operations/comptable/demandes/{{ demande.id }}/creer-bl/" style="margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn">Creer le BL</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 {% if scope == "historique" %}
 <table class="table" id="comptable-table">
 <thead>

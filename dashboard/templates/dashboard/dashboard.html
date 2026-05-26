@@ -97,6 +97,33 @@
     font-size: 0.95rem;
   }
 
+  .dashboard-user-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(198, 220, 238, 0.95);
+  }
+
+  .dashboard-user-card .profile-avatar {
+    width: 58px;
+    height: 58px;
+    font-size: 1rem;
+  }
+
+  .dashboard-user-card strong {
+    display: block;
+    color: #123047;
+    font-size: 1rem;
+  }
+
+  .dashboard-user-card span {
+    color: #6a7f92;
+    font-weight: 600;
+  }
+
   .dashboard-summary-list {
     display: grid;
     gap: 10px;
@@ -374,8 +401,8 @@
 <div class="dashboard-page">
   <div class="page-header">
     <div>
-      <p class="eyebrow">{% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}Depenses internes{% else %}Pilotage transverse{% endif %}</p>
-      <h1>{% if user_role == "dga_sogefi" %}Dashboard DGA SOGEFI{% elif user_role == "responsable_achat" %}Dashboard Responsable achat{% else %}Dashboard de la plateforme{% endif %}</h1>
+      <p class="eyebrow">{% if user_role == "dga_sogefi" or user_role == "responsable_achat" or user_role == "dga_avena" or user_role == "comptable_avena" or user_role == "caissiere_avena" %}Depenses internes{% else %}Pilotage transverse{% endif %}</p>
+      <h1>{% if user_role == "dga_sogefi" %}Dashboard DGA SOGEFI{% elif user_role == "dga_avena" %}Dashboard DGA Avena{% elif user_role == "responsable_achat" %}Dashboard Responsable achat{% elif user_role == "comptable_avena" %}Dashboard Comptable Avena{% elif user_role == "caissiere_avena" %}Dashboard Caisse Avena{% else %}Dashboard de la plateforme{% endif %}</h1>
     </div>
   </div>
 
@@ -384,7 +411,7 @@
       <div class="dashboard-section-header" style="margin-bottom:0;">
         <div>
           <p class="eyebrow" style="margin-bottom:8px;">Vision d'ensemble</p>
-          <h2 class="dashboard-section-title" style="font-size:2rem;">{% if user_role == "transitaire" %}Lecture rapide du circuit transitaire{% elif user_role == "chef_chauffeur" %}Lecture rapide du circuit chauffeur{% elif user_role == "logistique" %}Lecture rapide du pilotage logistique{% elif user_role == "commercial" or user_role == "responsable_commercial" %}Lecture rapide du pilotage commercial et comptable{% elif user_role == "comptable" %}Lecture rapide du pilotage comptable{% elif user_role == "dga_sogefi" %}Lecture rapide des depenses internes{% elif user_role == "responsable_achat" %}Lecture rapide des achats internes{% else %}Une lecture rapide du circuit complet{% endif %}</h2>
+          <h2 class="dashboard-section-title" style="font-size:2rem;">{% if user_role == "transitaire" %}Lecture rapide du circuit transitaire{% elif user_role == "chef_chauffeur" %}Lecture rapide du circuit chauffeur{% elif user_role == "logistique" %}Lecture rapide du pilotage logistique{% elif user_role == "commercial" or user_role == "responsable_commercial" %}Lecture rapide du pilotage commercial et comptable{% elif user_role == "comptable" %}Lecture rapide du pilotage comptable{% elif user_role == "dga_sogefi" or user_role == "dga_avena" %}Lecture rapide des depenses internes{% elif user_role == "responsable_achat" or user_role == "comptable_avena" %}Lecture rapide des achats internes{% elif user_role == "caissiere_avena" %}Lecture rapide de la caisse Avena{% else %}Une lecture rapide du circuit complet{% endif %}</h2>
           <p class="dashboard-section-subtitle">
             {% if user_role == "commercial" or user_role == "responsable_commercial" %}
             Cette vue synthetise le portefeuille clients, la prospection, les validations de commandes, la facturation et les encaissements.
@@ -398,10 +425,19 @@
             {% elif user_role == "dga_sogefi" %}
             Cette vue se concentre sur les depenses internes : expression de besoin, saisie achat / prix, validation DGA SOGEFI, arbitrage DG et bascule vers le paiement.
             L'objectif est de piloter uniquement ce circuit, sans afficher les sujets BL, flotte ou stock qui ne vous concernent pas.
-            {% elif user_role == "responsable_achat" %}
-            Cette vue se concentre sur les depenses internes a chiffrer : saisie achat / prix, fournisseurs, facture et transmission vers la validation DGA SOGEFI.
-            L'objectif est de travailler uniquement sur les dossiers internes, sans aucun affichage de commandes, BL ou logistique.
-            {% else %}
+          {% elif user_role == "responsable_achat" %}
+          Cette vue se concentre sur les depenses internes a chiffrer : saisie achat / prix, fournisseurs, facture et transmission vers la validation DGA SOGEFI.
+          L'objectif est de travailler uniquement sur les dossiers internes, sans aucun affichage de commandes, BL ou logistique.
+          {% elif user_role == "dga_avena" %}
+          Cette vue se concentre sur les depenses internes Avena : validation DGA, suivi du passage chez le DG et controle de la bascule vers le paiement.
+          L'objectif est de piloter uniquement le circuit Avena, sans afficher les sujets SONI, BL, flotte ou stock.
+          {% elif user_role == "comptable_avena" %}
+          Cette vue se concentre sur les depenses internes Avena a chiffrer et a payer : saisie achat / prix, fournisseurs, facture, caisse et paiements cheque.
+          L'objectif est de travailler uniquement sur les dossiers et la caisse Avena.
+          {% elif user_role == "caissiere_avena" %}
+          Cette vue se concentre uniquement sur la caisse Avena : mouvements en espece, approvisionnements, retours caisse et paiements internes Avena.
+          Les commandes, BL, flotte, stock et sujets SONI/SOGEFI sont volontairement exclus.
+          {% else %}
             Ce tableau de bord résume l'état des commandes, BL, validations, transport, maintenance, stock et paiements.
             L'objectif est de garder chaque acteur orienté, sans surcharger l'écran.
             {% endif %}
@@ -434,6 +470,18 @@
           <p class="dashboard-section-subtitle" style="margin-top:10px;">
             Les priorites ici sont claires : completer les lignes de depense, rattacher fournisseurs et factures, puis transmettre proprement les dossiers au DGA SOGEFI.
           </p>
+          {% elif user_role == "dga_avena" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : verifier les dossiers Avena chiffrés, valider les engagements internes, puis suivre leur transmission vers le DG et le paiement.
+          </p>
+          {% elif user_role == "comptable_avena" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : chiffrer les depenses Avena, rattacher fournisseurs et factures, puis suivre la caisse et les paiements Avena.
+          </p>
+          {% elif user_role == "caissiere_avena" %}
+          <p class="dashboard-section-subtitle" style="margin-top:10px;">
+            Les priorites ici sont claires : alimenter la caisse Avena, suivre les sorties en espece et garder la situation de caisse propre.
+          </p>
           {% endif %}
         </div>
         <div class="dashboard-role-chip">
@@ -444,6 +492,9 @@
             {% elif user_role == "dga" %}DGA
             {% elif user_role == "dga_sogefi" %}DGA SOGEFI
             {% elif user_role == "comptable_sogefi" %}Comptable SOGEFI
+            {% elif user_role == "dga_avena" %}DGA Avena
+            {% elif user_role == "comptable_avena" %}Comptable Avena
+            {% elif user_role == "caissiere_avena" %}Caissiere Avena
             {% elif user_role == "responsable_achat" %}Responsable achat
             {% elif user_role == "responsable_commercial" %}Responsable commercial
             {% elif user_role == "chef_chauffeur" %}Chef chauffeur
@@ -589,7 +640,7 @@
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ comptable_encaissements_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Paiements clients deja enregistres</p>
         </div>
-        {% elif user_role == "dga_sogefi" %}
+        {% elif user_role == "dga_sogefi" or user_role == "dga_avena" %}
         <div class="dashboard-kpi">
           <p class="dashboard-kpi-label">Dossiers internes</p>
           <p class="dashboard-kpi-value">{{ depenses_internes_total }}</p>
@@ -651,7 +702,7 @@
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ depenses_internes_montant_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Montant cumule des achats internes saisis</p>
         </div>
-        {% elif user_role == "caissiere" or user_role == "caissiere_soni" %}
+        {% elif user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "caissiere_avena" %}
         <div class="dashboard-kpi">
           <p class="dashboard-kpi-label">Solde initial</p>
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_initial_total|floatformat:0 }} GNF</p>
@@ -703,6 +754,37 @@
           <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ dg_solde_total|floatformat:0 }} GNF</p>
           <p class="dashboard-kpi-note">Total avances DG moins remboursements effectues</p>
         </div>
+        {% elif user_role == "comptable_avena" %}
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Dossiers Avena</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_total }}</p>
+          <p class="dashboard-kpi-note">Expressions et engagements internes Avena suivis</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">A chiffrer</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_achat }}</p>
+          <p class="dashboard-kpi-note">Dossiers Avena en attente de saisie achat / prix</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Chez DGA Avena</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dga }}</p>
+          <p class="dashboard-kpi-note">Dossiers deja transmis pour validation DGA</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Chez DG</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_dg }}</p>
+          <p class="dashboard-kpi-note">Dossiers Avena en validation finale</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Paiements Avena</p>
+          <p class="dashboard-kpi-value">{{ depenses_internes_attente_paiement }}</p>
+          <p class="dashboard-kpi-note">{{ depenses_internes_attente_caisse }} caisse / {{ depenses_internes_attente_comptable }} cheque</p>
+        </div>
+        <div class="dashboard-kpi">
+          <p class="dashboard-kpi-label">Caisse Avena</p>
+          <p class="dashboard-kpi-value dashboard-kpi-value-money">{{ caisse_solde_global|floatformat:0 }} GNF</p>
+          <p class="dashboard-kpi-note">{{ caisse_appro_count }} approvisionnement(s) Avena enregistres</p>
+        </div>
         {% else %}
         <div class="dashboard-kpi">
           <p class="dashboard-kpi-label">Commandes</p>
@@ -739,6 +821,19 @@
     </div>
 
     <aside class="dashboard-hero-side">
+      <div class="dashboard-user-card">
+        <div class="profile-avatar" aria-hidden="true">
+          {% if current_user_profile.photo %}
+          <img src="{{ current_user_profile.photo.url }}" alt="">
+          {% else %}
+          <span>{{ current_user_initials }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+          <span>{{ user_role_label }}</span>
+        </div>
+      </div>
       <p class="eyebrow" style="margin-bottom:0;">Synthese immediate</p>
       <h3 class="dashboard-section-title" style="font-size:1.4rem; margin-top:-4px;">Points d'attention du jour</h3>
       <div class="dashboard-summary-list">
@@ -859,13 +954,13 @@
           <span>Encaissements clients</span>
           <strong>{{ comptable_encaissements_total|floatformat:0 }} GNF</strong>
         </div>
-        {% elif user_role == "dga_sogefi" %}
+        {% elif user_role == "dga_sogefi" or user_role == "dga_avena" %}
         <div class="dashboard-summary-item">
           <span>Saisie achat / prix</span>
           <strong>{{ depenses_internes_attente_achat }}</strong>
         </div>
         <div class="dashboard-summary-item">
-          <span>Validation DGA SOGEFI</span>
+          <span>{% if user_role == "dga_avena" %}Validation DGA Avena{% else %}Validation DGA SOGEFI{% endif %}</span>
           <strong>{{ depenses_internes_attente_dga }}</strong>
         </div>
         <div class="dashboard-summary-item">
@@ -909,7 +1004,7 @@
           <span>Montant en circuit</span>
           <strong>{{ depenses_internes_montant_en_attente|floatformat:0 }} GNF</strong>
         </div>
-        {% elif user_role == "caissiere" %}
+        {% elif user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "caissiere_avena" %}
         <div class="dashboard-summary-item">
           <span>Solde initial</span>
           <strong>{{ caisse_solde_initial_total|floatformat:0 }} GNF</strong>
@@ -954,6 +1049,31 @@
         <div class="dashboard-summary-item">
           <span>Solde DG</span>
           <strong>{{ dg_solde_total|floatformat:0 }} GNF</strong>
+        </div>
+        {% elif user_role == "comptable_avena" %}
+        <div class="dashboard-summary-item">
+          <span>Dossiers internes Avena</span>
+          <strong>{{ depenses_internes_total }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>En saisie achat / prix</span>
+          <strong>{{ depenses_internes_attente_achat }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>En validation</span>
+          <strong>{{ depenses_internes_attente_dga|add:depenses_internes_attente_dg }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>En paiement</span>
+          <strong>{{ depenses_internes_attente_paiement }}</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Total engage</span>
+          <strong>{{ depenses_internes_montant_total|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-summary-item">
+          <span>Solde caisse Avena</span>
+          <strong>{{ caisse_solde_global|floatformat:0 }} GNF</strong>
         </div>
         {% else %}
         <div class="dashboard-summary-item">
@@ -1027,17 +1147,24 @@
     </section>
   {% endif %}
 
-  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}
+  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" or user_role == "dga_avena" or user_role == "comptable_avena" or user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "caissiere_avena" or user_role == "comptable_sogefi" %}
   <div class="dashboard-layout">
     <div class="dashboard-stack">
       <section class="dashboard-section">
         <div class="dashboard-section-header">
           <div>
             <p class="eyebrow" style="margin-bottom:8px;">Depenses internes</p>
-            <h2 class="dashboard-section-title">{% if user_role == "responsable_achat" %}Dossiers recents a chiffrer{% else %}Dossiers recents a piloter{% endif %}</h2>
+            <h2 class="dashboard-section-title">{% if user_role == "responsable_achat" or user_role == "comptable_avena" %}Dossiers recents a chiffrer{% else %}Dossiers recents a piloter{% endif %}</h2>
             <p class="dashboard-section-subtitle">
               {% if user_role == "responsable_achat" %}
               Cette liste vous montre uniquement les depenses internes qui passent par votre travail achat : lignes, prix, fournisseur, facture et transmission vers la validation DGA SOGEFI.
+              {% elif user_role == "caissiere_soni" %}
+              Cette liste vous montre uniquement les depenses internes SONI qui concernent la caisse et les paiements en espece.
+              {% elif user_role == "comptable_avena" %}
+              Cette liste vous montre uniquement les depenses internes Avena qui passent par votre travail de chiffrage et de paiement.
+              Vous y retrouvez les lignes, les fournisseurs, les factures et la transmission vers la validation DGA Avena puis vers le paiement.
+              {% elif user_role == "dga_avena" %}
+              Cette liste vous montre uniquement les dossiers internes Avena qui traversent votre circuit de validation, avec leur demandeur, leur niveau d'avancement et le montant engage.
               {% else %}
               Cette liste vous montre uniquement les dossiers internes qui traversent votre circuit de validation, avec leur demandeur, leur niveau d'avancement et le montant engage.
               {% endif %}
@@ -1045,7 +1172,9 @@
           </div>
           <div class="table-actions">
             <a href="/depenses/" class="btn-secondary">Voir tous les dossiers</a>
-            <a href="/depenses/ajouter/" class="btn">{% if user_role == "responsable_achat" %}Nouvelle expression{% else %}Nouvelle expression{% endif %}</a>
+            {% if user_role != "comptable_avena" and user_role != "caissiere" and user_role != "caissiere_soni" and user_role != "caissiere_avena" %}
+            <a href="/depenses/ajouter/" class="btn">Nouvelle expression</a>
+            {% endif %}
           </div>
         </div>
         <div class="dashboard-table-wrap">
@@ -1086,6 +1215,12 @@
             <p class="dashboard-section-subtitle">
               {% if user_role == "responsable_achat" %}
               Votre parcours achat est volontairement simple : reprendre l'expression interne, saisir le chiffrage, joindre la facture, puis transmettre au DGA SOGEFI.
+              {% elif user_role == "caissiere_soni" %}
+              Le parcours SONI est limite aux depenses internes orientees vers la caisse et aux paiements en espece.
+              {% elif user_role == "comptable_avena" %}
+              Votre parcours Avena est volontairement simple : reprendre l'expression interne, saisir le chiffrage, joindre les factures, transmettre au DGA Avena puis suivre la caisse et les paiements.
+              {% elif user_role == "dga_avena" %}
+              Le parcours DGA Avena est volontairement simple : expression, chiffrage comptable, validation DGA, arbitrage DG, puis paiement.
               {% else %}
               Le parcours DGA SOGEFI est volontairement simple : expression, chiffrage achat, validation DGA, arbitrage DG, puis paiement.
               {% endif %}
@@ -1101,12 +1236,12 @@
           <div class="dashboard-mini-card">
             <h4>Saisie achat / prix</h4>
             <strong>{{ depenses_internes_attente_achat }}</strong>
-            <p>Dossiers chez le responsable achat pour chiffrage et facture.</p>
+            <p>{% if user_role == "comptable_avena" or user_role == "dga_avena" %}Dossiers chez le comptable Avena pour chiffrage et facture.{% elif user_role == "caissiere_soni" %}Dossiers internes SONI en attente de chiffrage.{% else %}Dossiers chez le responsable achat pour chiffrage et facture.{% endif %}</p>
           </div>
           <div class="dashboard-mini-card">
-            <h4>{% if user_role == "responsable_achat" %}Transmission DGA SOGEFI{% else %}Validation DGA SOGEFI{% endif %}</h4>
+            <h4>{% if user_role == "responsable_achat" %}Transmission DGA SOGEFI{% elif user_role == "comptable_avena" %}Transmission DGA Avena{% elif user_role == "dga_avena" %}Validation DGA Avena{% elif user_role == "caissiere_soni" %}Validation DGA SONI{% else %}Validation DGA SOGEFI{% endif %}</h4>
             <strong>{{ depenses_internes_attente_dga }}</strong>
-            <p>{% if user_role == "responsable_achat" %}Dossiers deja saisis et transmis pour arbitrage DGA SOGEFI.{% else %}Dossiers qui attendent votre decision avant transmission au DG.{% endif %}</p>
+            <p>{% if user_role == "responsable_achat" %}Dossiers deja saisis et transmis pour arbitrage DGA SOGEFI.{% elif user_role == "comptable_avena" %}Dossiers deja saisis et transmis pour arbitrage DGA Avena.{% elif user_role == "dga_avena" %}Dossiers qui attendent votre decision avant transmission au DG.{% else %}Dossiers qui attendent votre decision avant transmission au DG.{% endif %}</p>
           </div>
           <div class="dashboard-mini-card">
             <h4>Validation DG</h4>
@@ -1135,8 +1270,8 @@
           </div>
           <div class="dashboard-split-item">
             <div>
-              <strong>{% if user_role == "responsable_achat" %}Dossiers transmis DGA SOGEFI{% else %}Dossiers a valider{% endif %}</strong>
-              <span>{% if user_role == "responsable_achat" %}Engagements deja saisis qui attendent la decision du DGA SOGEFI.{% else %}Engagements internes deja saisis et a arbitrer a votre niveau.{% endif %}</span>
+              <strong>{% if user_role == "responsable_achat" %}Dossiers transmis DGA SOGEFI{% elif user_role == "comptable_avena" %}Dossiers transmis DGA Avena{% elif user_role == "caissiere_soni" %}Dossiers SONI a valider{% else %}Dossiers a valider{% endif %}</strong>
+              <span>{% if user_role == "responsable_achat" %}Engagements deja saisis qui attendent la decision du DGA SOGEFI.{% elif user_role == "comptable_avena" %}Engagements deja saisis qui attendent la decision du DGA Avena.{% elif user_role == "caissiere_soni" %}Engagements internes SONI deja saisis et en circuit de validation.{% else %}Engagements internes deja saisis et a arbitrer a votre niveau.{% endif %}</span>
             </div>
             <strong>{{ depenses_internes_attente_dga }}</strong>
           </div>
@@ -1171,7 +1306,7 @@
             <p>Depenses internes que le DG a orientees en espece.</p>
           </div>
           <div class="dashboard-mini-card">
-            <h4>Vers le comptable</h4>
+            <h4>{% if user_role == "comptable_avena" or user_role == "dga_avena" %}Vers le comptable Avena{% elif user_role == "caissiere_soni" %}Vers le comptable SONI{% else %}Vers le comptable{% endif %}</h4>
             <strong>{{ depenses_internes_attente_comptable }}</strong>
             <p>Depenses internes que le DG a orientees par cheque.</p>
           </div>
@@ -1189,7 +1324,7 @@
       </section>
     </div>
   </div>
-  {% elif user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "comptable_sogefi" or user_role == "comptable" %}
+  {% elif user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "caissiere_avena" or user_role == "comptable_sogefi" or user_role == "comptable" or user_role == "comptable_avena" %}
   <div class="dashboard-layout">
     <section class="dashboard-section">
       <div class="dashboard-section-header">
@@ -1262,7 +1397,7 @@
   </div>
   {% endif %}
 
-  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" %}
+  {% if user_role == "dga_sogefi" or user_role == "responsable_achat" or user_role == "dga_avena" or user_role == "comptable_avena" or user_role == "caissiere" or user_role == "caissiere_soni" or user_role == "caissiere_avena" or user_role == "comptable_sogefi" %}
   {% elif user_role == "logistique" %}
   <div class="dashboard-layout">
     <div class="dashboard-stack">

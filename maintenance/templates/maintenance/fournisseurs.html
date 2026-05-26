@@ -49,7 +49,7 @@
 <h1>{% if fournisseur_portefeuille == "interne" %}Fournisseurs achat interne{% else %}Fournisseurs maintenance{% endif %}</h1>
 </div>
 <div class="table-actions">
-<a href="{% if fournisseur_portefeuille == 'interne' %}/depenses/{% else %}/maintenance/achat/{% endif %}" class="btn-secondary">Retour</a>
+<a href="{{ return_url }}" class="btn-secondary">Retour</a>
 </div>
 </div>
 
@@ -57,6 +57,7 @@
 <h2 style="margin-top:0;">Nouveau fournisseur</h2>
 <form method="post" action="/maintenance/fournisseurs/ajouter/" class="app-form">
     {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
     <div class="{% if fournisseur_portefeuille == 'interne' %}internal-suppliers-grid{% else %}form-grid form-grid-2{% endif %}">
         <div>
             <label for="{{ form.nom_fournisseur.id_for_label }}">Nom</label>
@@ -96,9 +97,10 @@
 </div>
 
 <form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="hidden" name="next" value="{{ next_url }}">
 <input type="text" name="q" value="{{ query }}" placeholder="Rechercher nom, entreprise, activite ou telephone" autocomplete="off" spellcheck="false">
 <button type="submit" class="btn">Rechercher</button>
-<a href="/maintenance/fournisseurs/" class="btn-secondary">Reinitialiser</a>
+<a href="/maintenance/fournisseurs/{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" class="btn-secondary">Reinitialiser</a>
 </form>
 
 <table class="table">
@@ -126,7 +128,7 @@
 <td>{% if fournisseur_portefeuille == "interne" %}{{ fournisseur.depenses.count }}{% else %}{{ fournisseur.maintenances.count }}{% endif %}</td>
 <td>
     {% if is_admin_maintenance %}
-    <a href="/maintenance/fournisseurs/modifier/{{ fournisseur.id }}/" class="btn-edit">Modifier</a>
+    <a href="/maintenance/fournisseurs/modifier/{{ fournisseur.id }}/{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" class="btn-edit">Modifier</a>
     <form method="post" action="/maintenance/fournisseurs/supprimer/{{ fournisseur.id }}/" onsubmit="return confirm('Supprimer ce fournisseur ?');" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn-delete">Supprimer</button>

@@ -473,7 +473,7 @@
             {% if form.quantite_a_consommer.errors %}<p class="field-error">{{ form.quantite_a_consommer.errors|join:", " }}</p>{% endif %}
           </div>
         </div>
-        <p class="muted" id="bon-conso-help" style="margin:8px 0 0;">Renseignez ce bloc uniquement pour une depense carburant. Le montant sera calcule automatiquement : quantite x 12000 GNF.</p>
+        <p class="muted" id="bon-conso-help" style="margin:8px 0 0;">Renseignez ce bloc uniquement pour une depense carburant. Le montant sert au bon de consommation et ne sera pas comptabilise en caisse.</p>
       </div>
 
       <div class="field field-full span-12">
@@ -527,7 +527,7 @@
             <td>{{ depense.quantite_affiche }}</td>
             <td>{{ depense.prix_unitaire_affiche }}</td>
             <td>{{ depense.montant_affiche }}</td>
-            <td>{% if depense.is_fuel_related %}Carburant{% else %}Classique{% endif %}</td>
+            <td>{% if depense.is_fuel_related %}Carburant - info{% else %}Classique{% endif %}</td>
             <td>
               {% if depense_maitre and depense_maitre.statut == "attente_validation_chargement_dga" %}
               <a href="/depenses/chargement/{{ operation.id }}/ligne/{{ depense.id }}/modifier/" class="btn-secondary" style="padding:8px 12px;">Modifier</a>
@@ -668,13 +668,13 @@ function syncTypeSelection() {
     bonConsoFields.hidden = !isFuel;
     bonConsoFields.style.display = isFuel ? "" : "none";
     bonConsoHelp.textContent = isFuel
-      ? "Depense carburant detectee : renseignez la date du bon et la quantite. Le montant est calcule automatiquement sur la base de 12000 GNF par unite."
+      ? "Depense carburant detectee : renseignez la date du bon et la quantite. Le montant reste informatif pour le bon de consommation et ne passe pas en caisse."
       : "Renseignez ce bloc uniquement si le type choisi concerne le carburant.";
   }
 
   if (montantDepenseHelp) {
     montantDepenseHelp.textContent = isFuel
-      ? "Montant calcule automatiquement pour le carburant : quantite a consommer x 12000 GNF."
+      ? "Montant informatif du bon carburant : il ne sera pas comptabilise dans les paiements ni les rapports de caisse."
       : "Pour une depense classique, le montant par defaut du type vient automatiquement et reste modifiable.";
   }
 }

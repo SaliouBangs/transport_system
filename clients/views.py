@@ -14,12 +14,13 @@ from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 from utilisateurs.constants import ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL
 
-from .forms import BanqueForm, ClientDestinationFormSet, ClientForm, EncaissementClientForm
+from .forms import BanqueForm, ClientDestinationFormSet, ClientForm, EncaissementClientForm, VillePerequationForm
 from .models import (
     Banque,
     Client,
     EncaissementClient,
     EncaissementClientAllocation,
+    VillePerequation,
     commande_est_engagement,
     commande_est_facturee,
     commande_est_risque_potentiel,
@@ -407,14 +408,47 @@ def _build_client_snapshot(client, date_debut=None, date_fin=None):
 
 
 def liste_clients(request):
-    clients = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations", "encaissements")
+    query = request.GET.get("q", "").strip()
+    risque_scope = request.GET.get("risque", "").strip() or "all"
+
+    clients = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations__ville_perequation", "encaissements")
     if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
         clients = clients.filter(commercial=request.user)
+    if query:
+        clients = clients.filter(
+            Q(entreprise__icontains=query)
+            | Q(nom__icontains=query)
+            | Q(telephone__icontains=query)
+            | Q(ville__icontains=query)
+            | Q(adresse__icontains=query)
+        )
+
+    clients = list(clients)
+
+    if risque_scope == "critique":
+        clients = [client for client in clients if client.niveau_risque == "critique"]
+    elif risque_scope == "alerte":
+        clients = [client for client in clients if client.niveau_risque == "alerte"]
+    elif risque_scope == "couvert":
+        clients = [client for client in clients if client.niveau_risque == "ok"]
+    elif risque_scope == "plus_risque":
+        clients.sort(key=lambda client: client.risque_client or Decimal("0.00"), reverse=True)
+
+    total_risque = sum((client.risque_client or Decimal("0.00") for client in clients), Decimal("0.00"))
+    total_creance = sum((client.creance_client or Decimal("0.00") for client in clients), Decimal("0.00"))
+    clients_critique = sum(1 for client in clients if client.niveau_risque == "critique")
+
     return render(
         request,
         "clients/clients.html",
         {
             "clients": clients,
+            "query": query,
+            "risque_scope": risque_scope,
+            "clients_count": len(clients),
+            "clients_critique": clients_critique,
+            "total_risque": total_risque,
+            "total_creance": total_creance,
             "clients_non_affectes": Client.objects.filter(commercial__isnull=True).count(),
         },
     )
@@ -538,6 +572,48 @@ def modifier_client(request, id):
         request,
         "clients/modifier_client.html",
         {"form": form, "client": client, "destination_formset": destination_formset},
+    )
+
+
+def villes_perequation(request):
+    if not is_admin_user(request.user):
+        messages.error(request, "Seul l'administrateur peut gerer les villes de perequation.")
+        return redirect("/comptes/parametres/")
+
+    editing_id = (request.GET.get("edit") or "").strip()
+    editing_instance = None
+    if editing_id.isdigit():
+        editing_instance = VillePerequation.objects.filter(id=editing_id).first()
+
+    if request.method == "POST":
+        form_id = (request.POST.get("perequation_id") or "").strip()
+        instance = VillePerequation.objects.filter(id=form_id).first() if form_id.isdigit() else None
+        form = VillePerequationForm(request.POST, instance=instance)
+        if form.is_valid():
+            ville = form.save()
+            action = "Modification" if instance else "Ajout"
+            journaliser_action(
+                request.user,
+                "Parametres",
+                f"{action} ville de perequation",
+                ville.nom,
+                f"{request.user.username} a {'modifie' if instance else 'ajoute'} la ville de perequation {ville.nom}.",
+            )
+            messages.success(request, "La ville de perequation a ete enregistree.")
+            return redirect("villes_perequation")
+        editing_instance = instance
+    else:
+        form = VillePerequationForm(instance=editing_instance)
+
+    villes = VillePerequation.objects.order_by("nom")
+    return render(
+        request,
+        "clients/villes_perequation.html",
+        {
+            "form": form,
+            "villes_perequation": villes,
+            "editing_instance": editing_instance,
+        },
     )
 
 
@@ -1013,7 +1089,7 @@ imputer_avance_client = role_required("commercial", "responsable_commercial", "d
 
 
 def detail_client(request, id):
-    client_queryset = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations", "encaissements")
+    client_queryset = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations__ville_perequation", "encaissements")
     if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
         client_queryset = client_queryset.filter(commercial=request.user)
     client = get_object_or_404(client_queryset, id=id)
@@ -1027,7 +1103,7 @@ def detail_client(request, id):
     date_fin = request.GET.get("date_fin", "").strip()
 
     commandes = Commande.objects.filter(client=client).select_related("produit", "camion", "chauffeur").prefetch_related("operations").order_by("-date_creation")
-    operations = Operation.objects.filter(client=client).select_related("commande", "produit", "camion", "chauffeur").order_by("-date_creation")
+    operations = Operation.objects.filter(client=client, remplace_par__isnull=True).select_related("commande", "produit", "camion", "chauffeur").order_by("-date_creation")
     encaissements = client.encaissements.select_related("commande").prefetch_related("allocations__commande").all()
 
     if date_debut:
@@ -1045,10 +1121,7 @@ def detail_client(request, id):
         operations = operations.filter(etat_bon=etat_bl, remplace_par__isnull=True)
         commandes_filtrees = []
         for commande in commandes:
-            latest_operation = (
-                commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-                or commande.operations.order_by("-date_creation").first()
-            )
+            latest_operation = commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
             if latest_operation and latest_operation.etat_bon == etat_bl:
                 commandes_filtrees.append(commande.id)
         commandes = commandes.filter(id__in=commandes_filtrees)
@@ -1194,7 +1267,7 @@ def _build_line_chart(labels, series_specs):
 
 
 def rapport_financier_client(request, id):
-    client_queryset = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations", "encaissements")
+    client_queryset = Client.objects.select_related("prospect", "commercial").prefetch_related("destinations__ville_perequation", "encaissements")
     if get_user_role(request.user) == ROLE_COMMERCIAL and not is_admin_user(request.user):
         client_queryset = client_queryset.filter(commercial=request.user)
     client = get_object_or_404(client_queryset, id=id)
@@ -1324,10 +1397,7 @@ def rapport_financier_client(request, id):
             elif produit_nom == "GASOIL":
                 monthly_gasoil_map.setdefault(commande_key, Decimal("0.00"))
                 monthly_gasoil_map[commande_key] += montant
-        latest_operation = (
-            commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-            or commande.operations.order_by("-date_creation").first()
-        )
+        latest_operation = commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
         if latest_operation and latest_operation.etat_bon == "livre" and latest_operation.date_bons_livres:
             key = latest_operation.date_bons_livres.strftime("%Y-%m")
             monthly_livres_map.setdefault(key, Decimal("0.00"))

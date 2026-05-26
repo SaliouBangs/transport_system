@@ -7,10 +7,17 @@
 <div class="report-hero">
 <div class="report-hero-main">
 <p class="eyebrow">Caisse</p>
-<h1>Rapport unifie des paiements</h1>
-<p class="report-hero-subtitle">Synthese des paiements maintenance et depenses enregistres par la caissiere, avec lecture rapide des volumes et des montants.</p>
+<h1>{% if caisse_report_internal_only %}Rapport caisse {{ caisse_report_entity_label }}{% else %}Rapport unifie des paiements{% endif %}</h1>
+<p class="report-hero-subtitle">
+{% if caisse_report_internal_only %}
+Synthese des paiements internes {{ caisse_report_entity_label }} enregistres par la caissiere.
+{% else %}
+Synthese des paiements maintenance et depenses enregistres par la caissiere, avec lecture rapide des volumes et des montants.
+{% endif %}
+</p>
 </div>
 <div class="table-actions">
+<a href="/maintenance/rapports/caisse/export/xls/?q={{ filter_values.q }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}&type_depense={{ filter_values.type_depense }}" class="btn-secondary">Exporter Excel</a>
 <button type="button" class="btn-secondary" onclick="window.print()">Imprimer le rapport</button>
 </div>
 </div>
@@ -21,8 +28,10 @@
 <input type="date" name="date_to" value="{{ filter_values.date_to }}" style="min-width:180px;" data-live-change>
 <select name="type_depense" style="min-width:190px; height:52px;" data-live-change>
     <option value="">Tous les paiements</option>
+    {% if not caisse_report_internal_only %}
     <option value="maintenance" {% if filter_values.type_depense == "maintenance" %}selected{% endif %}>Maintenance</option>
     <option value="bl" {% if filter_values.type_depense == "bl" %}selected{% endif %}>Depense BL</option>
+    {% endif %}
     <option value="generale" {% if filter_values.type_depense == "generale" %}selected{% endif %}>Autre depense</option>
 </select>
 <button type="submit" class="btn">Rechercher</button>
@@ -39,9 +48,15 @@
     <strong class="report-kpi-value">{{ total_montant }} GNF</strong>
 </div>
 <div class="report-kpi-card">
+    {% if caisse_report_internal_only %}
+    <span class="report-kpi-label">Depenses internes</span>
+    <strong class="report-kpi-value">{{ total_depenses_generales }}</strong>
+    {% else %}
     <span class="report-kpi-label">Maintenances</span>
     <strong class="report-kpi-value">{{ total_maintenance }}</strong>
+    {% endif %}
 </div>
+{% if not caisse_report_internal_only %}
 <div class="report-kpi-card">
     <span class="report-kpi-label">Depenses BL</span>
     <strong class="report-kpi-value">{{ total_depenses_bl }}</strong>
@@ -50,11 +65,18 @@
     <span class="report-kpi-label">Autres depenses</span>
     <strong class="report-kpi-value">{{ total_depenses_generales }}</strong>
 </div>
+{% endif %}
 </div>
 
 <div class="card report-card" style="text-align:left;">
 <h3>Liste de tous les paiements saisis en caisse</h3>
-<p style="color:#5f7384; margin-bottom:16px;">Ce rapport regroupe en un seul tableau les paiements maintenance et les paiements de depenses saisis par la caissiere.</p>
+<p style="color:#5f7384; margin-bottom:16px;">
+{% if caisse_report_internal_only %}
+Ce rapport regroupe uniquement les paiements de depenses internes {{ caisse_report_entity_label }} saisis par la caissiere.
+{% else %}
+Ce rapport regroupe en un seul tableau les paiements maintenance et les paiements de depenses saisis par la caissiere.
+{% endif %}
+</p>
 <table class="table report-table" style="margin-top:16px;">
 <thead>
 <tr>

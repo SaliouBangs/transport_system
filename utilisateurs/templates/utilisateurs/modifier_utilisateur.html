@@ -7,13 +7,20 @@
 <p class="eyebrow">Administration</p>
 <h1>Modifier {{ utilisateur.username }}</h1>
 </div>
+<div class="admin-form-top-actions">
+<a href="/comptes/utilisateurs/" class="btn-secondary">Retour</a>
+<button type="submit" form="user-admin-form" class="btn">Enregistrer</button>
+</div>
 </div>
 
-<div class="form-shell">
-<form method="post" class="app-form">
+<div class="form-shell user-admin-shell">
+<form id="user-admin-form" method="post" enctype="multipart/form-data" class="app-form user-admin-form">
     {% csrf_token %}
 
-    <div class="form-grid">
+    <section class="user-admin-panel">
+    <p class="eyebrow">Compte</p>
+    <h2>Identite et connexion</h2>
+    <div class="form-grid user-info-grid">
         <div class="field">
             <label for="{{ form.username.id_for_label }}">Nom d'utilisateur</label>
             {{ form.username }}
@@ -31,6 +38,19 @@
         <div class="field">
             <label for="{{ form.last_name.id_for_label }}">Nom</label>
             {{ form.last_name }}
+        </div>
+        <div class="field field-full">
+            <label>Photo de profil</label>
+            <div class="admin-photo-row">
+                {% if utilisateur.profil_utilisateur.photo_url %}
+                <img src="{{ utilisateur.profil_utilisateur.photo_url }}" alt="{{ utilisateur.username }}" class="admin-photo-preview">
+                {% else %}
+                <span class="admin-photo-preview admin-photo-preview--initials">{{ utilisateur.profil_utilisateur.initiales }}</span>
+                {% endif %}
+                <div>
+                    <p class="field-help">Photo affichee a titre d'information. L'utilisateur la modifie depuis son propre profil.</p>
+                </div>
+            </div>
         </div>
         <div class="field field-full">
             <label for="{{ form.email.id_for_label }}">Email</label>
@@ -55,6 +75,49 @@
             <div class="field-inline">{{ form.is_superuser }}</div>
         </div>
     </div>
+    </section>
+
+    <section class="user-admin-panel user-admin-panel--rights">
+            <div class="permission-manager">
+                <div class="permission-manager__head">
+                    <div>
+                        <p class="eyebrow">Droits utilisateur</p>
+                        <h2>Actions et boutons autorises</h2>
+                        <p>Selectionnez uniquement les actions que ce compte doit voir et utiliser.</p>
+                    </div>
+                    <div class="permission-counter"><strong id="permission-count">{{ form.selected_permissions_count }}</strong><span>/ {{ form.permissions_count }}</span></div>
+                </div>
+                <div class="permission-toolbar">
+                    <button type="button" class="btn-secondary" data-permission-action="role">Reinitialiser selon le role</button>
+                    <button type="button" class="btn-secondary" data-permission-action="all">Tout cocher</button>
+                    <button type="button" class="btn-secondary" data-permission-action="none">Tout decocher</button>
+                </div>
+                <div class="permission-grid">
+                {% for group in form.permission_groups %}
+                <section class="permission-panel">
+                    <div class="permission-panel__head">
+                        <h3>{{ group.label }}</h3>
+                        <span>{{ group.active_count }} / {{ group.total_count }}</span>
+                    </div>
+                    {% for option in group.permissions %}
+                    <label class="permission-choice {% if option.selected %}is-active{% endif %}" for="id_action_permissions_{{ option.key }}">
+                        <input type="checkbox" name="action_permissions" value="{{ option.key }}" id="id_action_permissions_{{ option.key }}" data-base="{% if option.base %}1{% else %}0{% endif %}" {% if option.selected %}checked{% endif %}>
+                        <span>{{ option.label }}</span>
+                        {% if option.base %}<em>Role</em>{% endif %}
+                        {% if option.readonlyable %}
+                        <strong class="readonly-toggle">
+                            <input type="checkbox" name="readonly_permissions" value="{{ option.key }}" data-readonly-for="{{ option.key }}" {% if option.readonly %}checked{% endif %}>
+                            Lecture seule
+                        </strong>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </section>
+                {% endfor %}
+                </div>
+            </div>
+            {% if form.action_permissions.errors %}<p class="field-error">{{ form.action_permissions.errors.0 }}</p>{% endif %}
+    </section>
 
     <div class="form-actions">
         <a href="/comptes/utilisateurs/" class="btn-secondary">Retour</a>
@@ -62,5 +125,279 @@
     </div>
 </form>
 </div>
+
+{{ form.role_permission_defaults|json_script:"role-permission-defaults" }}
+
+<style>
+.admin-form-top-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+.user-admin-shell{
+    max-width:none;
+}
+.user-admin-form{
+    display:grid;
+    grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);
+    gap:18px;
+    align-items:start;
+}
+.user-admin-panel{
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:rgba(255,255,255,.92);
+    padding:18px;
+}
+.user-admin-panel h2{
+    margin:0 0 16px;
+    font-size:1.2rem;
+}
+.user-info-grid{
+    grid-template-columns:1fr;
+}
+.user-admin-panel--rights{
+    min-width:0;
+    padding:0;
+    background:transparent;
+    border:0;
+}
+.user-admin-form .form-actions{
+    grid-column:1 / -1;
+    position:sticky;
+    bottom:0;
+    z-index:5;
+    background:linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.98));
+    border-top:1px solid var(--border);
+    padding:12px 0 0;
+}
+.permission-manager{
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(246,251,255,.94));
+    padding:18px;
+}
+.admin-photo-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+}
+.admin-photo-preview{
+    width:72px;
+    height:72px;
+    border-radius:999px;
+    object-fit:cover;
+    border:2px solid #d8e8f3;
+    flex:0 0 auto;
+}
+.admin-photo-preview--initials{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#dff5ef;
+    color:#087156;
+    font-weight:800;
+    font-size:1.2rem;
+}
+.permission-manager__head{
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    margin-bottom:14px;
+}
+.permission-manager__head h2{
+    margin:0;
+    font-size:1.25rem;
+}
+.permission-manager__head p{
+    margin:6px 0 0;
+    color:#607588;
+}
+.permission-counter{
+    min-width:94px;
+    padding:10px 12px;
+    border-radius:8px;
+    background:#123047;
+    color:#fff;
+    text-align:center;
+}
+.permission-counter strong{
+    font-size:1.45rem;
+}
+.permission-counter span{
+    color:#c8d7e1;
+    margin-left:3px;
+}
+.permission-toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+.permission-toolbar .btn-secondary{
+    border-radius:8px;
+    padding:9px 12px;
+}
+.permission-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+    gap:14px;
+}
+.permission-panel{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px;
+    background:rgba(255,255,255,.78);
+}
+.permission-panel__head{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    margin-bottom:10px;
+}
+.permission-panel__head h3{
+    margin:0 0 12px;
+    font-size:1rem;
+}
+.permission-panel__head span{
+    border-radius:999px;
+    padding:5px 9px;
+    background:#eaf3ff;
+    color:#1f5d96;
+    font-size:.78rem;
+    font-weight:800;
+}
+.permission-choice{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:8px 0;
+    padding:9px 10px;
+    border:1px solid #e0e8ef;
+    border-radius:8px;
+    background:#fff;
+    color:var(--navy);
+    font-weight:600;
+    min-width:0;
+}
+.permission-choice.is-active{
+    border-color:#9bd8c4;
+    background:#f0fbf6;
+}
+.permission-choice input[type="checkbox"]{
+    flex:0 0 auto;
+    width:16px;
+    min-width:16px;
+    height:16px;
+    min-height:16px;
+    margin:0;
+    padding:0;
+    box-shadow:none;
+    appearance:auto;
+}
+.permission-choice span{
+    flex:1;
+    min-width:0;
+    overflow-wrap:anywhere;
+    line-height:1.35;
+}
+.permission-choice em{
+    border-radius:999px;
+    padding:4px 7px;
+    background:#e8f2ff;
+    color:#1f5d96;
+    font-size:.72rem;
+    font-style:normal;
+    font-weight:800;
+    text-transform:uppercase;
+}
+.readonly-toggle{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    border-radius:999px;
+    padding:4px 7px;
+    background:#fff7df;
+    color:#875a00;
+    font-size:.72rem;
+    font-weight:800;
+    white-space:nowrap;
+}
+.readonly-toggle input[type="checkbox"]{
+    width:13px;
+    min-width:13px;
+    height:13px;
+    min-height:13px;
+    margin:0;
+}
+.permission-choice:not(.is-active) .readonly-toggle{
+    opacity:.45;
+}
+@media (max-width: 760px){
+    .user-admin-form{
+        grid-template-columns:1fr;
+    }
+    .admin-form-top-actions{
+        width:100%;
+    }
+    .admin-form-top-actions .btn,
+    .admin-form-top-actions .btn-secondary{
+        flex:1 1 160px;
+        text-align:center;
+    }
+    .permission-manager__head{
+        flex-direction:column;
+    }
+    .permission-grid{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<script>
+const roleDefaults = JSON.parse(document.getElementById("role-permission-defaults")?.textContent || "{}");
+const roleSelect = document.getElementById("id_role");
+const permissionInputs = Array.from(document.querySelectorAll('input[name="action_permissions"]'));
+const readonlyInputs = Array.from(document.querySelectorAll('input[name="readonly_permissions"]'));
+const permissionCount = document.getElementById("permission-count");
+
+function refreshPermissionState() {
+    let total = 0;
+    permissionInputs.forEach((input) => {
+        input.closest(".permission-choice")?.classList.toggle("is-active", input.checked);
+        const readonlyInput = document.querySelector(`input[data-readonly-for="${input.value}"]`);
+        if (readonlyInput) {
+            readonlyInput.disabled = !input.checked;
+            if (!input.checked) readonlyInput.checked = false;
+        }
+        if (input.checked) total += 1;
+    });
+    if (permissionCount) permissionCount.textContent = String(total);
+}
+
+function applyPermissionSet(values) {
+    const selected = new Set(values || []);
+    permissionInputs.forEach((input) => {
+        input.checked = selected.has(input.value);
+    });
+    refreshPermissionState();
+}
+
+document.querySelectorAll("[data-permission-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const action = button.dataset.permissionAction;
+        if (action === "role") applyPermissionSet(roleDefaults[roleSelect?.value] || []);
+        if (action === "all") applyPermissionSet(permissionInputs.map((input) => input.value));
+        if (action === "none") applyPermissionSet([]);
+    });
+});
+
+roleSelect?.addEventListener("change", () => applyPermissionSet(roleDefaults[roleSelect.value] || []));
+permissionInputs.forEach((input) => input.addEventListener("change", refreshPermissionState));
+refreshPermissionState();
+</script>
 
 {% endblock %}

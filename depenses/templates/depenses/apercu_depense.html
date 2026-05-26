@@ -160,9 +160,15 @@
       <div class="sheet-box">
         <strong>Facturation / justificatif</strong>
         Numero facture : {{ depense.numero_facture|default:"-" }}<br>
-        Piece justificative :
-        {% if depense.piece_justificative %}
+        Pieces justificatives :
+        {% if depense.justificatifs %}
+        {% for piece in depense.justificatifs %}
+        {% if piece.fichier %}
+        <a href="/depenses/piece/{{ depense.id }}/{{ piece.id }}/" target="_blank">Piece {{ forloop.counter }}</a>{% if not forloop.last %}, {% endif %}
+        {% else %}
         <a href="/depenses/piece/{{ depense.id }}/" target="_blank">Voir la piece</a>
+        {% endif %}
+        {% endfor %}
         {% else %}
         -
         {% endif %}<br>

@@ -33,6 +33,14 @@ class Commande(models.Model):
     description = models.TextField(blank=True)
     ville_depart = models.CharField(max_length=100)
     ville_arrivee = models.CharField(max_length=100)
+    ville_perequation = models.ForeignKey(
+        "clients.VillePerequation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="commandes",
+    )
+    tarif_perequation_gnf_litre = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     date_commande = models.DateField(default=timezone.localdate, editable=False)
     date_livraison_prevue = models.DateField()
     delai_paiement_jours = models.PositiveIntegerField(default=0)

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Parametres</p>
+<h1>Villes de perequation</h1>
+<p class="page-subtitle">Reference centrale des villes de perequation et de leurs tarifs GNF/L.</p>
+</div>
+</div>
+
+<div class="dashboard-layout">
+    <section class="dashboard-section">
+        <div class="dashboard-section-header">
+            <div>
+                <p class="eyebrow" style="margin-bottom:8px;">Saisie</p>
+                <h2 class="dashboard-section-title">{% if editing_instance %}Modifier la ville{% else %}Nouvelle ville{% endif %}</h2>
+            </div>
+        </div>
+        <form method="post" class="app-form">
+            {% csrf_token %}
+            {% if editing_instance %}<input type="hidden" name="perequation_id" value="{{ editing_instance.id }}">{% endif %}
+            <div class="form-grid">
+                <div class="field">
+                    <label for="{{ form.nom.id_for_label }}">Ville de perequation</label>
+                    {{ form.nom }}
+                    {% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.tarif_gnf_litre.id_for_label }}">Tarif GNF/L</label>
+                    {{ form.tarif_gnf_litre }}
+                    {% if form.tarif_gnf_litre.errors %}<p class="field-error">{{ form.tarif_gnf_litre.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ form.actif.id_for_label }}">Statut</label>
+                    {{ form.actif }}
+                    {% if form.actif.errors %}<p class="field-error">{{ form.actif.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="/comptes/parametres/" class="btn-secondary">Retour</a>
+                {% if editing_instance %}<a href="/clients/perequations/" class="btn-secondary">Annuler</a>{% endif %}
+                <button type="submit" class="btn">{% if editing_instance %}Mettre a jour{% else %}Enregistrer{% endif %}</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="dashboard-section-header">
+            <div>
+                <p class="eyebrow" style="margin-bottom:8px;">Reference</p>
+                <h2 class="dashboard-section-title">Tarifs enregistres</h2>
+            </div>
+        </div>
+        <div class="dashboard-table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ville</th>
+                        <th>Tarif GNF/L</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ville in villes_perequation %}
+                    <tr>
+                        <td>{{ ville.nom }}</td>
+                        <td>{{ ville.tarif_gnf_litre|floatformat:2 }}</td>
+                        <td>{% if ville.actif %}<span class="status status-ok">Active</span>{% else %}<span class="status status-danger">Inactive</span>{% endif %}</td>
+                        <td><a href="/clients/perequations/?edit={{ ville.id }}" class="btn-secondary">Modifier</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4">Aucune ville de perequation enregistree.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{% endblock %}

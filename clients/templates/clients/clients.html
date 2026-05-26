@@ -15,6 +15,78 @@
 </div>
 </div>
 
+<section class="clients-shell clients-focus-shell">
+  <div class="clients-focus-grid">
+    <article class="clients-focus-card">
+      <span class="clients-focus-label">Clients visibles</span>
+      <strong>{{ clients_count }}</strong>
+      <p>Base courante apres filtrage.</p>
+    </article>
+    <article class="clients-focus-card">
+      <span class="clients-focus-label">Clients critiques</span>
+      <strong>{{ clients_critique }}</strong>
+      <p>Dossiers proches du DMA.</p>
+    </article>
+    <article class="clients-focus-card">
+      <span class="clients-focus-label">Risque total</span>
+      <strong>{{ total_risque|gnf }}</strong>
+      <p>Exposition globale visible.</p>
+    </article>
+    <article class="clients-focus-card">
+      <span class="clients-focus-label">Creance totale</span>
+      <strong>{{ total_creance|gnf }}</strong>
+      <p>Montant a encaisser.</p>
+    </article>
+  </div>
+</section>
+
+<section class="clients-shell clients-filter-shell">
+  <div class="clients-filter-head">
+    <div>
+      <div class="section-label">Recherche avancee</div>
+      <h3 class="clients-block-title">Pilotage clients</h3>
+      <p class="clients-muted">Recherche rapide par client, contact, telephone ou ville, avec filtre de risque.</p>
+    </div>
+    <div class="clients-filter-chip">
+      <span>Scope actif :</span>
+      <strong>
+        {% if risque_scope == "critique" %}Clients critiques
+        {% elif risque_scope == "alerte" %}Clients en alerte
+        {% elif risque_scope == "couvert" %}Clients couverts
+        {% elif risque_scope == "plus_risque" %}Plus grand risque
+        {% else %}Tous les clients{% endif %}
+      </strong>
+    </div>
+  </div>
+
+  <div class="clients-filter-body">
+    <form method="get" class="app-form">
+      <div class="form-grid clients-filter-grid">
+        <div class="field">
+          <label for="id_q">Recherche</label>
+          <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Client, contact, telephone, ville">
+        </div>
+
+        <div class="field">
+          <label for="id_risque">Risque</label>
+          <select id="id_risque" name="risque">
+            <option value="all" {% if risque_scope == "all" %}selected{% endif %}>Tous les clients</option>
+            <option value="plus_risque" {% if risque_scope == "plus_risque" %}selected{% endif %}>Plus de risque</option>
+            <option value="critique" {% if risque_scope == "critique" %}selected{% endif %}>Critiques</option>
+            <option value="alerte" {% if risque_scope == "alerte" %}selected{% endif %}>En alerte</option>
+            <option value="couvert" {% if risque_scope == "couvert" %}selected{% endif %}>Couverts</option>
+          </select>
+        </div>
+
+        <div class="clients-filter-actions">
+          <a href="/clients/" class="btn-secondary">Reinitialiser</a>
+          <button type="submit" class="btn">Filtrer</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
 <table class="table">
 <thead>
 <tr>
@@ -82,6 +154,125 @@
 
 {% block extra_scripts %}
 <style>
+.clients-shell {
+    margin-bottom: 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(214, 228, 238, 0.92);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(243, 249, 252, 0.96));
+    box-shadow: 0 18px 36px rgba(18, 48, 71, 0.08);
+}
+
+.clients-focus-shell {
+    padding: 12px;
+}
+
+.clients-focus-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.clients-focus-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(214, 228, 238, 0.9);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(237, 246, 250, 0.96));
+}
+
+.clients-focus-label {
+    display: block;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #0f8a66;
+}
+
+.clients-focus-card strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.22rem;
+    color: var(--navy);
+}
+
+.clients-focus-card p,
+.clients-muted {
+    margin: 4px 0 0;
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+.clients-filter-shell {
+    overflow: hidden;
+}
+
+.clients-filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(217, 226, 232, 0.85);
+    background: linear-gradient(135deg, rgba(18, 48, 71, 0.04), rgba(79, 191, 159, 0.10));
+}
+
+.clients-block-title {
+    margin: 4px 0;
+    color: var(--navy);
+    font-size: 1.1rem;
+}
+
+.clients-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(79, 191, 159, 0.14);
+    color: var(--mint-dark);
+    font-weight: 700;
+}
+
+.clients-filter-body {
+    padding: 12px 16px;
+}
+
+.clients-filter-grid {
+    grid-template-columns: minmax(260px, 1.5fr) minmax(200px, 0.8fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.clients-filter-grid .field label {
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+}
+
+.clients-filter-grid .field input,
+.clients-filter-grid .field select {
+    min-height: 46px;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.clients-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 46px;
+}
+
+.clients-filter-actions .btn,
+.clients-filter-actions .btn-secondary {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.table td {
+    vertical-align: top;
+}
+
 .risk-meter__track {
     width: 140px;
     height: 10px;
@@ -106,6 +297,39 @@
 
 .risk-meter__fill--critique {
     background: linear-gradient(90deg, #ef7d32, #d64545);
+}
+
+@media (max-width: 1100px) {
+    .clients-focus-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .clients-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .clients-filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 720px) {
+    .clients-focus-grid,
+    .clients-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .clients-filter-actions {
+        grid-column: auto;
+        flex-wrap: wrap;
+    }
+
+    .clients-filter-actions .btn,
+    .clients-filter-actions .btn-secondary {
+        flex: 1;
+        text-align: center;
+    }
 }
 </style>
 {% endblock %}

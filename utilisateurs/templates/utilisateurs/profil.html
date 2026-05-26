@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Compte utilisateur</p>
+<h1>Mon profil</h1>
+</div>
+</div>
+
+<div class="profile-layout">
+    <div class="form-shell">
+        <h2 class="section-title">Informations personnelles</h2>
+        <form method="post" enctype="multipart/form-data" class="app-form">
+            {% csrf_token %}
+            <input type="hidden" name="modifier_profil" value="1">
+
+            <div class="form-grid">
+                <div class="field field-full">
+                    <label for="{{ profil_form.photo.id_for_label }}">Photo de profil</label>
+                    <div class="profile-photo-field">
+                        <div class="profile-avatar profile-avatar-large">
+                            {% if current_user_profile.photo %}
+                            <img src="{{ current_user_profile.photo.url }}" alt="Photo de profil">
+                            {% else %}
+                            <span>{{ current_user_initials }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="profile-photo-input">
+                            {{ profil_form.photo }}
+                            {% if profil_form.photo.errors %}<p class="field-error">{{ profil_form.photo.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="{{ profil_form.username.id_for_label }}">Nom d'utilisateur</label>
+                    {{ profil_form.username }}
+                    {% if profil_form.username.errors %}<p class="field-error">{{ profil_form.username.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ profil_form.email.id_for_label }}">Email</label>
+                    {{ profil_form.email }}
+                    {% if profil_form.email.errors %}<p class="field-error">{{ profil_form.email.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ profil_form.first_name.id_for_label }}">Prenom</label>
+                    {{ profil_form.first_name }}
+                    {% if profil_form.first_name.errors %}<p class="field-error">{{ profil_form.first_name.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ profil_form.last_name.id_for_label }}">Nom</label>
+                    {{ profil_form.last_name }}
+                    {% if profil_form.last_name.errors %}<p class="field-error">{{ profil_form.last_name.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Enregistrer le profil</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-shell">
+        <h2 class="section-title">Mot de passe</h2>
+        <form method="post" class="app-form">
+            {% csrf_token %}
+            <input type="hidden" name="modifier_mot_de_passe" value="1">
+
+            <div class="form-grid">
+                <div class="field field-full">
+                    <label for="{{ password_form.old_password.id_for_label }}">Mot de passe actuel</label>
+                    {{ password_form.old_password }}
+                    {% if password_form.old_password.errors %}<p class="field-error">{{ password_form.old_password.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ password_form.new_password1.id_for_label }}">Nouveau mot de passe</label>
+                    {{ password_form.new_password1 }}
+                    {% if password_form.new_password1.errors %}<p class="field-error">{{ password_form.new_password1.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ password_form.new_password2.id_for_label }}">Confirmer le nouveau mot de passe</label>
+                    {{ password_form.new_password2 }}
+                    {% if password_form.new_password2.errors %}<p class="field-error">{{ password_form.new_password2.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            {% if password_form.non_field_errors %}
+            <div class="form-alert">
+                {% for error in password_form.non_field_errors %}
+                <p class="field-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Changer le mot de passe</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

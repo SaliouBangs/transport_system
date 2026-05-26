@@ -62,7 +62,18 @@
         <div class="field">
             <label for="{{ form.ville_arrivee.id_for_label }}">Ville d'arrivee</label>
             {{ form.ville_arrivee }}
+            <datalist id="client-destinations-list"></datalist>
             {% if form.ville_arrivee.errors %}<p class="field-error">{{ form.ville_arrivee.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="commande-ville-perequation">Ville de perequation</label>
+            <input type="text" id="commande-ville-perequation" value="{% if commande.ville_perequation_id %}{{ commande.ville_perequation.nom }}{% else %}-{% endif %}" readonly>
+        </div>
+
+        <div class="field">
+            <label for="commande-tarif-perequation">Tarif perequation (GNF/L)</label>
+            <input type="text" id="commande-tarif-perequation" value="{% if commande.tarif_perequation_gnf_litre %}{{ commande.tarif_perequation_gnf_litre|floatformat:2 }} GNF/L{% else %}-{% endif %}" readonly>
         </div>
 
         <div class="field">
@@ -131,14 +142,77 @@
 const clientSelect = document.getElementById("id_client");
 const clientSearchInput = document.getElementById("client-search-input");
 const clientOptions = Array.from(document.querySelectorAll("#clients-list option"));
+const destinationInput = document.getElementById("id_ville_arrivee");
+const destinationList = document.getElementById("client-destinations-list");
+let destinationMetadata = [];
 
 function syncClientSelectionFromSearch() {
     const match = clientOptions.find((option) => option.value === clientSearchInput?.value);
     clientSelect.value = match?.dataset.id || "";
+    if (clientSelect.value) {
+        fetchClientInfo(clientSelect.value);
+    }
+}
+
+function syncClientDestinations(destinations) {
+    if (!destinationList || !destinationInput) {
+        return;
+    }
+
+    destinationList.innerHTML = "";
+    const cleanDestinations = Array.isArray(destinations)
+        ? destinations.filter((item) => item && typeof item.adresse === "string" && item.adresse.trim())
+        : [];
+    destinationMetadata = cleanDestinations;
+
+    cleanDestinations.forEach((destination) => {
+        const option = document.createElement("option");
+        option.value = destination.adresse;
+        destinationList.appendChild(option);
+    });
+
+    updatePerequationFields();
+}
+
+function updatePerequationFields() {
+    const villePerequationInput = document.getElementById("commande-ville-perequation");
+    const tarifPerequationInput = document.getElementById("commande-tarif-perequation");
+    if (!villePerequationInput || !tarifPerequationInput) {
+        return;
+    }
+
+    const selectedDestination = destinationMetadata.find((item) => item.adresse === destinationInput?.value);
+    if (!selectedDestination) {
+        villePerequationInput.value = "-";
+        tarifPerequationInput.value = "-";
+        return;
+    }
+
+    villePerequationInput.value = selectedDestination.ville_perequation || "-";
+    tarifPerequationInput.value = selectedDestination.tarif_gnf_litre
+        ? `${Number(selectedDestination.tarif_gnf_litre).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GNF/L`
+        : "-";
+}
+
+async function fetchClientInfo(clientId) {
+    const response = await fetch(`/commandes/client-infos/?client_id=${clientId}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+    });
+    const data = await response.json();
+    if (response.ok && data.success) {
+        syncClientDestinations(data.client?.destinations || []);
+    }
 }
 
 clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
 clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
+destinationInput?.addEventListener("input", updatePerequationFields);
+destinationInput?.addEventListener("change", updatePerequationFields);
+
+if (clientSelect?.value) {
+    fetchClientInfo(clientSelect.value);
+}
 </script>
 
 <style>

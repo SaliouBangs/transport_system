@@ -136,12 +136,30 @@
                         {{ destination_form.adresse }}
                         {% if destination_form.adresse.errors %}<p class="field-error">{{ destination_form.adresse.errors.0 }}</p>{% endif %}
                     </div>
+                    <div class="destination-row__input">
+                        {{ destination_form.ville_perequation }}
+                        {% if destination_form.ville_perequation.errors %}<p class="field-error">{{ destination_form.ville_perequation.errors.0 }}</p>{% endif %}
+                    </div>
                     <div class="destination-row__delete">
                         {% if destination_formset.can_delete %}{{ destination_form.DELETE }} <span>Supprimer</span>{% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            <template id="destination-empty-row-template">
+                <div class="destination-row">
+                    <div class="destination-row__input">
+                        {{ destination_formset.empty_form.adresse }}
+                    </div>
+                    <div class="destination-row__input">
+                        {{ destination_formset.empty_form.ville_perequation }}
+                    </div>
+                    <div class="destination-row__delete">
+                        <input type="checkbox" name="destinations-__prefix__-DELETE" id="id_destinations-__prefix__-DELETE">
+                        <span>Supprimer</span>
+                    </div>
+                </div>
+            </template>
             <button type="button" class="btn-secondary" id="add-destination-row">Ajouter une adresse de destination</button>
         </div>
 
@@ -172,6 +190,7 @@ const clientVilleInput = document.getElementById("id_ville");
 const destinationContainer = document.getElementById("destinations-formset");
 const addDestinationButton = document.getElementById("add-destination-row");
 const destinationTotalInput = document.getElementById("id_destinations-TOTAL_FORMS");
+const destinationEmptyRowTemplate = document.getElementById("destination-empty-row-template");
 
 async function syncClientFromProspect() {
     const prospectId = prospectSelect?.value;
@@ -210,23 +229,13 @@ async function syncClientFromProspect() {
 prospectSelect?.addEventListener("change", syncClientFromProspect);
 
 addDestinationButton?.addEventListener("click", () => {
-    if (!destinationContainer || !destinationTotalInput) {
+    if (!destinationContainer || !destinationTotalInput || !destinationEmptyRowTemplate) {
         return;
     }
 
     const index = Number(destinationTotalInput.value);
-    const row = document.createElement("div");
-    row.className = "destination-row";
-    row.innerHTML = `
-        <div class="destination-row__input">
-            <input type="text" name="destinations-${index}-adresse" placeholder="Adresse de destination" maxlength="255" id="id_destinations-${index}-adresse">
-        </div>
-        <div class="destination-row__delete">
-            <input type="checkbox" name="destinations-${index}-DELETE" id="id_destinations-${index}-DELETE">
-            <span>Supprimer</span>
-        </div>
-    `;
-    destinationContainer.appendChild(row);
+    const html = destinationEmptyRowTemplate.innerHTML.replaceAll("__prefix__", String(index));
+    destinationContainer.insertAdjacentHTML("beforeend", html);
     destinationTotalInput.value = index + 1;
 });
 
@@ -263,7 +272,7 @@ attachThousandsFormatter("id_decouvert_maximum_autorise");
 <style>
 .destination-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 140px;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr) 140px;
     gap: 12px;
     margin-bottom: 10px;
     align-items: center;

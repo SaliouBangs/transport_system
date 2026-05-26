@@ -36,7 +36,10 @@ class TypeDepense(models.Model):
     class Meta:
         ordering = ["libelle"]
         constraints = [
-            models.UniqueConstraint(fields=["libelle", "portefeuille"], name="unique_type_depense_par_portefeuille")
+            models.UniqueConstraint(
+                fields=["libelle", "portefeuille", "entite_reference"],
+                name="unique_type_depense_par_portefeuille_entite",
+            )
         ]
 
     def __str__(self):
@@ -49,7 +52,7 @@ class TypeDepense(models.Model):
 
 
 class LieuProjet(models.Model):
-    libelle = models.CharField(max_length=180, unique=True)
+    libelle = models.CharField(max_length=180)
     entite_reference = models.CharField(
         max_length=20,
         choices=TypeDepense.ENTITE_CHOICES,
@@ -58,6 +61,12 @@ class LieuProjet(models.Model):
 
     class Meta:
         ordering = ["libelle"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["libelle", "entite_reference"],
+                name="unique_lieu_projet_par_entite",
+            )
+        ]
 
     def __str__(self):
         return self.libelle
@@ -325,9 +334,26 @@ class Depense(models.Model):
         return self.montant_engage if self.montant_engage is not None else (self.montant_estime or Decimal("0"))
 
     @property
+    def montant_comptable(self):
+        if self.pk and self.lignes.exists():
+            return sum((ligne.montant_comptable for ligne in self.lignes.select_related("type_depense")), Decimal("0"))
+        if self.est_depense_carburant():
+            return Decimal("0")
+        return self.montant_total
+
+    @property
     def quantite_totale(self):
         quantite = self.lignes.aggregate(total=models.Sum("quantite"))["total"] if self.pk else None
         return quantite or Decimal("0")
+
+    @property
+    def justificatifs(self):
+        pieces = list(self.pieces_justificatives.all())
+        if pieces:
+            return pieces
+        if self.piece_justificative:
+            return [self.piece_justificative]
+        return []
 
     @property
     def est_payee(self):
@@ -549,5 +575,34 @@ class DepenseLigne(models.Model):
         self.montant = (self.quantite or Decimal("0")) * (self.prix_unitaire or Decimal("0"))
         super().save(*args, **kwargs)
 
+    @property
+    def est_ligne_carburant(self):
+        return bool(
+            self.depense_id
+            and self.depense.source_depense == Depense.SOURCE_CHARGEMENT
+            and self.type_depense_id
+            and self.type_depense.is_carburant_type
+        )
+
+    @property
+    def montant_comptable(self):
+        return Decimal("0") if self.est_ligne_carburant else (self.montant or Decimal("0"))
+
     def __str__(self):
         return f"{self.depense.reference} - {self.designation}"
+
+
+class DepenseJustificatif(models.Model):
+    depense = models.ForeignKey(
+        Depense,
+        on_delete=models.CASCADE,
+        related_name="pieces_justificatives",
+    )
+    fichier = models.FileField(upload_to="depenses/justificatifs/")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.depense.reference} - justificatif {self.pk}"

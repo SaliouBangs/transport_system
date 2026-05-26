@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -425,3 +426,67 @@ class HistoriqueAffectationOperation(models.Model):
 
     def __str__(self):
         return f"{self.operation.numero_bl} - {self.date_changement:%Y-%m-%d %H:%M}"
+
+
+class DemandeNouveauBL(models.Model):
+    STATUT_EN_ATTENTE = "en_attente"
+    STATUT_TRAITEE = "traitee"
+    STATUT_ANNULEE = "annulee"
+    STATUT_CHOICES = [
+        (STATUT_EN_ATTENTE, "En attente"),
+        (STATUT_TRAITEE, "Traitee"),
+        (STATUT_ANNULEE, "Annulee"),
+    ]
+
+    ancienne_operation = models.OneToOneField(
+        Operation,
+        on_delete=models.CASCADE,
+        related_name="demande_nouveau_bl",
+    )
+    commande = models.ForeignKey(
+        "commandes.Commande",
+        on_delete=models.CASCADE,
+        related_name="demandes_nouveau_bl",
+    )
+    nouveau_camion = models.ForeignKey(
+        Camion,
+        on_delete=models.PROTECT,
+        related_name="demandes_nouveau_bl",
+    )
+    nouveau_chauffeur = models.ForeignKey(
+        Chauffeur,
+        on_delete=models.PROTECT,
+        related_name="demandes_nouveau_bl",
+    )
+    nouvelle_operation = models.OneToOneField(
+        Operation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="demande_origine_bl",
+    )
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default=STATUT_EN_ATTENTE)
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="demandes_nouveau_bl_creees",
+    )
+    traitee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="demandes_nouveau_bl_traitees",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Demande de nouveau BL"
+        verbose_name_plural = "Demandes de nouveau BL"
+
+    def __str__(self):
+        return f"Nouveau BL pour {self.ancienne_operation.numero_bl}"

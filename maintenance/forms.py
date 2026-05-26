@@ -2,6 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from decimal import Decimal
+from django.db.models import Q
 
 from chauffeurs.models import Chauffeur
 from clients.models import Banque
@@ -23,10 +24,16 @@ from .models import (
 )
 
 
+CAISSIERE_ROLES = {"caissiere", "caissiere_soni", "caissiere_avena"}
+
+
 def _fournisseurs_queryset(portefeuille, entite_reference=None):
     queryset = Fournisseur.objects.filter(portefeuille=portefeuille)
-    if portefeuille == Fournisseur.PORTEFEUILLE_INTERNE and entite_reference:
-        queryset = queryset.filter(entite_reference=entite_reference)
+    if entite_reference:
+        if portefeuille == Fournisseur.PORTEFEUILLE_LOGISTIQUE:
+            queryset = queryset.filter(Q(entite_reference=entite_reference) | Q(entite_reference=""))
+        else:
+            queryset = queryset.filter(entite_reference=entite_reference)
     return queryset.order_by("nom_fournisseur", "entreprise")
 
 
@@ -232,7 +239,8 @@ class ApprovisionnementCaisseForm(forms.ModelForm):
             "observation": forms.Textarea(attrs={"rows": 4}),
         }
 
-    def __init__(self, *args, caissiere_queryset=None, **kwargs):
+    def __init__(self, *args, caissiere_queryset=None, user=None, **kwargs):
+        self.user = user
         super().__init__(*args, **kwargs)
         if not self.instance.pk or not self.instance.date_approvisionnement:
             self.initial["date_approvisionnement"] = timezone.localdate().isoformat()
@@ -240,6 +248,17 @@ class ApprovisionnementCaisseForm(forms.ModelForm):
             self.initial["date_cheque"] = timezone.localdate().isoformat()
         if caissiere_queryset is not None:
             self.fields["caissiere"].queryset = caissiere_queryset
+        if user is not None:
+            user_roles = set(user.groups.values_list("name", flat=True)) if getattr(user, "is_authenticated", False) else set()
+            if user_roles & CAISSIERE_ROLES:
+                self.fields["nature_approvisionnement"].choices = [
+                    (ApprovisionnementCaisse.NATURE_URGENCE_DG, "Emprunt DG en espece"),
+                    (ApprovisionnementCaisse.NATURE_REMBOURSEMENT_DG_ESPECE, "Remboursement DG en espece"),
+                    (ApprovisionnementCaisse.NATURE_RETOUR_CAISSE, "Retour en caisse"),
+                ]
+                self.fields["mode_approvisionnement"].choices = [
+                    (ApprovisionnementCaisse.MODE_ESPECE, "Espece"),
+                ]
         self.fields["reference_cheque"].required = False
         self.fields["banque_cheque"].required = False
         self.fields["banque_cheque"].widget.attrs.update(
@@ -335,7 +354,7 @@ class FournisseurForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.portefeuille = self.portefeuille
-        instance.entite_reference = self.entite_reference if self.portefeuille == Fournisseur.PORTEFEUILLE_INTERNE else ""
+        instance.entite_reference = self.entite_reference or ""
         if commit:
             instance.save()
         return instance

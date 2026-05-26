@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from camions.models import Camion, Transporteur
 from chauffeurs.models import Chauffeur
-from clients.models import Client
+from clients.models import Client, ClientDestinationAdresse
 from utilisateurs.permissions import get_user_role
 from utilisateurs.permissions import is_admin_user
 
@@ -11,6 +11,8 @@ from .models import Commande
 
 
 class CommandeForm(forms.ModelForm):
+    MAX_QUANTITE_LITRES = Decimal("40000")
+
     date_livraison_prevue = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"})
     )
@@ -65,6 +67,7 @@ class CommandeForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         client = cleaned_data.get("client")
+        ville_arrivee = (cleaned_data.get("ville_arrivee") or "").strip()
         quantite = cleaned_data.get("quantite")
         prix_negocie = cleaned_data.get("prix_negocie")
         delai_paiement_jours = cleaned_data.get("delai_paiement_jours")
@@ -72,10 +75,29 @@ class CommandeForm(forms.ModelForm):
         if client and delai_paiement_jours in {None, ""}:
             cleaned_data["delai_paiement_jours"] = client.delai_paiement_jours or 0
 
+        self.instance.ville_perequation = None
+        self.instance.tarif_perequation_gnf_litre = None
+        if client and ville_arrivee:
+            destination = (
+                ClientDestinationAdresse.objects.select_related("ville_perequation")
+                .filter(client=client, adresse__iexact=ville_arrivee)
+                .first()
+            )
+            if not destination:
+                self.add_error("ville_arrivee", "Choisissez une destination deja enregistree pour ce client.")
+            elif not destination.ville_perequation_id:
+                self.add_error("ville_arrivee", "Cette destination n'a pas encore de ville de perequation.")
+            else:
+                cleaned_data["ville_arrivee"] = destination.adresse
+                self.instance.ville_perequation = destination.ville_perequation
+                self.instance.tarif_perequation_gnf_litre = destination.ville_perequation.tarif_gnf_litre
+
         if cleaned_data.get("produit") is None:
             self.add_error("produit", "Le produit est obligatoire.")
         if cleaned_data.get("quantite") in {None, ""}:
             self.add_error("quantite", "La quantite est obligatoire.")
+        elif Decimal(quantite) > self.MAX_QUANTITE_LITRES:
+            self.add_error("quantite", "La quantite ne peut pas depasser 40 000 L.")
         if cleaned_data.get("prix_negocie") in {None, ""}:
             self.add_error("prix_negocie", "Le prix negocie est obligatoire.")
 

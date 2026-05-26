@@ -147,7 +147,12 @@
                         {% for destination in client.destinations.all %}
                         <div class="detail-list-item">
                             <strong>{{ forloop.counter|stringformat:"02d" }}</strong>
-                            <span>{{ destination.adresse }}</span>
+                            <span>
+                                {{ destination.adresse }}
+                                {% if destination.ville_perequation_id %}
+                                    <small style="display:block; color:#64748b;">Perequation : {{ destination.ville_perequation.nom }} - {{ destination.ville_perequation.tarif_gnf_litre|floatformat:2 }} GNF/L</small>
+                                {% endif %}
+                            </span>
                         </div>
                         {% empty %}
                         <div class="detail-list-item">

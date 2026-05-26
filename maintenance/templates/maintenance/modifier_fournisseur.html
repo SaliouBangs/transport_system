@@ -12,13 +12,14 @@
 <h1>Modifier fournisseur</h1>
 </div>
 <div class="table-actions">
-<a href="/maintenance/fournisseurs/" class="btn-secondary">Retour fournisseurs</a>
+<a href="{{ return_url }}" class="btn-secondary">Retour fournisseurs</a>
 </div>
 </div>
 
 <div class="card" style="padding:24px;">
 <form method="post" class="app-form">
     {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
     <div class="form-grid form-grid-2">
         <div>
             <label for="{{ form.nom_fournisseur.id_for_label }}">Nom</label>

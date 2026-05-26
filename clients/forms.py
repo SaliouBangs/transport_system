@@ -7,7 +7,14 @@ from django.forms import inlineformset_factory
 from commandes.models import Commande
 from utilisateurs.constants import ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL
 from utilisateurs.permissions import get_user_role, is_admin_user
-from .models import Banque, Client, ClientDestinationAdresse, EncaissementClient, total_encaisse_sur_commande
+from .models import (
+    Banque,
+    Client,
+    ClientDestinationAdresse,
+    EncaissementClient,
+    VillePerequation,
+    total_encaisse_sur_commande,
+)
 
 
 class ClientForm(forms.ModelForm):
@@ -132,14 +139,36 @@ class ClientForm(forms.ModelForm):
 class ClientDestinationForm(forms.ModelForm):
     class Meta:
         model = ClientDestinationAdresse
-        fields = ["adresse"]
+        fields = ["adresse", "ville_perequation"]
         widgets = {
             "adresse": forms.TextInput(
                 attrs={
                     "placeholder": "Adresse de destination",
                 }
-            )
+            ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["ville_perequation"].queryset = VillePerequation.objects.filter(actif=True).order_by("nom")
+        self.fields["ville_perequation"].required = True
+        self.fields["ville_perequation"].empty_label = "Choisir une ville de perequation"
+
+
+class VillePerequationForm(forms.ModelForm):
+    class Meta:
+        model = VillePerequation
+        fields = ["nom", "tarif_gnf_litre", "actif"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tarif_gnf_litre"].label = "Tarif GNF/L"
+        self.fields["tarif_gnf_litre"].widget.attrs.update(
+            {
+                "inputmode": "decimal",
+                "placeholder": "Ex : 718.20",
+            }
+        )
 
 
 ClientDestinationFormSet = inlineformset_factory(

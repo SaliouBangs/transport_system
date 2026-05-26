@@ -8,15 +8,16 @@
 <div>
 <p class="eyebrow">Caisse</p>
 <h1>Situation de caisse</h1>
-<p class="page-subtitle">Lecture chronologique des approvisionnements et des sorties reellement saisies par la caissiere.</p>
+<p class="page-subtitle">Lecture chronologique des entrees, sorties, retours en caisse et remboursements DG saisis par la caissiere.</p>
 </div>
 <div class="table-actions">
+<a href="/maintenance/caisse/situation/export/xls/?caissiere={{ filter_values.caissiere }}&date_from={{ filter_values.date_from }}&date_to={{ filter_values.date_to }}" class="btn-secondary">Exporter Excel</a>
 <button type="button" class="btn-secondary" onclick="window.print()">Imprimer l'etat</button>
 </div>
 </div>
 
 <form method="get" class="search-form" style="margin-bottom:18px;">
-{% if user_role != "caissiere" %}
+{% if user_role != "caissiere" and user_role != "caissiere_soni" and user_role != "caissiere_avena" %}
 <select name="caissiere" style="min-width:220px; height:52px;">
     {% for caissiere in caissieres %}
     <option value="{{ caissiere.id }}" {% if selected_caissiere and caissiere.id == selected_caissiere.id %}selected{% endif %}>
@@ -33,8 +34,12 @@
 
 <div class="report-kpis">
 <div class="report-kpi-card">
-    <span class="report-kpi-label">Approvisionnements</span>
+    <span class="report-kpi-label">Entrees caisse</span>
     <strong class="report-kpi-value">{{ total_appro }} GNF</strong>
+</div>
+<div class="report-kpi-card">
+    <span class="report-kpi-label">Remb. DG caisse</span>
+    <strong class="report-kpi-value">{{ total_remboursements_dg_caisse }} GNF</strong>
 </div>
 <div class="report-kpi-card">
     <span class="report-kpi-label">Sorties maintenance</span>
@@ -106,7 +111,7 @@
 
 .report-kpis {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
 }
 

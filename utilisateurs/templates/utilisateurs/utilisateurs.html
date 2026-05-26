@@ -13,13 +13,15 @@
 </div>
 </div>
 
-<table class="table">
+<table class="table users-table">
 <thead>
 <tr>
+<th>N°</th>
 <th>Utilisateur</th>
 <th>Nom complet</th>
 <th>Email</th>
 <th>Role</th>
+<th>Actions autorisees</th>
 <th>Statut</th>
 <th>Actions</th>
 </tr>
@@ -27,10 +29,33 @@
 <tbody>
 {% for item in utilisateurs %}
 <tr>
-<td>{{ item.username }}</td>
+<td class="row-number">{{ forloop.counter }}</td>
+<td>
+<div class="user-cell">
+{% if item.photo_url %}
+<img src="{{ item.photo_url }}" alt="{{ item.username }}" class="user-avatar">
+{% else %}
+<span class="user-avatar user-avatar--initials">{{ item.initiales }}</span>
+{% endif %}
+<div>
+<strong>{{ item.username }}</strong>
+<div class="muted-cell">{{ item.role }}</div>
+</div>
+</div>
+</td>
 <td>{{ item.nom_complet }}</td>
 <td>{{ item.email }}</td>
 <td>{% if item.is_superuser %}Administrateur{% else %}{{ item.role }}{% endif %}</td>
+<td>
+<strong>{{ item.active_permissions_count }} / {{ item.permissions_count }}</strong>
+<div class="muted-cell">
+{% if item.permission_summary %}
+{{ item.permission_summary }}{% if item.remaining_permissions_count %} + {{ item.remaining_permissions_count }}{% endif %}
+{% else %}
+Aucune action active
+{% endif %}
+</div>
+</td>
 <td>
 {% if item.is_active %}
 <span class="status-badge status-ok">Actif</span>
@@ -46,10 +71,53 @@
 </tr>
 {% empty %}
 <tr>
-<td colspan="6">Aucun compte utilisateur enregistre.</td>
+<td colspan="8">Aucun compte utilisateur enregistre.</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
+
+<style>
+.muted-cell{
+    margin-top:4px;
+    max-width:360px;
+    color:#66788a;
+    font-size:.86rem;
+    line-height:1.35;
+}
+.users-table tbody tr{
+    counter-increment:none;
+}
+.users-table tbody tr td:first-child::before{
+    content:none;
+}
+.row-number{
+    width:52px;
+    color:#4e6374;
+    font-weight:800;
+    text-align:center;
+}
+.user-cell{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+.user-avatar{
+    width:42px;
+    height:42px;
+    border-radius:999px;
+    object-fit:cover;
+    border:2px solid #d8e8f3;
+    flex:0 0 auto;
+}
+.user-avatar--initials{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#dff5ef;
+    color:#087156;
+    font-weight:800;
+}
+</style>
 
 {% endblock %}

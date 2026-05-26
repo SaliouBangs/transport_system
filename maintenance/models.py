@@ -753,6 +753,8 @@ class ApprovisionnementCaisse(models.Model):
     MODE_ESPECE = "espece"
     MODE_CHEQUE = "cheque"
     NATURE_URGENCE_DG = "urgence_dg_espece"
+    NATURE_REMBOURSEMENT_DG_ESPECE = "remboursement_dg_espece"
+    NATURE_RETOUR_CAISSE = "retour_caisse"
     NATURE_RETRAIT_REMBOURSEMENT = "retrait_remboursement"
     NATURE_CHEQUE_DIRECT = "cheque_direct"
 
@@ -761,7 +763,9 @@ class ApprovisionnementCaisse(models.Model):
         (MODE_CHEQUE, "Cheque"),
     ]
     NATURE_CHOICES = [
-        (NATURE_URGENCE_DG, "Avance DG en espece"),
+        (NATURE_URGENCE_DG, "Emprunt DG en espece"),
+        (NATURE_REMBOURSEMENT_DG_ESPECE, "Remboursement DG en espece"),
+        (NATURE_RETOUR_CAISSE, "Retour en caisse"),
         (NATURE_RETRAIT_REMBOURSEMENT, "Remboursement DG par cheque"),
         (NATURE_CHEQUE_DIRECT, "Approvisionnement caisse par cheque"),
     ]
@@ -814,7 +818,11 @@ class ApprovisionnementCaisse(models.Model):
         self.observation = (self.observation or "").strip()
         self.reference_cheque = (self.reference_cheque or "").strip()
         self.banque_cheque = (self.banque_cheque or "").strip()
-        if self.nature_approvisionnement == self.NATURE_URGENCE_DG:
+        if self.nature_approvisionnement in {
+            self.NATURE_URGENCE_DG,
+            self.NATURE_REMBOURSEMENT_DG_ESPECE,
+            self.NATURE_RETOUR_CAISSE,
+        }:
             self.mode_approvisionnement = self.MODE_ESPECE
         elif self.nature_approvisionnement in {self.NATURE_RETRAIT_REMBOURSEMENT, self.NATURE_CHEQUE_DIRECT}:
             self.mode_approvisionnement = self.MODE_CHEQUE
@@ -842,11 +850,19 @@ class ApprovisionnementCaisse(models.Model):
 
     @property
     def alimente_caisse(self):
-        return self.nature_approvisionnement in {self.NATURE_URGENCE_DG, self.NATURE_CHEQUE_DIRECT}
+        return self.nature_approvisionnement in {
+            self.NATURE_URGENCE_DG,
+            self.NATURE_CHEQUE_DIRECT,
+            self.NATURE_RETOUR_CAISSE,
+        }
 
     @property
     def impact_caisse(self):
-        return self.montant if self.alimente_caisse else Decimal("0")
+        if self.alimente_caisse:
+            return self.montant
+        if self.nature_approvisionnement == self.NATURE_REMBOURSEMENT_DG_ESPECE:
+            return -self.montant
+        return Decimal("0")
 
     @property
     def impact_dg_avance(self):
@@ -856,7 +872,10 @@ class ApprovisionnementCaisse(models.Model):
 
     @property
     def impact_dg_remboursement(self):
-        if self.nature_approvisionnement == self.NATURE_RETRAIT_REMBOURSEMENT:
+        if self.nature_approvisionnement in {
+            self.NATURE_RETRAIT_REMBOURSEMENT,
+            self.NATURE_REMBOURSEMENT_DG_ESPECE,
+        }:
             return self.montant
         return Decimal("0")
 

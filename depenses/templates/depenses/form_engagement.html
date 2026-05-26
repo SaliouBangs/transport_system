@@ -90,23 +90,33 @@
         <label for="{{ form.fournisseur_search.id_for_label }}">Fournisseur</label>
         <div class="field-inline">
           {{ form.fournisseur_search }}
-          <a href="/maintenance/fournisseurs/" class="btn-secondary btn-inline">Gerer</a>
+          <a href="/maintenance/fournisseurs/?next={{ request.get_full_path|urlencode }}" class="btn-secondary btn-inline">Gerer</a>
         </div>
         <datalist id="depense-fournisseurs-list">
           {% for fournisseur in form.fournisseurs %}
-          <option value="{{ fournisseur }}" data-id="{{ fournisseur.id }}"></option>
+          <option value="{{ fournisseur.nom_fournisseur }}" label="{{ fournisseur.entreprise }}" data-id="{{ fournisseur.id }}"></option>
           {% endfor %}
         </datalist>
         {% if form.fournisseur.errors %}<p class="field-error">{{ form.fournisseur.errors|join:", " }}</p>{% endif %}
         {% if form.fournisseur_search.errors %}<p class="field-error">{{ form.fournisseur_search.errors|join:", " }}</p>{% endif %}
       </div>
       <div class="field field-full">
-        <label for="{{ form.piece_justificative.id_for_label }}">Piece justificative (facture en photo)</label>
-        {{ form.piece_justificative }}
-        {% if depense.piece_justificative %}
-        <p><a href="/depenses/piece/{{ depense.id }}/" target="_blank">Voir la piece actuelle</a></p>
+        <label for="{{ form.pieces_justificatives.id_for_label }}">Pieces justificatives (factures en photo)</label>
+        {{ form.pieces_justificatives }}
+        {% if depense.justificatifs %}
+        <div style="margin-top:8px;">
+          {% for piece in depense.justificatifs %}
+          <p style="margin:4px 0;">
+            {% if piece.fichier %}
+            <a href="/depenses/piece/{{ depense.id }}/{{ piece.id }}/" target="_blank">Voir la piece {{ forloop.counter }}</a>
+            {% else %}
+            <a href="/depenses/piece/{{ depense.id }}/" target="_blank">Voir la piece actuelle</a>
+            {% endif %}
+          </p>
+          {% endfor %}
+        </div>
         {% endif %}
-        {% if form.piece_justificative.errors %}<p class="field-error">{{ form.piece_justificative.errors|join:", " }}</p>{% endif %}
+        {% if form.pieces_justificatives.errors %}<p class="field-error">{{ form.pieces_justificatives.errors|join:", " }}</p>{% endif %}
       </div>
       <div class="field field-full">
         <label>Lignes de depense</label>

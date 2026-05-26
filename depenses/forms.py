@@ -1,12 +1,30 @@
 from decimal import Decimal
 
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 
 from clients.models import Banque
 from maintenance.models import Fournisseur
 
 from .models import Depense, LieuProjet, TypeDepense, TypePieceIdentite
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    widget = MultipleFileInput
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            cleaned_files = [single_file_clean(item, initial) for item in data if item]
+            return cleaned_files
+        if not data:
+            return []
+        return [single_file_clean(data, initial)]
 
 
 def _is_carburant_label(label):
@@ -26,9 +44,18 @@ def _types_depense_queryset(portefeuille, entite_reference=None):
 
 def _fournisseurs_queryset(portefeuille, entite_reference=None):
     queryset = Fournisseur.objects.filter(portefeuille=portefeuille)
-    if portefeuille == Fournisseur.PORTEFEUILLE_INTERNE and entite_reference:
-        queryset = queryset.filter(entite_reference=entite_reference)
+    if entite_reference:
+        if portefeuille == Fournisseur.PORTEFEUILLE_LOGISTIQUE:
+            queryset = queryset.filter(Q(entite_reference=entite_reference) | Q(entite_reference=""))
+        else:
+            queryset = queryset.filter(entite_reference=entite_reference)
     return queryset.order_by("nom_fournisseur", "entreprise")
+
+
+def _engagement_fournisseur_portefeuille(entite_reference):
+    if entite_reference == TypeDepense.ENTITE_SONI:
+        return Fournisseur.PORTEFEUILLE_LOGISTIQUE
+    return Fournisseur.PORTEFEUILLE_INTERNE
 
 
 class DepenseExpressionForm(forms.ModelForm):
@@ -145,6 +172,11 @@ class DepenseEngagementForm(forms.ModelForm):
     type_depense_search = forms.CharField(label="Type de depense", required=False)
     lieu_ou_projet_search = forms.CharField(label="Lieu ou projet", required=False)
     fournisseur_search = forms.CharField(label="Fournisseur", required=False)
+    pieces_justificatives = MultipleFileField(
+        label="Pieces justificatives (photos)",
+        required=False,
+        widget=MultipleFileInput(attrs={"multiple": True, "accept": "image/*,.pdf"}),
+    )
 
     class Meta:
         model = Depense
@@ -154,7 +186,6 @@ class DepenseEngagementForm(forms.ModelForm):
             "lieu_ou_projet",
             "fournisseur",
             "numero_facture",
-            "piece_justificative",
             "engagement_observation",
         ]
         widgets = {
@@ -168,11 +199,13 @@ class DepenseEngagementForm(forms.ModelForm):
     def __init__(self, *args, entite_reference=TypeDepense.ENTITE_SOGEFI, **kwargs):
         self.entite_reference = entite_reference
         super().__init__(*args, **kwargs)
+        self.fields["fournisseur_search"].widget.attrs.update({"placeholder": "Choisir un fournisseur"})
+        self.fournisseur_portefeuille = _engagement_fournisseur_portefeuille(self.entite_reference)
         self.type_depenses = list(_types_depense_queryset(TypeDepense.PORTEFEUILLE_INTERNE, self.entite_reference))
         self.lieux_projets = list(LieuProjet.objects.filter(entite_reference=self.entite_reference).order_by("libelle"))
-        self.fournisseurs = list(_fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference))
+        self.fournisseurs = list(_fournisseurs_queryset(self.fournisseur_portefeuille, self.entite_reference))
         if self.instance.pk and self.instance.fournisseur_id:
-            self.fields["fournisseur_search"].initial = str(self.instance.fournisseur)
+            self.fields["fournisseur_search"].initial = self.instance.fournisseur.nom_fournisseur
         if self.instance.pk and self.instance.type_depense_id:
             self.fields["type_depense_search"].initial = str(self.instance.type_depense)
         if self.instance.pk and self.instance.lieu_ou_projet:
@@ -202,9 +235,9 @@ class DepenseEngagementForm(forms.ModelForm):
         search = (cleaned_data.get("fournisseur_search") or "").strip()
         if not fournisseur and search:
             fournisseur = (
-                _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(nom_fournisseur__iexact=search).first()
-                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(entreprise__iexact=search).first()
-                or _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_INTERNE, self.entite_reference).filter(numero_telephone__iexact=search).first()
+                _fournisseurs_queryset(self.fournisseur_portefeuille, self.entite_reference).filter(nom_fournisseur__iexact=search).first()
+                or _fournisseurs_queryset(self.fournisseur_portefeuille, self.entite_reference).filter(entreprise__iexact=search).first()
+                or _fournisseurs_queryset(self.fournisseur_portefeuille, self.entite_reference).filter(numero_telephone__iexact=search).first()
             )
             if fournisseur:
                 cleaned_data["fournisseur"] = fournisseur

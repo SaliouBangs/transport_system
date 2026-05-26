@@ -276,6 +276,7 @@
             <p><strong>Produit :</strong> {% if commande.produit %}{{ commande.produit.nom }}{% else %}-{% endif %}</p>
             <p><strong>Quantite :</strong> {{ commande.quantite|default:"-" }}</p>
             <p><strong>Trajet :</strong> {{ commande.ville_depart }} -> {{ commande.ville_arrivee }}</p>
+            <p><strong>Perequation :</strong> {% if commande.ville_perequation_id %}{{ commande.ville_perequation.nom }} - {{ commande.tarif_perequation_gnf_litre|floatformat:2 }} GNF/L{% else %}-{% endif %}</p>
             <p><strong>Prix negocie :</strong> {{ commande.prix_negocie|default:"-" }}</p>
             </div>
 
@@ -1120,6 +1121,12 @@ camionSearchInput?.addEventListener("keydown", (event) => {
 camionSuggestions?.addEventListener("click", (event) => {
     const button = event.target.closest(".camion-suggestion-btn");
     if (!button) return;
+    selectCamionOption(button.dataset.id, button.dataset.label);
+});
+camionSuggestions?.addEventListener("mousedown", (event) => {
+    const button = event.target.closest(".camion-suggestion-btn");
+    if (!button) return;
+    event.preventDefault();
     selectCamionOption(button.dataset.id, button.dataset.label);
 });
 complementSearch?.addEventListener("input", renderAvailableCommandes);

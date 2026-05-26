@@ -128,6 +128,8 @@
                     <tr><th>Montant commande</th><td>{{ commande.montant_commande|gnf }}</td></tr>
                     <tr><th>Ville de depart</th><td>{{ commande.ville_depart|default:"-" }}</td></tr>
                     <tr><th>Destination finale</th><td>{{ commande.ville_arrivee|default:"-" }}</td></tr>
+                    <tr><th>Ville de perequation</th><td>{% if commande.ville_perequation_id %}{{ commande.ville_perequation.nom }}{% else %}-{% endif %}</td></tr>
+                    <tr><th>Tarif perequation</th><td>{% if commande.tarif_perequation_gnf_litre %}{{ commande.tarif_perequation_gnf_litre|floatformat:2 }} GNF/L{% else %}-{% endif %}</td></tr>
                     <tr><th>Livraison prevue</th><td>{{ commande.date_livraison_prevue|date:"d/m/Y"|default:"-" }}</td></tr>
                     <tr><th>Echeance</th><td>{{ commande.date_echeance|date:"d/m/Y"|default:"-" }}</td></tr>
                     <tr><th>Commentaire</th><td>{{ commande.description|default:"-" }}</td></tr>

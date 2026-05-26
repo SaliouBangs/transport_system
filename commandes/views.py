@@ -1,7 +1,9 @@
 from io import BytesIO
+from pathlib import Path
 from decimal import Decimal
 
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Prefetch, Q, Sum
 from django.http import HttpResponse, JsonResponse
@@ -11,7 +13,7 @@ from camions.models import Camion, Transporteur
 from clients.models import Client
 from clients.models import total_encaisse_sur_commande
 from depenses.models import Depense
-from operations.models import HistoriqueAffectationOperation, Operation
+from operations.models import DemandeNouveauBL, HistoriqueAffectationOperation, Operation, Produit
 from utilisateurs.models import journaliser_action
 from utilisateurs.permissions import get_user_role, is_admin_user, role_required
 
@@ -23,6 +25,8 @@ from .forms import (
     CommandeNumeroForm,
 )
 from .models import Commande
+
+COMMANDES_PER_PAGE = 25
 
 COMMANDE_STATUS_FILTERS = [
     ("attente_validation_dga", "En attente validation DGA"),
@@ -142,10 +146,7 @@ def _client_commande_payload(client, etat_filtre="", date_debut="", date_fin="")
     commandes_filtrees = []
     commandes_rejetees_dg = []
     for commande in commandes_queryset:
-        latest_operation = (
-            commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-            or commande.operations.order_by("-date_creation").first()
-        )
+        latest_operation = commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
         if etat_filtre:
             if etat_filtre in operation_statuses:
                 if not latest_operation or latest_operation.etat_bon != etat_filtre:
@@ -206,6 +207,21 @@ def _client_commande_payload(client, etat_filtre="", date_debut="", date_fin="")
         )
 
     disponible_decouvert = (client.decouvert_maximum_autorise or Decimal("0.00")) - risque_client
+    destinations_payload = []
+    for destination in client.destinations.select_related("ville_perequation").all():
+        if not destination.adresse:
+            continue
+        destinations_payload.append(
+            {
+                "adresse": destination.adresse,
+                "ville_perequation": destination.ville_perequation.nom if destination.ville_perequation_id else "",
+                "tarif_gnf_litre": str(
+                    destination.ville_perequation.tarif_gnf_litre
+                    if destination.ville_perequation_id
+                    else Decimal("0.00")
+                ),
+            }
+        )
     return {
         "id": client.id,
         "nom": client.nom,
@@ -233,7 +249,7 @@ def _client_commande_payload(client, etat_filtre="", date_debut="", date_fin="")
         "total_paiements_filtres": str(total_paiements_filtres),
         "engagement_total": str(engagement_total),
         "engagement_net": str(engagement_net),
-        "destinations": [destination.adresse for destination in client.destinations.all() if destination.adresse],
+        "destinations": destinations_payload,
         "dernieres_commandes": commandes_filtrees,
         "commandes_rejetees_dg": commandes_rejetees_dg,
         "derniers_encaissements": derniers_encaissements,
@@ -299,11 +315,29 @@ def _clone_operation_for_new_truck(operation, camion, chauffeur):
     return nouvelle_operation
 
 
+def _creer_demande_nouveau_bl(operation, camion, chauffeur, utilisateur):
+    demande, created = DemandeNouveauBL.objects.update_or_create(
+        ancienne_operation=operation,
+        defaults={
+            "commande": operation.commande,
+            "nouveau_camion": camion,
+            "nouveau_chauffeur": chauffeur,
+            "statut": DemandeNouveauBL.STATUT_EN_ATTENTE,
+            "cree_par": utilisateur if getattr(utilisateur, "is_authenticated", False) else None,
+            "nouvelle_operation": None,
+            "traitee_par": None,
+            "processed_at": None,
+        },
+    )
+    return demande, created
+
+
 def _commandes_queryset(request):
     user_role = get_user_role(request.user)
     is_admin = request.user.is_superuser
     query = request.GET.get("q", "").strip()
     statut = request.GET.get("statut", "").strip()
+    produit = request.GET.get("produit", "").strip()
     date_debut = request.GET.get("date_debut", "").strip()
     date_fin = request.GET.get("date_fin", "").strip()
     scope = request.GET.get("scope", "").strip() or "actives"
@@ -313,7 +347,10 @@ def _commandes_queryset(request):
         .prefetch_related(
             Prefetch(
                 "operations",
-                queryset=Operation.objects.select_related("camion", "chauffeur").prefetch_related("historiques_affectation").order_by("-date_creation"),
+                queryset=Operation.objects.select_related("camion", "chauffeur")
+                .filter(remplace_par__isnull=True)
+                .prefetch_related("historiques_affectation")
+                .order_by("-date_creation"),
             )
         )
         .order_by("-date_creation")
@@ -359,6 +396,8 @@ def _commandes_queryset(request):
             | Q(ville_depart__icontains=query)
             | Q(ville_arrivee__icontains=query)
         )
+    if produit:
+        commandes = commandes.filter(produit_id=produit)
     if (date_debut or date_fin) and not statut:
         if date_debut:
             commandes = commandes.filter(date_commande__gte=date_debut)
@@ -368,7 +407,8 @@ def _commandes_queryset(request):
     commandes = commandes.distinct()
     commandes_list = list(commandes)
     for commande in commandes_list:
-        latest_operation = commande.operations.all()[0] if getattr(commande, "operations", None) and commande.operations.all() else None
+        active_operations = [operation for operation in commande.operations.all() if not operation.remplace_par_id]
+        latest_operation = active_operations[0] if active_operations else None
         commande.latest_operation = latest_operation
         commande.requires_sage_number = commande.statut == "validee_dg" and not commande.reference
         commande.current_status_data = _commande_exact_status_data(commande)
@@ -376,7 +416,7 @@ def _commandes_queryset(request):
         commande.report_status_operation = latest_operation
         if statut in OPERATION_REPORT_FIELDS:
             field_name = OPERATION_REPORT_FIELDS[statut][0]
-            matching_operations = [operation for operation in commande.operations.all() if getattr(operation, field_name)]
+            matching_operations = [operation for operation in active_operations if getattr(operation, field_name)]
             if matching_operations:
                 matching_operations.sort(key=lambda operation: getattr(operation, field_name), reverse=True)
                 commande.report_status_operation = matching_operations[0]
@@ -414,17 +454,17 @@ def _commandes_queryset(request):
             filtered_commandes.append(commande)
         commandes_list = filtered_commandes
 
-    return commandes_list, query, statut, date_debut, date_fin, scope, user_role
+    return commandes_list, query, statut, produit, date_debut, date_fin, scope, user_role
 
 
 def liste_commandes(request):
-    commandes, query, statut, date_debut, date_fin, scope, user_role = _commandes_queryset(request)
+    commandes, query, statut, produit, date_debut, date_fin, scope, user_role = _commandes_queryset(request)
     commandes_stats = _build_commandes_stats(commandes, statut, date_debut, date_fin)
     report_status_label = OPERATION_REPORT_FIELDS.get(statut, ("", ""))[1] if statut in OPERATION_REPORT_FIELDS else ""
     logistique_rows = []
     if user_role == "logistique":
         for commande in commandes:
-            operations = list(commande.operations.all())
+            operations = [operation for operation in commande.operations.all() if not operation.remplace_par_id]
             if operations:
                 for operation in operations:
                     logistique_rows.append(
@@ -435,9 +475,17 @@ def liste_commandes(request):
                             "chauffeur": operation.chauffeur or commande.chauffeur,
                             "niveau_bon_label": operation.get_etat_bon_display(),
                             "has_reaffectation": bool(operation.remplace_par_id or operation.anciennes_versions.all()),
+                            "is_old_reaffectation": bool(operation.remplace_par_id),
+                            "is_active_reaffectation": bool(not operation.remplace_par_id and operation.anciennes_versions.all()),
                             "latest_reaffectation": operation.historiques_affectation.all()[0] if operation.historiques_affectation.all() else None,
-                            "button_label": "Lecture seule" if operation.etat_bon == "livre" else "Changer de camion" if operation.etat_bon in {"declare", "liquide", "charge"} else "Affecter camion",
-                            "can_change_truck": operation.etat_bon != "livre",
+                            "button_label": (
+                                "BL change"
+                                if operation.remplace_par_id
+                                else "Lecture seule"
+                                if operation.etat_bon in {"charge", "livre"}
+                                else "Changer de camion"
+                            ),
+                            "can_change_truck": bool(not operation.remplace_par_id and operation.etat_bon not in {"charge", "livre"}),
                         }
                     )
             else:
@@ -449,27 +497,50 @@ def liste_commandes(request):
                         "chauffeur": commande.chauffeur,
                         "niveau_bon_label": "Aucun BL",
                         "has_reaffectation": False,
+                        "is_old_reaffectation": False,
+                        "is_active_reaffectation": False,
                         "latest_reaffectation": None,
                         "button_label": "Affecter camion",
                         "can_change_truck": True,
                         }
                     )
+
+    page_number = request.GET.get("page") or 1
+    if user_role == "logistique":
+        paginator = Paginator(logistique_rows, COMMANDES_PER_PAGE)
+        page_obj = paginator.get_page(page_number)
+        displayed_commandes = list(page_obj.object_list)
+        displayed_logistique_rows = list(page_obj.object_list)
+    else:
+        paginator = Paginator(commandes, COMMANDES_PER_PAGE)
+        page_obj = paginator.get_page(page_number)
+        displayed_commandes = list(page_obj.object_list)
+        displayed_logistique_rows = []
+
+    pagination_params = request.GET.copy()
+    pagination_params.pop("page", None)
+
     return render(
         request,
         "commandes/commandes.html",
             {
-                "commandes": commandes,
+                "commandes": displayed_commandes,
                 "commandes_stats": commandes_stats,
-                "logistique_rows": logistique_rows,
+                "logistique_rows": displayed_logistique_rows,
                 "query": query,
                 "statut": statut,
-            "date_debut": date_debut,
-            "date_fin": date_fin,
+                "produit": produit,
+                "date_debut": date_debut,
+                "date_fin": date_fin,
                 "scope": scope,
                 "page_user_role": user_role,
                 "statut_choices": COMMANDE_STATUS_FILTERS,
+                "produit_choices": Produit.objects.order_by("nom"),
                 "report_status_label": report_status_label,
                 "current_filters": request.GET.urlencode(),
+                "page_obj": page_obj,
+                "pagination_query": pagination_params.urlencode(),
+                "total_resultats": paginator.count,
             },
         )
 
@@ -674,7 +745,7 @@ def _rapport_global_base_queryset():
         .prefetch_related(
             Prefetch(
                 "operations",
-                queryset=Operation.objects.select_related("camion", "chauffeur").order_by("-date_creation"),
+                queryset=Operation.objects.select_related("camion", "chauffeur").filter(remplace_par__isnull=True).order_by("-date_creation"),
             )
         )
         .order_by("-date_creation")
@@ -724,7 +795,7 @@ def _build_rapport_global_context(request):
     total_bl = 0
 
     for commande in commandes:
-        operations = list(commande.operations.all())
+        operations = [operation for operation in commande.operations.all() if not operation.remplace_par_id]
         latest_operation = operations[0] if operations else None
         commande.latest_operation = latest_operation
         status_data = _commande_exact_status_data(commande)
@@ -864,7 +935,7 @@ def detail_rapport_global(request, id):
     ).prefetch_related(
         Prefetch(
             "operations",
-            queryset=Operation.objects.select_related("camion", "chauffeur").prefetch_related(
+            queryset=Operation.objects.select_related("camion", "chauffeur").filter(remplace_par__isnull=True).prefetch_related(
                 Prefetch(
                     "depenses_liees",
                     queryset=Depense.objects.select_related("demandeur").prefetch_related("lignes").order_by("-date_creation"),
@@ -876,7 +947,7 @@ def detail_rapport_global(request, id):
         commandes_queryset = commandes_queryset.filter(client__commercial=request.user)
 
     commande = get_object_or_404(commandes_queryset, id=id)
-    operations = list(commande.operations.all())
+    operations = [operation for operation in commande.operations.all() if not operation.remplace_par_id]
     latest_operation = operations[0] if operations else None
     commande.latest_operation = latest_operation
     exact_status = _commande_exact_status_data(commande)
@@ -1050,7 +1121,7 @@ def detail_commande(request, id):
     ).prefetch_related(
         Prefetch(
             "operations",
-            queryset=Operation.objects.select_related("camion", "chauffeur").order_by("-date_creation"),
+            queryset=Operation.objects.select_related("camion", "chauffeur").filter(remplace_par__isnull=True).order_by("-date_creation"),
         )
     )
     if get_user_role(request.user) == "commercial" and not is_admin:
@@ -1093,7 +1164,7 @@ def ajouter_commande(request):
                 _commande_label(commande),
                 f"{request.user.username} a ajoute la commande {_commande_label(commande)}.",
             )
-            return redirect("commandes")
+            return redirect("/commandes/?scope=historique")
     else:
         form = CommandeForm(user=request.user)
 
@@ -1145,10 +1216,7 @@ def modifier_commande(request, id):
         if client_for_alert and quantite is not None and prix_negocie is not None:
             risque_actuel = client_for_alert.risque_client or Decimal("0.00")
             if commande.client_id == client_for_alert.id:
-                latest_operation = (
-                    commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-                    or commande.operations.order_by("-date_creation").first()
-                )
+                latest_operation = commande.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
                 commande_comptee = False
                 if latest_operation:
                     commande_comptee = latest_operation.etat_bon != "livre"
@@ -1184,7 +1252,7 @@ def commande_client_infos(request):
             status=400,
         )
 
-    client = Client.objects.filter(id=client_id).first()
+    client = Client.objects.prefetch_related("destinations__ville_perequation").filter(id=client_id).first()
     if not client:
         return JsonResponse(
             {"success": False, "errors": {"client": ["Client introuvable."]}},
@@ -1467,8 +1535,12 @@ def affecter_commande_logistique(request, id):
                     with transaction.atomic():
                         for item in commandes_a_affecter:
                             latest_operation = item.operations.filter(remplace_par__isnull=True).order_by("-date_creation").first()
-                            if latest_operation and latest_operation.etat_bon in {"declare", "liquide", "charge", "livre"} and latest_operation.camion_id != camion.id:
-                                _clone_operation_for_new_truck(latest_operation, camion, chauffeur)
+                            if (
+                                latest_operation
+                                and latest_operation.camion_id != camion.id
+                                and latest_operation.etat_bon not in {"charge", "livre"}
+                            ):
+                                _creer_demande_nouveau_bl(latest_operation, camion, chauffeur, request.user)
                             item.camion = camion
                             item.chauffeur = chauffeur
                             item.date_affectation_logistique = today
@@ -1492,7 +1564,8 @@ def affecter_commande_logistique(request, id):
                         request,
                         (
                             f"Le camion {camion.numero_tracteur} a ete affecte a "
-                            f"{1 + len(commandes_complementaires)} commande(s)."
+                            f"{1 + len(commandes_complementaires)} commande(s). "
+                            "Si un BL existait deja, une alerte a ete envoyee a la comptabilite pour creer le nouveau BL."
                         ),
                     )
                     return redirect("commandes")
@@ -1558,7 +1631,7 @@ def commande_camion_infos(request):
     )
     chauffeur = camion.chauffeur_set.order_by("nom").first()
     recent_operations = (
-        Operation.objects.filter(camion=camion)
+        Operation.objects.filter(camion=camion, remplace_par__isnull=True)
         .select_related("commande")
         .order_by("-date_creation")[:5]
     )
@@ -1729,7 +1802,7 @@ def export_commandes_xls(request):
         ]
     )
 
-    commandes, _, _, _, _, _, _ = _commandes_queryset(request)
+    commandes, _, _, _, _, _, _, _ = _commandes_queryset(request)
     for commande in commandes:
         sheet.append(
             [
@@ -1756,8 +1829,11 @@ def export_commandes_xls(request):
 def export_commandes_pdf(request):
     try:
         from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
         from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except ImportError:
         return HttpResponse(
             "Le module reportlab n'est pas installe sur cet environnement Python.",
@@ -1765,8 +1841,112 @@ def export_commandes_pdf(request):
             content_type="text/plain; charset=utf-8",
         )
 
+    def _format_number(value, suffix=""):
+        if value is None:
+            return "-"
+        value = Decimal(value)
+        if value == value.to_integral_value():
+            formatted = f"{value:,.0f}".replace(",", " ")
+        else:
+            formatted = f"{value:,.2f}".replace(",", " ").replace(".", ",")
+        return f"{formatted}{suffix}"
+
+    def _format_quantity(value):
+        return _format_number(value, " L")
+
+    def _metric_html(label, value):
+        return (
+            f'<para align="center"><font size="8" color="#2f7d75">{label}</font><br/>'
+            f'<font size="13"><b>{value}</b></font></para>'
+        )
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+    )
+
+    commandes, _, statut, _, date_debut, date_fin, scope, _ = _commandes_queryset(request)
+    total_essence = Decimal("0")
+    total_gasoil = Decimal("0")
+    total_quantite = Decimal("0")
+
+    for commande in commandes:
+        quantite = commande.quantite or Decimal("0")
+        produit_label = (
+            commande.produit.nom.upper()
+            if getattr(commande, "produit", None) and commande.produit.nom
+            else ""
+        )
+        total_quantite += quantite
+        if produit_label == "ESSENCE":
+            total_essence += quantite
+        elif produit_label == "GASOIL":
+            total_gasoil += quantite
+
+    scope_label = "Suivi commande" if scope == "historique" else "Commandes a numeroter"
+    if statut:
+        matching_status = next(
+            (label for value, label in COMMANDE_STATUS_FILTERS if value == statut),
+            statut,
+        )
+        title_text = f"Liste des commandes : {scope_label} - {matching_status}"
+    elif date_debut or date_fin:
+        periode = f"du {date_debut}" if date_debut and not date_fin else (
+            f"jusqu'au {date_fin}" if date_fin and not date_debut else f"du {date_debut} au {date_fin}"
+        )
+        title_text = f"Liste des commandes : {scope_label} - {periode}"
+    else:
+        title_text = f"Liste des commandes : {scope_label}"
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "CommandePdfTitle",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=16,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor("#123047"),
+        spaceAfter=2,
+    )
+    metric_style = ParagraphStyle(
+        "CommandePdfMetric",
+        parent=styles["BodyText"],
+        alignment=TA_CENTER,
+        leading=13,
+    )
+
+    logo_path = Path(__file__).resolve().parents[1] / "utilisateurs" / "static" / "utilisateurs" / "soni-logo.png"
+    logo = Image(str(logo_path), width=28 * mm, height=28 * mm) if logo_path.exists() else Paragraph("", styles["BodyText"])
+
+    header_table = Table(
+        [[
+            logo,
+            Paragraph(title_text, title_style),
+            Paragraph(_metric_html("Total Ess", _format_quantity(total_essence)), metric_style),
+            Paragraph(_metric_html("Total Gasoil", _format_quantity(total_gasoil)), metric_style),
+            Paragraph(_metric_html("Qte totale", _format_quantity(total_quantite)), metric_style),
+        ]],
+        colWidths=[32 * mm, 95 * mm, 38 * mm, 42 * mm, 38 * mm],
+    )
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("ALIGN", (2, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
 
     data = [[
         "Reference",
@@ -1774,28 +1954,37 @@ def export_commandes_pdf(request):
         "Produit",
         "Quantite",
         "Prix negocie",
-        "Depart",
-        "Arrivee",
-        "Livraison",
+        "Destination",
+        "Numero BL",
+        "Camion",
         "Statut",
     ]]
-    commandes, _, _, _, _, _, _ = _commandes_queryset(request)
     for commande in commandes:
+        active_operations = [operation for operation in commande.operations.all() if not operation.remplace_par_id]
+        latest_operation = active_operations[0] if active_operations else None
+        current_bl = latest_operation.numero_bl if latest_operation and latest_operation.numero_bl else "-"
+        current_camion = latest_operation.camion if latest_operation and latest_operation.camion_id else commande.camion
+        camion_label = current_camion.numero_tracteur if current_camion else "-"
+
         data.append(
             [
                 commande.reference_affichee,
                 commande.client.entreprise,
                 commande.produit.nom if commande.produit else "",
-                str(commande.quantite or ""),
-                str(commande.prix_negocie or ""),
-                commande.ville_depart,
+                _format_number(commande.quantite),
+                _format_number(commande.prix_negocie),
                 commande.ville_arrivee,
-                commande.date_livraison_prevue.strftime("%Y-%m-%d"),
+                current_bl,
+                camion_label,
                 commande.get_statut_display(),
             ]
         )
 
-    table = Table(data, repeatRows=1)
+    table = Table(
+        data,
+        repeatRows=1,
+        colWidths=[36 * mm, 42 * mm, 22 * mm, 20 * mm, 25 * mm, 34 * mm, 26 * mm, 24 * mm, 32 * mm],
+    )
     table.setStyle(
         TableStyle(
             [
@@ -1803,12 +1992,15 @@ def export_commandes_pdf(request):
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d9e2e8")),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f8fb")]),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("PADDING", (0, 0), (-1, -1), 6),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("LEADING", (0, 0), (-1, -1), 10),
+                ("PADDING", (0, 0), (-1, -1), 5),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (3, 1), (4, -1), "RIGHT"),
             ]
         )
     )
-    doc.build([table])
+    doc.build([header_table, Spacer(1, 8), table])
 
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="rapport_commandes.pdf"'

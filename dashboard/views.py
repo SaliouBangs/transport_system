@@ -16,9 +16,88 @@ from clients.models import EncaissementClient
 from commandes.models import Commande
 from depenses.models import Depense
 from maintenance.models import AlerteFactureResolue, ApprovisionnementCaisse, ArticleStock, Maintenance, MouvementStock, SoldeInitialCaisse
-from operations.models import Operation
+from operations.models import DemandeNouveauBL, Operation
 from prospects.models import Prospect
 from utilisateurs.permissions import get_user_role, role_required
+
+
+def _dashboard_caisse_scope_user_ids(request):
+    user_role = get_user_role(request.user)
+    if user_role in {"caissiere", "caissiere_soni", "caissiere_avena"}:
+        return [request.user.id]
+    if user_role == "comptable":
+        return list(
+            User.objects.filter(groups__name="caissiere_soni", is_active=True)
+            .values_list("id", flat=True)
+            .distinct()
+        )
+    if user_role == "comptable_avena":
+        return list(
+            User.objects.filter(groups__name="caissiere_avena", is_active=True)
+            .values_list("id", flat=True)
+            .distinct()
+        )
+    if user_role == "comptable_sogefi":
+        return list(
+            User.objects.filter(groups__name="caissiere", is_active=True)
+            .values_list("id", flat=True)
+            .distinct()
+        )
+    return list(
+        User.objects.filter(groups__name__in=["caissiere", "caissiere_soni", "caissiere_avena"], is_active=True)
+        .values_list("id", flat=True)
+        .distinct()
+    )
+
+
+def _dashboard_internal_entity_scope(user_role):
+    if user_role in {"dga_sogefi", "responsable_achat", "comptable_sogefi", "caissiere"}:
+        return Depense.ENTITE_SOGEFI
+    if user_role in {"logistique", "dga", "comptable", "caissiere_soni"}:
+        return Depense.ENTITE_SONI
+    if user_role in {"dga_avena", "comptable_avena", "caissiere_avena"}:
+        return Depense.ENTITE_AVENA
+    return ""
+
+
+def _dashboard_depenses_chargement_queryset_for_operation(operation):
+    base_queryset = Depense.objects.filter(source_depense=Depense.SOURCE_CHARGEMENT)
+    if operation.commande_id:
+        return base_queryset.filter(
+            Q(operation_id=operation.id, portee_chargement=Depense.PORTEE_BL)
+            | Q(commande_id=operation.commande_id, portee_chargement=Depense.PORTEE_COMMANDE)
+        ).distinct()
+    return base_queryset.filter(operation_id=operation.id)
+
+
+def _dashboard_depense_chargement_stage(operation):
+    depenses_chargement = list(_dashboard_depenses_chargement_queryset_for_operation(operation))
+    if not depenses_chargement:
+        return "logistique"
+    if any(depense.statut == Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA for depense in depenses_chargement):
+        return "dga"
+    if any(depense.statut == Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG for depense in depenses_chargement):
+        return "dg"
+    if any(
+        depense.statut
+        in {
+            Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
+            Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+        }
+        for depense in depenses_chargement
+    ):
+        return "paiement"
+    if any(depense.statut == Depense.STATUT_PAYEE for depense in depenses_chargement):
+        return "payee"
+    return "paiement"
+
+
+def _dashboard_count_charged_bl_with_pending_depenses(operations):
+    return sum(
+        1
+        for operation in operations
+        if _dashboard_depense_chargement_stage(operation) in {"logistique", "dga", "dg", "paiement"}
+    )
 
 
 def dashboard(request):
@@ -28,6 +107,7 @@ def dashboard(request):
     user_role = get_user_role(request.user)
     is_maintenancier = user_role in {"maintenancier", "dga"}
     diagnostics_queryset = Maintenance.objects.exclude(statut__in=["rejetee_dga", "rejetee_dg"])
+    active_operations = Operation.objects.filter(remplace_par__isnull=True)
 
     camions_total = Camion.objects.count()
     camions_disponibles = Camion.objects.filter(etat="disponible").count()
@@ -78,30 +158,30 @@ def dashboard(request):
         )
     ]
     commandes_total = Commande.objects.count()
-    operations_total = Operation.objects.count()
+    operations_total = active_operations.count()
 
-    bons_inities = Operation.objects.filter(etat_bon="initie").count()
-    bons_secretaire = Operation.objects.filter(etat_bon="attente_reception_transitaire").count()
-    bons_transmis = Operation.objects.filter(etat_bon="transmis").count()
-    bons_declares = Operation.objects.filter(etat_bon="declare").count()
-    bons_attente_reception_logistique = Operation.objects.filter(etat_bon="attente_reception_logistique").count()
-    bons_charges = Operation.objects.filter(etat_bon="charge").count()
-    bons_livres = Operation.objects.filter(etat_bon="livre").count()
-    bons_liquides = Operation.objects.filter(etat_bon="liquide").count()
-    bons_liquides_logistique = Operation.objects.filter(etat_bon="liquide_logistique").count()
-    bons_liquides_chauffeur = Operation.objects.filter(etat_bon="liquide_chauffeur").count()
-    bons_retournes = Operation.objects.filter(date_bon_retour__isnull=False).count()
-    bons_en_retard = Operation.objects.filter(
+    bons_inities = active_operations.filter(etat_bon="initie").count()
+    bons_secretaire = active_operations.filter(etat_bon="attente_reception_transitaire").count()
+    bons_transmis = active_operations.filter(etat_bon="transmis").count()
+    bons_declares = active_operations.filter(etat_bon="declare").count()
+    bons_attente_reception_logistique = active_operations.filter(etat_bon="attente_reception_logistique").count()
+    bons_charges = active_operations.filter(etat_bon="charge").count()
+    bons_livres = active_operations.filter(etat_bon="livre").count()
+    bons_liquides = active_operations.filter(etat_bon="liquide").count()
+    bons_liquides_logistique = active_operations.filter(etat_bon="liquide_logistique").count()
+    bons_liquides_chauffeur = active_operations.filter(etat_bon="liquide_chauffeur").count()
+    bons_retournes = active_operations.filter(date_bon_retour__isnull=False).count()
+    bons_en_retard = active_operations.filter(
         date_bons_charges__isnull=False,
         date_bons_livres__isnull=True,
         date_bons_charges__lt=seuil_retard,
     ).count()
-    bons_non_retournes = Operation.objects.filter(
+    bons_non_retournes = active_operations.filter(
         date_bons_livres__isnull=False,
         date_bon_retour__isnull=True,
     ).count()
     montant_facture_total = float(
-        Operation.objects.aggregate(total=Sum("montant_facture"))["total"] or 0
+        active_operations.aggregate(total=Sum("montant_facture"))["total"] or 0
     )
     commandes_attente_dga = Commande.objects.filter(statut="attente_validation_dga").count()
     commandes_attente_dg = Commande.objects.filter(statut="attente_validation_dg").count()
@@ -112,9 +192,16 @@ def dashboard(request):
     depenses_attente_chargement_dg = Depense.objects.filter(
         statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG
     ).count()
-    depenses_attente_cheque = Depense.objects.filter(
+    depenses_attente_cheque_queryset = Depense.objects.filter(
         statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE
-    ).count()
+    )
+    internal_entity_scope = _dashboard_internal_entity_scope(user_role)
+    if internal_entity_scope:
+        depenses_attente_cheque_queryset = depenses_attente_cheque_queryset.filter(
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=internal_entity_scope,
+        )
+    depenses_attente_cheque = depenses_attente_cheque_queryset.count()
     depenses_attente_paiement = Depense.objects.filter(
         statut__in=[
             Depense.STATUT_ATTENTE_PAIEMENT_CAISSIERE,
@@ -127,6 +214,8 @@ def dashboard(request):
         "validation_dga_par",
         "validation_dg_par",
     )
+    if internal_entity_scope:
+        depenses_internes_queryset = depenses_internes_queryset.filter(entite_depense=internal_entity_scope)
     depenses_internes_total = depenses_internes_queryset.count()
     depenses_internes_attente_achat = depenses_internes_queryset.filter(
         statut=Depense.STATUT_ATTENTE_ENGAGEMENT
@@ -170,11 +259,10 @@ def dashboard(request):
     depenses_internes_recentes = list(
         depenses_internes_queryset.order_by("-date_creation", "-id")[:6]
     )
-    caissiere_user_ids = list(
-        User.objects.filter(groups__name__in=["caissiere", "caissiere_soni"], is_active=True).values_list("id", flat=True).distinct()
-    )
-    caisse_solde_initial_total = SoldeInitialCaisse.objects.aggregate(total=Sum("montant_initial")).get("total") or Decimal("0.00")
+    caissiere_user_ids = _dashboard_caisse_scope_user_ids(request)
+    caisse_solde_initial_total = SoldeInitialCaisse.objects.filter(caissiere_id__in=caissiere_user_ids).aggregate(total=Sum("montant_initial")).get("total") or Decimal("0.00")
     caisse_appro_total = ApprovisionnementCaisse.objects.filter(
+        caissiere_id__in=caissiere_user_ids,
         nature_approvisionnement__in=[
             ApprovisionnementCaisse.NATURE_URGENCE_DG,
             ApprovisionnementCaisse.NATURE_CHEQUE_DIRECT,
@@ -210,12 +298,12 @@ def dashboard(request):
     )
     dg_solde_total = dg_total_avances - dg_total_remboursements
     caisse_solde_global = caisse_solde_initial_total + caisse_appro_total - caisse_sorties_maintenance_total - caisse_sorties_depenses_total
-    caisse_appro_count = ApprovisionnementCaisse.objects.count()
+    caisse_appro_count = ApprovisionnementCaisse.objects.filter(caissiere_id__in=caissiere_user_ids).count()
     caisse_recent_appros = list(
-        ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par").order_by("-date_approvisionnement", "-id")[:6]
+        ApprovisionnementCaisse.objects.filter(caissiere_id__in=caissiere_user_ids).select_related("caissiere", "saisi_par").order_by("-date_approvisionnement", "-id")[:6]
     )
     caisse_recent_mouvements = []
-    if user_role in {"caissiere", "caissiere_soni"}:
+    if user_role in {"caissiere", "caissiere_soni", "caissiere_avena"}:
         caissiere_user_ids = [request.user.id]
         caisse_solde_initial_total = (
             SoldeInitialCaisse.objects.filter(caissiere=request.user).aggregate(total=Sum("montant_initial")).get("total")
@@ -253,7 +341,7 @@ def dashboard(request):
             .select_related("caissiere", "saisi_par")
             .order_by("-date_approvisionnement", "-id")[:6]
         )
-    if user_role in {"caissiere", "caissiere_soni", "comptable", "comptable_sogefi"}:
+    if user_role in {"caissiere", "caissiere_soni", "caissiere_avena", "comptable", "comptable_sogefi", "comptable_avena"}:
         maintenance_caisse_qs = Maintenance.objects.filter(
             statut="payee",
             paiement_saisi_par_id__in=caissiere_user_ids,
@@ -280,7 +368,7 @@ def dashboard(request):
                     "type": "Depense BL" if depense.source_depense == Depense.SOURCE_CHARGEMENT else "Autre depense",
                     "reference": depense.reference,
                     "designation": depense.libelle_depense or depense.titre,
-                    "montant": depense.montant_total,
+                    "montant": depense.montant_comptable,
                 }
             )
         caisse_recent_mouvements.sort(
@@ -345,10 +433,10 @@ def dashboard(request):
     commercial_commandes_validees = commercial_commandes_queryset.filter(
         statut__in=["validee_dg", "planifiee", "en_cours"]
     ).count()
-    commercial_factures_emises = Operation.objects.exclude(
+    commercial_factures_emises = active_operations.exclude(
         Q(numero_facture__isnull=True) | Q(numero_facture="")
     )
-    commercial_factures_a_emettre = Operation.objects.filter(etat_bon="livre").filter(
+    commercial_factures_a_emettre = active_operations.filter(etat_bon="livre").filter(
         Q(numero_facture__isnull=True) | Q(numero_facture="")
     )
     if user_role == "commercial":
@@ -377,12 +465,12 @@ def dashboard(request):
         .order_by("-date_creation")
     )
     comptable_operations_initiees_queryset = (
-        Operation.objects.select_related("commande", "client", "produit", "camion")
+        active_operations.select_related("commande", "client", "produit", "camion")
         .filter(etat_bon="initie")
         .order_by("-date_creation")
     )
     comptable_facturation_queryset = (
-        Operation.objects.select_related("commande", "client", "produit", "camion", "chauffeur")
+        active_operations.select_related("commande", "client", "produit", "camion", "chauffeur")
         .filter(etat_bon="livre")
         .order_by("-date_bons_livres", "-date_creation")
     )
@@ -422,30 +510,30 @@ def dashboard(request):
         comptable_factures_emises_total,
     ]
 
-    dernieres_operations = Operation.objects.select_related(
+    dernieres_operations = active_operations.select_related(
         "client",
         "camion",
         "chauffeur",
         "produit",
     ).order_by("-date_creation")[:8]
-    alertes_operations = Operation.objects.select_related("client").filter(
+    alertes_operations = active_operations.select_related("client").filter(
         Q(date_bons_charges__isnull=False, date_bons_livres__isnull=True, date_bons_charges__lt=seuil_retard)
         | Q(date_bons_livres__isnull=False, date_bon_retour__isnull=True)
     ).order_by("-date_creation")[:6]
 
     top_clients = (
-        Operation.objects.values("client__entreprise")
+        active_operations.values("client__entreprise")
         .annotate(total_bons=Count("id"), total_quantite=Sum("quantite"))
         .order_by("-total_bons", "-total_quantite")[:5]
     )
     camions_plus_utilises = (
-        Camion.objects.filter(operations__isnull=False)
+        Camion.objects.filter(operations__remplace_par__isnull=True)
         .values("numero_tracteur", "numero_citerne", "chauffeur__nom")
-        .annotate(total_bons=Count("operations", distinct=True))
+        .annotate(total_bons=Count("operations", filter=Q(operations__remplace_par__isnull=True), distinct=True))
         .order_by("-total_bons")[:5]
     )
 
-    quantites_carburant = Operation.objects.aggregate(
+    quantites_carburant = active_operations.aggregate(
         total_essence=Sum("quantite", filter=Q(produit__nom__icontains="essence")),
         total_gasoil=Sum("quantite", filter=Q(produit__nom__icontains="gasoil")),
     )
@@ -453,7 +541,7 @@ def dashboard(request):
     total_gasoil = float(quantites_carburant["total_gasoil"] or 0)
 
     daily_inities = (
-        Operation.objects.filter(etat_bon="initie")
+        active_operations.filter(etat_bon="initie")
         .annotate(day=TruncDate("date_creation"))
         .values("day")
         .annotate(total=Count("id"))
@@ -530,7 +618,7 @@ def dashboard(request):
                 "/commandes/?statut=validee_dg",
                 "danger",
             )
-        receptions_logistique = Operation.objects.filter(etat_bon="attente_reception_logistique").count()
+        receptions_logistique = active_operations.filter(etat_bon="attente_reception_logistique").count()
         if receptions_logistique:
             add_alert(
                 "BL a receptionner",
@@ -539,7 +627,7 @@ def dashboard(request):
                 "/operations/logisticien/?etat=attente_reception_logistique",
                 "danger",
             )
-        remises_chauffeur = Operation.objects.filter(etat_bon="liquide_logistique").count()
+        remises_chauffeur = active_operations.filter(etat_bon="liquide_logistique").count()
         if remises_chauffeur:
             add_alert(
                 "BL a remettre au chauffeur",
@@ -548,36 +636,24 @@ def dashboard(request):
                 "/operations/logisticien/?etat=liquide_logistique",
                 "warning",
             )
-        bl_charges = 0
-        for operation in Operation.objects.filter(etat_bon="charge").prefetch_related("depenses_liees"):
-            depenses_chargement = [
-                depense
-                for depense in operation.depenses_liees.all()
-                if depense.source_depense == Depense.SOURCE_CHARGEMENT
-            ]
-            if not depenses_chargement or any(
-                depense.statut in {
-                    Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA,
-                    Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG,
-                }
-                for depense in depenses_chargement
-            ):
-                bl_charges += 1
+        bl_charges = _dashboard_count_charged_bl_with_pending_depenses(
+            active_operations.filter(etat_bon="charge")
+        )
         if bl_charges:
             add_alert(
                 "BL charges par le chauffeur",
                 f"{bl_charges} BL charge(s) attendent encore la saisie ou la validation finale des depenses liees au chargement.",
                 "Ouvrir chargement / livraison",
-                "/operations/logisticien/?etat=charge",
+                "/operations/logisticien/?etat=charge&depense_niveau=action_requise",
                 "ok",
             )
-        bons_retour = Operation.objects.filter(etat_bon="livre", date_bon_retour__isnull=True).count()
+        bons_retour = active_operations.filter(etat_bon="livre", date_bon_retour__isnull=True).count()
         if bons_retour:
             add_alert(
                 "Bons retour attendus",
                 f"{bons_retour} BL livre(s) attendent encore le bon retour.",
                 "Ouvrir chargement / livraison",
-                "/operations/logisticien/?etat=livre",
+                "/operations/logisticien/?etat=livre&retour=attendu",
                 "warning",
             )
         depenses_chargement = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA).count()
@@ -601,7 +677,7 @@ def dashboard(request):
                 "warning",
             )
         logistique_operations_dashboard = list(
-            Operation.objects.select_related("client", "camion", "chauffeur", "commande", "produit")
+            active_operations.select_related("client", "camion", "chauffeur", "commande", "produit")
             .filter(etat_bon__in=["attente_reception_logistique", "liquide_logistique", "liquide_chauffeur", "charge", "livre"])
             .order_by("-date_creation")[:8]
         )
@@ -611,7 +687,7 @@ def dashboard(request):
             .order_by("-date_creation")[:6]
         )
     elif user_role == "chef_chauffeur":
-        chargements = Operation.objects.filter(etat_bon="liquide_chauffeur").count()
+        chargements = active_operations.filter(etat_bon="liquide_chauffeur").count()
         if chargements:
             add_alert(
                 "BL a charger",
@@ -620,7 +696,7 @@ def dashboard(request):
                 "/operations/chef-chauffeur/?etat=liquide_chauffeur",
                 "danger",
             )
-        livraisons = Operation.objects.filter(etat_bon="charge").count()
+        livraisons = active_operations.filter(etat_bon="charge").count()
         if livraisons:
             add_alert(
                 "BL a livrer",
@@ -630,7 +706,7 @@ def dashboard(request):
                 "warning",
             )
     elif user_role == "secretaire":
-        bl_initie = Operation.objects.filter(etat_bon="initie").count()
+        bl_initie = active_operations.filter(etat_bon="initie").count()
         if bl_initie:
             add_alert(
                 "BL a transmettre",
@@ -697,7 +773,7 @@ def dashboard(request):
                 "/depenses/?statut=attente_validation_dga_engagement",
                 "warning",
             )
-    elif user_role in {"caissiere", "caissiere_soni"}:
+    elif user_role in {"caissiere", "caissiere_soni", "caissiere_avena"}:
         maintenances_espece = Maintenance.objects.filter(
             statut="attente_paiement",
             mode_paiement=Maintenance.MODE_ESPECE,
@@ -707,10 +783,12 @@ def dashboard(request):
             **(
                 {"source_depense": Depense.SOURCE_GENERALE, "entite_depense": Depense.ENTITE_SONI}
                 if user_role == "caissiere_soni"
+                else {"source_depense": Depense.SOURCE_GENERALE, "entite_depense": Depense.ENTITE_AVENA}
+                if user_role == "caissiere_avena"
                 else {}
             ),
         ).count()
-        if user_role == "caissiere_soni":
+        if user_role in {"caissiere_soni", "caissiere_avena"}:
             maintenances_espece = 0
         total_paiements_caisse = maintenances_espece + depenses_espece
         if total_paiements_caisse:
@@ -722,6 +800,15 @@ def dashboard(request):
                 "ok",
             )
     elif user_role == "comptable":
+        demandes_nouveau_bl = DemandeNouveauBL.objects.filter(statut=DemandeNouveauBL.STATUT_EN_ATTENTE).count()
+        if demandes_nouveau_bl:
+            add_alert(
+                "Nouveaux BL apres changement camion",
+                f"{demandes_nouveau_bl} BL doivent etre recrees suite a un changement de camion par la logistique.",
+                "Creer les BL",
+                "/operations/comptable/",
+                "danger",
+            )
         depenses_cheque_soni = Depense.objects.filter(
             source_depense=Depense.SOURCE_GENERALE,
             entite_depense=Depense.ENTITE_SONI,
@@ -744,7 +831,7 @@ def dashboard(request):
                 "/operations/comptable/",
                 "danger",
             )
-        factures_a_traiter = Operation.objects.filter(etat_bon="livre").filter(
+        factures_a_traiter = active_operations.filter(etat_bon="livre").filter(
             Q(numero_facture__isnull=True) | Q(numero_facture="")
         ).count()
         if factures_a_traiter:
@@ -770,6 +857,20 @@ def dashboard(request):
                 "/maintenance/paiements/",
                 "warning",
             )
+    elif user_role == "comptable_avena":
+        depenses_cheque_avena = Depense.objects.filter(
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=Depense.ENTITE_AVENA,
+            statut=Depense.STATUT_ATTENTE_PAIEMENT_COMPTABLE,
+        ).count()
+        if depenses_cheque_avena:
+            add_alert(
+                "Paiements Avena par cheque",
+                f"{depenses_cheque_avena} depense(s) internes Avena attendent votre traitement comptable.",
+                "Ouvrir les paiements",
+                "/maintenance/paiements/",
+                "warning",
+            )
     elif user_role == "responsable_achat":
         engagements = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_ENGAGEMENT).count()
         if engagements:
@@ -790,6 +891,19 @@ def dashboard(request):
                 "/depenses/?statut=attente_validation_dga_engagement",
                 "warning",
             )
+    elif user_role == "dga_avena":
+        engagements_dga = Depense.objects.filter(
+            entite_depense=Depense.ENTITE_AVENA,
+            statut=Depense.STATUT_ATTENTE_VALIDATION_DGA,
+        ).count()
+        if engagements_dga:
+            add_alert(
+                "Engagements Avena a valider",
+                f"{engagements_dga} depense(s) internes Avena attendent votre validation DGA.",
+                "Ouvrir les depenses",
+                "/depenses/?statut=attente_validation_dga_engagement",
+                "warning",
+            )
     elif user_role == "directeur":
         commandes_dg = Commande.objects.filter(statut="attente_validation_dg").count()
         if commandes_dg:
@@ -797,7 +911,7 @@ def dashboard(request):
                 "Commandes a arbitrer",
                 f"{commandes_dg} commande(s) attendent votre validation finale DG.",
                 "Ouvrir les commandes",
-                "/commandes/?statut=attente_validation_dg",
+                "/commandes/",
                 "danger",
             )
         depenses_chargement_dg = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG).count()
@@ -837,7 +951,7 @@ def dashboard(request):
                 "danger",
             )
     elif user_role == "transitaire":
-        bl_a_recevoir = Operation.objects.filter(etat_bon="attente_reception_transitaire").count()
+        bl_a_recevoir = active_operations.filter(etat_bon="attente_reception_transitaire").count()
         if bl_a_recevoir:
             add_alert(
                 "BL a receptionner",
@@ -846,7 +960,7 @@ def dashboard(request):
                 "/operations/transitaire/?etat=attente_reception_transitaire",
                 "danger",
             )
-        bl_a_declarer = Operation.objects.filter(etat_bon="transmis").count()
+        bl_a_declarer = active_operations.filter(etat_bon="transmis").count()
         if bl_a_declarer:
             add_alert(
                 "BL a declarer",
@@ -855,7 +969,7 @@ def dashboard(request):
                 "/operations/transitaire/?etat=transmis",
                 "warning",
             )
-        bl_a_liquider = Operation.objects.filter(etat_bon="declare").count()
+        bl_a_liquider = active_operations.filter(etat_bon="declare").count()
         if bl_a_liquider:
             add_alert(
                 "BL a liquider",
@@ -864,7 +978,7 @@ def dashboard(request):
                 "/operations/transitaire/?etat=declare",
                 "warning",
             )
-        bl_liquides = Operation.objects.filter(etat_bon="liquide").count()
+        bl_liquides = active_operations.filter(etat_bon="liquide").count()
         if bl_liquides:
             add_alert(
                 "BL liquides a orienter",
@@ -874,12 +988,12 @@ def dashboard(request):
                 "ok",
             )
         transitaire_operations_dashboard = list(
-            Operation.objects.select_related("client", "camion", "chauffeur", "commande")
+            active_operations.select_related("client", "camion", "chauffeur", "commande")
             .filter(etat_bon__in=["attente_reception_transitaire", "transmis", "declare", "liquide"])
             .order_by("-date_creation")[:8]
         )
     elif user_role == "chef_chauffeur":
-        bl_a_charger = Operation.objects.filter(etat_bon="liquide_chauffeur").count()
+        bl_a_charger = active_operations.filter(etat_bon="liquide_chauffeur").count()
         if bl_a_charger:
             add_alert(
                 "BL a charger",
@@ -888,7 +1002,7 @@ def dashboard(request):
                 "/operations/chef-chauffeur/?etat=liquide_chauffeur",
                 "danger",
             )
-        bl_a_livrer = Operation.objects.filter(etat_bon="charge").count()
+        bl_a_livrer = active_operations.filter(etat_bon="charge").count()
         if bl_a_livrer:
             add_alert(
                 "BL a livrer",
@@ -898,7 +1012,7 @@ def dashboard(request):
                 "warning",
             )
         chef_chauffeur_operations_dashboard = list(
-            Operation.objects.select_related("client", "camion", "chauffeur", "commande")
+            active_operations.select_related("client", "camion", "chauffeur", "commande")
             .filter(etat_bon__in=["liquide_chauffeur", "charge"])
             .order_by("-date_creation")[:8]
         )
@@ -1121,13 +1235,16 @@ dashboard = role_required(
     "commercial",
     "responsable_commercial",
     "comptable",
+    "comptable_avena",
     "caissiere",
     "caissiere_soni",
+    "caissiere_avena",
     "invite",
     "logistique",
     "maintenancier",
     "dga",
     "dga_sogefi",
+    "dga_avena",
     "directeur",
     "responsable_achat",
     "comptable_sogefi",
