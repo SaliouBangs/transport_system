@@ -9,10 +9,6 @@
 .data-table tr.row-missing-perequation td:first-child {
     box-shadow: inset 4px 0 0 #ef4444;
 }
-.data-table tr.row-missing-perequation select {
-    border-color: #fca5a5;
-    background: #fffafa;
-}
 .sgp-city-field {
     display: grid;
     gap: 6px;
@@ -35,6 +31,42 @@
 .data-table tr.row-missing-perequation .sgp-city-search {
     border-color: #fca5a5;
     background: #fffafa;
+}
+.sgp-city-menu {
+    display: none;
+    max-height: 210px;
+    overflow: auto;
+    border: 1px solid #c8ddf1;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 16px 34px rgba(13, 47, 79, .14);
+    padding: 6px;
+}
+.sgp-city-field.is-open .sgp-city-menu {
+    display: grid;
+    gap: 4px;
+}
+.sgp-city-choice {
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #0d2f4f;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 10px;
+    text-align: left;
+    width: 100%;
+}
+.sgp-city-choice:hover,
+.sgp-city-choice:focus {
+    background: #eef7ff;
+    outline: none;
+}
+.sgp-city-empty {
+    color: #6b7f93;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px;
 }
 .missing-perequation-note {
     display: inline-flex;
@@ -125,11 +157,12 @@
                             <input
                                 type="search"
                                 class="sgp-city-search"
-                                list="sgp-city-options"
                                 placeholder="Rechercher une ville SGP"
                                 value="{% if row.ville %}{{ row.ville.nom }} - {{ row.ville.tarif_gnf_litre|floatformat:2 }} GNF/L{% endif %}"
+                                autocomplete="off"
                                 data-sgp-search
                             >
+                            <div class="sgp-city-menu" data-sgp-menu></div>
                         </div>
                         {% if not row.selected_city_id %}
                         <span class="missing-perequation-note">Ville SGP a definir</span>
@@ -142,27 +175,97 @@
             </tbody>
         </table>
     </div>
-    <datalist id="sgp-city-options">
+    <div id="sgp-city-options" hidden>
         {% for ville in villes %}
-        <option value="{{ ville.nom }} - {{ ville.tarif_gnf_litre|floatformat:2 }} GNF/L" data-id="{{ ville.id }}"></option>
+        <span data-id="{{ ville.id }}" data-label="{{ ville.nom }} - {{ ville.tarif_gnf_litre|floatformat:2 }} GNF/L"></span>
         {% endfor %}
-    </datalist>
+    </div>
 </form>
 <script>
-const sgpCityOptions = Array.from(document.querySelectorAll("#sgp-city-options option"));
+const sgpCityOptions = Array.from(document.querySelectorAll("#sgp-city-options [data-id]")).map((option) => ({
+    id: option.dataset.id,
+    label: option.dataset.label,
+    search: (option.dataset.label || "").toLowerCase(),
+}));
+
+function closeSgpCityMenus(exceptField = null) {
+    document.querySelectorAll(".sgp-city-field.is-open").forEach((field) => {
+        if (field !== exceptField) {
+            field.classList.remove("is-open");
+        }
+    });
+}
+
+function renderSgpCityMenu(input) {
+    const field = input.closest(".sgp-city-field");
+    const menu = field?.querySelector("[data-sgp-menu]");
+    if (!field || !menu) {
+        return;
+    }
+    const query = input.value.trim().toLowerCase();
+    const matches = sgpCityOptions
+        .filter((option) => !query || option.search.includes(query))
+        .slice(0, 12);
+
+    menu.innerHTML = "";
+    if (!matches.length) {
+        const empty = document.createElement("div");
+        empty.className = "sgp-city-empty";
+        empty.textContent = "Aucune ville trouvee";
+        menu.appendChild(empty);
+    } else {
+        matches.forEach((option) => {
+            const choice = document.createElement("button");
+            choice.type = "button";
+            choice.className = "sgp-city-choice";
+            choice.textContent = option.label;
+            choice.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                selectSgpCity(input, option);
+            });
+            choice.addEventListener("click", (event) => {
+                event.preventDefault();
+                selectSgpCity(input, option);
+            });
+            menu.appendChild(choice);
+        });
+    }
+    closeSgpCityMenus(field);
+    field.classList.add("is-open");
+}
+
+function selectSgpCity(input, option) {
+    const field = input.closest(".sgp-city-field");
+    const hidden = field?.querySelector("[data-sgp-hidden]");
+    input.value = option.label;
+    if (hidden) {
+        hidden.value = option.id;
+    }
+    field?.classList.remove("is-open");
+}
 
 function syncSgpCityField(input) {
     const field = input.closest(".sgp-city-field");
     const hidden = field?.querySelector("[data-sgp-hidden]");
-    const match = sgpCityOptions.find((option) => option.value === input.value.trim());
+    const match = sgpCityOptions.find((option) => option.label === input.value.trim());
     if (hidden) {
-        hidden.value = match ? match.dataset.id : "";
+        hidden.value = match ? match.id : "";
     }
 }
 
 document.querySelectorAll("[data-sgp-search]").forEach((input) => {
-    input.addEventListener("input", () => syncSgpCityField(input));
+    input.addEventListener("focus", () => renderSgpCityMenu(input));
+    input.addEventListener("input", () => {
+        syncSgpCityField(input);
+        renderSgpCityMenu(input);
+    });
     input.addEventListener("change", () => syncSgpCityField(input));
+});
+
+document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest(".sgp-city-field")) {
+        closeSgpCityMenus();
+    }
 });
 </script>
 {% endblock %}
