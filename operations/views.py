@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Prefetch
 from django.db.models import Q
 from django.db.models import Exists
 from django.db.models import OuterRef
@@ -19,6 +20,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from camions.models import Camion
+from clients.models import Client
+from clients.models import ClientDestinationAdresse
+from clients.models import VillePerequation
 from commandes.models import Commande
 from depenses.models import Depense
 from utilisateurs.permissions import role_required
@@ -1420,20 +1424,36 @@ def annuler_transmission_secretaire(request, id):
     return redirect("secretaire_operations")
 
 
-def sommiers_operations(request):
+def _build_sommiers_report_context(request):
     query = request.GET.get("q", "").strip()
     produit = request.GET.get("produit", "").strip()
     stats_date = request.GET.get("stats_date", "").strip() or str(timezone.localdate())
+    vue = request.GET.get("vue", "").strip()
+    historique_mode = vue == "historique"
 
-    sommiers = Sommier.objects.select_related("produit")
+    operations_liees = (
+        Operation.objects.filter(remplace_par__isnull=True)
+        .select_related("client", "commande", "camion", "chauffeur")
+        .order_by("-date_creation")
+    )
+    sommiers = Sommier.objects.select_related("produit").prefetch_related(
+        Prefetch("operations", queryset=operations_liees, to_attr="bl_lies")
+    )
     if query:
         sommiers = sommiers.filter(
             Q(numero_sm__icontains=query)
             | Q(reference_navire__icontains=query)
             | Q(produit__nom__icontains=query)
+            | Q(operations__numero_bl__icontains=query)
+            | Q(operations__client__entreprise__icontains=query)
         )
     if produit:
         sommiers = sommiers.filter(produit_id=produit)
+    if historique_mode:
+        sommiers = sommiers.filter(quantite_disponible__lte=0)
+    else:
+        sommiers = sommiers.filter(quantite_disponible__gt=0)
+    sommiers = sommiers.distinct().order_by("-date_sommier", "numero_sm")
 
     totals_by_product = (
         Sommier.objects.select_related("produit")
@@ -1481,6 +1501,49 @@ def sommiers_operations(request):
             }
         )
 
+    sommier_rows = []
+    for sommier in sommiers:
+        bl_lies = list(getattr(sommier, "bl_lies", []))
+        quantite_liee = sum((Decimal(operation.quantite or 0) for operation in bl_lies), Decimal("0.00"))
+        quantite_initiale = Decimal(sommier.quantite_initiale or 0)
+        quantite_disponible = Decimal(sommier.quantite_disponible or 0)
+        taux_utilise = 0
+        if quantite_initiale:
+            taux_utilise = min(100, int(((quantite_initiale - quantite_disponible) / quantite_initiale) * 100))
+        sommier_rows.append(
+            {
+                "sommier": sommier,
+                "bl_lies": bl_lies,
+                "bl_count": len(bl_lies),
+                "quantite_liee": quantite_liee,
+                "taux_utilise": max(taux_utilise, 0),
+                "bl_resume": ", ".join(operation.numero_bl for operation in bl_lies[:6]),
+                "has_more_bl": len(bl_lies) > 6,
+            }
+        )
+
+    return {
+        "sommiers": sommiers,
+        "sommier_rows": sommier_rows,
+        "query": query,
+        "produit_filter": produit,
+        "totals_by_product": totals_by_product,
+        "chart_totals": chart_totals,
+        "stats_date": stats_date,
+        "vue": vue,
+        "historique_mode": historique_mode,
+        "actifs_count": Sommier.objects.filter(quantite_disponible__gt=0).count(),
+        "historique_count": Sommier.objects.filter(quantite_disponible__lte=0).count(),
+        "chart_sorties": chart_sorties,
+        "produits": Produit.objects.order_by("nom"),
+        "active_tab": "sommiers",
+        "current_filters": request.GET.urlencode(),
+    }
+
+
+def sommiers_operations(request):
+    context = _build_sommiers_report_context(request)
+
     if request.method == "POST":
         form = SommierForm(request.POST)
         if form.is_valid():
@@ -1489,23 +1552,280 @@ def sommiers_operations(request):
             return redirect("sommiers_operations")
     else:
         form = SommierForm(initial={"date_sommier": timezone.localdate()})
+    context["form"] = form
 
     return render(
         request,
         "operations/sommiers.html",
-        {
-            "sommiers": sommiers,
-            "form": form,
-            "query": query,
-            "produit_filter": produit,
-            "totals_by_product": totals_by_product,
-            "chart_totals": chart_totals,
-            "stats_date": stats_date,
-            "chart_sorties": chart_sorties,
-            "produits": Produit.objects.order_by("nom"),
-            "active_tab": "sommiers",
-        },
+        context,
     )
+
+
+def export_sommiers_xls(request):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        return HttpResponse("Le module openpyxl n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_sommiers_report_context(request)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Sommiers"
+    headers = ["N SM", "Date", "Navire", "Produit", "Stock initial", "Stock disponible", "Utilise %", "Nb BL", "Quantite BL", "BL lies"]
+    worksheet.append(headers)
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for row in context["sommier_rows"]:
+        sommier = row["sommier"]
+        worksheet.append(
+            [
+                sommier.numero_sm,
+                sommier.date_sommier,
+                sommier.reference_navire,
+                sommier.produit.nom if sommier.produit_id else "",
+                float(sommier.quantite_initiale or 0),
+                float(sommier.quantite_disponible or 0),
+                row["taux_utilise"],
+                row["bl_count"],
+                float(row["quantite_liee"]),
+                ", ".join(operation.numero_bl for operation in row["bl_lies"]),
+            ]
+        )
+
+    bl_sheet = workbook.create_sheet("BL lies")
+    bl_headers = ["Navire", "N SM", "BL", "Date BL", "Client", "Commande", "Quantite", "Etat", "Camion", "Chauffeur"]
+    bl_sheet.append(bl_headers)
+    for cell in bl_sheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for row in context["sommier_rows"]:
+        sommier = row["sommier"]
+        for operation in row["bl_lies"]:
+            bl_sheet.append(
+                [
+                    sommier.reference_navire,
+                    sommier.numero_sm,
+                    operation.numero_bl,
+                    operation.date_bl,
+                    operation.client.entreprise if operation.client_id else "",
+                    operation.commande.reference_affichee if operation.commande_id else "",
+                    float(operation.quantite or 0),
+                    operation.get_etat_bon_display(),
+                    operation.camion.numero_tracteur if operation.camion_id else "",
+                    operation.chauffeur.nom if operation.chauffeur_id else "",
+                ]
+            )
+    for sheet in workbook.worksheets:
+        for column in sheet.columns:
+            column_letter = column[0].column_letter
+            sheet.column_dimensions[column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 34)
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="sommiers.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_sommiers_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse("Le module reportlab n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_sommiers_report_context(request)
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="sommiers.pdf"'
+    document = SimpleDocTemplate(response, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=22, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    data = [["N SM", "Date", "Navire", "Produit", "Initial", "Disponible", "Nb BL", "BL lies"]]
+    for row in context["sommier_rows"]:
+        sommier = row["sommier"]
+        bl_text = ", ".join(
+            f"{operation.numero_bl} ({operation.date_bl.strftime('%d/%m/%Y') if operation.date_bl else '-'})"
+            for operation in row["bl_lies"][:6]
+        )
+        if row["has_more_bl"]:
+            bl_text += " ..."
+        data.append(
+            [
+                sommier.numero_sm,
+                sommier.date_sommier.strftime("%d/%m/%Y") if sommier.date_sommier else "",
+                sommier.reference_navire,
+                sommier.produit.nom if sommier.produit_id else "",
+                f"{sommier.quantite_initiale:.0f}",
+                f"{sommier.quantite_disponible:.0f}",
+                row["bl_count"],
+                bl_text or "-",
+            ]
+        )
+    if len(data) == 1:
+        data.append(["Aucun sommier", "", "", "", "", "", "", ""])
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7e8f2")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f9fc")]),
+            ]
+        )
+    )
+    elements = [Paragraph("Tableau des sommiers", styles["Title"]), Spacer(1, 10), table]
+    document.build(elements)
+    return response
+
+
+def _build_sommier_bl_context(sommier_id):
+    sommier = get_object_or_404(Sommier.objects.select_related("produit"), pk=sommier_id)
+    operations = (
+        Operation.objects.filter(sommier=sommier, remplace_par__isnull=True)
+        .select_related("client", "commande", "produit", "camion", "chauffeur")
+        .order_by("-date_bl", "-date_creation", "numero_bl")
+    )
+    total_quantite = operations.aggregate(total=Sum("quantite")).get("total") or Decimal("0.00")
+    stock_initial = Decimal(sommier.quantite_initiale or 0)
+    stock_disponible = Decimal(sommier.quantite_disponible or 0)
+    taux_utilise = 0
+    if stock_initial:
+        taux_utilise = min(100, max(0, int(((stock_initial - stock_disponible) / stock_initial) * 100)))
+    return {
+        "sommier": sommier,
+        "operations": operations,
+        "total_quantite": total_quantite,
+        "stock_initial": stock_initial,
+        "stock_disponible": stock_disponible,
+        "taux_utilise": taux_utilise,
+        "active_tab": "sommiers",
+    }
+
+
+def detail_sommier_bl(request, id):
+    return render(request, "operations/sommier_detail_bl.html", _build_sommier_bl_context(id))
+
+
+def export_sommier_bl_xls(request, id):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        return HttpResponse("Le module openpyxl n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_sommier_bl_context(id)
+    sommier = context["sommier"]
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "BL du sommier"
+    headers = [
+        "BL",
+        "Date BL",
+        "Client",
+        "Commande",
+        "Produit",
+        "Quantite",
+        "Etat",
+        "Destination",
+        "Camion",
+        "Chauffeur",
+        "Date liquide",
+        "Date charge",
+        "Date livre",
+    ]
+    worksheet.append([f"Sommier {sommier.numero_sm}", sommier.reference_navire, sommier.produit.nom if sommier.produit_id else ""])
+    worksheet.append(headers)
+    for cell in worksheet[2]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for operation in context["operations"]:
+        worksheet.append(
+            [
+                operation.numero_bl,
+                operation.date_bl,
+                operation.client.entreprise if operation.client_id else "",
+                operation.commande.reference_affichee if operation.commande_id else "",
+                operation.produit.nom if operation.produit_id else "",
+                float(operation.quantite or 0),
+                operation.get_etat_bon_display(),
+                operation.destination,
+                operation.camion.numero_tracteur if operation.camion_id else "",
+                operation.chauffeur.nom if operation.chauffeur_id else "",
+                operation.date_bons_liquides,
+                operation.date_bons_charges,
+                operation.date_bons_livres,
+            ]
+        )
+    worksheet.append([])
+    worksheet.append(["Total quantite", float(context["total_quantite"])])
+    for column in worksheet.columns:
+        column_letter = column[0].column_letter
+        worksheet.column_dimensions[column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 34)
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="bl_sommier_{sommier.numero_sm}.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_sommier_bl_pdf(request, id):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse("Le module reportlab n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_sommier_bl_context(id)
+    sommier = context["sommier"]
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="bl_sommier_{sommier.numero_sm}.pdf"'
+    document = SimpleDocTemplate(response, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=22, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    elements = [
+        Paragraph(f"BL lies au sommier {sommier.numero_sm}", styles["Title"]),
+        Paragraph(f"Navire: {sommier.reference_navire} | Produit: {sommier.produit.nom if sommier.produit_id else '-'} | Total BL: {context['operations'].count()} | Quantite: {context['total_quantite']}", styles["Normal"]),
+        Spacer(1, 12),
+    ]
+    data = [["BL", "Date", "Client", "Commande", "Qte", "Etat", "Destination", "Camion", "Chauffeur"]]
+    for operation in context["operations"]:
+        data.append(
+            [
+                operation.numero_bl,
+                operation.date_bl.strftime("%d/%m/%Y") if operation.date_bl else "",
+                operation.client.entreprise if operation.client_id else "",
+                operation.commande.reference_affichee if operation.commande_id else "",
+                f"{operation.quantite:.0f}",
+                operation.get_etat_bon_display(),
+                operation.destination,
+                operation.camion.numero_tracteur if operation.camion_id else "",
+                operation.chauffeur.nom if operation.chauffeur_id else "",
+            ]
+        )
+    if len(data) == 1:
+        data.append(["Aucun BL", "", "", "", "", "", "", "", ""])
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7e8f2")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f9fc")]),
+            ]
+        )
+    )
+    elements.append(table)
+    document.build(elements)
+    return response
 
 
 def ajouter_operation_comptable(request):
@@ -3138,6 +3458,10 @@ def chef_chauffeur_operations(request):
         else:
             operation.depenses_status_label = "Suivi en cours"
             operation.depenses_status_variant = "success"
+        operation.depenses_delivery_warning = (
+            operation.next_action == "livre"
+            and operation.depenses_status_label != "Payee"
+        )
 
     return render(
         request,
@@ -3199,19 +3523,6 @@ def action_chef_chauffeur(request, id, action):
         messages.error(request, "La date saisie est invalide.")
         return redirect("chef_chauffeur_operations")
 
-    quantite_livree = None
-    if action == "livre":
-        quantite_raw = (request.POST.get("quantite_livree") or "").strip()
-        if not quantite_raw:
-            messages.error(request, "La quantite livree est obligatoire pour marquer le BL comme livre.")
-            return redirect("chef_chauffeur_operations")
-        normalized_quantite = "".join(quantite_raw.split()).replace(",", ".")
-        try:
-            quantite_livree = Decimal(normalized_quantite)
-        except Exception:
-            messages.error(request, "La quantite livree saisie est invalide.")
-            return redirect("chef_chauffeur_operations")
-
     if action == "charge":
         if operation.etat_bon != "liquide_chauffeur":
             messages.error(request, "Ce BL n'est pas en attente de chargement.")
@@ -3225,7 +3536,6 @@ def action_chef_chauffeur(request, id, action):
             return redirect("chef_chauffeur_operations")
         operation.etat_bon = "livre"
         operation.date_bons_livres = action_date
-        operation.quantite_livree = quantite_livree
         if not operation.date_bons_charges:
             operation.date_bons_charges = action_date
         success_message = "Le BL a bien ete marque comme livre."
@@ -3917,6 +4227,317 @@ def imprimer_bon_livraison(request, id):
     return response
 
 
+def _comptable_client_base_queryset():
+    return (
+        Operation.objects.select_related(
+            "client",
+            "commande",
+            "produit",
+            "camion",
+            "chauffeur",
+            "ville_perequation_sgp",
+        )
+        .filter(remplace_par__isnull=True, etat_bon="livre")
+        .order_by("-date_bons_livres", "-date_creation")
+    )
+
+
+def _suggested_perequation_city(operation):
+    if operation.ville_perequation_sgp_id:
+        return operation.ville_perequation_sgp
+    if not operation.client_id or not operation.destination:
+        return None
+    mapping = (
+        ClientDestinationAdresse.objects.select_related("ville_perequation")
+        .filter(client_id=operation.client_id, adresse__iexact=operation.destination.strip())
+        .first()
+    )
+    return mapping.ville_perequation if mapping else None
+
+
+def _operation_perequation_row(operation):
+    quantite_livree = Decimal(operation.quantite_livree or operation.quantite or 0)
+    ville = operation.ville_perequation_sgp or _suggested_perequation_city(operation)
+    tarif_destination = Decimal(ville.tarif_gnf_litre if ville else 0)
+    tarif_reference = Decimal(operation.tarif_reference_perequation or 550)
+    transport_reel = quantite_livree * tarif_destination
+    transport_perequation = quantite_livree * tarif_reference
+    ecart = transport_reel - transport_perequation
+    return {
+        "operation": operation,
+        "quantite_livree": quantite_livree,
+        "ville": ville,
+        "tarif_destination": tarif_destination,
+        "tarif_reference": tarif_reference,
+        "transport_reel": transport_reel,
+        "transport_perequation": transport_perequation,
+        "ecart": ecart,
+        "compensation": ecart if ecart > 0 else Decimal("0"),
+        "contribution": abs(ecart) if ecart < 0 else Decimal("0"),
+    }
+
+
+def _filtered_comptable_client_queryset(request, require_confirmed=False):
+    operations = _comptable_client_base_queryset()
+    if require_confirmed:
+        operations = operations.filter(livraison_confirmee_client=True)
+
+    query = request.GET.get("q", "").strip()
+    client_id = request.GET.get("client", "").strip()
+    date_debut = request.GET.get("date_debut", "").strip()
+    date_fin = request.GET.get("date_fin", "").strip()
+
+    if query:
+        operations = operations.filter(
+            Q(numero_bl__icontains=query)
+            | Q(client__nom__icontains=query)
+            | Q(destination__icontains=query)
+            | Q(camion__numero_tracteur__icontains=query)
+            | Q(camion__numero_citerne__icontains=query)
+            | Q(chauffeur__nom__icontains=query)
+        )
+    if client_id.isdigit():
+        operations = operations.filter(client_id=int(client_id))
+    if date_debut:
+        operations = operations.filter(date_bons_livres__gte=date_debut)
+    if date_fin:
+        operations = operations.filter(date_bons_livres__lte=date_fin)
+    return operations
+
+
+def comptable_client_confirmations(request):
+    operations = _filtered_comptable_client_queryset(request).filter(livraison_confirmee_client=False)
+    rows = [_operation_perequation_row(operation) for operation in operations]
+    context = {
+        "active_tab": "confirmations",
+        "rows": rows,
+        "total_a_confirmer": len(rows),
+        "clients": Client.objects.order_by("nom"),
+        "filters": request.GET,
+    }
+    return render(request, "operations/comptable_client_confirmations.html", context)
+
+
+def confirmer_livraison_client(request, id):
+    operation = get_object_or_404(_comptable_client_base_queryset(), id=id)
+    suggested_city = _suggested_perequation_city(operation)
+
+    if request.method == "POST":
+        try:
+            quantite_livree = _parse_decimal_input(request.POST.get("quantite_livree"))
+        except Exception:
+            quantite_livree = None
+
+        if quantite_livree is None:
+            messages.error(request, "Renseigne une quantite livree valide.")
+        elif quantite_livree < 0 or quantite_livree > operation.quantite:
+            messages.error(request, "La quantite livree doit rester entre 0 et la quantite du BL.")
+        else:
+            operation.quantite_livree = quantite_livree
+            operation.livraison_confirmee_client = True
+            operation.date_confirmation_livraison_client = timezone.localdate()
+            operation.observation_confirmation_livraison = (request.POST.get("observation") or "").strip()
+            if suggested_city and not operation.ville_perequation_sgp_id:
+                operation.ville_perequation_sgp = suggested_city
+            operation.save(
+                update_fields=[
+                    "quantite_livree",
+                    "livraison_confirmee_client",
+                    "date_confirmation_livraison_client",
+                    "observation_confirmation_livraison",
+                    "ville_perequation_sgp",
+                ]
+            )
+            messages.success(request, "Livraison confirmee par le comptable client.")
+            return redirect("comptable_client_confirmations")
+
+    context = {
+        "active_tab": "confirmations",
+        "operation": operation,
+        "quantite_manquante": max(Decimal(operation.quantite or 0) - Decimal(operation.quantite_livree or operation.quantite or 0), Decimal("0")),
+        "suggested_city": suggested_city,
+    }
+    return render(request, "operations/comptable_client_confirmer.html", context)
+
+
+def comptable_client_perequation(request):
+    operations = _filtered_comptable_client_queryset(request, require_confirmed=True)
+    villes = list(VillePerequation.objects.filter(actif=True).order_by("nom"))
+
+    if request.method == "POST":
+        updated = 0
+        for operation in operations:
+            ville_id = (request.POST.get(f"ville_{operation.id}") or "").strip()
+            if not ville_id.isdigit():
+                continue
+            ville = next((item for item in villes if item.id == int(ville_id)), None)
+            if not ville:
+                continue
+            operation.ville_perequation_sgp = ville
+            operation.save(update_fields=["ville_perequation_sgp"])
+            if operation.commande_id and not operation.commande.ville_perequation_id:
+                operation.commande.ville_perequation = ville
+                operation.commande.tarif_perequation_gnf_litre = ville.tarif_gnf_litre
+                operation.commande.save(update_fields=["ville_perequation", "tarif_perequation_gnf_litre"])
+            destination = (operation.destination or "").strip()
+            if operation.client_id and destination:
+                mapping = ClientDestinationAdresse.objects.filter(
+                    client_id=operation.client_id,
+                    adresse__iexact=destination,
+                ).first()
+                if mapping:
+                    mapping.ville_perequation = ville
+                    mapping.save(update_fields=["ville_perequation"])
+                else:
+                    ClientDestinationAdresse.objects.create(
+                        client_id=operation.client_id,
+                        adresse=destination,
+                        ville_perequation=ville,
+                    )
+            updated += 1
+        messages.success(request, f"{updated} affectation(s) SGP enregistree(s).")
+        return redirect(f"{request.path}?{request.GET.urlencode()}" if request.GET else request.path)
+
+    rows = []
+    for operation in operations:
+        row = _operation_perequation_row(operation)
+        row["selected_city_id"] = operation.ville_perequation_sgp_id or (row["ville"].id if row["ville"] else "")
+        rows.append(row)
+
+    context = {
+        "active_tab": "perequation",
+        "rows": rows,
+        "villes": villes,
+        "clients": Client.objects.order_by("nom"),
+        "filters": request.GET,
+        "total_sans_ville": sum(1 for row in rows if not row["selected_city_id"]),
+    }
+    return render(request, "operations/comptable_client_perequation.html", context)
+
+
+def _rapport_perequation_context(request):
+    operations = _filtered_comptable_client_queryset(request, require_confirmed=True).filter(ville_perequation_sgp__isnull=False)
+    rows = [_operation_perequation_row(operation) for operation in operations]
+    totals = {
+        "quantite": sum((row["quantite_livree"] for row in rows), Decimal("0")),
+        "transport_reel": sum((row["transport_reel"] for row in rows), Decimal("0")),
+        "transport_perequation": sum((row["transport_perequation"] for row in rows), Decimal("0")),
+        "ecart": sum((row["ecart"] for row in rows), Decimal("0")),
+        "compensation": sum((row["compensation"] for row in rows), Decimal("0")),
+        "contribution": sum((row["contribution"] for row in rows), Decimal("0")),
+    }
+    return {
+        "active_tab": "rapport",
+        "rows": rows,
+        "totals": totals,
+        "clients": Client.objects.order_by("nom"),
+        "filters": request.GET,
+    }
+
+
+def rapport_perequation_client(request):
+    return render(request, "operations/rapport_perequation_client.html", _rapport_perequation_context(request))
+
+
+def export_rapport_perequation_xls(request):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        return HttpResponse("Le module openpyxl n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _rapport_perequation_context(request)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Perequation"
+    headers = [
+        "BL",
+        "Date livraison",
+        "Client",
+        "Destination",
+        "Ville SGP",
+        "Produit",
+        "Qte livree",
+        "Tarif destination",
+        "Tarif reference",
+        "Transport reel",
+        "Transport perequation",
+        "Ecart",
+    ]
+    sheet.append(headers)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for row in context["rows"]:
+        operation = row["operation"]
+        sheet.append(
+            [
+                operation.numero_bl,
+                operation.date_bons_livres,
+                operation.client.nom,
+                operation.destination,
+                row["ville"].nom if row["ville"] else "",
+                operation.produit.nom if operation.produit_id else "",
+                float(row["quantite_livree"]),
+                float(row["tarif_destination"]),
+                float(row["tarif_reference"]),
+                float(row["transport_reel"]),
+                float(row["transport_perequation"]),
+                float(row["ecart"]),
+            ]
+        )
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="rapport_perequation_sgp.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_rapport_perequation_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse("Le module reportlab n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _rapport_perequation_context(request)
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="rapport_perequation_sgp.pdf"'
+    document = SimpleDocTemplate(response, pagesize=landscape(A4), rightMargin=18, leftMargin=18, topMargin=18, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    data = [["BL", "Client", "Destination", "Ville SGP", "Qte", "Reel", "Perequation", "Ecart"]]
+    for row in context["rows"]:
+        operation = row["operation"]
+        data.append(
+            [
+                operation.numero_bl,
+                operation.client.nom,
+                operation.destination,
+                row["ville"].nom if row["ville"] else "-",
+                _format_amount(row["quantite_livree"]),
+                _format_amount(row["transport_reel"]),
+                _format_amount(row["transport_perequation"]),
+                _format_amount(row["ecart"]),
+            ]
+        )
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#c7d7e5")),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    document.build([Paragraph("Rapport perequation SGP", styles["Title"]), Spacer(1, 10), table])
+    return response
+
+
 liste_operations = role_required()(liste_operations)
 export_operations_xls = role_required()(export_operations_xls)
 export_operations_pdf = role_required()(export_operations_pdf)
@@ -3930,6 +4551,17 @@ export_secretaire_pdf = role_required("secretaire")(export_secretaire_pdf)
 transmettre_bons_secretaire = role_required("secretaire")(transmettre_bons_secretaire)
 annuler_transmission_secretaire = role_required("secretaire")(annuler_transmission_secretaire)
 sommiers_operations = role_required("comptable", "dga", "directeur")(sommiers_operations)
+export_sommiers_xls = role_required("comptable", "dga", "directeur")(export_sommiers_xls)
+export_sommiers_pdf = role_required("comptable", "dga", "directeur")(export_sommiers_pdf)
+detail_sommier_bl = role_required("comptable", "dga", "directeur")(detail_sommier_bl)
+export_sommier_bl_xls = role_required("comptable", "dga", "directeur")(export_sommier_bl_xls)
+export_sommier_bl_pdf = role_required("comptable", "dga", "directeur")(export_sommier_bl_pdf)
+comptable_client_confirmations = role_required("comptable_client_soni")(comptable_client_confirmations)
+confirmer_livraison_client = role_required("comptable_client_soni")(confirmer_livraison_client)
+comptable_client_perequation = role_required("comptable_client_soni")(comptable_client_perequation)
+rapport_perequation_client = role_required("comptable_client_soni", "dga", "directeur", "controleur")(rapport_perequation_client)
+export_rapport_perequation_xls = role_required("comptable_client_soni", "dga", "directeur", "controleur")(export_rapport_perequation_xls)
+export_rapport_perequation_pdf = role_required("comptable_client_soni", "dga", "directeur", "controleur")(export_rapport_perequation_pdf)
 ajouter_operation_comptable = role_required("comptable")(ajouter_operation_comptable)
 creer_bl_depuis_demande = role_required("comptable")(creer_bl_depuis_demande)
 modifier_operation_comptable = role_required("comptable")(modifier_operation_comptable)

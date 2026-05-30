@@ -45,7 +45,9 @@
             <div class="client-action-panel">
                 <div class="client-action-buttons">
                     <a href="/clients/" class="btn-secondary">Retour</a>
+                    {% if can_access_financial_reports %}
                     <a href="/clients/rapport-financier/{{ client.id }}/" class="btn-secondary">Rapport financier</a>
+                    {% endif %}
                     {% if can_edit_clients %}<a href="/clients/modifier/{{ client.id }}/" class="btn-edit">Modifier</a>{% endif %}
                 </div>
                 <div class="client-risk-banner {% if disponible_decouvert < 0 %}is-danger{% elif risque_client > 0 %}is-warning{% else %}is-safe{% endif %}">

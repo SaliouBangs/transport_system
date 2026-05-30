@@ -13,6 +13,7 @@ from .constants import (
     ROLE_COMMERCIAL,
     ROLE_COMPTABLE,
     ROLE_COMPTABLE_AVENA,
+    ROLE_COMPTABLE_CLIENT_SONI,
     ROLE_COMPTABLE_SOGEFI,
     ROLE_CONTROLEUR,
     ROLE_DGA,
@@ -54,6 +55,7 @@ PERMISSION_CATALOG = [
             ("can_access_gps", "Acceder au GPS"),
             ("can_access_rapport_global", "Consulter le rapport global"),
             ("can_access_reports_center", "Consulter les rapports"),
+            ("can_access_rapport_perequation", "Consulter le rapport perequation"),
         ],
     ),
     (
@@ -81,6 +83,7 @@ PERMISSION_CATALOG = [
             ("can_access_operations_secretaire", "Secretaire BL"),
             ("can_access_operations_sommiers", "Sommiers"),
             ("can_access_operations_facturation", "Facturation"),
+            ("can_access_comptable_client", "Comptable client SONI"),
             ("can_access_operations_logistique", "Commandes a affecter"),
             ("can_access_operations_logisticien", "Chargement / Livraison"),
             ("can_access_operations_chef_chauffeur", "Chef chauffeur"),
@@ -126,6 +129,7 @@ ROLE_PRIORITY = [
     ROLE_DGA_AVENA,
     ROLE_COMPTABLE_SOGEFI,
     ROLE_COMPTABLE_AVENA,
+    ROLE_COMPTABLE_CLIENT_SONI,
     ROLE_CAISSIERE_SONI,
     ROLE_CAISSIERE_AVENA,
     ROLE_DGA,
@@ -140,6 +144,7 @@ ROLE_PRIORITY = [
             ROLE_DGA_AVENA,
             ROLE_COMPTABLE_SOGEFI,
             ROLE_COMPTABLE_AVENA,
+            ROLE_COMPTABLE_CLIENT_SONI,
             ROLE_CAISSIERE_SONI,
             ROLE_CAISSIERE_AVENA,
             ROLE_DGA,
@@ -193,7 +198,7 @@ def get_allowed_supervision_entities(user):
         return [(ENTITY_AVENA, ENTITY_LABELS[ENTITY_AVENA])]
     if role in {ROLE_COMPTABLE_SOGEFI, ROLE_DGA_SOGEFI}:
         return [(ENTITY_SOGEFI, ENTITY_LABELS[ENTITY_SOGEFI])]
-    if role in {ROLE_COMPTABLE, ROLE_CAISSIERE, ROLE_CAISSIERE_SONI, ROLE_DGA, ROLE_LOGISTIQUE}:
+    if role in {ROLE_COMPTABLE, ROLE_COMPTABLE_CLIENT_SONI, ROLE_CAISSIERE, ROLE_CAISSIERE_SONI, ROLE_DGA, ROLE_LOGISTIQUE}:
         return [(ENTITY_SONI, ENTITY_LABELS[ENTITY_SONI])]
     return []
 
@@ -249,11 +254,17 @@ def get_default_landing_url(user):
 PATH_PERMISSION_MAP = [
     ("/dashboard/", "can_access_dashboard"),
     ("/prospects/", "can_access_prospects"),
+    ("/clients/rapports/factures-clients/", "can_access_client_invoice_reports"),
+    ("/clients/rapports/encaissements-commerciaux/", "can_access_financial_reports"),
+    ("/clients/rapport-financier/", "can_access_financial_reports"),
+    ("/clients/rapports/", "can_access_reports_center"),
     ("/clients/encaissements/", "can_access_clients"),
     ("/clients/", "can_access_clients"),
     ("/commandes/rapport-global/", "can_access_rapport_global"),
     ("/commandes/", "can_access_commandes"),
     ("/operations/comptable/sommiers/", "can_access_operations_sommiers"),
+    ("/operations/comptable-client/rapport-perequation/", "can_access_rapport_perequation"),
+    ("/operations/comptable-client/", "can_access_comptable_client"),
     ("/operations/comptable/", "can_access_operations_comptable"),
     ("/operations/secretaire/", "can_access_operations_secretaire"),
     ("/operations/facturation/", "can_access_operations_facturation"),
@@ -360,6 +371,7 @@ def build_role_permissions(role, is_superuser=False, is_authenticated=True):
         "can_access_settings": is_boss or is_directeur_role,
         "can_access_dashboard": bool(is_authenticated),
         "can_access_gps": _role_has(role, ROLE_COMPTABLE, ROLE_LOGISTIQUE, ROLE_TRANSITAIRE, ROLE_DIRECTEUR, is_boss=is_boss),
+        "can_access_rapport_perequation": _role_has(role, ROLE_COMPTABLE_CLIENT_SONI, ROLE_DGA, ROLE_DIRECTEUR, ROLE_CONTROLEUR, is_boss=is_boss),
         "can_access_prospects": _role_has(role, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_add_prospects": _role_has(role, ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_delete_prospects": is_boss or role == ROLE_DIRECTEUR,
@@ -377,6 +389,7 @@ def build_role_permissions(role, is_superuser=False, is_authenticated=True):
         "can_access_operations_secretaire": _role_has(role, ROLE_SECRETAIRE, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_access_operations_sommiers": _role_has(role, ROLE_COMPTABLE, ROLE_DGA, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_access_operations_facturation": _role_has(role, ROLE_COMPTABLE, ROLE_DIRECTEUR, is_boss=is_boss),
+        "can_access_comptable_client": _role_has(role, ROLE_COMPTABLE_CLIENT_SONI, is_boss=is_boss),
         "can_access_operations_logistique": _role_has(role, ROLE_LOGISTIQUE, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_access_operations_logisticien": _role_has(role, ROLE_LOGISTIQUE, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_access_operations_chef_chauffeur": _role_has(role, ROLE_CHEF_CHAUFFEUR, ROLE_DIRECTEUR, is_boss=is_boss),
@@ -413,6 +426,14 @@ def build_role_permissions(role, is_superuser=False, is_authenticated=True):
         "can_access_depenses": bool(is_authenticated and not is_caissiere),
         "can_access_rapport_global": bool(is_authenticated and not is_caissiere),
         "can_access_reports_center": bool(is_authenticated and not is_caissiere),
+        "can_access_client_invoice_reports": _role_has(
+            role,
+            ROLE_RESPONSABLE_COMMERCIAL,
+            ROLE_DGA,
+            ROLE_DIRECTEUR,
+            is_boss=is_boss,
+        ),
+        "can_access_financial_reports": _role_has(role, ROLE_DGA, ROLE_DIRECTEUR, is_boss=is_boss),
         "can_manage_logistique_assets": _role_has(
             role,
             ROLE_LOGISTIQUE,

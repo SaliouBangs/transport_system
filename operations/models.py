@@ -5,6 +5,7 @@ from django.db import models
 from camions.models import Camion
 from chauffeurs.models import Chauffeur
 from clients.models import Client
+from clients.models import VillePerequation
 
 
 class Produit(models.Model):
@@ -161,6 +162,17 @@ class Operation(models.Model):
     )
     quantite = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantite_livree = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    livraison_confirmee_client = models.BooleanField(default=False)
+    date_confirmation_livraison_client = models.DateField(null=True, blank=True)
+    observation_confirmation_livraison = models.TextField(blank=True)
+    ville_perequation_sgp = models.ForeignKey(
+        VillePerequation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operations_sgp",
+    )
+    tarif_reference_perequation = models.DecimalField(max_digits=12, decimal_places=2, default=550)
 
     date_bl = models.DateField(null=True, blank=True)
     date_transmission_depot = models.DateField(null=True, blank=True)
@@ -330,9 +342,6 @@ class Operation(models.Model):
             raise ValidationError(
                 "Impossible de livrer ce bon sans date de chargement."
             )
-
-        if self.etat_bon == "livre" and self.quantite_livree in {None, ""}:
-            raise ValidationError("La quantite livree est obligatoire pour passer le BL en livre.")
 
         if self.date_bons_charges and self.date_bons_livres and self.date_bons_livres < self.date_bons_charges:
             raise ValidationError("La date de livraison ne peut pas etre avant la date de chargement.")

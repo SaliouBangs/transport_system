@@ -7,7 +7,8 @@
     width: 100%;
     max-width: 100%;
     display: grid;
-    gap: 24px;
+    gap: 18px;
+    animation: dashboard-page-rise 0.58s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
   .dashboard-hero {
@@ -23,42 +24,53 @@
   .dashboard-card {
     background:
       radial-gradient(circle at top right, rgba(79, 179, 191, 0.12), transparent 34%),
+      radial-gradient(circle at bottom left, rgba(240, 168, 58, 0.08), transparent 30%),
       linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,250,253,0.98));
     border: 1px solid rgba(191, 216, 236, 0.9);
-    border-radius: 28px;
-    box-shadow: 0 18px 46px rgba(18, 48, 71, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 12px 30px rgba(18, 48, 71, 0.07);
   }
 
   .dashboard-hero-main {
-    padding: 30px 32px;
+    padding: 22px 24px;
     display: grid;
-    gap: 18px;
+    gap: 14px;
   }
 
   .dashboard-hero-side {
-    padding: 26px 28px;
+    padding: 20px 22px;
     display: grid;
-    gap: 14px;
+    gap: 10px;
     align-content: start;
   }
 
   .dashboard-kpi-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 16px;
+    gap: 12px;
   }
 
   .dashboard-kpi {
-    padding: 20px 18px;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.82);
+    padding: 14px 14px;
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, rgba(79, 179, 191, 0.10), transparent 46%),
+      rgba(255, 255, 255, 0.86);
     border: 1px solid rgba(198, 220, 238, 0.95);
+    border-top: 3px solid rgba(79, 179, 191, 0.72);
+    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+  }
+
+  .dashboard-kpi:hover {
+    transform: translateY(-4px);
+    border-color: rgba(79, 179, 191, 0.55);
+    box-shadow: 0 18px 32px rgba(18, 48, 71, 0.11);
   }
 
   .dashboard-kpi-label {
-    margin: 0 0 10px;
+    margin: 0 0 7px;
     color: #6a7f92;
-    font-size: 0.84rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -66,23 +78,23 @@
 
   .dashboard-kpi-value {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.55rem;
     line-height: 1.05;
     color: #123047;
     font-weight: 800;
   }
 
   .dashboard-kpi-value-money {
-    font-size: 1.45rem;
+    font-size: 1.12rem;
     line-height: 1.15;
     overflow-wrap: anywhere;
     word-break: break-word;
   }
 
   .dashboard-kpi-note {
-    margin: 8px 0 0;
+    margin: 6px 0 0;
     color: #6a7f92;
-    font-size: 0.93rem;
+    font-size: 0.82rem;
   }
 
   .dashboard-role-chip {
@@ -155,11 +167,15 @@
 
   .dashboard-alert {
     padding: 20px 20px 18px;
-    border-radius: 22px;
-    border: 1px solid rgba(198, 220, 238, 0.95);
-    background: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    border: 1px solid rgba(240, 168, 58, 0.42);
+    background:
+      linear-gradient(135deg, rgba(240, 168, 58, 0.18), transparent 58%),
+      rgba(255, 250, 240, 0.95);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 12px 26px rgba(240, 168, 58, 0.10);
+    animation: dashboard-alert-attention 2.7s ease-in-out infinite;
   }
 
   .dashboard-alert::before {
@@ -173,48 +189,110 @@
     background: #f0a83a;
   }
 
+  .dashboard-alert-danger {
+    border-color: rgba(214, 69, 69, 0.42);
+    background:
+      linear-gradient(135deg, rgba(214, 69, 69, 0.18), transparent 58%),
+      rgba(255, 247, 246, 0.96);
+    box-shadow: 0 12px 28px rgba(214, 69, 69, 0.14);
+    animation: dashboard-alert-danger-pulse 2s ease-in-out infinite;
+  }
+
+  .dashboard-alert-ok {
+    border-color: rgba(31, 157, 122, 0.34);
+    background:
+      linear-gradient(135deg, rgba(31, 157, 122, 0.16), transparent 58%),
+      rgba(242, 251, 247, 0.96);
+    animation: none;
+  }
+
   .dashboard-alert-danger::before { background: #d64545; }
   .dashboard-alert-ok::before { background: #1f9d7a; }
+
+  .dashboard-alert::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.34) 44%, transparent 76%);
+    transform: translateX(-120%);
+    animation: dashboard-alert-shine 3.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .dashboard-alert-ok::after {
+    display: none;
+  }
 
   .dashboard-alert p:last-of-type {
     margin-bottom: 0;
   }
 
+  @keyframes dashboard-alert-attention {
+    0%, 100% {
+      transform: translateY(0);
+      box-shadow: 0 12px 26px rgba(240, 168, 58, 0.10);
+    }
+    50% {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 34px rgba(240, 168, 58, 0.18);
+    }
+  }
+
+  @keyframes dashboard-alert-danger-pulse {
+    0%, 100% {
+      transform: translateY(0);
+      box-shadow: 0 12px 28px rgba(214, 69, 69, 0.14);
+    }
+    50% {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 38px rgba(214, 69, 69, 0.24);
+    }
+  }
+
+  @keyframes dashboard-alert-shine {
+    0%, 55% {
+      transform: translateX(-120%);
+    }
+    78%, 100% {
+      transform: translateX(120%);
+    }
+  }
+
   .dashboard-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.95fr);
-    gap: 24px;
+    gap: 18px;
     align-items: start;
   }
 
   .dashboard-stack {
     display: grid;
-    gap: 24px;
+    gap: 18px;
   }
 
   .dashboard-section {
-    padding: 24px 24px 22px;
+    padding: 18px 18px 16px;
     overflow: hidden;
   }
 
   .dashboard-section-header {
     display: flex;
     justify-content: space-between;
-    gap: 18px;
+    gap: 14px;
     align-items: flex-start;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
 
   .dashboard-section-title {
     margin: 0;
-    font-size: 1.45rem;
+    font-size: 1.22rem;
     color: #123047;
   }
 
   .dashboard-section-subtitle {
     margin: 8px 0 0;
     color: #5f7384;
-    font-size: 0.96rem;
+    font-size: 0.88rem;
     max-width: 760px;
   }
 
@@ -229,7 +307,7 @@
     border-radius: 999px;
     font-size: 0.88rem;
     font-weight: 700;
-    background: rgba(63, 143, 214, 0.12);
+    background: linear-gradient(135deg, rgba(63, 143, 214, 0.16), rgba(79, 179, 191, 0.10));
     color: #2c6b98;
   }
 
@@ -251,16 +329,26 @@
   .dashboard-chart-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-    gap: 18px;
+    gap: 14px;
     align-items: stretch;
   }
 
   .dashboard-chart-card,
   .dashboard-mini-card {
-    border-radius: 22px;
+    border-radius: 16px;
     border: 1px solid rgba(198, 220, 238, 0.95);
-    background: rgba(255, 255, 255, 0.85);
-    padding: 18px 18px 16px;
+    background:
+      linear-gradient(135deg, rgba(63, 143, 214, 0.08), transparent 42%),
+      rgba(255, 255, 255, 0.87);
+    padding: 14px 14px 12px;
+    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+  }
+
+  .dashboard-chart-card:hover,
+  .dashboard-mini-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(79, 179, 191, 0.48);
+    box-shadow: 0 18px 34px rgba(18, 48, 71, 0.10);
   }
 
   .dashboard-chart-card {
@@ -271,18 +359,18 @@
   .dashboard-chart-box {
     position: relative;
     width: 100%;
+    height: 280px;
+    min-height: 280px;
+  }
+
+  .dashboard-chart-box.tall {
     height: 320px;
     min-height: 320px;
   }
 
-  .dashboard-chart-box.tall {
-    height: 360px;
-    min-height: 360px;
-  }
-
   .dashboard-chart-box.compact {
-    height: 260px;
-    min-height: 260px;
+    height: 220px;
+    min-height: 220px;
   }
 
   .dashboard-chart-box canvas {
@@ -361,10 +449,211 @@
     color: #5f7384;
   }
 
+  .dashboard-finance-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.75fr);
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .dashboard-finance-stats {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .dashboard-finance-stat {
+    padding: 13px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(198, 220, 238, 0.9);
+  }
+
+  .dashboard-finance-stat span {
+    display: block;
+    color: #6a7f92;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .dashboard-finance-stat strong {
+    color: #123047;
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-finance-stat.ok strong { color: #15785f; }
+  .dashboard-finance-stat.warning strong { color: #b87000; }
+  .dashboard-finance-stat.danger strong { color: #b73838; }
+
+  body.theme-aurora .dashboard-hero-main,
+  body.theme-aurora .dashboard-hero-side,
+  body.theme-aurora .dashboard-section,
+  body.theme-aurora .dashboard-card {
+    background:
+      linear-gradient(135deg, rgba(215, 55, 69, 0.08), transparent 42%),
+      #080d10;
+    border-color: #1b252b;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
+  }
+
+  body.theme-aurora .dashboard-kpi,
+  body.theme-aurora .dashboard-user-card,
+  body.theme-aurora .dashboard-chart-card,
+  body.theme-aurora .dashboard-mini-card,
+  body.theme-aurora .dashboard-split-item,
+  body.theme-aurora .dashboard-finance-stat {
+    background: #0b1115;
+    border-color: #263139;
+    box-shadow: none;
+  }
+
+  body.theme-aurora .dashboard-kpi {
+    border-top-color: #d73745;
+  }
+
+  body.theme-aurora .dashboard-kpi:hover,
+  body.theme-aurora .dashboard-chart-card:hover,
+  body.theme-aurora .dashboard-mini-card:hover {
+    border-color: rgba(215, 55, 69, 0.55);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.38);
+  }
+
+  body.theme-aurora .dashboard-section-title,
+  body.theme-aurora .dashboard-kpi-value,
+  body.theme-aurora .dashboard-user-card strong,
+  body.theme-aurora .dashboard-summary-item,
+  body.theme-aurora .dashboard-mini-card h4,
+  body.theme-aurora .dashboard-chart-card h4,
+  body.theme-aurora .dashboard-mini-card strong,
+  body.theme-aurora .dashboard-split-item strong,
+  body.theme-aurora .dashboard-finance-stat strong {
+    color: #f4f7f8;
+  }
+
+  body.theme-aurora .dashboard-section-subtitle,
+  body.theme-aurora .dashboard-kpi-label,
+  body.theme-aurora .dashboard-kpi-note,
+  body.theme-aurora .dashboard-user-card span,
+  body.theme-aurora .dashboard-summary-item span:first-child,
+  body.theme-aurora .dashboard-mini-card p,
+  body.theme-aurora .dashboard-split-item span,
+  body.theme-aurora .dashboard-finance-stat span,
+  body.theme-aurora .dashboard-empty {
+    color: #aab6bc;
+  }
+
+  body.theme-aurora .dashboard-role-chip,
+  body.theme-aurora .dashboard-pill.ok {
+    background: rgba(215, 55, 69, 0.16);
+    color: #ffb4bc;
+  }
+
+  body.theme-aurora .dashboard-pill,
+  body.theme-aurora .dashboard-empty {
+    background: #0f1519;
+    color: #d9e2e6;
+  }
+
+  body.theme-aurora .dashboard-pill.warning {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f7f8;
+  }
+
+  body.theme-aurora .dashboard-pill.danger {
+    background: rgba(215, 55, 69, 0.18);
+    color: #ffb4bc;
+  }
+
+  body.theme-aurora .dashboard-summary-item {
+    border-bottom-color: #1b252b;
+  }
+
+  body.theme-aurora .dashboard-alert,
+  body.theme-aurora .dashboard-alert-danger,
+  body.theme-aurora .dashboard-alert-ok {
+    background:
+      linear-gradient(135deg, rgba(215, 55, 69, 0.14), transparent 58%),
+      #0b1115;
+    border-color: rgba(215, 55, 69, 0.34);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+  }
+
+  body.theme-aurora .dashboard-alert::after {
+    background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.10) 44%, transparent 76%);
+  }
+
+  body.theme-aurora .dashboard-finance-stat.ok strong {
+    color: #8ee3b0;
+  }
+
+  body.theme-aurora .dashboard-finance-stat.warning strong,
+  body.theme-aurora .dashboard-finance-stat.danger strong {
+    color: #ffb4bc;
+  }
+
+  .dashboard-motion-ready .dashboard-reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+      opacity 0.48s ease,
+      transform 0.58s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition-delay: var(--dashboard-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  .dashboard-motion-ready .dashboard-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @keyframes dashboard-page-rise {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dashboard-page {
+      animation: none;
+    }
+
+    .dashboard-motion-ready .dashboard-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .dashboard-kpi,
+    .dashboard-chart-card,
+    .dashboard-mini-card,
+    .dashboard-alert,
+    .dashboard-alert::after {
+      transition: none;
+      animation: none;
+    }
+
+    .dashboard-kpi:hover,
+    .dashboard-chart-card:hover,
+    .dashboard-mini-card:hover,
+    .dashboard-alert {
+      transform: none;
+    }
+  }
+
   @media (max-width: 1280px) {
     .dashboard-hero,
     .dashboard-layout,
-    .dashboard-chart-grid {
+    .dashboard-chart-grid,
+    .dashboard-finance-grid {
       grid-template-columns: 1fr;
     }
 
@@ -1104,6 +1393,48 @@
       </div>
     </aside>
   </section>
+
+  {% if can_access_financial_reports %}
+  <section class="dashboard-section">
+    <div class="dashboard-section-header">
+      <div>
+        <p class="eyebrow" style="margin-bottom:8px;">Rapport financier</p>
+        <h2 class="dashboard-section-title">Facturation, encaissements et sorties</h2>
+        <p class="dashboard-section-subtitle">Lecture mensuelle des montants factures, des encaissements clients et des sorties payees sur les six derniers mois.</p>
+      </div>
+      <div class="dashboard-pill-row">
+        <span class="dashboard-pill ok">Encaisse : {{ finance_total_encaissements|floatformat:0 }} GNF</span>
+        <span class="dashboard-pill warning">Sorties : {{ finance_total_depenses|floatformat:0 }} GNF</span>
+      </div>
+    </div>
+    <div class="dashboard-finance-grid">
+      <div class="dashboard-chart-card">
+        <h4>Evolution financiere mensuelle</h4>
+        <div class="dashboard-chart-box">
+          <canvas id="financialReportChart"></canvas>
+        </div>
+      </div>
+      <div class="dashboard-finance-stats">
+        <div class="dashboard-finance-stat">
+          <span>Total facture</span>
+          <strong>{{ finance_total_factures|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-finance-stat ok">
+          <span>Total encaisse</span>
+          <strong>{{ finance_total_encaissements|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-finance-stat warning">
+          <span>Total sorties</span>
+          <strong>{{ finance_total_depenses|floatformat:0 }} GNF</strong>
+        </div>
+        <div class="dashboard-finance-stat {% if finance_solde_net < 0 %}danger{% else %}ok{% endif %}">
+          <span>Solde net observe</span>
+          <strong>{{ finance_solde_net|floatformat:0 }} GNF</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   {% if user_role == "invite" %}
     <section class="dashboard-section" style="background:linear-gradient(135deg, #123047, #2d759f); color:white;">
@@ -2468,7 +2799,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const chartText = {
+  const isNoirRougeTheme = document.body.classList.contains("theme-aurora");
+  const chartText = isNoirRougeTheme ? {
+    primary: "#f4f7f8",
+    muted: "#aab6bc",
+    line: "rgba(255, 255, 255, 0.12)",
+    green: "#8ee3b0",
+    blue: "#d73745",
+    orange: "#f4f7f8",
+    red: "#ff5a68",
+    dark: "#d9e2e6",
+    pale: "#1b252b",
+  } : {
     primary: "#123047",
     muted: "#6a7f92",
     line: "rgba(186, 206, 223, 0.7)",
@@ -2484,6 +2826,181 @@
   Chart.defaults.font.family = "Segoe UI, sans-serif";
   Chart.defaults.borderColor = chartText.line;
 
+  const moneyFormatter = (value) => {
+    const numeric = Number(value || 0);
+    if (Math.abs(numeric) >= 1000000) {
+      return `${(numeric / 1000000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M`;
+    }
+    return numeric.toLocaleString("fr-FR", { maximumFractionDigits: 0 });
+  };
+
+  const keywordLabel = (label) => {
+    const source = String(label || "").trim();
+    const normalized = source
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const map = {
+      "bl secretaire": "Secret.",
+      "att. reception log": "Reception",
+      "attente reception logistique": "Reception",
+      "bl logistique": "Log.",
+      "bl chauffeur": "Chauff.",
+      "bon retour": "Retour",
+      "bons retournes": "Retour",
+      "commandes attente dga": "DGA",
+      "commandes attente dg": "DG",
+      "bl livres sans bon retour": "Sans retour",
+      "depenses attente dga / dg": "Depenses",
+      "articles stock": "Stock",
+      "alertes stock": "Alertes",
+      "mouvements": "Mouv.",
+      "terminees": "Term.",
+      "refusees": "Refus",
+      "annulees": "Annul.",
+      "en cours": "Cours",
+    };
+    if (map[normalized]) {
+      return map[normalized];
+    }
+    const words = source.split(/\s+/).filter(Boolean);
+    if (words.length <= 2 && source.length <= 14) {
+      return source;
+    }
+    return words
+      .filter((word) => !["de", "du", "des", "la", "le", "les", "en", "a", "au", "aux", "/", "-"].includes(word.toLowerCase()))
+      .slice(0, 2)
+      .join(" ")
+      .slice(0, 16);
+  };
+
+  const readableXTicks = {
+    maxRotation: 55,
+    minRotation: 35,
+    autoSkip: false,
+    callback: function(value) {
+      return keywordLabel(this.getLabelForValue(value));
+    }
+  };
+
+  const dashboardPage = document.querySelector(".dashboard-page");
+  const reduceDashboardMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (dashboardPage && !reduceDashboardMotion) {
+    dashboardPage.classList.add("dashboard-motion-ready");
+    const revealItems = dashboardPage.querySelectorAll(
+      ".page-header, .dashboard-hero-main, .dashboard-hero-side, .dashboard-kpi, .dashboard-section, .dashboard-chart-card, .dashboard-mini-card, .dashboard-card"
+    );
+
+    revealItems.forEach((item, index) => {
+      item.classList.add("dashboard-reveal");
+      item.style.setProperty("--dashboard-delay", `${Math.min(index * 35, 280)}ms`);
+    });
+
+    if ("IntersectionObserver" in window) {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle("is-visible", entry.isIntersecting);
+        });
+      }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+
+      revealItems.forEach((item) => revealObserver.observe(item));
+    } else {
+      revealItems.forEach((item) => item.classList.add("is-visible"));
+    }
+  }
+
+  const financialCtx = document.getElementById("financialReportChart");
+  if (financialCtx) {
+    new Chart(financialCtx, {
+      data: {
+        labels: [{% for label in finance_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [
+          {
+            type: "bar",
+            label: "Facture",
+            data: [{% for total in finance_factures %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: isNoirRougeTheme ? "rgba(215, 55, 69, 0.30)" : "rgba(63, 143, 214, 0.22)",
+            borderColor: isNoirRougeTheme ? "rgba(215, 55, 69, 0.62)" : "rgba(63, 143, 214, 0.42)",
+            borderWidth: 1,
+            borderRadius: 10,
+            yAxisID: "money"
+          },
+          {
+            type: "bar",
+            label: "Encaisse",
+            data: [{% for total in finance_encaissements %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: isNoirRougeTheme ? "rgba(244, 247, 248, 0.18)" : "rgba(31, 157, 122, 0.32)",
+            borderColor: isNoirRougeTheme ? "rgba(244, 247, 248, 0.46)" : "rgba(31, 157, 122, 0.48)",
+            borderWidth: 1,
+            borderRadius: 10,
+            yAxisID: "money"
+          },
+          {
+            type: "line",
+            label: "Taux recouvrement (%)",
+            data: [{% for total in finance_taux_recouvrement %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: chartText.blue,
+            backgroundColor: isNoirRougeTheme ? "rgba(215, 55, 69, 0.14)" : "rgba(63, 143, 214, 0.14)",
+            borderWidth: 3,
+            pointRadius: 3,
+            pointBackgroundColor: chartText.blue,
+            tension: 0.32,
+            yAxisID: "rate"
+          },
+          {
+            type: "line",
+            label: "Sorties / facture (%)",
+            data: [{% for total in finance_taux_sorties %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            borderColor: chartText.orange,
+            backgroundColor: isNoirRougeTheme ? "rgba(244, 247, 248, 0.10)" : "rgba(240, 168, 58, 0.12)",
+            borderDash: [7, 5],
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: chartText.orange,
+            tension: 0.32,
+            yAxisID: "rate"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const label = context.dataset.label || "";
+                if (context.dataset.yAxisID === "rate") {
+                  return `${label}: ${context.parsed.y}%`;
+                }
+                return `${label}: ${moneyFormatter(context.parsed.y)} GNF`;
+              }
+            }
+          }
+        },
+        scales: {
+          money: {
+            type: "linear",
+            position: "left",
+            beginAtZero: true,
+            ticks: { callback: (value) => moneyFormatter(value) },
+            title: { display: true, text: "Montants GNF" }
+          },
+          rate: {
+            type: "linear",
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            ticks: { callback: (value) => `${value}%` },
+            title: { display: true, text: "Evolution (%)" }
+          }
+        }
+      }
+    });
+  }
+
   const workflowCtx = document.getElementById("workflowChart");
   if (workflowCtx) {
     new Chart(workflowCtx, {
@@ -2491,16 +3008,16 @@
       data: {
         labels: [
           "Initie",
-          "BL secretaire",
+          "Secret.",
           "Transmis",
           "Declare",
           "Liquide",
-          "Att. reception log",
-          "BL logistique",
-          "BL chauffeur",
+          "Reception",
+          "Log.",
+          "Chauff.",
           "Charge",
           "Livre",
-          "Bon retour",
+          "Retour",
         ],
         datasets: [{
           label: "Nombre de BL",
@@ -2542,7 +3059,7 @@
         },
         scales: {
           x: {
-            ticks: { maxRotation: 0, minRotation: 0, autoSkip: false }
+            ticks: readableXTicks
           },
           y: {
             beginAtZero: true,
@@ -2558,7 +3075,7 @@
     new Chart(stockCtx, {
       type: "bar",
       data: {
-        labels: [{% for label in stock_chart_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        labels: [{% for label in stock_chart_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}].map(keywordLabel),
         datasets: [{
           label: "Quantite en stock",
           data: [{% for quantity in stock_chart_quantities %}{{ quantity|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
@@ -2574,6 +3091,7 @@
           legend: { display: false }
         },
         scales: {
+          x: { ticks: readableXTicks },
           y: { beginAtZero: true }
         }
       }
@@ -2586,7 +3104,7 @@
       new Chart(comptablePipelineCtx, {
         type: "bar",
         data: {
-          labels: [{% for label in comptable_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          labels: [{% for label in comptable_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}].map(keywordLabel),
           datasets: [{
             label: "Volume",
             data: [{% for total in comptable_pipeline_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
@@ -2602,6 +3120,7 @@
             legend: { display: false }
           },
           scales: {
+            x: { ticks: readableXTicks },
             y: { beginAtZero: true, ticks: { precision: 0 } }
           }
         }
@@ -2613,7 +3132,7 @@
       new Chart(commercialPipelineCtx, {
         type: "bar",
         data: {
-          labels: [{% for label in commercial_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          labels: [{% for label in commercial_pipeline_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}].map(keywordLabel),
           datasets: [{
             label: "Commandes",
             data: [{% for total in commercial_pipeline_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
@@ -2629,6 +3148,7 @@
             legend: { display: false }
           },
           scales: {
+            x: { ticks: readableXTicks },
             y: { beginAtZero: true, ticks: { precision: 0 } }
           }
         }
@@ -2640,7 +3160,7 @@
       new Chart(maintenanceCtx, {
         type: "doughnut",
         data: {
-          labels: ["En cours", "Terminees", "Refusees", "Annulees"],
+          labels: ["Cours", "Term.", "Refus", "Annul."],
           datasets: [{
             data: [
               {{ maintenances_en_cours|unlocalize }},
@@ -2667,7 +3187,7 @@
       new Chart(bonsCtx, {
         type: "bar",
         data: {
-          labels: ["Diagnostics", "En cours", "Terminees", "Articles stock", "Alertes stock", "Mouvements"],
+          labels: ["Diag.", "Cours", "Term.", "Stock", "Alertes", "Mouv."],
           datasets: [{
             label: "Volume",
             data: [
@@ -2690,6 +3210,7 @@
             legend: { display: false }
           },
           scales: {
+            x: { ticks: readableXTicks },
             y: { beginAtZero: true, ticks: { precision: 0 } }
           }
         }
@@ -2723,7 +3244,7 @@
       new Chart(bonsCtx, {
         type: "line",
         data: {
-          labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+          labels: [{% for label in daily_labels %}"{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}].map(keywordLabel),
           datasets: [{
             label: "Bons inities",
             data: [{% for total in daily_totals %}{{ total|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}],
@@ -2742,6 +3263,7 @@
             legend: { display: true }
           },
           scales: {
+            x: { ticks: readableXTicks },
             y: { beginAtZero: true, ticks: { precision: 0 } }
           }
         }

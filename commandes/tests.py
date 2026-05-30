@@ -63,6 +63,32 @@ class CommandePerequationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("ville_arrivee", form.errors)
 
+    def test_commande_accepte_une_destination_sans_perequation(self):
+        ClientDestinationAdresse.objects.create(
+            client=self.client_instance,
+            adresse="Kindia Dougueta",
+            ville_perequation=None,
+        )
+        form = CommandeForm(
+            data={
+                "client": self.client_instance.id,
+                "description": "Commande sans perequation",
+                "ville_depart": "CONAKRY",
+                "ville_arrivee": "Kindia Dougueta",
+                "date_livraison_prevue": "2026-05-23",
+                "delai_paiement_jours": "15",
+                "produit": self.produit.id,
+                "quantite": "12000",
+                "prix_negocie": "4500",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        commande = form.save()
+        self.assertEqual(commande.ville_arrivee, "Kindia Dougueta")
+        self.assertIsNone(commande.ville_perequation)
+        self.assertIsNone(commande.tarif_perequation_gnf_litre)
+
     def test_commande_refuse_une_quantite_superieure_a_40000_litres(self):
         form = CommandeForm(
             data={

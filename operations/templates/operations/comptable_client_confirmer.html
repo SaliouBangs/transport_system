@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Confirmation livraison{% endblock %}
+{% block content %}
+{% include "operations/_comptable_client_tabs.html" %}
+
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Confirmation client</p>
+            <h1>BL {{ operation.numero_bl }}</h1>
+            <p>{{ operation.client.nom }} - {{ operation.destination }}</p>
+        </div>
+        <a href="/operations/comptable-client/" class="btn secondary">Retour</a>
+    </div>
+</section>
+
+<section class="split-grid">
+    <article class="page-section">
+        <p class="eyebrow">Reference livraison</p>
+        <h2>Informations du BL</h2>
+        <div class="info-grid">
+            <div><span>Produit</span><strong>{{ operation.produit.nom|default:"-" }}</strong></div>
+            <div>
+                <span>Camion</span>
+                <strong>
+                    {% if operation.camion %}
+                        {{ operation.camion.numero_tracteur }}{% if operation.camion.numero_citerne %} / {{ operation.camion.numero_citerne }}{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </strong>
+            </div>
+            <div><span>Chauffeur</span><strong>{{ operation.chauffeur.nom|default:"-" }}</strong></div>
+            <div><span>Date livraison</span><strong>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</strong></div>
+            <div><span>Quantite BL</span><strong>{{ operation.quantite|floatformat:0 }}</strong></div>
+            <div><span>Ville SGP proposee</span><strong>{{ suggested_city.nom|default:"A definir" }}</strong></div>
+        </div>
+    </article>
+
+    <article class="page-section">
+        <p class="eyebrow">Saisie</p>
+        <h2>Quantite reellement livree</h2>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            <label>Quantite livree
+                <input type="text" name="quantite_livree" value="{{ operation.quantite_livree|default:operation.quantite }}" inputmode="decimal">
+            </label>
+            <label>Observation
+                <textarea name="observation" rows="5" placeholder="Observation utile sur la livraison">{{ operation.observation_confirmation_livraison }}</textarea>
+            </label>
+            <p class="helper-text">La quantite manquante est calculee automatiquement a partir de la quantite BL.</p>
+            <button type="submit" class="btn">Valider la confirmation</button>
+        </form>
+    </article>
+</section>
+{% endblock %}

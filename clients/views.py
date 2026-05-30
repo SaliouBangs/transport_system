@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -10,8 +10,9 @@ from django.utils.dateparse import parse_date
 from django.utils import timezone
 from decimal import Decimal
 from commandes.models import Commande
+from operations.models import Operation
 from utilisateurs.models import journaliser_action
-from utilisateurs.permissions import get_user_role, is_admin_user, role_required
+from utilisateurs.permissions import get_active_supervision_entity, get_user_role, is_admin_user, role_required
 from utilisateurs.constants import ROLE_COMMERCIAL, ROLE_RESPONSABLE_COMMERCIAL
 
 from .forms import BanqueForm, ClientDestinationFormSet, ClientForm, EncaissementClientForm, VillePerequationForm
@@ -425,7 +426,9 @@ def liste_clients(request):
 
     clients = list(clients)
 
-    if risque_scope == "critique":
+    if risque_scope == "a_risque":
+        clients = [client for client in clients if client.niveau_risque in {"alerte", "critique"}]
+    elif risque_scope == "critique":
         clients = [client for client in clients if client.niveau_risque == "critique"]
     elif risque_scope == "alerte":
         clients = [client for client in clients if client.niveau_risque == "alerte"]
@@ -746,6 +749,474 @@ def _build_encaissements_history_context(request):
         "date_debut": date_debut,
         "date_fin": date_fin,
     }
+
+
+def _commercial_display_name(user):
+    if not user:
+        return "Commercial non affecte"
+    full_name = user.get_full_name().strip()
+    return full_name or user.username
+
+
+def _commande_product_family(commande):
+    produit = getattr(commande, "produit", None)
+    label = (getattr(produit, "nom", "") or "").strip().upper()
+    if "ESS" in label:
+        return "essence"
+    if "GAS" in label:
+        return "gasoil"
+    return ""
+
+
+def _build_rapport_encaissements_commerciaux_context(request):
+    date_debut = (request.GET.get("date_debut") or "").strip()
+    date_fin = (request.GET.get("date_fin") or "").strip()
+    commercial_id = (request.GET.get("commercial") or "").strip()
+
+    encaissements = (
+        EncaissementClient.objects.select_related(
+            "client__commercial",
+            "commande__client__commercial",
+            "commande__produit",
+        )
+        .prefetch_related(
+            "allocations__commande__client__commercial",
+            "allocations__commande__produit",
+        )
+        .order_by("-date_encaissement", "-id")
+    )
+
+    parsed_date_debut = parse_date(date_debut) if date_debut else None
+    parsed_date_fin = parse_date(date_fin) if date_fin else None
+    if parsed_date_debut:
+        encaissements = encaissements.filter(date_encaissement__gte=parsed_date_debut)
+    if parsed_date_fin:
+        encaissements = encaissements.filter(date_encaissement__lte=parsed_date_fin)
+    if commercial_id.isdigit():
+        encaissements = encaissements.filter(
+            Q(client__commercial_id=commercial_id)
+            | Q(commande__client__commercial_id=commercial_id)
+            | Q(allocations__commande__client__commercial_id=commercial_id)
+        )
+
+    summary_map = {}
+    detail_rows = []
+    totals = {
+        "essence": Decimal("0.00"),
+        "gasoil": Decimal("0.00"),
+        "global": Decimal("0.00"),
+    }
+
+    def ensure_row(commercial):
+        key = commercial.pk if commercial else 0
+        if key not in summary_map:
+            summary_map[key] = {
+                "commercial": commercial,
+                "commercial_name": _commercial_display_name(commercial),
+                "essence": Decimal("0.00"),
+                "gasoil": Decimal("0.00"),
+                "total": Decimal("0.00"),
+                "encaissement_ids": set(),
+            }
+        return summary_map[key]
+
+    def add_amount(encaissement, commande, amount):
+        family = _commande_product_family(commande)
+        if family not in {"essence", "gasoil"}:
+            return
+        commercial = getattr(getattr(commande, "client", None), "commercial", None)
+        if not commercial:
+            commercial = getattr(getattr(encaissement, "client", None), "commercial", None)
+        row = ensure_row(commercial)
+        amount = amount or Decimal("0.00")
+        essence_amount = amount if family == "essence" else Decimal("0.00")
+        gasoil_amount = amount if family == "gasoil" else Decimal("0.00")
+        row[family] += amount
+        row["total"] += amount
+        row["encaissement_ids"].add(encaissement.pk)
+        totals[family] += amount
+        totals["global"] += amount
+        detail_rows.append(
+            {
+                "date": encaissement.date_encaissement,
+                "commercial": commercial,
+                "commercial_name": _commercial_display_name(commercial),
+                "client": encaissement.client,
+                "client_name": getattr(encaissement.client, "entreprise", ""),
+                "commande": commande,
+                "commande_reference": getattr(commande, "reference_affichee", ""),
+                "produit": getattr(getattr(commande, "produit", None), "nom", ""),
+                "mode_paiement": encaissement.get_mode_paiement_display(),
+                "banque": encaissement.banque or "-",
+                "reference": encaissement.reference or "-",
+                "deposant": encaissement.nom_deposant or "-",
+                "essence": essence_amount,
+                "gasoil": gasoil_amount,
+                "total": amount,
+            }
+        )
+
+    for encaissement in encaissements.distinct():
+        allocations = [
+            allocation
+            for allocation in encaissement.allocations.all()
+            if allocation.cible_type == "commande" and allocation.commande_id
+        ]
+        if allocations:
+            for allocation in allocations:
+                add_amount(encaissement, allocation.commande, allocation.montant_affecte)
+        elif encaissement.commande_id:
+            add_amount(encaissement, encaissement.commande, encaissement.montant)
+
+    summary_rows = sorted(summary_map.values(), key=lambda item: item["commercial_name"].lower())
+    for row in summary_rows:
+        row["encaissements_count"] = len(row["encaissement_ids"])
+    detail_rows = sorted(
+        detail_rows,
+        key=lambda item: (item["commercial_name"].lower(), item["date"] or timezone.localdate(), item["commande_reference"]),
+    )
+
+    commercial_ids = (
+        Client.objects.filter(commercial__isnull=False)
+        .values_list("commercial_id", flat=True)
+        .distinct()
+    )
+    commerciaux = User.objects.filter(id__in=commercial_ids).order_by("first_name", "last_name", "username")
+
+    return {
+        "summary_rows": summary_rows,
+        "payment_rows": detail_rows,
+        "totals": totals,
+        "commerciaux": commerciaux,
+        "selected_commercial": commercial_id,
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "active_entity": get_active_supervision_entity(request),
+        "current_filters": request.GET.urlencode(),
+    }
+
+
+def rapport_encaissements_commerciaux(request):
+    return render(
+        request,
+        "clients/rapport_encaissements_commerciaux.html",
+        _build_rapport_encaissements_commerciaux_context(request),
+    )
+
+
+def export_rapport_encaissements_commerciaux_xls(request):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        return HttpResponse("Le module openpyxl n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_rapport_encaissements_commerciaux_context(request)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Encaissements commerciaux"
+    headers = ["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Reference", "Deposant", "ESS", "GAS", "Total"]
+    worksheet.append(headers)
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for row in context["payment_rows"]:
+        worksheet.append(
+            [
+                row["date"],
+                row["commercial_name"],
+                row["client_name"],
+                row["commande_reference"],
+                row["produit"],
+                row["mode_paiement"],
+                row["banque"],
+                row["reference"],
+                row["deposant"],
+                float(row["essence"]),
+                float(row["gasoil"]),
+                float(row["total"]),
+            ]
+        )
+    worksheet.append([])
+    worksheet.append(["Totaux", "", "", "", "", "", "", "", "", float(context["totals"]["essence"]), float(context["totals"]["gasoil"]), float(context["totals"]["global"])])
+    for column in worksheet.columns:
+        column_letter = column[0].column_letter
+        worksheet.column_dimensions[column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 32)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="rapport_encaissements_commerciaux.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_rapport_encaissements_commerciaux_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse("Le module reportlab n'est pas installe sur cet environnement Python.", status=500)
+
+    context = _build_rapport_encaissements_commerciaux_context(request)
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="rapport_encaissements_commerciaux.pdf"'
+    document = SimpleDocTemplate(response, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=22, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    elements = [
+        Paragraph("Rapport encaissements par commercial", styles["Title"]),
+        Paragraph(f"ESS: {context['totals']['essence']} GNF | GAS: {context['totals']['gasoil']} GNF | Total: {context['totals']['global']} GNF", styles["Normal"]),
+        Spacer(1, 12),
+    ]
+    data = [["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Ref.", "Deposant", "ESS", "GAS", "Total"]]
+    for row in context["payment_rows"]:
+        data.append(
+            [
+                row["date"].strftime("%d/%m/%Y") if row["date"] else "",
+                row["commercial_name"],
+                row["client_name"],
+                row["commande_reference"],
+                row["produit"],
+                row["mode_paiement"],
+                row["banque"],
+                row["reference"],
+                row["deposant"],
+                f"{row['essence']:.0f}",
+                f"{row['gasoil']:.0f}",
+                f"{row['total']:.0f}",
+            ]
+        )
+    if len(data) == 1:
+        data.append(["Aucun encaissement", "", "", "", "", "", "", "", "", "", "", ""])
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7e8f2")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f9fc")]),
+            ]
+        )
+    )
+    elements.append(table)
+    document.build(elements)
+    return response
+
+
+def _operation_facture_amount(operation):
+    if operation.montant_facture is not None:
+        return Decimal(operation.montant_facture or 0)
+    commande = operation.commande
+    if commande and commande.prix_negocie is not None:
+        return Decimal(operation.quantite or 0) * Decimal(commande.prix_negocie or 0)
+    return Decimal("0.00")
+
+
+def _build_rapport_factures_clients_context(request):
+    commercial_id = (request.GET.get("commercial") or "").strip()
+    client_id = (request.GET.get("client") or "").strip()
+    client_search = (request.GET.get("client_search") or "").strip()
+    statut = (request.GET.get("statut") or "").strip()
+    if statut not in {"", "non_soldees", "soldees"}:
+        statut = ""
+    date_debut = (request.GET.get("date_debut") or "").strip()
+    date_fin = (request.GET.get("date_fin") or "").strip()
+
+    operations = (
+        Operation.objects.filter(remplace_par__isnull=True)
+        .filter(Q(numero_facture__gt="") | Q(date_facture__isnull=False) | Q(montant_facture__isnull=False))
+        .select_related("commande__client__commercial", "client__commercial", "produit")
+        .order_by("commande_id", "date_facture", "date_creation", "id")
+    )
+    if commercial_id.isdigit():
+        operations = operations.filter(Q(commande__client__commercial_id=commercial_id) | Q(client__commercial_id=commercial_id))
+    if client_id.isdigit():
+        operations = operations.filter(Q(commande__client_id=client_id) | Q(client_id=client_id))
+    elif client_search:
+        operations = operations.filter(
+            Q(commande__client__entreprise__icontains=client_search)
+            | Q(commande__client__nom__icontains=client_search)
+            | Q(client__entreprise__icontains=client_search)
+            | Q(client__nom__icontains=client_search)
+        )
+    if date_debut:
+        operations = operations.filter(date_facture__gte=date_debut)
+    if date_fin:
+        operations = operations.filter(date_facture__lte=date_fin)
+
+    rows = []
+    paid_remaining_by_commande = {}
+    totals = {"facture": Decimal("0.00"), "encaisse": Decimal("0.00"), "reste": Decimal("0.00")}
+    summary_map = {}
+
+    for operation in operations:
+        commande = operation.commande
+        client = commande.client if getattr(commande, "client_id", None) else operation.client
+        commercial = getattr(client, "commercial", None)
+        montant_facture = _operation_facture_amount(operation)
+        if commande and commande.id not in paid_remaining_by_commande:
+            paid_remaining_by_commande[commande.id] = total_encaisse_sur_commande(commande)
+        encaissé = Decimal("0.00")
+        if commande:
+            encaissé = min(paid_remaining_by_commande.get(commande.id, Decimal("0.00")), montant_facture)
+            paid_remaining_by_commande[commande.id] = max(Decimal("0.00"), paid_remaining_by_commande.get(commande.id, Decimal("0.00")) - encaissé)
+        reste = max(Decimal("0.00"), montant_facture - encaissé)
+        row_status = "soldee" if montant_facture > 0 and reste <= 0 else "non_soldee"
+        if statut == "soldees" and row_status != "soldee":
+            continue
+        if statut == "non_soldees" and row_status != "non_soldee":
+            continue
+
+        commercial_name = _commercial_display_name(commercial)
+        client_name = getattr(client, "entreprise", "") or getattr(client, "nom", "") or "-"
+        row = {
+            "operation": operation,
+            "commercial": commercial,
+            "commercial_name": commercial_name,
+            "client": client,
+            "client_name": client_name,
+            "commande_reference": commande.reference_affichee if commande else "-",
+            "numero_facture": operation.numero_facture or f"Facture BL {operation.numero_bl}",
+            "date_facture": operation.date_facture,
+            "produit": operation.produit.nom if operation.produit_id else (commande.produit.nom if commande and commande.produit_id else "-"),
+            "montant_facture": montant_facture,
+            "montant_encaisse": encaissé,
+            "reste": reste,
+            "statut": row_status,
+        }
+        rows.append(row)
+        totals["facture"] += montant_facture
+        totals["encaisse"] += encaissé
+        totals["reste"] += reste
+
+        key = commercial.pk if commercial else 0
+        if key not in summary_map:
+            summary_map[key] = {
+                "commercial_name": commercial_name,
+                "facture": Decimal("0.00"),
+                "encaisse": Decimal("0.00"),
+                "reste": Decimal("0.00"),
+                "count": 0,
+            }
+        summary_map[key]["facture"] += montant_facture
+        summary_map[key]["encaisse"] += encaissé
+        summary_map[key]["reste"] += reste
+        summary_map[key]["count"] += 1
+
+    rows = sorted(rows, key=lambda item: (item["commercial_name"].lower(), item["client_name"].lower(), item["date_facture"] or timezone.localdate()))
+    summary_rows = sorted(summary_map.values(), key=lambda item: item["commercial_name"].lower())
+    commercial_ids = Client.objects.filter(commercial__isnull=False).values_list("commercial_id", flat=True).distinct()
+    return {
+        "rows": rows,
+        "summary_rows": summary_rows,
+        "totals": totals,
+        "commerciaux": User.objects.filter(id__in=commercial_ids).order_by("first_name", "last_name", "username"),
+        "clients": Client.objects.order_by("entreprise", "nom"),
+        "selected_commercial": commercial_id,
+        "selected_client": client_id,
+        "client_search": client_search,
+        "statut": statut,
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "current_filters": request.GET.urlencode(),
+    }
+
+
+def rapport_factures_clients(request):
+    return render(request, "clients/rapport_factures_clients.html", _build_rapport_factures_clients_context(request))
+
+
+def export_rapport_factures_clients_xls(request):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        return HttpResponse("Le module openpyxl n'est pas installe sur cet environnement Python.", status=500)
+    context = _build_rapport_factures_clients_context(request)
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Factures clients"
+    headers = ["Commercial", "Client", "Facture", "Date facture", "Commande", "BL", "Produit", "Montant facture", "Encaisse", "Reste", "Statut"]
+    worksheet.append(headers)
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="123047")
+    for row in context["rows"]:
+        operation = row["operation"]
+        worksheet.append([
+            row["commercial_name"],
+            row["client_name"],
+            row["numero_facture"],
+            row["date_facture"],
+            row["commande_reference"],
+            operation.numero_bl,
+            row["produit"],
+            float(row["montant_facture"]),
+            float(row["montant_encaisse"]),
+            float(row["reste"]),
+            "Soldee" if row["statut"] == "soldee" else "Non soldee",
+        ])
+    worksheet.append([])
+    worksheet.append(["Totaux", "", "", "", "", "", "", float(context["totals"]["facture"]), float(context["totals"]["encaisse"]), float(context["totals"]["reste"]), ""])
+    for column in worksheet.columns:
+        column_letter = column[0].column_letter
+        worksheet.column_dimensions[column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 34)
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="rapport_factures_clients.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_rapport_factures_clients_pdf(request):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError:
+        return HttpResponse("Le module reportlab n'est pas installe sur cet environnement Python.", status=500)
+    context = _build_rapport_factures_clients_context(request)
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="rapport_factures_clients.pdf"'
+    document = SimpleDocTemplate(response, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=22, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    data = [["Commercial", "Client", "Facture", "Date", "BL", "Montant", "Encaisse", "Reste", "Statut"]]
+    for row in context["rows"]:
+        data.append([
+            row["commercial_name"],
+            row["client_name"],
+            row["numero_facture"],
+            row["date_facture"].strftime("%d/%m/%Y") if row["date_facture"] else "",
+            row["operation"].numero_bl,
+            f"{row['montant_facture']:.0f}",
+            f"{row['montant_encaisse']:.0f}",
+            f"{row['reste']:.0f}",
+            "Soldee" if row["statut"] == "soldee" else "Non soldee",
+        ])
+    if len(data) == 1:
+        data.append(["Aucune facture", "", "", "", "", "", "", "", ""])
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123047")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 7),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7e8f2")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f9fc")]),
+    ]))
+    elements = [
+        Paragraph("Situation des factures clients", styles["Title"]),
+        Paragraph(f"Facture: {context['totals']['facture']} GNF | Encaisse: {context['totals']['encaisse']} GNF | Reste: {context['totals']['reste']} GNF", styles["Normal"]),
+        Spacer(1, 12),
+        table,
+    ]
+    document.build(elements)
+    return response
 
 
 def encaissements_clients(request):
@@ -1500,17 +1971,33 @@ detail_client = role_required(
     "controleur",
 )(detail_client)
 rapport_financier_client = role_required(
-    "commercial",
-    "responsable_commercial",
     "directeur",
-    "comptable",
-    "comptable_sogefi",
-    "caissiere",
     "dga",
-    "dga_sogefi",
-    "logistique",
-    "transitaire",
-    "maintenancier",
-    "responsable_achat",
-    "controleur",
 )(rapport_financier_client)
+rapport_encaissements_commerciaux = role_required(
+    "dga",
+    "directeur",
+)(rapport_encaissements_commerciaux)
+export_rapport_encaissements_commerciaux_xls = role_required(
+    "dga",
+    "directeur",
+)(export_rapport_encaissements_commerciaux_xls)
+export_rapport_encaissements_commerciaux_pdf = role_required(
+    "dga",
+    "directeur",
+)(export_rapport_encaissements_commerciaux_pdf)
+rapport_factures_clients = role_required(
+    "dga",
+    "directeur",
+    "responsable_commercial",
+)(rapport_factures_clients)
+export_rapport_factures_clients_xls = role_required(
+    "dga",
+    "directeur",
+    "responsable_commercial",
+)(export_rapport_factures_clients_xls)
+export_rapport_factures_clients_pdf = role_required(
+    "dga",
+    "directeur",
+    "responsable_commercial",
+)(export_rapport_factures_clients_pdf)

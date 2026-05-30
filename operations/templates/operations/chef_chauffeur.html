@@ -185,6 +185,7 @@
     align-items:center;
     justify-content:center;
     padding:20px;
+    overflow:auto;
     background:rgba(11, 32, 49, .42);
     z-index:1200;
 }
@@ -193,11 +194,13 @@
 }
 .chef-modal-card{
     width:min(640px, 100%);
+    max-height:calc(100vh - 40px);
+    margin:auto;
     background:#fff;
     border-radius:28px;
     border:1px solid #dce9f4;
     box-shadow:0 24px 54px rgba(18,48,71,.18);
-    overflow:hidden;
+    overflow:auto;
 }
 .chef-modal-head{
     display:flex;
@@ -376,7 +379,14 @@
                     <td>{{ operation.date_bons_charges|default:"-" }}</td>
                     <td><span class="chef-expense-status chef-expense-{{ operation.depenses_status_variant }}">{{ operation.depenses_status_label }}</span></td>
                     <td>
-                        <button type="button" class="btn chef-action-trigger" data-chef-toggle="chef-action-{{ operation.id }}">{{ operation.next_action_label }}</button>
+                        <button
+                            type="button"
+                            class="btn chef-action-trigger"
+                            data-chef-toggle="chef-action-{{ operation.id }}"
+                            {% if operation.depenses_delivery_warning %}
+                            data-expense-warning="Attention : les depenses de ce BL sont encore au statut &quot;{{ operation.depenses_status_label }}&quot;. Voulez-vous quand meme enregistrer la livraison ?"
+                            {% endif %}
+                        >{{ operation.next_action_label }}</button>
                     </td>
                 </tr>
                 {% empty %}
@@ -406,16 +416,10 @@
                     <label for="id_date_action_{{ operation.id }}">Date de {% if operation.next_action == "charge" %}chargement{% else %}livraison{% endif %}</label>
                     <input id="id_date_action_{{ operation.id }}" type="date" name="date_action" value="{% if operation.next_action == 'livre' and operation.date_bons_charges %}{{ operation.date_bons_charges|date:'Y-m-d' }}{% else %}{{ default_action_date }}{% endif %}">
                 </div>
-                {% if operation.next_action == "livre" %}
-                <div>
-                    <label for="id_quantite_livree_{{ operation.id }}">Quantite livree</label>
-                    <input id="id_quantite_livree_{{ operation.id }}" type="text" name="quantite_livree" inputmode="decimal" placeholder="Ex : {{ operation.quantite }}" value="{% if operation.quantite_livree != None %}{{ operation.quantite_livree }}{% else %}{{ operation.quantite }}{% endif %}">
-                </div>
-                {% endif %}
             </div>
             <p class="chef-modal-note">
                 Cette date sera enregistree sur le BL comme preuve de {% if operation.next_action == "charge" %}chargement{% else %}livraison{% endif %}. La date du jour est proposee par defaut, mais vous pouvez la modifier.
-                {% if operation.next_action == "livre" %}Renseignez aussi la quantite effectivement livree pour finaliser le BL.{% endif %}
+                {% if operation.next_action == "livre" %}La quantite livree sera renseignee ensuite par le comptable client.{% endif %}
             </p>
             <div class="chef-modal-actions">
                 <button type="button" class="btn-secondary" data-chef-close="chef-action-{{ operation.id }}">Annuler</button>
@@ -429,13 +433,21 @@
 <script>
 document.querySelectorAll("[data-chef-toggle]").forEach((button) => {
     button.addEventListener("click", () => {
+        const warning = button.dataset.expenseWarning;
+        if (warning && !window.confirm(warning)) {
+            return;
+        }
         const targetId = button.getAttribute("data-chef-toggle");
         document.querySelectorAll(".chef-modal.is-open").forEach((panel) => {
             if (panel.id !== targetId) {
                 panel.classList.remove("is-open");
             }
         });
-        document.getElementById(targetId)?.classList.toggle("is-open");
+        const targetModal = document.getElementById(targetId);
+        targetModal?.classList.toggle("is-open");
+        if (targetModal?.classList.contains("is-open")) {
+            window.setTimeout(() => targetModal.querySelector("input[type='date']")?.focus(), 80);
+        }
     });
 });
 

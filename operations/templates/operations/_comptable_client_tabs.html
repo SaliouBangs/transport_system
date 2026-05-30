@@ -1,0 +1,37 @@
+<style>
+.page-section{background:rgba(255,255,255,.88);border:1px solid #cfe0ee;border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 18px 45px rgba(18,48,71,.08);}
+.section-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;}
+.section-header h1,.section-header h2{margin:4px 0 8px;color:#062844;}
+.section-header p{margin:0;color:#536a7e;max-width:760px;}
+.eyebrow{margin:0 0 8px;color:#00836c;font-size:11px;font-weight:900;letter-spacing:4px;text-transform:uppercase;}
+.filters-bar{display:grid;grid-template-columns:minmax(260px,1.4fr) minmax(220px,.9fr) minmax(150px,.55fr) minmax(150px,.55fr) auto auto;gap:12px;align-items:center;}
+.filters-bar input,.filters-bar select,.stack-form input,.stack-form textarea,.data-table select{width:100%;min-height:44px;border:1px solid #bdd4e8;border-radius:12px;padding:0 14px;background:#fff;color:#062844;font-weight:700;box-sizing:border-box;}
+.stack-form{display:grid;gap:14px;}
+.stack-form label{display:grid;gap:8px;color:#123047;font-weight:900;}
+.stack-form textarea{padding:12px 14px;resize:vertical;}
+.helper-text{margin:0;color:#60788d;}
+.split-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.info-grid div,.metric-card{border:1px solid #cfe0ee;border-radius:14px;padding:16px;background:rgba(248,252,255,.86);}
+.info-grid span,.metric-card span{display:block;color:#60788d;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;}
+.info-grid strong,.metric-card strong{display:block;margin-top:6px;color:#062844;font-size:22px;}
+.metric-card.compact{min-width:150px;background:#123047;color:#fff;}
+.metric-card.compact span,.metric-card.compact strong{color:#fff;}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px;}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.table-wrapper{overflow:auto;border-radius:14px;}
+.data-table{width:100%;border-collapse:collapse;background:#fff;}
+.data-table th{background:#123047;color:#fff;text-align:left;padding:13px;font-size:13px;}
+.data-table td{border-bottom:1px solid #d8e4ef;padding:13px;vertical-align:top;}
+.row-index{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:999px;background:#e9f5ff;color:#0b4d78;font-size:12px;font-weight:900;}
+@media (max-width:1100px){.filters-bar,.split-grid,.metrics-grid,.info-grid{grid-template-columns:1fr;}.section-header{flex-direction:column;}}
+</style>
+<nav class="subtabs">
+    {% if can_access_comptable_client %}
+    <a href="/operations/comptable-client/" class="subtab {% if active_tab == 'confirmations' %}active{% endif %}">BL a confirmer</a>
+    <a href="/operations/comptable-client/perequation/" class="subtab {% if active_tab == 'perequation' %}active{% endif %}">Perequation SGP</a>
+    {% endif %}
+    {% if can_access_rapport_perequation or can_access_comptable_client %}
+    <a href="/operations/comptable-client/rapport-perequation/" class="subtab {% if active_tab == 'rapport' %}active{% endif %}">Rapport perequation</a>
+    {% endif %}
+</nav>

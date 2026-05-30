@@ -149,33 +149,33 @@
                     <span class="workflow-arrow">→</span>
 
                     <div class="workflow-step {% if operation.etat_bon == 'liquide' %}is-current{% elif operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide_logistique' or operation.etat_bon == 'liquide_chauffeur' or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
-                        <span class="workflow-step__title">Liquide transitaire</span>
-                        <span class="workflow-step__meta">Sortie douane</span>
+                        <span class="workflow-step__title">Transit</span>
+                        <span class="workflow-step__meta">Douane</span>
                     </div>
                     <span class="workflow-arrow">→</span>
 
                     {% if can_validate_reception_logistique %}
                     <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="reception_logistique" data-action-name="Reception logistique">
-                        <span class="workflow-step__title">Liquide logistique</span>
-                        <span class="workflow-step__meta">Valider reception BL</span>
+                        <span class="workflow-step__title">Reception</span>
+                        <span class="workflow-step__meta">BL log.</span>
                     </button>
                     {% else %}
                     <div class="workflow-step {% if operation.etat_bon == 'attente_reception_logistique' or operation.etat_bon == 'liquide_logistique' %}is-current{% elif operation.etat_bon == 'liquide_chauffeur' or operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
-                        <span class="workflow-step__title">Liquide logistique</span>
-                        <span class="workflow-step__meta">Reception BL</span>
+                        <span class="workflow-step__title">Reception</span>
+                        <span class="workflow-step__meta">BL log.</span>
                     </div>
                     {% endif %}
                     <span class="workflow-arrow">→</span>
 
                     {% if can_remettre_chauffeur %}
                     <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="remise_chauffeur" data-action-name="Remise chauffeur">
-                        <span class="workflow-step__title">Remise chauffeur</span>
-                        <span class="workflow-step__meta">Remettre le BL</span>
+                        <span class="workflow-step__title">Remise</span>
+                        <span class="workflow-step__meta">Chauffeur</span>
                     </button>
                     {% else %}
                     <div class="workflow-step {% if operation.etat_bon == 'liquide_chauffeur' %}is-current{% elif operation.etat_bon == 'charge' or operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
-                        <span class="workflow-step__title">Remise chauffeur</span>
-                        <span class="workflow-step__meta">BL remis</span>
+                        <span class="workflow-step__title">Remise</span>
+                        <span class="workflow-step__meta">Chauffeur</span>
                     </div>
                     {% endif %}
                     <span class="workflow-arrow">→</span>
@@ -183,12 +183,12 @@
                     {% if can_mark_charge %}
                     <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="charge" data-action-name="Charge">
                         <span class="workflow-step__title">Charge</span>
-                        <span class="workflow-step__meta">Enregistrer le chargement</span>
+                        <span class="workflow-step__meta">Camion</span>
                     </button>
                     {% else %}
                     <div class="workflow-step {% if operation.etat_bon == 'charge' %}is-current{% elif operation.etat_bon == 'livre' or operation.date_bon_retour %}is-done{% endif %}">
                         <span class="workflow-step__title">Charge</span>
-                        <span class="workflow-step__meta">Camion charge</span>
+                        <span class="workflow-step__meta">Camion</span>
                     </div>
                     {% endif %}
                     <span class="workflow-arrow">→</span>
@@ -196,7 +196,7 @@
                     {% if can_mark_livre %}
                     <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="livre" data-action-name="Livre">
                         <span class="workflow-step__title">Livre</span>
-                        <span class="workflow-step__meta">Confirmer la livraison</span>
+                        <span class="workflow-step__meta">Client</span>
                     </button>
                     {% else %}
                     <div class="workflow-step {% if operation.etat_bon == 'livre' and not operation.date_bon_retour %}is-current{% elif operation.date_bon_retour %}is-done{% endif %}">
@@ -208,13 +208,13 @@
 
                     {% if can_mark_retour %}
                     <button type="button" class="workflow-step workflow-step--button workflow-step--action js-logisticien-action" data-state-value="retour" data-action-name="Bon retour">
-                        <span class="workflow-step__title">BL retour</span>
-                        <span class="workflow-step__meta">Cloturer le circuit</span>
+                        <span class="workflow-step__title">Retour</span>
+                        <span class="workflow-step__meta">Cloture</span>
                     </button>
                     {% else %}
                     <div class="workflow-step {% if operation.date_bon_retour %}is-current is-final{% endif %}">
-                        <span class="workflow-step__title">BL retour</span>
-                        <span class="workflow-step__meta">Fin de circuit</span>
+                        <span class="workflow-step__title">Retour</span>
+                        <span class="workflow-step__meta">Cloture</span>
                     </div>
                     {% endif %}
                 </div>
@@ -1078,10 +1078,10 @@ refreshLivraisonWarning();
 }
 
 .workflow-strip {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 16px;
     padding: 20px;
     border-radius: 24px;
@@ -1090,14 +1090,17 @@ refreshLivraisonWarning();
 }
 
 .workflow-step {
-    min-width: 148px;
-    padding: 14px 16px;
+    min-width: 0;
+    min-height: 76px;
+    padding: 12px 10px;
     border-radius: 18px;
     background: #ffffff;
     border: 1px solid #dce7f0;
     color: #698092;
     display: grid;
     gap: 3px;
+    justify-items: center;
+    text-align: center;
     transition: all 0.2s ease;
 }
 
@@ -1109,13 +1112,13 @@ refreshLivraisonWarning();
 }
 
 .workflow-step__title {
-    font-size: 0.96rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: inherit;
 }
 
 .workflow-step__meta {
-    font-size: 0.76rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     opacity: 0.9;
@@ -1152,6 +1155,7 @@ refreshLivraisonWarning();
 }
 
 .workflow-arrow {
+    display: none;
     color: #7a90a1;
     font-size: 1.3rem;
     font-weight: 800;
@@ -1365,6 +1369,7 @@ refreshLivraisonWarning();
 
 @media (max-width: 720px) {
     .workflow-strip {
+        grid-template-columns: 1fr;
         align-items: stretch;
     }
 
@@ -1374,6 +1379,9 @@ refreshLivraisonWarning();
 
     .workflow-step {
         width: 100%;
+        min-height: 0;
+        justify-items: start;
+        text-align: left;
     }
 
     .operation-hero__meta {

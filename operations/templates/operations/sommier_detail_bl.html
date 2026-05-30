@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "operations/_tabs.html" %}
+
+<style>
+.detail-shell{display:grid;gap:18px}
+.detail-card{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(242,249,255,.96));
+    border:1px solid #d7e8f2;
+    border-radius:22px;
+    box-shadow:0 16px 40px rgba(18,48,71,.08);
+    padding:20px;
+}
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.detail-head h1,.detail-card h2{margin:4px 0 8px;color:#123047}
+.detail-note{margin:0;color:#5b7487;line-height:1.5}
+.detail-actions{display:flex;gap:8px;flex-wrap:wrap}
+.detail-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.detail-kpi{padding:14px;border:1px solid #d7e8f2;border-radius:18px;background:#fff}
+.detail-kpi strong{display:block;margin-top:4px;font-size:1.35rem;color:#082c49}
+.detail-table-wrap{overflow:auto}
+.detail-table{width:100%;min-width:1280px;border-collapse:separate;border-spacing:0}
+.detail-table th{background:#123047;color:#fff;text-align:left;padding:12px 14px;font-weight:800;white-space:nowrap}
+.detail-table th:first-child{border-top-left-radius:14px}
+.detail-table th:last-child{border-top-right-radius:14px}
+.detail-table td{padding:12px 14px;border-bottom:1px solid #dce8f1;background:#fff;vertical-align:top}
+.detail-table tbody tr:nth-child(even) td{background:#f8fbfd}
+.amount{font-weight:900;color:#082c49;white-space:nowrap}
+.status-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eaf4ff;color:#1f5f92;font-weight:800;font-size:.85rem}
+@media (max-width:1000px){.detail-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.detail-kpis{grid-template-columns:1fr}}
+</style>
+
+<div class="detail-shell">
+    <section class="detail-card">
+        <div class="detail-head">
+            <div>
+                <p class="eyebrow">Etat BL du sommier</p>
+                <h1>{{ sommier.numero_sm }} - {{ sommier.reference_navire }}</h1>
+                <p class="detail-note">Liste complete des BL rattaches a ce navire, avec dates, client, quantite et etat du circuit.</p>
+            </div>
+            <div class="detail-actions">
+                <a href="/operations/comptable/sommiers/" class="btn secondary">Retour sommiers</a>
+                <a href="/operations/comptable/sommiers/{{ sommier.id }}/bl/export/xls/" class="btn secondary">Exporter Excel</a>
+                <a href="/operations/comptable/sommiers/{{ sommier.id }}/bl/export/pdf/" class="btn secondary">Exporter PDF</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="detail-kpis">
+        <article class="detail-kpi">
+            <p class="eyebrow">Produit</p>
+            <strong>{{ sommier.produit.nom }}</strong>
+        </article>
+        <article class="detail-kpi">
+            <p class="eyebrow">Stock initial</p>
+            <strong>{{ stock_initial|floatformat:0 }}</strong>
+        </article>
+        <article class="detail-kpi">
+            <p class="eyebrow">Disponible</p>
+            <strong>{{ stock_disponible|floatformat:0 }}</strong>
+        </article>
+        <article class="detail-kpi">
+            <p class="eyebrow">BL / Quantite</p>
+            <strong>{{ operations|length }} / {{ total_quantite|floatformat:0 }}</strong>
+        </article>
+    </section>
+
+    <section class="detail-card">
+        <div class="detail-head" style="margin-bottom:14px;">
+            <div>
+                <p class="eyebrow">Details</p>
+                <h2>BL lies au navire</h2>
+            </div>
+            <span class="status-pill">{{ taux_utilise }}% utilise</span>
+        </div>
+        <div class="detail-table-wrap">
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>BL</th>
+                        <th>Date BL</th>
+                        <th>Client</th>
+                        <th>Commande</th>
+                        <th>Produit</th>
+                        <th>Quantite</th>
+                        <th>Etat</th>
+                        <th>Destination</th>
+                        <th>Camion</th>
+                        <th>Chauffeur</th>
+                        <th>Liquide</th>
+                        <th>Charge</th>
+                        <th>Livre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for operation in operations %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td><strong>{{ operation.numero_bl }}</strong></td>
+                        <td>{{ operation.date_bl|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.client.entreprise }}</td>
+                        <td>{% if operation.commande %}{{ operation.commande.reference_affichee }}{% else %}-{% endif %}</td>
+                        <td>{% if operation.produit %}{{ operation.produit.nom }}{% else %}-{% endif %}</td>
+                        <td class="amount">{{ operation.quantite|floatformat:0 }}</td>
+                        <td><span class="status-pill">{{ operation.get_etat_bon_display }}</span></td>
+                        <td>{{ operation.destination|default:"-" }}</td>
+                        <td>{% if operation.camion %}{{ operation.camion.numero_tracteur }}{% else %}-{% endif %}</td>
+                        <td>{% if operation.chauffeur %}{{ operation.chauffeur.nom }}{% else %}-{% endif %}</td>
+                        <td>{{ operation.date_bons_liquides|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.date_bons_charges|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="14">Aucun BL lie a ce sommier.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

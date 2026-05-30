@@ -755,6 +755,7 @@ function openTransitaireModal(button, ids = []) {
     transitaireDateInput.value = button?.dataset.currentDate || new Date().toISOString().split("T")[0];
     transitaireModal.classList.add("is-open");
     transitaireModal.setAttribute("aria-hidden", "false");
+    window.setTimeout(() => transitaireDateInput?.focus(), 80);
 }
 
 function closeTransitaireModal() {

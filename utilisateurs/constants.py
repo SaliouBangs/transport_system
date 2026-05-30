@@ -15,6 +15,7 @@ ROLE_CAISSIERE_AVENA = "caissiere_avena"
 ROLE_RESPONSABLE_ACHAT = "responsable_achat"
 ROLE_COMPTABLE_SOGEFI = "comptable_sogefi"
 ROLE_COMPTABLE_AVENA = "comptable_avena"
+ROLE_COMPTABLE_CLIENT_SONI = "comptable_client_soni"
 ROLE_TRANSITAIRE = "transitaire"
 ROLE_INVITE = "invite"
 ROLE_CONTROLEUR = "controleur"
@@ -37,6 +38,7 @@ ROLE_CHOICES = [
     (ROLE_RESPONSABLE_ACHAT, "Responsable achat"),
     (ROLE_COMPTABLE_SOGEFI, "Comptable SOGEFI"),
     (ROLE_COMPTABLE_AVENA, "Comptable Avena"),
+    (ROLE_COMPTABLE_CLIENT_SONI, "Comptable client SONI"),
     (ROLE_TRANSITAIRE, "Transitaire"),
     (ROLE_INVITE, "Invite"),
     (ROLE_CONTROLEUR, "Controleur"),

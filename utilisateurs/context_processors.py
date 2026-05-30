@@ -214,6 +214,22 @@ def _topbar_notifications(user, active_entity=""):
             "warning",
         )
 
+    if role == "comptable_client_soni" or is_admin:
+        _add_notification(
+            items,
+            "Livraisons",
+            active_operations.filter(etat_bon="livre", livraison_confirmee_client=False).count(),
+            "/operations/comptable-client/",
+            "warning",
+        )
+        _add_notification(
+            items,
+            "SGP",
+            active_operations.filter(etat_bon="livre", livraison_confirmee_client=True, ville_perequation_sgp__isnull=True).count(),
+            "/operations/comptable-client/perequation/",
+            "info",
+        )
+
     if role == "comptable" or is_admin:
         _add_notification(
             items,
@@ -301,7 +317,7 @@ def _topbar_notifications(user, active_entity=""):
         _add_notification(items, "Validation", queryset.count(), "/depenses/?statut=attente_validation_dga_engagement", "warning")
 
     if role == "directeur" or is_admin:
-        _add_notification(items, "Cmd DG", Commande.objects.filter(statut="attente_validation_dg").count(), "/commandes/?statut=attente_validation_dg", "danger")
+        _add_notification(items, "Cmd DG", Commande.objects.filter(statut="attente_validation_dg").count(), "/commandes/?statut=validee_dga", "danger")
         _add_notification(items, "Dep DG", Depense.objects.filter(statut__in=[Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION_DG, Depense.STATUT_ATTENTE_VALIDATION_DG, Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG]).count(), "/depenses/?statut=attente_dg_global", "danger")
         _add_notification(items, "Maint DG", Maintenance.objects.filter(statut="attente_dg").count(), "/maintenance/garage/", "warning")
 
@@ -309,13 +325,26 @@ def _topbar_notifications(user, active_entity=""):
         _add_notification(items, "Achats", Depense.objects.filter(statut=Depense.STATUT_ATTENTE_ENGAGEMENT).count(), "/depenses/?statut=attente_engagement_achat", "info")
 
     if role in {"commercial", "responsable_commercial"} or is_admin:
-        commandes = Commande.objects.filter(statut__in=["attente_validation_dga", "attente_validation_dg"])
+        if role in {"commercial", "responsable_commercial"} and not is_admin:
+            commandes = Commande.objects.filter(statut="validee_dg").filter(
+                Q(reference__isnull=True) | Q(reference="")
+            )
+        else:
+            commandes = Commande.objects.filter(statut__in=["attente_validation_dga", "attente_validation_dg"])
         clients = Client.objects.all()
         if role == "commercial" and not is_admin:
             commandes = commandes.filter(client__commercial=user)
             clients = clients.filter(commercial=user)
+        if role == "responsable_commercial" and not is_admin:
+            commandes = commandes.filter(client__commercial__isnull=False)
         _add_notification(items, "Commandes", commandes.count(), "/commandes/", "info")
-        _add_notification(items, "Risque", sum(1 for client in clients if client.niveau_risque in {"alerte", "critique"}), "/clients/", "warning")
+        _add_notification(
+            items,
+            "Risque",
+            sum(1 for client in clients if client.niveau_risque in {"alerte", "critique"}),
+            "/clients/?risque=a_risque",
+            "warning",
+        )
 
     return items[:6]
 

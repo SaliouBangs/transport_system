@@ -50,7 +50,8 @@
     <div class="clients-filter-chip">
       <span>Scope actif :</span>
       <strong>
-        {% if risque_scope == "critique" %}Clients critiques
+        {% if risque_scope == "a_risque" %}Clients a risque
+        {% elif risque_scope == "critique" %}Clients critiques
         {% elif risque_scope == "alerte" %}Clients en alerte
         {% elif risque_scope == "couvert" %}Clients couverts
         {% elif risque_scope == "plus_risque" %}Plus grand risque
@@ -71,6 +72,7 @@
           <label for="id_risque">Risque</label>
           <select id="id_risque" name="risque">
             <option value="all" {% if risque_scope == "all" %}selected{% endif %}>Tous les clients</option>
+            <option value="a_risque" {% if risque_scope == "a_risque" %}selected{% endif %}>Clients a risque</option>
             <option value="plus_risque" {% if risque_scope == "plus_risque" %}selected{% endif %}>Plus de risque</option>
             <option value="critique" {% if risque_scope == "critique" %}selected{% endif %}>Critiques</option>
             <option value="alerte" {% if risque_scope == "alerte" %}selected{% endif %}>En alerte</option>

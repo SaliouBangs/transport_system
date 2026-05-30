@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Rapport perequation{% endblock %}
+{% block content %}
+{% include "operations/_comptable_client_tabs.html" %}
+
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Rapport SGP</p>
+            <h1>Rapport de perequation transport</h1>
+            <p>Lecture par BL confirme : transport reel, montant de reference et ecart de perequation.</p>
+        </div>
+        <div class="actions">
+            <a href="/operations/comptable-client/rapport-perequation/export/xls/{% if filters %}?{{ filters.urlencode }}{% endif %}" class="btn secondary">Exporter Excel</a>
+            <a href="/operations/comptable-client/rapport-perequation/export/pdf/{% if filters %}?{{ filters.urlencode }}{% endif %}" class="btn secondary">Exporter PDF</a>
+        </div>
+    </div>
+</section>
+
+<section class="page-section">
+    <p class="eyebrow">Filtres</p>
+    <form method="get" class="filters-bar">
+        <input type="search" name="q" value="{{ filters.q }}" placeholder="BL, client ou destination">
+        <select name="client">
+            <option value="">Tous les clients</option>
+            {% for client in clients %}
+            <option value="{{ client.id }}" {% if filters.client == client.id|stringformat:"s" %}selected{% endif %}>{{ client.nom }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="date_debut" value="{{ filters.date_debut }}">
+        <input type="date" name="date_fin" value="{{ filters.date_fin }}">
+        <button type="submit" class="btn">Filtrer</button>
+        <a href="/operations/comptable-client/rapport-perequation/" class="btn secondary">Reinitialiser</a>
+    </form>
+</section>
+
+<section class="metrics-grid">
+    <article class="metric-card"><span>Qte livree</span><strong>{{ totals.quantite|floatformat:0 }}</strong></article>
+    <article class="metric-card"><span>Transport reel</span><strong>{{ totals.transport_reel|floatformat:0 }} GNF</strong></article>
+    <article class="metric-card"><span>Transport perequation</span><strong>{{ totals.transport_perequation|floatformat:0 }} GNF</strong></article>
+    <article class="metric-card"><span>Ecart net</span><strong>{{ totals.ecart|floatformat:0 }} GNF</strong></article>
+</section>
+
+<section class="page-section">
+    <p class="eyebrow">Details</p>
+    <h2>Calcul par BL</h2>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>BL</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Destination</th>
+                    <th>Ville SGP</th>
+                    <th>Produit</th>
+                    <th>Qte livree</th>
+                    <th>Tarif reel</th>
+                    <th>Reel</th>
+                    <th>Reference</th>
+                    <th>Ecart</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><span class="row-index">{{ forloop.counter }}</span></td>
+                    <td><strong>{{ row.operation.numero_bl }}</strong></td>
+                    <td>{{ row.operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ row.operation.client.nom }}</td>
+                    <td>{{ row.operation.destination }}</td>
+                    <td>{{ row.ville.nom|default:"-" }}</td>
+                    <td>{{ row.operation.produit.nom|default:"-" }}</td>
+                    <td><strong>{{ row.quantite_livree|floatformat:0 }}</strong></td>
+                    <td>{{ row.tarif_destination|floatformat:2 }}</td>
+                    <td>{{ row.transport_reel|floatformat:0 }}</td>
+                    <td>{{ row.transport_perequation|floatformat:0 }}</td>
+                    <td><strong>{{ row.ecart|floatformat:0 }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="12">Aucun BL avec ville SGP affectee.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

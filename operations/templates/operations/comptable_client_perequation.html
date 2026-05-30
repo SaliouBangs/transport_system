@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Perequation SGP{% endblock %}
+{% block content %}
+<style>
+.data-table tr.row-missing-perequation td {
+    background: #fff1f2;
+    border-bottom-color: #fecdd3;
+}
+.data-table tr.row-missing-perequation td:first-child {
+    box-shadow: inset 4px 0 0 #ef4444;
+}
+.data-table tr.row-missing-perequation select {
+    border-color: #fca5a5;
+    background: #fffafa;
+}
+.sgp-city-field {
+    display: grid;
+    gap: 6px;
+}
+.sgp-city-search {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid #b7d4ee;
+    border-radius: 12px;
+    padding: 0 14px;
+    color: #0d2f4f;
+    font-weight: 800;
+    background: #fff;
+}
+.sgp-city-search:focus {
+    outline: none;
+    border-color: #2b82d4;
+    box-shadow: 0 0 0 3px rgba(43, 130, 212, .15);
+}
+.data-table tr.row-missing-perequation .sgp-city-search {
+    border-color: #fca5a5;
+    background: #fffafa;
+}
+.missing-perequation-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    color: #b42318;
+    font-size: 12px;
+    font-weight: 800;
+}
+.missing-perequation-note::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #ef4444;
+}
+</style>
+{% include "operations/_comptable_client_tabs.html" %}
+
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Perequation SGP</p>
+            <h1>Affectation des destinations livrees</h1>
+            <p>Associez chaque destination reelle a la ville de perequation envoyee par la SGP.</p>
+        </div>
+        <div class="metric-card compact">
+            <span>Sans ville</span>
+            <strong>{{ total_sans_ville }}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="page-section">
+    <p class="eyebrow">Filtres</p>
+    <form method="get" class="filters-bar">
+        <input type="search" name="q" value="{{ filters.q }}" placeholder="BL, client ou destination">
+        <select name="client">
+            <option value="">Tous les clients</option>
+            {% for client in clients %}
+            <option value="{{ client.id }}" {% if filters.client == client.id|stringformat:"s" %}selected{% endif %}>{{ client.nom }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="date_debut" value="{{ filters.date_debut }}">
+        <input type="date" name="date_fin" value="{{ filters.date_fin }}">
+        <button type="submit" class="btn">Filtrer</button>
+        <a href="/operations/comptable-client/perequation/" class="btn secondary">Reinitialiser</a>
+    </form>
+</section>
+
+<form method="post" class="page-section">
+    {% csrf_token %}
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Correspondances</p>
+            <h2>BL confirmes</h2>
+        </div>
+        <button type="submit" class="btn">Enregistrer les villes SGP</button>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>BL</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Destination reelle</th>
+                    <th>Produit</th>
+                    <th>Qte livree</th>
+                    <th>Ville perequation SGP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr{% if not row.selected_city_id %} class="row-missing-perequation"{% endif %}>
+                    <td><span class="row-index">{{ forloop.counter }}</span></td>
+                    <td><strong>{{ row.operation.numero_bl }}</strong></td>
+                    <td>{{ row.operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ row.operation.client.nom }}</td>
+                    <td>{{ row.operation.destination }}</td>
+                    <td>{{ row.operation.produit.nom|default:"-" }}</td>
+                    <td><strong>{{ row.quantite_livree|floatformat:0 }}</strong></td>
+                    <td>
+                        <div class="sgp-city-field">
+                            <input type="hidden" name="ville_{{ row.operation.id }}" value="{{ row.selected_city_id }}" data-sgp-hidden>
+                            <input
+                                type="search"
+                                class="sgp-city-search"
+                                list="sgp-city-options"
+                                placeholder="Rechercher une ville SGP"
+                                value="{% if row.ville %}{{ row.ville.nom }} - {{ row.ville.tarif_gnf_litre|floatformat:2 }} GNF/L{% endif %}"
+                                data-sgp-search
+                            >
+                        </div>
+                        {% if not row.selected_city_id %}
+                        <span class="missing-perequation-note">Ville SGP a definir</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8">Aucun BL confirme sur la periode.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <datalist id="sgp-city-options">
+        {% for ville in villes %}
+        <option value="{{ ville.nom }} - {{ ville.tarif_gnf_litre|floatformat:2 }} GNF/L" data-id="{{ ville.id }}"></option>
+        {% endfor %}
+    </datalist>
+</form>
+<script>
+const sgpCityOptions = Array.from(document.querySelectorAll("#sgp-city-options option"));
+
+function syncSgpCityField(input) {
+    const field = input.closest(".sgp-city-field");
+    const hidden = field?.querySelector("[data-sgp-hidden]");
+    const match = sgpCityOptions.find((option) => option.value === input.value.trim());
+    if (hidden) {
+        hidden.value = match ? match.dataset.id : "";
+    }
+}
+
+document.querySelectorAll("[data-sgp-search]").forEach((input) => {
+    input.addEventListener("input", () => syncSgpCityField(input));
+    input.addEventListener("change", () => syncSgpCityField(input));
+});
+</script>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block title %}Situation factures clients{% endblock %}
+
+{% block content %}
+<style>
+.report-shell{display:grid;gap:18px}
+.report-card,.kpi-card{
+    background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(242,249,255,.96));
+    border:1px solid #d7e8f2;border-radius:22px;box-shadow:0 16px 40px rgba(18,48,71,.08);padding:20px;
+}
+.report-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.report-head h1,.report-card h2{margin:4px 0 8px;color:#123047}
+.note{margin:0;color:#5b7487;line-height:1.5}
+.filter-bar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.25fr) 160px 160px 160px auto auto;gap:12px;align-items:end}
+.filter-bar input,.filter-bar select{min-height:46px;border:1px solid #c9ddeb;border-radius:14px;padding:0 14px;background:#fff;font:inherit;color:#123047;font-weight:700;box-sizing:border-box;width:100%}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:#2f7ed8;box-shadow:0 0 0 4px rgba(47,126,216,.12)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi-card strong{display:block;margin-top:5px;font-size:1.45rem;color:#082c49}
+.table-wrap{overflow:auto}
+.report-table{width:100%;min-width:1280px;border-collapse:separate;border-spacing:0}
+.report-table th{background:#123047;color:#fff;text-align:left;padding:12px 14px;white-space:nowrap}
+.report-table th:first-child{border-top-left-radius:14px}.report-table th:last-child{border-top-right-radius:14px}
+.report-table td{padding:12px 14px;border-bottom:1px solid #dce8f1;background:#fff;vertical-align:top}
+.report-table tbody tr:nth-child(even) td{background:#f8fbfd}
+.amount{font-weight:900;color:#082c49;white-space:nowrap}
+.status-pill{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:.84rem;font-weight:900}
+.status-pill.ok{background:#e4f6ee;color:#08785f}.status-pill.warn{background:#fff3d8;color:#9b6700}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:1400px){.filter-bar{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.filter-bar,.kpi-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="report-shell">
+    <section class="report-card">
+        <div class="report-head">
+            <div>
+                <p class="eyebrow">Lot de rapports</p>
+                <h1>Situation factures clients</h1>
+                <p class="note">Liste des factures soldees et non soldees, regroupees par client et commercial.</p>
+            </div>
+            <div class="actions">
+                <a href="/clients/rapports/factures-clients/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter Excel</a>
+                <a href="/clients/rapports/factures-clients/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter PDF</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <form method="get" class="filter-bar">
+            <select name="commercial">
+                <option value="">Tous les commerciaux</option>
+                {% for commercial in commerciaux %}
+                <option value="{{ commercial.id }}" {% if selected_commercial == commercial.id|stringformat:"s" %}selected{% endif %}>{% firstof commercial.get_full_name commercial.username %}</option>
+                {% endfor %}
+            </select>
+            <input type="hidden" name="client" id="client_id_filter" value="{{ selected_client }}">
+            <input
+                type="search"
+                name="client_search"
+                id="client_search_filter"
+                value="{{ client_search }}"
+                list="clients_filter_list"
+                placeholder="Rechercher un client"
+                autocomplete="off"
+            >
+            <datalist id="clients_filter_list">
+                {% for client in clients %}
+                <option value="{{ client.entreprise }}" data-id="{{ client.id }}"></option>
+                {% endfor %}
+            </datalist>
+            <select name="statut">
+                <option value="" {% if not statut %}selected{% endif %}>Toutes</option>
+                <option value="non_soldees" {% if statut == "non_soldees" %}selected{% endif %}>Non soldees</option>
+                <option value="soldees" {% if statut == "soldees" %}selected{% endif %}>Soldees</option>
+            </select>
+            <input type="date" name="date_debut" value="{{ date_debut }}">
+            <input type="date" name="date_fin" value="{{ date_fin }}">
+            <button type="submit" class="btn">Filtrer</button>
+            <a href="/clients/rapports/factures-clients/" class="btn secondary">Reinitialiser</a>
+        </form>
+    </section>
+
+    <section class="kpi-grid">
+        <article class="kpi-card"><p class="eyebrow">Facture</p><strong>{{ totals.facture|gnf }}</strong></article>
+        <article class="kpi-card"><p class="eyebrow">Encaisse</p><strong>{{ totals.encaisse|gnf }}</strong></article>
+        <article class="kpi-card"><p class="eyebrow">Reste</p><strong>{{ totals.reste|gnf }}</strong></article>
+        <article class="kpi-card"><p class="eyebrow">Factures</p><strong>{{ rows|length }}</strong></article>
+    </section>
+
+    <section class="report-card">
+        <div class="report-head" style="margin-bottom:14px;">
+            <div><p class="eyebrow">Details</p><h2>Factures par client</h2></div>
+        </div>
+        <div class="table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Commercial</th><th>Client</th><th>Facture</th><th>Date</th><th>Commande</th><th>BL</th><th>Produit</th><th>Montant</th><th>Encaisse</th><th>Reste</th><th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td>{{ row.commercial_name }}</td>
+                        <td><strong>{{ row.client_name }}</strong></td>
+                        <td>{{ row.numero_facture }}</td>
+                        <td>{{ row.date_facture|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ row.commande_reference }}</td>
+                        <td>{{ row.operation.numero_bl }}</td>
+                        <td>{{ row.produit }}</td>
+                        <td class="amount">{{ row.montant_facture|gnf }}</td>
+                        <td class="amount">{{ row.montant_encaisse|gnf }}</td>
+                        <td class="amount">{{ row.reste|gnf }}</td>
+                        <td><span class="status-pill {% if row.statut == 'soldee' %}ok{% else %}warn{% endif %}">{% if row.statut == 'soldee' %}Soldee{% else %}Non soldee{% endif %}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="12">Aucune facture pour cette selection.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="report-card">
+        <div class="report-head" style="margin-bottom:14px;">
+            <div><p class="eyebrow">Synthese</p><h2>Resume par commercial</h2></div>
+        </div>
+        <div class="table-wrap">
+            <table class="report-table" style="min-width:760px;">
+                <thead><tr><th>#</th><th>Commercial</th><th>Factures</th><th>Montant facture</th><th>Encaisse</th><th>Reste</th></tr></thead>
+                <tbody>
+                    {% for row in summary_rows %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td>{{ row.commercial_name }}</td>
+                        <td>{{ row.count }}</td>
+                        <td class="amount">{{ row.facture|gnf }}</td>
+                        <td class="amount">{{ row.encaisse|gnf }}</td>
+                        <td class="amount">{{ row.reste|gnf }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6">Aucune synthese disponible.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+<script>
+(() => {
+    const searchInput = document.getElementById("client_search_filter");
+    const hiddenInput = document.getElementById("client_id_filter");
+    const options = Array.from(document.querySelectorAll("#clients_filter_list option"));
+    if (!searchInput || !hiddenInput) return;
+    const syncClientId = () => {
+        const selected = options.find((option) => option.value === searchInput.value);
+        hiddenInput.value = selected ? selected.dataset.id || "" : "";
+    };
+    searchInput.addEventListener("input", syncClientId);
+    searchInput.form?.addEventListener("submit", syncClientId);
+})();
+</script>
+{% endblock %}

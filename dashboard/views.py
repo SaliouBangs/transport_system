@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Count, F, Q, Sum
-from django.db.models.functions import TruncDate
+from django.db.models.functions import TruncDate, TruncMonth
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -549,6 +549,70 @@ def dashboard(request):
     )
     daily_labels = [item["day"].strftime("%d/%m/%Y") for item in daily_inities if item["day"]]
     daily_totals = [item["total"] for item in daily_inities if item["day"]]
+
+    def month_start(date_value):
+        return date_value.replace(day=1)
+
+    def shift_months(date_value, months):
+        month_index = date_value.month - 1 + months
+        year = date_value.year + month_index // 12
+        month = month_index % 12 + 1
+        return date_value.replace(year=year, month=month, day=1)
+
+    def normalize_month(value):
+        return value.date() if hasattr(value, "date") else value
+
+    finance_months = [shift_months(month_start(today), -index) for index in range(5, -1, -1)]
+    finance_start = finance_months[0]
+    finance_labels = [month.strftime("%m/%Y") for month in finance_months]
+
+    finance_factures_by_month = {
+        normalize_month(item["month"]): item["total"] or Decimal("0.00")
+        for item in active_operations.filter(date_facture__gte=finance_start)
+        .annotate(month=TruncMonth("date_facture"))
+        .values("month")
+        .annotate(total=Sum("montant_facture"))
+    }
+    finance_encaissements_by_month = {
+        normalize_month(item["month"]): item["total"] or Decimal("0.00")
+        for item in EncaissementClient.objects.filter(date_encaissement__gte=finance_start)
+        .annotate(month=TruncMonth("date_encaissement"))
+        .values("month")
+        .annotate(total=Sum("montant"))
+    }
+    finance_depenses_by_month = {
+        normalize_month(item["month"]): item["total"] or Decimal("0.00")
+        for item in Depense.objects.filter(date_paiement__gte=finance_start)
+        .annotate(month=TruncMonth("date_paiement"))
+        .values("month")
+        .annotate(total=Sum("montant_engage"))
+    }
+    finance_maintenance_by_month = {
+        normalize_month(item["month"]): item["total"] or Decimal("0.00")
+        for item in Maintenance.objects.filter(date_paiement__gte=finance_start)
+        .annotate(month=TruncMonth("date_paiement"))
+        .values("month")
+        .annotate(total=Sum("total_facture"))
+    }
+
+    finance_factures = [finance_factures_by_month.get(month, Decimal("0.00")) for month in finance_months]
+    finance_encaissements = [finance_encaissements_by_month.get(month, Decimal("0.00")) for month in finance_months]
+    finance_depenses = [
+        finance_depenses_by_month.get(month, Decimal("0.00")) + finance_maintenance_by_month.get(month, Decimal("0.00"))
+        for month in finance_months
+    ]
+    finance_taux_recouvrement = [
+        round(float(encaissement / facture * 100), 1) if facture else 0
+        for facture, encaissement in zip(finance_factures, finance_encaissements)
+    ]
+    finance_taux_sorties = [
+        round(float(depense / facture * 100), 1) if facture else 0
+        for facture, depense in zip(finance_factures, finance_depenses)
+    ]
+    finance_total_factures = sum(finance_factures, Decimal("0.00"))
+    finance_total_encaissements = sum(finance_encaissements, Decimal("0.00"))
+    finance_total_depenses = sum(finance_depenses, Decimal("0.00"))
+    finance_solde_net = finance_total_encaissements - finance_total_depenses
 
     performances_camions = list(
         Camion.objects.annotate(
@@ -1153,6 +1217,16 @@ def dashboard(request):
         "total_gasoil": total_gasoil,
         "daily_labels": daily_labels,
         "daily_totals": daily_totals,
+        "finance_labels": finance_labels,
+        "finance_factures": finance_factures,
+        "finance_encaissements": finance_encaissements,
+        "finance_depenses": finance_depenses,
+        "finance_taux_recouvrement": finance_taux_recouvrement,
+        "finance_taux_sorties": finance_taux_sorties,
+        "finance_total_factures": finance_total_factures,
+        "finance_total_encaissements": finance_total_encaissements,
+        "finance_total_depenses": finance_total_depenses,
+        "finance_solde_net": finance_solde_net,
         "performances_camions": performances_camions,
         "seuil_retard_jours": 3,
         "action_alerts": action_alerts,

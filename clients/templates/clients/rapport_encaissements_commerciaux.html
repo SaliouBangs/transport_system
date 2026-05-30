@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% load client_extras %}
+
+{% block title %}Rapport encaissements commerciaux{% endblock %}
+
+{% block content %}
+<style>
+.report-shell{display:grid;gap:18px}
+.hero-card,.content-card,.kpi-card{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(242,249,255,.96));
+    border:1px solid #d7e8f2;
+    border-radius:24px;
+    box-shadow:0 16px 40px rgba(18,48,71,.08);
+}
+.hero-card{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:24px}
+.hero-card h1,.content-card h2{margin:4px 0 8px;color:#123047}
+.hero-card p,.section-note{margin:0;color:#5b7487;line-height:1.55}
+.eyebrow{margin:0;color:#118061;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(220px,1fr) minmax(360px,1.2fr) auto auto;gap:12px;align-items:end}
+.filter-card{padding:12px 14px;border:1px solid #deebf5;border-radius:18px;background:#fff}
+.period-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi-card{padding:18px}
+.kpi-card strong{display:block;margin-top:6px;font-size:1.65rem;color:#082c49}
+.kpi-card small{display:block;margin-top:6px;color:#60798c}
+.kpi-card.is-dark{background:linear-gradient(135deg,#123d5c,#23677d);color:#fff;border-color:#0c314d}
+.kpi-card.is-dark .eyebrow,.kpi-card.is-dark strong,.kpi-card.is-dark small{color:#fff}
+.content-card{padding:22px}
+.report-table-wrap{overflow:auto}
+.report-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}
+.report-table th{background:#123047;color:#fff;text-align:left;padding:12px 14px;font-weight:800}
+.report-table th:first-child{border-top-left-radius:14px}
+.report-table th:last-child{border-top-right-radius:14px}
+.report-table td{padding:12px 14px;border-bottom:1px solid #dbe8f1;vertical-align:top;background:#fff}
+.report-table tbody tr:nth-child(even) td{background:#f8fbfd}
+.amount-cell{font-weight:900;color:#082c49;white-space:nowrap}
+.muted-cell{color:#60798c;font-size:.88rem}
+.section-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.export-actions{display:flex;gap:8px;flex-wrap:wrap}
+.commercial-chip{display:inline-flex;align-items:center;gap:8px;font-weight:800}
+.commercial-avatar{width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;background:#e4f5ef;color:#08785f;font-size:.78rem}
+.count-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf4ff;color:#1b5c91;font-size:.78rem;font-weight:800}
+@media (max-width: 1200px){
+    .filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width: 720px){
+    .hero-card{display:block}
+    .filter-grid,.kpi-grid,.period-grid{grid-template-columns:1fr}
+}
+</style>
+
+<div class="report-shell">
+    <section class="hero-card">
+        <div>
+            <p class="eyebrow">Lot de rapports</p>
+            <h1>Rapport encaissements par commercial</h1>
+            <p>
+                Ventilation des encaissements affectes aux commandes par commercial, separee en Essence, Gasoil et total.
+            </p>
+        </div>
+        <div class="hero-actions">
+            <a href="/clients/encaissements/historique/" class="btn secondary">Historique encaissements</a>
+        </div>
+    </section>
+
+    <section class="content-card">
+        <div class="section-head">
+            <p class="eyebrow">Filtres</p>
+            <h2>Preparer le rapport</h2>
+            <p class="section-note">
+                Les avances client non encore affectees a une commande ne sont pas ventilees, car leur produit ESS/GAS n'est pas encore connu.
+            </p>
+        </div>
+        <form method="get" class="app-form">
+            <div class="filter-grid">
+                <div class="filter-card">
+                    <div class="field">
+                        <label for="id_commercial">Commercial</label>
+                        <select id="id_commercial" name="commercial">
+                            <option value="">Tous les commerciaux</option>
+                            {% for commercial in commerciaux %}
+                            <option value="{{ commercial.id }}" {% if selected_commercial == commercial.id|stringformat:"s" %}selected{% endif %}>
+                                {% firstof commercial.get_full_name commercial.username %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-card">
+                    <div class="field">
+                        <label>Periode</label>
+                        <div class="period-grid">
+                            <input type="date" name="date_debut" value="{{ date_debut }}">
+                            <input type="date" name="date_fin" value="{{ date_fin }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-card">
+                    <div class="field">
+                        <label>Lecture</label>
+                        <input type="text" value="Encaissements affectes aux commandes ESS/GAS" disabled>
+                    </div>
+                </div>
+                <button type="submit" class="btn">Afficher</button>
+                <a href="/clients/rapports/encaissements-commerciaux/" class="btn secondary">Reinitialiser</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="kpi-grid">
+        <div class="kpi-card">
+            <p class="eyebrow">Essence</p>
+            <strong>{{ totals.essence|gnf }}</strong>
+            <small>Total encaisse sur commandes essence</small>
+        </div>
+        <div class="kpi-card">
+            <p class="eyebrow">Gasoil</p>
+            <strong>{{ totals.gasoil|gnf }}</strong>
+            <small>Total encaisse sur commandes gasoil</small>
+        </div>
+        <div class="kpi-card is-dark">
+            <p class="eyebrow">Total</p>
+            <strong>{{ totals.global|gnf }}</strong>
+            <small>Essence + Gasoil</small>
+        </div>
+        <div class="kpi-card">
+            <p class="eyebrow">Commerciaux</p>
+            <strong>{{ summary_rows|length }}</strong>
+            <small>Avec encaissements sur la periode</small>
+        </div>
+    </section>
+
+    <section class="content-card">
+        <div class="section-title-row">
+            <div>
+                <p class="eyebrow">Details paiements</p>
+                <h2>Tableau des encaissements</h2>
+                <p class="section-note">Chaque ligne reprend les informations bancaires du paiement et sa ventilation ESS/GAS.</p>
+            </div>
+            <div class="export-actions">
+                <a href="/clients/rapports/encaissements-commerciaux/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter Excel</a>
+                <a href="/clients/rapports/encaissements-commerciaux/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter PDF</a>
+            </div>
+        </div>
+        <div class="report-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Date</th>
+                        <th>Commercial</th>
+                        <th>Client</th>
+                        <th>Commande</th>
+                        <th>Produit</th>
+                        <th>Mode</th>
+                        <th>Banque</th>
+                        <th>Reference</th>
+                        <th>Deposant</th>
+                        <th>ESS</th>
+                        <th>GAS</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payment_rows %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td>{{ row.date|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="commercial-chip">
+                                <span class="commercial-avatar">{{ row.commercial_name|slice:":2"|upper }}</span>
+                                {{ row.commercial_name }}
+                            </span>
+                        </td>
+                        <td>{{ row.client_name }}</td>
+                        <td>{{ row.commande_reference }}</td>
+                        <td>{{ row.produit }}</td>
+                        <td>{{ row.mode_paiement }}</td>
+                        <td>{{ row.banque }}</td>
+                        <td>{{ row.reference }}</td>
+                        <td>{{ row.deposant }}</td>
+                        <td class="amount-cell">{{ row.essence|gnf }}</td>
+                        <td class="amount-cell">{{ row.gasoil|gnf }}</td>
+                        <td class="amount-cell">{{ row.total|gnf }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="13">Aucun encaissement affecte a une commande ESS/GAS pour cette selection.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="content-card">
+        <div class="section-head">
+            <p class="eyebrow">Synthese</p>
+            <h2>Total par commercial</h2>
+        </div>
+        <div class="report-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Commercial</th>
+                        <th>Encaissements</th>
+                        <th>ESS</th>
+                        <th>GAS</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in summary_rows %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td>
+                            <span class="commercial-chip">
+                                <span class="commercial-avatar">{{ row.commercial_name|slice:":2"|upper }}</span>
+                                {{ row.commercial_name }}
+                            </span>
+                        </td>
+                        <td><span class="count-pill">{{ row.encaissements_count }}</span></td>
+                        <td class="amount-cell">{{ row.essence|gnf }}</td>
+                        <td class="amount-cell">{{ row.gasoil|gnf }}</td>
+                        <td class="amount-cell">{{ row.total|gnf }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">Aucune synthese disponible pour cette selection.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

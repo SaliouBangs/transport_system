@@ -1,8 +1,10 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-<title>ERP Transport</title>
+<title>ZOBOKO Business Suite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23a9212e'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M50 8 86 29 86 71 50 92 14 71 14 29 50 8Z'/%3E%3Cpath d='M50 8 50 92'/%3E%3Cpath d='M14 29 50 50 86 29'/%3E%3Cpath d='M14 71 50 50 86 71'/%3E%3Cpath d='M30 38 50 26 70 38'/%3E%3Cpath d='M30 62 50 74 70 62'/%3E%3Cpath d='M30 38 30 62'/%3E%3Cpath d='M70 38 70 62'/%3E%3Cpath d='M30 38 70 62'/%3E%3Cpath d='M70 38 30 62'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Ccircle cx='50' cy='8' r='8'/%3E%3Ccircle cx='86' cy='29' r='8'/%3E%3Ccircle cx='86' cy='71' r='8'/%3E%3Ccircle cx='50' cy='92' r='8'/%3E%3Ccircle cx='14' cy='71' r='8'/%3E%3Ccircle cx='14' cy='29' r='8'/%3E%3Ccircle cx='50' cy='26' r='8'/%3E%3Ccircle cx='70' cy='38' r='8'/%3E%3Ccircle cx='70' cy='62' r='8'/%3E%3Ccircle cx='50' cy='74' r='8'/%3E%3Ccircle cx='30' cy='62' r='8'/%3E%3Ccircle cx='30' cy='38' r='8'/%3E%3Ccircle cx='50' cy='50' r='8'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="theme-color" content="#123047">
 
 <style>
 :root{
@@ -13,7 +15,13 @@
 --mint:#4fbf9f;
 --mint-dark:#249274;
 --danger:#d95c4f;
+--amber:#f0a83a;
+--blue:#3f8fd6;
+--violet:#7a6ff0;
 --sky:#dcecf8;
+--accent-soft:rgba(79,191,159,0.12);
+--accent-blue-soft:rgba(63,143,214,0.12);
+--accent-amber-soft:rgba(240,168,58,0.14);
 --text:#163042;
 --muted:#6d8090;
 --border:#d9e2e8;
@@ -28,11 +36,59 @@ body.theme-dark{
 --mint:#5ed3b0;
 --mint-dark:#2f9f83;
 --danger:#ff7c6d;
+--amber:#ffc260;
+--blue:#67aef0;
+--violet:#9b92ff;
 --sky:#183445;
+--accent-soft:rgba(94,211,176,0.13);
+--accent-blue-soft:rgba(103,174,240,0.13);
+--accent-amber-soft:rgba(255,194,96,0.13);
 --text:#e5f0f7;
 --muted:#9fb6c5;
 --border:#28414f;
 --shadow:0 20px 44px rgba(0,0,0,0.34);
+}
+
+body.theme-aurora{
+--navy:#05090c;
+--navy-soft:#0c1217;
+--sand:#020506;
+--paper:#080d10;
+--mint:#d73745;
+--mint-dark:#a9212e;
+--danger:#ef4444;
+--amber:#ffffff;
+--blue:#d73745;
+--violet:#ffffff;
+--sky:#11181d;
+--accent-soft:rgba(215,55,69,0.13);
+--accent-blue-soft:rgba(215,55,69,0.14);
+--accent-amber-soft:rgba(255,255,255,0.08);
+--text:#f4f7f8;
+--muted:#9aa7ae;
+--border:#1b252b;
+--shadow:0 20px 44px rgba(0,0,0,0.46);
+}
+
+body.theme-tricolore{
+--navy:#0f3a73;
+--navy-soft:#1f5fa5;
+--sand:#f6f8fb;
+--paper:#ffffff;
+--mint:#2f82cf;
+--mint-dark:#0f5ca8;
+--danger:#d9434e;
+--amber:#f1b24a;
+--blue:#1f6ed4;
+--violet:#7a6ff0;
+--sky:#e5f0ff;
+--accent-soft:rgba(31,110,212,0.12);
+--accent-blue-soft:rgba(31,110,212,0.15);
+--accent-amber-soft:rgba(217,67,78,0.12);
+--text:#142c45;
+--muted:#64778a;
+--border:#d7e1ed;
+--shadow:0 18px 42px rgba(15,58,115,0.13);
 }
 
 body{
@@ -40,10 +96,72 @@ margin:0;
 font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 display:flex;
 min-height:100vh;
+--module-accent:var(--blue);
+--module-accent-2:var(--mint);
+--module-accent-soft:var(--accent-blue-soft);
+--module-ink:var(--navy);
 background:
 radial-gradient(circle at top right, rgba(79,191,159,0.18), transparent 28%),
+radial-gradient(circle at 8% 18%, rgba(63,143,214,0.13), transparent 24%),
+radial-gradient(circle at 92% 82%, rgba(240,168,58,0.10), transparent 24%),
 linear-gradient(180deg, #f9fbfd 0%, var(--sand) 100%);
 color:var(--text);
+}
+
+body.app-module-dashboard{
+--module-accent:#2f82cf;
+--module-accent-2:#4fbf9f;
+--module-accent-soft:rgba(47,130,207,0.13);
+--module-ink:#123047;
+}
+
+body.app-module-reports{
+--module-accent:#4d73d9;
+--module-accent-2:#4fbf9f;
+--module-accent-soft:rgba(77,115,217,0.13);
+--module-ink:#192f62;
+}
+
+body.app-module-commercial{
+--module-accent:#1f9a82;
+--module-accent-2:#3f8fd6;
+--module-accent-soft:rgba(31,154,130,0.13);
+--module-ink:#123d46;
+}
+
+body.app-module-comptabilite{
+--module-accent:#2f67c6;
+--module-accent-2:#7a6ff0;
+--module-accent-soft:rgba(47,103,198,0.13);
+--module-ink:#17315f;
+}
+
+body.app-module-logistique{
+--module-accent:#d48b2a;
+--module-accent-2:#3f8fd6;
+--module-accent-soft:rgba(212,139,42,0.14);
+--module-ink:#4a3514;
+}
+
+body.app-module-maintenance{
+--module-accent:#6f7782;
+--module-accent-2:#4fbf9f;
+--module-accent-soft:rgba(111,119,130,0.14);
+--module-ink:#27313a;
+}
+
+body.theme-aurora{
+background:
+radial-gradient(circle at top left, rgba(215,55,69,0.10), transparent 28%),
+linear-gradient(180deg, #05090c 0%, #020506 100%);
+}
+
+body.theme-tricolore{
+background:
+radial-gradient(circle at top left, rgba(31,110,212,0.14), transparent 28%),
+radial-gradient(circle at top right, rgba(217,67,78,0.10), transparent 28%),
+linear-gradient(90deg, rgba(15,58,115,0.04), rgba(255,255,255,0.72), rgba(217,67,78,0.04)),
+linear-gradient(180deg, #ffffff 0%, var(--sand) 100%);
 }
 
 body.sidebar-open{
@@ -63,12 +181,15 @@ align-items:center;
 justify-content:space-between;
 gap:16px;
 padding:12px 24px;
-background:linear-gradient(135deg, rgba(18,48,71,0.84) 0%, rgba(29,73,104,0.76) 100%);
+background:
+linear-gradient(90deg, rgba(79,191,159,0.26), rgba(63,143,214,0.20), rgba(240,168,58,0.16)),
+linear-gradient(135deg, rgba(18,48,71,0.88) 0%, rgba(29,73,104,0.78) 100%);
 color:white;
 box-shadow:0 10px 24px rgba(18,48,71,0.16);
 position:sticky;
 top:0;
 z-index:20;
+border-bottom:1px solid rgba(255,255,255,0.16);
 }
 
 .topbar-message{
@@ -147,7 +268,7 @@ inset:0;
 background:rgba(8,21,32,0.34);
 opacity:0;
 pointer-events:none;
-transition:opacity 0.22s ease;
+transition:opacity 0.5s ease;
 z-index:58;
 }
 
@@ -160,8 +281,9 @@ width:min(420px, calc(100vw - 22px));
 background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,249,252,0.98));
 border-left:1px solid rgba(188,210,226,0.95);
 box-shadow:-24px 0 48px rgba(18,48,71,0.22);
-transform:translateX(104%);
-transition:transform 0.28s ease;
+opacity:0;
+transform:translateX(104%) scale(0.98);
+transition:transform 0.68s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
 z-index:60;
 display:flex;
 flex-direction:column;
@@ -174,12 +296,23 @@ overflow:hidden;
 }
 
 body.profile-drawer-open .profile-drawer{
-transform:translateX(0);
+opacity:1;
+transform:translateX(0) scale(1);
 }
 
 body.profile-drawer-open .profile-drawer-backdrop{
 opacity:1;
 pointer-events:auto;
+}
+
+body.profile-drawer-closing .profile-drawer{
+opacity:0;
+transform:translateX(104%) scale(0.98);
+}
+
+body.profile-drawer-closing .profile-drawer-backdrop{
+opacity:0;
+pointer-events:none;
 }
 
 .profile-drawer__close{
@@ -206,8 +339,24 @@ padding:56px 28px 28px;
 text-align:center;
 background:
 radial-gradient(circle at top right, rgba(79,191,159,0.16), transparent 34%),
+radial-gradient(circle at bottom left, rgba(240,168,58,0.14), transparent 32%),
 linear-gradient(160deg, rgba(18,48,71,0.96), rgba(29,73,104,0.92));
 color:white;
+}
+
+.profile-drawer__animated{
+opacity:0;
+transform:translateY(16px);
+}
+
+body.profile-drawer-open .profile-drawer.is-animating .profile-drawer__animated{
+animation:profile-item-in 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+animation-delay:var(--profile-delay, 0ms);
+}
+
+body.profile-drawer-closing .profile-drawer__animated{
+animation:profile-item-out 0.42s ease both;
+animation-delay:0ms;
 }
 
 .profile-drawer__avatar-wrap{
@@ -222,6 +371,10 @@ width:120px;
 height:120px;
 font-size:2rem;
 box-shadow:0 16px 34px rgba(0,0,0,0.24), inset 0 0 0 4px rgba(255,255,255,0.84);
+}
+
+body.profile-drawer-open .profile-drawer.is-animating .profile-drawer__avatar{
+animation:profile-avatar-pop 0.78s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .profile-drawer__status-dot{
@@ -328,10 +481,10 @@ border-radius:16px;
 background:rgba(255,255,255,0.92);
 border:1px solid rgba(188,210,226,0.9);
 display:grid;
-gap:10px;
+gap:12px;
 }
 
-.profile-drawer__theme label{
+.profile-drawer__theme-title{
 color:var(--muted);
 font-size:0.78rem;
 font-weight:900;
@@ -339,15 +492,118 @@ text-transform:uppercase;
 letter-spacing:0.05em;
 }
 
-.profile-drawer__theme select{
+.profile-drawer__theme-toggle{
 width:100%;
-height:42px;
-border:1px solid rgba(188,210,226,0.95);
+min-height:44px;
+border:0;
 border-radius:12px;
-background:white;
+background:rgba(18,48,71,0.07);
+color:var(--text);
+font-weight:900;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+padding:0 13px;
+}
+
+.profile-drawer__theme-toggle::after{
+content:"+";
+font-size:1.15rem;
+line-height:1;
+}
+
+.profile-drawer__theme.is-open .profile-drawer__theme-toggle::after{
+content:"-";
+}
+
+.profile-drawer__theme-panel{
+display:none;
+gap:10px;
+}
+
+.profile-drawer__theme.is-open .profile-drawer__theme-panel{
+display:grid;
+animation:profile-theme-panel-in 0.18s ease-out both;
+}
+
+.theme-choice-grid{
+display:grid;
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:10px;
+}
+
+.theme-choice{
+width:100%;
+min-height:74px;
+border:1px solid rgba(188,210,226,0.95);
+border-radius:14px;
+background:
+linear-gradient(135deg, rgba(255,255,255,0.96), rgba(244,249,252,0.92));
 color:var(--text);
 font-weight:800;
-padding:0 12px;
+padding:11px;
+cursor:pointer;
+display:grid;
+gap:8px;
+text-align:left;
+transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.theme-choice:hover{
+transform:translateY(-2px);
+box-shadow:0 12px 22px rgba(18,48,71,0.10);
+border-color:rgba(79,191,159,0.48);
+}
+
+.theme-choice[aria-pressed="true"]{
+border-color:var(--mint);
+box-shadow:0 0 0 3px rgba(79,191,159,0.16), 0 12px 22px rgba(18,48,71,0.10);
+}
+
+.theme-choice__swatches{
+display:flex;
+gap:6px;
+align-items:center;
+}
+
+.theme-choice__swatches span{
+width:22px;
+height:22px;
+border-radius:999px;
+box-shadow:inset 0 0 0 1px rgba(18,48,71,0.14);
+}
+
+.theme-choice__label{
+font-size:0.86rem;
+}
+
+.theme-choice--light .theme-choice__swatches span:nth-child(1){background:#ffffff;}
+.theme-choice--light .theme-choice__swatches span:nth-child(2){background:#4fbf9f;}
+.theme-choice--light .theme-choice__swatches span:nth-child(3){background:#123047;}
+.theme-choice--aurora .theme-choice__swatches span:nth-child(1){background:#05090c;}
+.theme-choice--aurora .theme-choice__swatches span:nth-child(2){background:#f4f7f8;}
+.theme-choice--aurora .theme-choice__swatches span:nth-child(3){background:#d73745;}
+.theme-choice--tricolore .theme-choice__swatches span:nth-child(1){background:#0f3a73;}
+.theme-choice--tricolore .theme-choice__swatches span:nth-child(2){background:#ffffff;}
+.theme-choice--tricolore .theme-choice__swatches span:nth-child(3){background:#d9434e;}
+.theme-choice--dark .theme-choice__swatches span:nth-child(1){background:#081520;}
+.theme-choice--dark .theme-choice__swatches span:nth-child(2){background:#5ed3b0;}
+.theme-choice--dark .theme-choice__swatches span:nth-child(3){background:#e5f0f7;}
+
+.theme-reset-button{
+border:0;
+background:rgba(18,48,71,0.07);
+color:var(--text);
+border-radius:12px;
+min-height:38px;
+font-weight:900;
+cursor:pointer;
+}
+
+.theme-reset-button:hover{
+background:rgba(18,48,71,0.12);
 }
 
 .profile-drawer__edit,
@@ -408,60 +664,519 @@ justify-content:flex-end;
 }
 
 .topbar-notifications{
+position:relative;
+}
+
+.notification-center{
+position:relative;
+}
+
+.notification-center__toggle{
+list-style:none;
 display:inline-flex;
 align-items:center;
+gap:10px;
+min-height:38px;
+padding:6px 8px 6px 12px;
+border-radius:999px;
+background:
+linear-gradient(110deg, rgba(217,92,79,0.24), rgba(240,168,58,0.24), rgba(63,143,214,0.18)),
+rgba(255,255,255,0.15);
+color:white;
+cursor:pointer;
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12), 0 10px 24px rgba(8,21,32,0.14);
+transition:background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+position:relative;
+overflow:hidden;
+animation:notification-toggle-glow 2.4s ease-in-out infinite;
+}
+
+.notification-center__toggle::-webkit-details-marker{
+display:none;
+}
+
+.notification-center__toggle:hover,
+.notification-center[open] .notification-center__toggle{
+background:rgba(255,255,255,0.24);
+transform:translateY(-1px);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.18), 0 14px 30px rgba(8,21,32,0.18);
+}
+
+.notification-center__toggle::after{
+content:"";
+position:absolute;
+inset:0;
+background:linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.26) 42%, transparent 74%);
+transform:translateX(-120%);
+animation:notification-shine 3.8s ease-in-out infinite;
+pointer-events:none;
+}
+
+.notification-center__icon{
+position:relative;
+width:28px;
+height:28px;
+border-radius:999px;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+background:rgba(255,255,255,0.18);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.14);
+animation:notification-bell 2.8s ease-in-out infinite;
+}
+
+.notification-center__icon::before{
+content:"";
+width:11px;
+height:13px;
+border:2px solid currentColor;
+border-bottom:0;
+border-radius:9px 9px 3px 3px;
+transform:translateY(1px);
+}
+
+.notification-center__icon::after{
+content:"";
+position:absolute;
+bottom:5px;
+width:8px;
+height:2px;
+border-radius:999px;
+background:currentColor;
+box-shadow:0 4px 0 -2px currentColor;
+}
+
+.notification-center__label{
+display:inline-flex;
+flex-direction:column;
+gap:1px;
+line-height:1.05;
+}
+
+.notification-center__label strong{
+font-size:0.78rem;
+font-weight:900;
+}
+
+.notification-center__label span{
+font-size:0.68rem;
+font-weight:800;
+color:rgba(255,255,255,0.72);
+}
+
+.notification-center__total{
+min-width:26px;
+height:26px;
+padding:0 8px;
+border-radius:999px;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+background:linear-gradient(135deg, #fff0cf, #ffe0dd);
+color:#9f2d21;
+font-size:0.78rem;
+font-weight:900;
+line-height:1;
+animation:notification-pulse 1.9s ease-in-out infinite;
+}
+
+.notification-center__panel{
+position:absolute;
+top:calc(100% + 12px);
+right:0;
+width:min(380px, calc(100vw - 32px));
+padding:10px;
+border-radius:18px;
+background:rgba(255,255,255,0.98);
+border:1px solid rgba(188,210,226,0.88);
+box-shadow:0 22px 50px rgba(8,21,32,0.26);
+z-index:70;
+color:var(--text);
+transform-origin:top right;
+animation:notification-panel-in 0.22s ease-out both;
+}
+
+.notification-center__panel::before{
+content:"";
+position:absolute;
+top:-7px;
+right:24px;
+width:14px;
+height:14px;
+background:rgba(255,255,255,0.98);
+border-left:1px solid rgba(188,210,226,0.88);
+border-top:1px solid rgba(188,210,226,0.88);
+transform:rotate(45deg);
+}
+
+.notification-center__header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:14px;
+padding:8px 8px 12px;
+border-bottom:1px solid rgba(217,226,232,0.76);
+}
+
+.notification-center__header strong{
+font-size:0.95rem;
+color:var(--navy);
+}
+
+.notification-center__header span{
+font-size:0.78rem;
+font-weight:900;
+color:var(--muted);
+white-space:nowrap;
+}
+
+.notification-list{
+display:grid;
 gap:8px;
-flex-wrap:wrap;
-justify-content:flex-end;
+padding-top:10px;
 }
 
 .topbar-notification{
-display:inline-flex;
+position:relative;
+display:grid;
+grid-template-columns:10px minmax(0,1fr) auto;
 align-items:center;
-gap:7px;
-min-height:34px;
-padding:6px 9px 6px 12px;
-border-radius:999px;
-background:rgba(255,255,255,0.12);
-color:white;
+gap:10px;
+min-height:52px;
+padding:11px 12px;
+border-radius:14px;
+background:
+linear-gradient(135deg, rgba(109,128,144,0.10), transparent 52%),
+#f7fbfd;
+border:1px solid rgba(217,226,232,0.86);
+color:var(--text);
 text-decoration:none;
-font-size:0.82rem;
+font-size:0.86rem;
 font-weight:800;
 white-space:nowrap;
-box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
+transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+animation:notification-item-in 0.24s ease-out both;
+animation-delay:calc(var(--notification-index, 0) * 45ms);
 }
 
 .topbar-notification:hover{
-background:rgba(255,255,255,0.2);
+background:#ffffff;
+border-color:rgba(79,191,159,0.42);
+box-shadow:0 12px 24px rgba(18,48,71,0.10);
+transform:translateY(-1px);
+}
+
+.topbar-notification__dot{
+width:10px;
+height:10px;
+border-radius:999px;
+background:#6d8090;
+box-shadow:0 0 0 4px rgba(109,128,144,0.10);
+}
+
+.topbar-notification__body{
+display:grid;
+gap:3px;
+min-width:0;
+}
+
+.topbar-notification__body strong{
+overflow:hidden;
+text-overflow:ellipsis;
+color:#123047;
+}
+
+.topbar-notification__body span{
+font-size:0.72rem;
+font-weight:800;
+color:var(--muted);
+overflow:hidden;
+text-overflow:ellipsis;
 }
 
 .topbar-notification__count{
 display:inline-flex;
 align-items:center;
 justify-content:center;
-min-width:22px;
-height:22px;
-padding:0 7px;
+min-width:32px;
+height:30px;
+padding:0 9px;
 border-radius:999px;
-background:#f5fbff;
-color:var(--navy);
+background:#eef4f8;
+color:#123047;
 font-size:0.78rem;
+font-weight:900;
 line-height:1;
 }
 
+.topbar-notification--warning .topbar-notification__dot{
+background:#d98b12;
+box-shadow:0 0 0 4px rgba(217,139,18,0.12);
+animation:notification-dot-pulse-warning 1.8s ease-in-out infinite;
+}
+
+.topbar-notification--warning{
+background:
+linear-gradient(135deg, rgba(240,168,58,0.22), transparent 55%),
+#fffaf0;
+border-color:rgba(240,168,58,0.42);
+}
+
 .topbar-notification--warning .topbar-notification__count{
-background:#ffe8b7;
+background:#fff0cf;
 color:#8a5700;
 }
 
+.topbar-notification--danger .topbar-notification__dot{
+background:#d95c4f;
+box-shadow:0 0 0 4px rgba(217,92,79,0.13);
+animation:notification-dot-pulse-danger 1.4s ease-in-out infinite;
+}
+
+.topbar-notification--danger{
+background:
+linear-gradient(135deg, rgba(217,92,79,0.24), transparent 55%),
+#fff7f6;
+border-color:rgba(217,92,79,0.42);
+animation:notification-item-in 0.24s ease-out both, notification-danger-glow 2.2s ease-in-out infinite;
+}
+
 .topbar-notification--danger .topbar-notification__count{
-background:#ffd2ce;
+background:#ffe0dd;
 color:#a52018;
 }
 
+.topbar-notification--info .topbar-notification__dot{
+background:#2f8ac5;
+box-shadow:0 0 0 4px rgba(47,138,197,0.12);
+animation:notification-dot-pulse-info 2.2s ease-in-out infinite;
+}
+
+.topbar-notification--info{
+background:
+linear-gradient(135deg, rgba(63,143,214,0.18), transparent 55%),
+#f4faff;
+border-color:rgba(63,143,214,0.34);
+}
+
 .topbar-notification--info .topbar-notification__count{
-background:#dff1ff;
+background:#e4f3ff;
 color:#0e4e7a;
+}
+
+@keyframes notification-panel-in{
+from{
+opacity:0;
+transform:translateY(-8px) scale(0.98);
+}
+to{
+opacity:1;
+transform:translateY(0) scale(1);
+}
+}
+
+@keyframes notification-item-in{
+from{
+opacity:0;
+transform:translateY(8px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes notification-pulse{
+0%, 100%{
+box-shadow:0 0 0 0 rgba(255,224,221,0.52);
+}
+50%{
+box-shadow:0 0 0 8px rgba(255,224,221,0);
+}
+}
+
+@keyframes notification-toggle-glow{
+0%, 100%{
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12), 0 10px 24px rgba(8,21,32,0.14);
+}
+50%{
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.24), 0 0 0 4px rgba(240,168,58,0.12), 0 16px 30px rgba(8,21,32,0.18);
+}
+}
+
+@keyframes notification-shine{
+0%, 52%{
+transform:translateX(-120%);
+}
+72%, 100%{
+transform:translateX(120%);
+}
+}
+
+@keyframes notification-bell{
+0%, 72%, 100%{
+transform:rotate(0deg);
+}
+76%{
+transform:rotate(-9deg);
+}
+80%{
+transform:rotate(8deg);
+}
+84%{
+transform:rotate(-5deg);
+}
+88%{
+transform:rotate(4deg);
+}
+}
+
+@keyframes notification-dot-pulse-info{
+0%, 100%{
+box-shadow:0 0 0 4px rgba(47,138,197,0.12);
+}
+50%{
+box-shadow:0 0 0 7px rgba(47,138,197,0.03);
+}
+}
+
+@keyframes notification-dot-pulse-warning{
+0%, 100%{
+box-shadow:0 0 0 4px rgba(217,139,18,0.14);
+}
+50%{
+box-shadow:0 0 0 8px rgba(217,139,18,0.04);
+}
+}
+
+@keyframes notification-dot-pulse-danger{
+0%, 100%{
+box-shadow:0 0 0 4px rgba(217,92,79,0.16);
+}
+50%{
+box-shadow:0 0 0 9px rgba(217,92,79,0.04);
+}
+}
+
+@keyframes notification-danger-glow{
+0%, 100%{
+box-shadow:0 0 0 rgba(217,92,79,0);
+}
+50%{
+box-shadow:0 12px 26px rgba(217,92,79,0.15);
+}
+}
+
+@keyframes page-in{
+from{
+opacity:0;
+transform:translateY(10px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes surface-in{
+from{
+opacity:0;
+transform:translateY(8px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes sidebar-in{
+from{
+opacity:0;
+transform:translateX(-10px);
+}
+to{
+opacity:1;
+transform:translateX(0);
+}
+}
+
+@keyframes sidebar-panel-in{
+from{
+opacity:0;
+transform:translateY(-4px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes modal-fade-in{
+from{
+opacity:0;
+}
+to{
+opacity:1;
+}
+}
+
+@keyframes modal-dialog-in{
+from{
+opacity:0;
+transform:translateY(14px) scale(0.98);
+}
+to{
+opacity:1;
+transform:translateY(0) scale(1);
+}
+}
+
+@keyframes profile-theme-panel-in{
+from{
+opacity:0;
+transform:translateY(-6px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes profile-item-in{
+from{
+opacity:0;
+transform:translateY(18px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes profile-item-out{
+from{
+opacity:1;
+transform:translateY(0);
+}
+to{
+opacity:0;
+transform:translateY(10px);
+}
+}
+
+@keyframes profile-avatar-pop{
+0%{
+opacity:0;
+transform:translateY(18px) scale(0.88);
+}
+72%{
+opacity:1;
+transform:translateY(-2px) scale(1.03);
+}
+100%{
+opacity:1;
+transform:translateY(0) scale(1);
+}
 }
 
 .entity-switcher{
@@ -528,7 +1243,7 @@ cursor:pointer;
 
 .sidebar{
 width:220px;
-background:linear-gradient(180deg, var(--navy) 0%, #0d2334 100%);
+background:linear-gradient(180deg, #14344d 0%, #102d43 48%, #0d2538 100%);
 min-height:100vh;
 color:white;
 padding:28px 20px;
@@ -536,39 +1251,127 @@ box-shadow:var(--shadow);
 position:sticky;
 top:0;
 z-index:30;
+animation:sidebar-in 0.34s ease-out both;
+overflow:hidden;
 }
 
-.sidebar h2{
-color:white;
-letter-spacing:0.06em;
-margin:0 0 24px 0;
+.sidebar::before{
+content:"";
+position:absolute;
+inset:0;
+background:linear-gradient(90deg, rgba(255,255,255,0.06), transparent 42%);
+pointer-events:none;
+}
+
+.sidebar > *{
+position:relative;
+z-index:1;
+}
+
+.sidebar-brand{
+display:flex;
+align-items:center;
+gap:10px;
+margin:0 0 26px 0;
+padding:4px 2px 10px;
+border-radius:0;
+background:transparent;
+box-shadow:none;
+}
+
+.sidebar-brand__mark{
+position:relative;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+width:34px;
+height:34px;
+min-width:34px;
+overflow:hidden;
+}
+
+.sidebar-brand__mark svg{
+width:27px;
+height:27px;
+display:block;
+color:#d73745;
+}
+
+.sidebar-brand__text{
+display:grid;
+gap:1px;
+min-width:0;
+line-height:1.05;
+}
+
+.sidebar-brand__name{
+color:#ffffff;
+font-size:1rem;
+font-weight:900;
+letter-spacing:0.01em;
+}
+
+.sidebar-brand__suite{
+color:rgba(255,255,255,0.68);
+font-size:0.78rem;
+font-weight:600;
+letter-spacing:0;
 }
 
 .sidebar a{
 display:block;
 color:white;
 text-decoration:none;
-margin:10px 0;
+margin:8px 0;
 padding:10px 12px;
-border-radius:12px;
-transition:background 0.2s ease, transform 0.2s ease;
+border-radius:14px;
+background:rgba(255,255,255,0.035);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);
+transition:background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+position:relative;
+overflow:hidden;
+}
+
+.sidebar a::before{
+content:"";
+position:absolute;
+left:0;
+top:12px;
+bottom:12px;
+width:3px;
+border-radius:0 999px 999px 0;
+background:transparent;
+transition:background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar a:hover{
-background:rgba(255,255,255,0.12);
-transform:translateX(2px);
+background:linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.07));
+transform:translateX(4px);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10), 0 10px 22px rgba(0,0,0,0.10);
+}
+
+.sidebar a:hover::before{
+background:var(--mint);
+box-shadow:0 0 12px rgba(79,191,159,0.52);
 }
 
 .sidebar a.active{
-background:linear-gradient(135deg, rgba(79,191,159,0.26) 0%, rgba(79,191,159,0.12) 100%);
-box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
-font-weight:700;
+background:rgba(79,191,159,0.22);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.16), 0 14px 28px rgba(0,0,0,0.14);
+font-weight:800;
+}
+
+.sidebar a.active::before{
+background:#ffffff;
+box-shadow:0 0 16px rgba(255,255,255,0.70);
 }
 
 .sidebar-section{
 margin:8px 0 12px;
-border-radius:16px;
+border-radius:18px;
 overflow:hidden;
+background:linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.045);
 }
 
 .sidebar-section__toggle{
@@ -579,24 +1382,25 @@ justify-content:space-between;
 gap:12px;
 padding:12px 14px;
 border:none;
-border-radius:14px;
+border-radius:16px;
 background:transparent;
 color:white;
 font:inherit;
-font-weight:700;
+font-weight:800;
 cursor:pointer;
 text-align:left;
-transition:background 0.2s ease, transform 0.2s ease;
+transition:background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-section__toggle:hover{
-background:rgba(255,255,255,0.12);
-transform:translateX(2px);
+background:linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+transform:translateX(4px);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
-.sidebar-section__toggle.active{
-background:linear-gradient(135deg, rgba(79,191,159,0.26) 0%, rgba(79,191,159,0.12) 100%);
-box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
+.sidebar-section__toggle.is-open-toggle{
+background:rgba(255,255,255,0.055);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.075);
 }
 
 .sidebar-section__icon{
@@ -605,26 +1409,34 @@ opacity:0.9;
 transition:transform 0.2s ease;
 }
 
-.sidebar-section__toggle.active .sidebar-section__icon{
+.sidebar-section__toggle.is-open-toggle .sidebar-section__icon{
 transform:rotate(180deg);
 }
 
 .sidebar-section__panel{
-display:none;
-padding:6px 0 4px 14px;
+display:block;
+padding:6px 0 4px 12px;
 margin-left:10px;
-border-left:1px solid rgba(255,255,255,0.12);
+border-left:1px solid rgba(79,191,159,0.30);
+max-height:0;
+opacity:0;
+overflow:hidden;
+transform:translateY(-4px);
+transition:max-height 0.42s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.28s ease, transform 0.34s ease;
 }
 
 .sidebar-section__panel.is-open{
-display:block;
+max-height:var(--sidebar-panel-height, 760px);
+opacity:1;
+transform:translateY(0);
 }
 
 .sidebar-section__panel a{
 margin:6px 0;
 padding:9px 12px;
-font-weight:500;
-color:#d8e7f1;
+font-weight:650;
+color:#dcecf8;
+font-size:0.92rem;
 }
 
 .sidebar-label{
@@ -637,10 +1449,14 @@ gap:10px;
 display:inline-flex;
 align-items:center;
 justify-content:center;
-width:18px;
-min-width:18px;
-font-size:0.95rem;
-opacity:0.95;
+width:28px;
+height:28px;
+min-width:28px;
+border-radius:10px;
+font-size:0.86rem;
+opacity:1;
+background:linear-gradient(135deg, rgba(79,191,159,0.22), rgba(63,143,214,0.16));
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
 .sidebar-link-label{
@@ -657,6 +1473,28 @@ margin-bottom:6px;
 flex:1;
 padding:36px;
 background:transparent;
+animation:page-in 0.34s ease-out both;
+transition:opacity 0.24s ease, transform 0.28s ease;
+}
+
+body.page-leaving .content{
+opacity:0;
+transform:translateY(22px);
+}
+
+.content-motion-ready .content-reveal{
+opacity:0;
+transform:translateY(22px);
+transition:
+opacity 0.42s ease,
+transform 0.52s cubic-bezier(0.2, 0.8, 0.2, 1);
+transition-delay:var(--content-reveal-delay, 0ms);
+will-change:opacity, transform;
+}
+
+.content-motion-ready .content-reveal.is-visible{
+opacity:1;
+transform:translateY(0);
 }
 
 .mobile-nav-toggle{
@@ -695,10 +1533,14 @@ border-radius:18px;
 overflow:hidden;
 box-shadow:var(--shadow);
 counter-reset:table-row-number;
+animation:surface-in 0.3s ease-out both;
+border:1px solid rgba(198,220,238,0.82);
 }
 
 .table th{
-background:var(--navy);
+background:
+linear-gradient(90deg, rgba(79,191,159,0.20), rgba(63,143,214,0.16)),
+var(--navy);
 color:white;
 padding:14px 16px;
 text-align:left;
@@ -707,6 +1549,16 @@ text-align:left;
 .table td{
 padding:14px 16px;
 border-bottom:1px solid var(--border);
+transition:background 0.18s ease, color 0.18s ease;
+}
+
+.table tbody tr{
+transition:transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.table tbody tr:hover{
+background:#f7fbfd;
+transform:translateX(2px);
 }
 
 .table tbody tr:not(:has(td[colspan])){
@@ -746,6 +1598,18 @@ border:none;
 cursor:pointer;
 font-weight:600;
 box-shadow:0 12px 24px rgba(36,146,116,0.24);
+transition:transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.btn:hover{
+transform:translateY(-2px);
+box-shadow:0 16px 30px rgba(36,146,116,0.28);
+filter:saturate(1.04);
+}
+
+.btn:active{
+transform:translateY(0);
+box-shadow:0 9px 18px rgba(36,146,116,0.20);
 }
 
 .btn-edit{
@@ -757,6 +1621,7 @@ color:white;
 padding:8px 12px;
 text-decoration:none;
 border-radius:10px;
+transition:transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .btn-delete{
@@ -768,6 +1633,14 @@ color:white;
 padding:8px 12px;
 text-decoration:none;
 border-radius:10px;
+transition:transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.btn-edit:hover,
+.btn-delete:hover,
+.btn-secondary:hover{
+transform:translateY(-2px);
+filter:saturate(1.04);
 }
 
 .table-actions{
@@ -791,14 +1664,23 @@ margin:0;
 
 .btn-secondary{
 display:inline-block;
-background:var(--paper);
+background:
+linear-gradient(135deg, rgba(63,143,214,0.08), rgba(79,191,159,0.06)),
+var(--paper);
 color:var(--navy);
 padding:11px 18px;
 text-decoration:none;
 border-radius:12px;
-border:1px solid var(--border);
+border:1px solid rgba(176,205,226,0.9);
 cursor:pointer;
 font-weight:600;
+transition:transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.btn-secondary:hover{
+background:#f7fbfd;
+border-color:rgba(79,191,159,0.48);
+box-shadow:0 12px 24px rgba(18,48,71,0.10);
 }
 
 .cards{
@@ -809,11 +1691,22 @@ margin-top:20px;
 }
 
 .card{
-background:linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(239,247,250,0.95) 100%);
+background:
+linear-gradient(135deg, var(--accent-soft), transparent 38%),
+linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(239,247,250,0.95) 100%);
 padding:20px;
 border-radius:20px;
 box-shadow:var(--shadow);
 text-align:center;
+animation:surface-in 0.32s ease-out both;
+transition:transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+border:1px solid rgba(198,220,238,0.82);
+border-top:4px solid var(--mint);
+}
+
+.card:hover{
+transform:translateY(-3px);
+box-shadow:0 22px 44px rgba(18,48,71,0.14);
 }
 
 .card h3{
@@ -852,13 +1745,17 @@ color:var(--mint-dark);
 }
 
 .form-shell{
-background:rgba(255,255,255,0.92);
+background:
+linear-gradient(135deg, var(--accent-blue-soft), transparent 36%),
+rgba(255,255,255,0.92);
 backdrop-filter:blur(12px);
 border:1px solid rgba(255,255,255,0.7);
 border-radius:24px;
 padding:28px;
 box-shadow:var(--shadow);
 max-width:980px;
+animation:surface-in 0.32s ease-out both;
+border-top:4px solid rgba(63,143,214,0.72);
 }
 
 .profile-layout{
@@ -892,6 +1789,19 @@ min-width:240px;
 margin:0 0 18px 0;
 font-size:1.25rem;
 color:var(--navy);
+position:relative;
+padding-left:14px;
+}
+
+.section-title::before{
+content:"";
+position:absolute;
+left:0;
+top:0.18em;
+bottom:0.18em;
+width:4px;
+border-radius:999px;
+background:linear-gradient(180deg, var(--mint), var(--blue));
 }
 
 .app-form input,
@@ -905,7 +1815,7 @@ border:1px solid var(--border);
 background:#fbfdff;
 font-size:0.98rem;
 color:var(--text);
-transition:border-color 0.2s ease, box-shadow 0.2s ease;
+transition:border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.18s ease;
 }
 
 .app-form input:focus,
@@ -914,6 +1824,7 @@ transition:border-color 0.2s ease, box-shadow 0.2s ease;
 outline:none;
 border-color:var(--mint);
 box-shadow:0 0 0 4px rgba(79,191,159,0.18);
+transform:translateY(-1px);
 }
 
 .app-form textarea{
@@ -971,36 +1882,112 @@ margin:0;
 margin-bottom:18px;
 padding:14px 16px;
 border-radius:14px;
-background:#fdebea;
-border:1px solid #f3c8c2;
+background:
+linear-gradient(135deg, var(--accent-amber-soft), transparent 62%),
+#fff8ea;
+border:1px solid rgba(240,168,58,0.38);
+color:#8a5700;
 }
 
 .flash-stack{
 display:flex;
 flex-direction:column;
-gap:12px;
+gap:10px;
 margin:0 0 18px 0;
 }
 
 .flash-message{
+position:relative;
+display:grid;
+grid-template-columns:34px minmax(0,1fr);
+align-items:center;
+gap:12px;
 padding:14px 16px;
-border-radius:14px;
-border:1px solid var(--border);
-background:rgba(255,255,255,0.96);
-box-shadow:var(--shadow);
-font-weight:600;
+border-radius:16px;
+border:1px solid rgba(217,226,232,0.86);
+background:rgba(255,255,255,0.98);
+box-shadow:0 14px 34px rgba(18,48,71,0.10);
+font-weight:700;
+color:var(--text);
+overflow:hidden;
+animation:flash-message-in 0.28s ease-out both;
+}
+
+.flash-message::before{
+content:"i";
+width:34px;
+height:34px;
+border-radius:999px;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+background:#e4f3ff;
+color:#0e4e7a;
+font-weight:900;
+font-style:normal;
+}
+
+.flash-message::after{
+content:"";
+position:absolute;
+left:0;
+top:0;
+bottom:0;
+width:4px;
+background:#2f8ac5;
 }
 
 .flash-message.error{
-background:#fdebea;
+background:#fff7f6;
 border-color:#f3c8c2;
 color:#9f2d21;
 }
 
+.flash-message.error::before{
+content:"!";
+background:#ffe0dd;
+color:#a52018;
+}
+
+.flash-message.error::after{
+background:#d95c4f;
+}
+
 .flash-message.success{
-background:#eaf8f2;
+background:#f2fbf7;
 border-color:#c6ead8;
 color:#166847;
+}
+
+.flash-message.success::before{
+content:"";
+background:#dff7eb;
+color:#166847;
+}
+
+.flash-message.success::after{
+background:#249274;
+}
+
+.flash-message.success::before{
+background:
+linear-gradient(135deg, transparent 44%, #166847 45% 56%, transparent 57%),
+linear-gradient(45deg, transparent 43%, #166847 44% 56%, transparent 57%),
+#dff7eb;
+background-size:11px 15px, 18px 12px, auto;
+background-position:15px 7px, 7px 12px, 0 0;
+background-repeat:no-repeat;
+}
+
+@keyframes flash-message-in{
+from{
+opacity:0;
+transform:translateY(-6px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
 }
 
 .operation-shell{
@@ -1013,10 +2000,13 @@ gap:10px;
 flex-wrap:wrap;
 margin:0 0 22px 0;
 padding:8px;
-background:rgba(255,255,255,0.82);
+background:
+linear-gradient(90deg, rgba(79,191,159,0.10), rgba(63,143,214,0.08), rgba(240,168,58,0.06)),
+rgba(255,255,255,0.82);
 border:1px solid var(--border);
 border-radius:22px;
 box-shadow:var(--shadow);
+animation:surface-in 0.3s ease-out both;
 }
 
 .subtab{
@@ -1078,6 +2068,7 @@ padding:12px 14px;
 border-radius:20px;
 border:1px solid var(--border);
 box-shadow:var(--shadow);
+animation:surface-in 0.3s ease-out both;
 }
 
 .search-form input{
@@ -1090,6 +2081,7 @@ border-radius:16px;
 font-size:1rem;
 font-weight:500;
 box-shadow:inset 0 1px 2px rgba(18,48,71,0.05);
+transition:border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
 }
 
 .search-form select{
@@ -1116,12 +2108,15 @@ calc(100% - 16px) 22px,
 0 0;
 background-size:6px 6px, 6px 6px, 100% 100%;
 background-repeat:no-repeat;
+transition:border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
 }
 
+.search-form input:focus,
 .search-form select:focus{
 outline:none;
 border-color:var(--mint);
 box-shadow:0 0 0 4px rgba(79,191,159,0.18);
+transform:translateY(-1px);
 }
 
 .search-form input::placeholder{
@@ -1180,10 +2175,15 @@ display:none;
 position:fixed;
 inset:0;
 z-index:40;
+padding:24px;
+overflow:auto;
+align-items:center;
+justify-content:center;
 }
 
 .modal.is-open{
-display:block;
+display:flex;
+animation:modal-fade-in 0.18s ease-out both;
 }
 
 .modal-backdrop{
@@ -1195,13 +2195,17 @@ backdrop-filter:blur(3px);
 
 .modal-dialog{
 position:relative;
+width:min(720px, 100%);
 max-width:720px;
-margin:5vh auto;
+max-height:calc(100vh - 48px);
+margin:auto;
+overflow:auto;
 background:var(--paper);
 border-radius:24px;
 padding:24px;
 box-shadow:0 30px 60px rgba(0,0,0,0.24);
 z-index:1;
+animation:modal-dialog-in 0.24s ease-out both;
 }
 
 .modal-header{
@@ -1220,20 +2224,199 @@ height:38px;
 border-radius:999px;
 cursor:pointer;
 font-size:1rem;
+transition:transform 0.18s ease, background 0.18s ease;
+}
+
+.modal-close:hover{
+background:#dfeaf2;
+transform:rotate(8deg) scale(1.04);
+}
+
+/* Global finishing layer: module accents and more tactile surfaces. */
+.content{
+position:relative;
+}
+
+.content::before{
+content:"";
+position:fixed;
+top:0;
+left:220px;
+right:0;
+height:3px;
+z-index:19;
+background:linear-gradient(90deg, var(--module-accent), var(--module-accent-2), rgba(240,168,58,0.78));
+opacity:0.72;
+pointer-events:none;
+}
+
+.content > :not(.modal):not(.chef-modal){
+position:relative;
+z-index:1;
+}
+
+.content > .modal{
+position:fixed;
+z-index:80;
+}
+
+.content > .chef-modal{
+position:fixed;
+z-index:1200;
+}
+
+.content > h1:first-child,
+.content > .section-title:first-child,
+.report-head h1,
+.dashboard-hero h1,
+.form-shell h1{
+letter-spacing:0;
+position:relative;
+}
+
+.content > h1:first-child::after,
+.content > .section-title:first-child::after,
+.report-head h1::after,
+.dashboard-hero h1::after,
+.form-shell h1::after{
+content:"";
+display:block;
+width:58px;
+height:4px;
+margin-top:10px;
+border-radius:999px;
+background:linear-gradient(90deg, var(--module-accent), var(--module-accent-2));
+box-shadow:0 8px 18px var(--module-accent-soft);
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel,.modal-dialog,.subtabs,.search-form){
+position:relative;
+border-color:color-mix(in srgb, var(--module-accent) 20%, var(--border));
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel)::before{
+content:"";
+position:absolute;
+left:18px;
+right:18px;
+top:0;
+height:3px;
+border-radius:0 0 999px 999px;
+background:linear-gradient(90deg, transparent, var(--module-accent), var(--module-accent-2), transparent);
+opacity:0.38;
+pointer-events:none;
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel,.subtabs,.search-form):hover{
+box-shadow:0 20px 46px rgba(18,48,71,0.13);
+}
+
+.btn,
+.btn-edit,
+.btn-secondary,
+button[type="submit"]{
+position:relative;
+overflow:hidden;
+}
+
+.btn::after,
+.btn-edit::after,
+.btn-secondary::after,
+button[type="submit"]::after{
+content:"";
+position:absolute;
+inset:-1px;
+background:linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.34) 42%, transparent 72%);
+transform:translateX(-120%);
+transition:transform 0.55s ease;
+pointer-events:none;
+}
+
+.btn:hover::after,
+.btn-edit:hover::after,
+.btn-secondary:hover::after,
+button[type="submit"]:hover::after{
+transform:translateX(120%);
+}
+
+.table th,
+.report-table th{
+background:
+linear-gradient(90deg, color-mix(in srgb, var(--module-accent) 34%, transparent), transparent 68%),
+var(--module-ink);
+}
+
+.table tbody tr,
+.report-table tbody tr{
+transition:background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.table tbody tr:hover,
+.report-table tbody tr:hover{
+background:linear-gradient(90deg, var(--module-accent-soft), rgba(255,255,255,0.92));
+transform:translateX(2px);
+box-shadow:inset 3px 0 0 var(--module-accent);
+}
+
+.app-form input:focus,
+.app-form select:focus,
+.app-form textarea:focus,
+.search-form input:focus,
+.search-form select:focus,
+.filter-bar input:focus,
+.filter-bar select:focus{
+border-color:var(--module-accent);
+box-shadow:0 0 0 4px var(--module-accent-soft);
+}
+
+.status-badge,
+.status-pill{
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.42);
+}
+
+.eyebrow,
+.section-kicker{
+color:var(--module-accent);
 }
 
 body.theme-dark .topbar{
 background:linear-gradient(135deg, rgba(8,21,32,0.96) 0%, rgba(18,48,71,0.92) 100%);
 }
 
+body.theme-aurora .topbar{
+background:#080d10;
+border-bottom-color:#1b252b;
+}
+
+body.theme-tricolore .topbar{
+background:
+linear-gradient(90deg, rgba(15,58,115,0.32), rgba(255,255,255,0.16), rgba(217,67,78,0.26)),
+linear-gradient(135deg, rgba(15,58,115,0.92) 0%, rgba(31,95,165,0.82) 100%);
+}
+
 body.theme-dark .sidebar{
-background:linear-gradient(180deg, #061018 0%, #0a1721 100%);
+background:linear-gradient(180deg, #061018 0%, #0a1721 58%, #050d13 100%);
+}
+
+body.theme-aurora .sidebar{
+background:#080d10;
+box-shadow:inset -1px 0 0 #1b252b;
+}
+
+body.theme-tricolore .sidebar{
+background:linear-gradient(180deg, #0b2f60 0%, #0f3a73 58%, #082548 100%);
 }
 
 body.theme-dark .btn-secondary{
 background:#163041;
 color:#e5f0f7;
 border-color:#325064;
+}
+
+body.theme-aurora .btn-secondary{
+background:#0f1519;
+color:#f4f7f8;
+border-color:#263139;
 }
 
 body.theme-dark .card,
@@ -1254,6 +2437,10 @@ background:#0c1f2d;
 
 body.theme-dark .table td{
 border-bottom:1px solid var(--border);
+}
+
+body.theme-dark .table tbody tr:hover{
+background:#162633;
 }
 
 body.theme-dark .app-form input,
@@ -1288,6 +2475,284 @@ background:#193140;
 color:#e5f0f7;
 }
 
+body.theme-aurora .card,
+body.theme-aurora .form-shell,
+body.theme-aurora .table,
+body.theme-aurora .flash-message,
+body.theme-aurora .subtabs,
+body.theme-aurora .search-form,
+body.theme-aurora .modal-dialog{
+background:#080d10;
+border-color:#1b252b;
+color:#f4f7f8;
+}
+
+body.theme-aurora .table th{
+background:
+linear-gradient(90deg, rgba(215,55,69,0.24), transparent 68%),
+#05090c;
+}
+
+body.theme-aurora .subtab.active{
+background:#d73745;
+color:#ffffff;
+box-shadow:0 12px 24px rgba(215,55,69,0.24);
+}
+
+body.theme-aurora .table td{
+border-bottom:1px solid #1b252b;
+}
+
+body.theme-aurora .table tbody tr:hover,
+body.theme-aurora .report-table tbody tr:hover{
+background:#0d1317;
+box-shadow:inset 3px 0 0 #d73745;
+}
+
+body.theme-aurora .app-form input,
+body.theme-aurora .app-form select,
+body.theme-aurora .app-form textarea,
+body.theme-aurora .search-form input,
+body.theme-aurora .search-form select,
+body.theme-aurora .filter-bar input,
+body.theme-aurora .filter-bar select{
+background:#05090c;
+color:#f4f7f8;
+border:1px solid #263139;
+}
+
+body.theme-aurora .sidebar a,
+body.theme-aurora .sidebar-section__toggle{
+color:#c7d1d6;
+background:transparent;
+box-shadow:none;
+}
+
+body.theme-aurora .sidebar a:hover,
+body.theme-aurora .sidebar-section__toggle:hover,
+body.theme-aurora .sidebar-section__toggle.is-open-toggle{
+background:#0f1519;
+box-shadow:inset 0 0 0 1px #1b252b;
+}
+
+body.theme-aurora .sidebar a.active{
+background:rgba(215,55,69,0.14);
+box-shadow:inset 3px 0 0 #d73745;
+}
+
+body.theme-aurora .sidebar-menu-icon{
+background:transparent;
+box-shadow:none;
+color:#9aa7ae;
+}
+
+body.theme-aurora .profile-drawer{
+background:#080d10;
+border-left-color:#1b252b;
+box-shadow:-24px 0 52px rgba(0,0,0,0.56);
+color:#f4f7f8;
+}
+
+body.theme-aurora .profile-drawer__hero{
+background:
+linear-gradient(135deg, rgba(215,55,69,0.18), transparent 46%),
+#0b1115;
+color:#f4f7f8;
+border-bottom:1px solid #1b252b;
+}
+
+body.theme-aurora .profile-drawer__body{
+background:#080d10;
+}
+
+body.theme-aurora .profile-drawer__close{
+background:#121a20;
+color:#f4f7f8;
+}
+
+body.theme-aurora .profile-drawer__close:hover{
+background:#1a242b;
+}
+
+body.theme-aurora .profile-drawer__status,
+body.theme-aurora .profile-info-row,
+body.theme-aurora .profile-drawer__theme,
+body.theme-aurora .theme-choice{
+background:#0b1115;
+border-color:#263139;
+color:#f4f7f8;
+}
+
+body.theme-aurora .profile-drawer__status{
+background:rgba(215,55,69,0.08);
+border-color:rgba(215,55,69,0.28);
+}
+
+body.theme-aurora .profile-drawer__status span:first-child,
+body.theme-aurora .profile-info-row span,
+body.theme-aurora .theme-choice__label,
+body.theme-aurora .profile-drawer__email{
+color:#aab6bc;
+}
+
+body.theme-aurora .profile-info-row strong,
+body.theme-aurora .profile-drawer__name{
+color:#f4f7f8;
+}
+
+body.theme-aurora .theme-choice:hover{
+border-color:rgba(215,55,69,0.42);
+box-shadow:0 12px 22px rgba(0,0,0,0.24);
+}
+
+body.theme-aurora .theme-choice[aria-pressed="true"]{
+border-color:#d73745;
+box-shadow:0 0 0 3px rgba(215,55,69,0.20), 0 12px 22px rgba(0,0,0,0.26);
+}
+
+body.theme-aurora .theme-reset-button{
+background:#151d22;
+color:#d9e2e6;
+}
+
+body.theme-aurora .theme-reset-button:hover{
+background:#1d272e;
+}
+
+body.theme-aurora .profile-drawer__edit{
+background:#d73745;
+color:#ffffff;
+}
+
+body.theme-aurora .profile-drawer__logout{
+background:#121a20;
+color:#d9e2e6;
+}
+
+body.theme-aurora .notification-center__toggle{
+background:
+linear-gradient(110deg, rgba(215,55,69,0.30), rgba(255,255,255,0.08)),
+#0b1115;
+box-shadow:inset 0 0 0 1px #263139, 0 10px 24px rgba(0,0,0,0.28);
+}
+
+body.theme-aurora .notification-center__panel{
+background:#080d10;
+border-color:#263139;
+box-shadow:0 24px 54px rgba(0,0,0,0.58);
+color:#f4f7f8;
+}
+
+body.theme-aurora .notification-center__panel::before{
+background:#080d10;
+border-color:#263139;
+}
+
+body.theme-aurora .notification-center__header{
+border-bottom-color:#1b252b;
+}
+
+body.theme-aurora .notification-center__header strong,
+body.theme-aurora .topbar-notification__body strong{
+color:#f4f7f8;
+}
+
+body.theme-aurora .notification-center__header span,
+body.theme-aurora .topbar-notification__body span{
+color:#aab6bc;
+}
+
+body.theme-aurora .topbar-notification{
+background:#0b1115;
+border-color:#263139;
+color:#f4f7f8;
+}
+
+body.theme-aurora .topbar-notification:hover{
+background:#10171c;
+border-color:rgba(215,55,69,0.42);
+}
+
+body.theme-aurora .topbar-notification__count{
+background:#151d22;
+color:#f4f7f8;
+}
+
+body.theme-aurora .topbar-notification--warning,
+body.theme-aurora .topbar-notification--danger,
+body.theme-aurora .topbar-notification--info{
+background:
+linear-gradient(135deg, rgba(215,55,69,0.16), transparent 56%),
+#0b1115;
+border-color:rgba(215,55,69,0.32);
+}
+
+body.theme-aurora :is(h1,h2,h3,h4,h5,h6,strong,.section-title,.report-head h1,.report-card h2,.dashboard-hero h1,.form-shell h1,.kpi-card strong,.amount){
+color:#f4f7f8;
+}
+
+body.theme-aurora :is(p,.note,.muted,.help-text,.profile-info-row span,.table td,.report-table td,.summary-table td){
+color:#c7d1d6;
+}
+
+body.theme-aurora :is(.eyebrow,.section-kicker,.profile-drawer__theme-title){
+color:#ff5a68;
+}
+
+body.theme-aurora :is(a:not(.btn):not(.btn-secondary):not(.btn-edit):not(.btn-delete),.subtab){
+color:#d9e2e6;
+}
+
+body.theme-aurora :is(.card,.form-shell,.report-card,.kpi-card,.summary-panel){
+background:#080d10;
+color:#f4f7f8;
+}
+
+body.theme-aurora :is(.report-table td,.summary-table td){
+background:#080d10;
+border-bottom-color:#1b252b;
+}
+
+body.theme-aurora :is(.report-table tbody tr:nth-child(even) td,.table tbody tr:nth-child(even) td){
+background:#0b1115;
+}
+
+body.theme-aurora :is(.report-table tbody tr:hover td,.table tbody tr:hover td){
+background:#10171c;
+color:#f4f7f8;
+}
+
+body.theme-aurora :is(.status-pill.warn,.status-badge){
+background:#201719;
+color:#ffb4bc;
+}
+
+body.theme-aurora .status-pill.ok{
+background:#102018;
+color:#8ee3b0;
+}
+
+body.theme-tricolore .table th{
+background:
+linear-gradient(90deg, rgba(15,58,115,0.26), rgba(255,255,255,0.14), rgba(217,67,78,0.18)),
+var(--navy);
+}
+
+body.theme-tricolore .subtab.active{
+background:linear-gradient(135deg, #0f3a73 0%, #1f6ed4 62%, #d9434e 100%);
+box-shadow:0 12px 24px rgba(31,110,212,0.24);
+}
+
+body.theme-dark .theme-choice{
+background:rgba(255,255,255,0.06);
+border-color:rgba(255,255,255,0.12);
+}
+
+body.theme-dark .theme-reset-button{
+background:rgba(255,255,255,0.08);
+color:var(--text);
+}
+
 body.theme-dark .status-ok{
 background:#15392c;
 color:#8ce0bc;
@@ -1298,19 +2763,147 @@ background:#4a201f;
 color:#ffb4ab;
 }
 
+body.theme-dark .notification-center__panel{
+background:#12222d;
+border-color:#28414f;
+box-shadow:0 24px 54px rgba(0,0,0,0.42);
+}
+
+body.theme-dark .notification-center__panel::before{
+background:#12222d;
+border-color:#28414f;
+}
+
+body.theme-dark .notification-center__header{
+border-bottom-color:#28414f;
+}
+
+body.theme-dark .notification-center__header strong,
+body.theme-dark .topbar-notification__body strong{
+color:#e5f0f7;
+}
+
+body.theme-dark .topbar-notification{
+background:#0d1820;
+border-color:#28414f;
+color:#e5f0f7;
+}
+
+body.theme-dark .topbar-notification:hover{
+background:#142633;
+border-color:rgba(94,211,176,0.48);
+}
+
+body.theme-dark .topbar-notification--info{
+background:
+linear-gradient(135deg, rgba(103,174,240,0.18), transparent 56%),
+#0d1820;
+border-color:rgba(103,174,240,0.32);
+}
+
+body.theme-dark .topbar-notification--warning{
+background:
+linear-gradient(135deg, rgba(255,194,96,0.18), transparent 56%),
+#16180f;
+border-color:rgba(255,194,96,0.34);
+}
+
+body.theme-dark .topbar-notification--danger{
+background:
+linear-gradient(135deg, rgba(255,124,109,0.18), transparent 56%),
+#1a1212;
+border-color:rgba(255,124,109,0.36);
+}
+
+body.theme-dark .topbar-notification__count{
+background:#193140;
+color:#e5f0f7;
+}
+
+body.theme-dark .flash-message{
+background:#12222d;
+border-color:#28414f;
+color:#e5f0f7;
+}
+
+@media (max-width: 1180px){
+.content{
+padding:28px 24px;
+}
+
+.topbar{
+gap:12px;
+padding:11px 18px;
+}
+
+.topbar-message{
+text-align:left;
+font-size:0.9rem;
+}
+
+.topbar-tools{
+gap:10px;
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel,.modal-dialog){
+border-radius:18px;
+}
+
+:is(.dashboard-grid,.dashboard-cards,.dashboard-kpis,.kpi-grid,.stats-grid,.summary-grid,.report-grid,.operation-grid,.cards-grid,.camion-kpi-grid,.finance-summary,.filter-summary-grid){
+grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+}
+
+:is(.filter-bar,.search-form,.report-filters,.selector-form,.filters-grid,.operation-filters,.cash-filters){
+grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+align-items:stretch;
+}
+
+:is(.filter-bar,.search-form,.report-filters,.selector-form,.filters-grid,.operation-filters,.cash-filters) :is(input,select,button,.btn,.btn-secondary,a){
+min-width:0;
+width:100%;
+box-sizing:border-box;
+}
+
+.table-wrap,
+.table-wrapper,
+.cash-table-wrap,
+.sidebar-table-wrap,
+.compact-wrap{
+overflow-x:auto;
+max-width:100%;
+-webkit-overflow-scrolling:touch;
+}
+
+.table,
+.report-table,
+.sidebar-table{
+min-width:820px;
+}
+
+.profile-drawer{
+width:min(390px, calc(100vw - 18px));
+}
+}
+
 @media (max-width: 900px){
+html,
 body{
 display:block;
+max-width:100%;
+overflow-x:hidden;
 }
 
 .topbar{
 padding:12px 16px 12px 72px;
 flex-wrap:wrap;
+position:sticky;
+top:0;
 }
 
 .topbar-message{
 width:100%;
 font-size:0.86rem;
+order:2;
 }
 
 .topbar-user{
@@ -1320,12 +2913,96 @@ font-size:0.84rem;
 .topbar-tools{
 width:100%;
 justify-content:space-between;
+order:3;
+gap:10px;
+}
+
+.topbar-notifications,
+.notification-center{
+width:100%;
+}
+
+.notification-center__toggle{
+width:100%;
+justify-content:space-between;
+box-sizing:border-box;
+}
+
+.notification-center__panel{
+left:0;
+right:auto;
+width:100%;
+box-sizing:border-box;
+}
+
+.notification-center__panel::before{
+right:26px;
+}
+
+@media (prefers-reduced-motion: reduce){
+.notification-center__total,
+.notification-center__panel,
+.topbar-notification,
+.notification-center__toggle,
+.flash-message,
+.notification-center__toggle::after,
+.notification-center__icon,
+.topbar-notification__dot,
+.content,
+.sidebar,
+.sidebar-section__panel,
+.table,
+.card,
+.form-shell,
+.subtabs,
+.search-form,
+.modal.is-open,
+.modal-dialog,
+.content-reveal,
+.profile-drawer__animated,
+.profile-drawer__avatar{
+animation:none;
+}
+
+.notification-center__toggle,
+.topbar-notification,
+.user-avatar,
+.sidebar a,
+.sidebar-section__toggle,
+.table tbody tr,
+.btn,
+.btn-edit,
+.btn-delete,
+.btn-secondary,
+.card,
+.subtab,
+.app-form input,
+.app-form select,
+.app-form textarea,
+.search-form input,
+.search-form select,
+.modal-close{
+transition:none;
+}
+
+body.page-leaving .content,
+.content-motion-ready .content-reveal,
+.profile-drawer__animated{
+opacity:1;
+transform:none;
+transition:none;
+}
 }
 
 .mobile-nav-toggle{
 display:inline-flex;
 align-items:center;
 justify-content:center;
+top:12px;
+left:14px;
+z-index:65;
+width:44px;
+height:44px;
 }
 
 .sidebar-overlay{
@@ -1336,7 +3013,7 @@ transition:opacity 0.2s ease;
 }
 
 .sidebar{
- width:min(280px, 82vw);
+ width:min(320px, 86vw);
  min-height:100vh;
  position:fixed;
  left:0;
@@ -1344,8 +3021,9 @@ transition:opacity 0.2s ease;
  bottom:0;
  transform:translateX(-100%);
  transition:transform 0.24s ease;
- padding-top:76px;
+ padding:76px 16px 24px;
  overflow-y:auto;
+ box-sizing:border-box;
 }
 
 body.sidebar-open .sidebar{
@@ -1361,8 +3039,62 @@ body.sidebar-open .sidebar-overlay{
  padding:24px 20px 20px;
 }
 
+.content::before{
+ left:0;
+}
+
 .form-grid{
 grid-template-columns:1fr;
+}
+
+:is(.dashboard-grid,.dashboard-cards,.dashboard-kpis,.kpi-grid,.stats-grid,.summary-grid,.report-grid,.operation-grid,.cards-grid,.camion-kpi-grid,.finance-summary,.filter-summary-grid,.form-grid){
+grid-template-columns:1fr !important;
+}
+
+:is(.filter-bar,.search-form,.report-filters,.selector-form,.filters-grid,.operation-filters,.cash-filters){
+display:grid;
+grid-template-columns:1fr !important;
+gap:10px;
+width:100%;
+}
+
+:is(.report-head,.page-header,.card-header,.dashboard-hero,.form-actions,.table-actions,.actions){
+flex-direction:column;
+align-items:stretch !important;
+gap:10px;
+}
+
+:is(.report-head,.page-header,.card-header,.dashboard-hero,.form-actions,.table-actions,.actions) :is(.btn,.btn-secondary,a,button){
+width:100%;
+box-sizing:border-box;
+justify-content:center;
+}
+
+:is(.app-form input,.app-form select,.app-form textarea,.search-form input,.search-form select,.filter-bar input,.filter-bar select){
+min-height:48px;
+font-size:16px;
+}
+
+.table,
+.report-table,
+.sidebar-table{
+min-width:720px;
+font-size:0.9rem;
+}
+
+.content > .table{
+display:block;
+min-width:0;
+max-width:100%;
+overflow-x:auto;
+-webkit-overflow-scrolling:touch;
+}
+
+.table th,
+.table td,
+.report-table th,
+.report-table td{
+padding:11px 12px;
 }
 
 .field-full{
@@ -1392,18 +3124,238 @@ min-width:0;
 }
 }
 
+@media (max-width: 640px){
+body{
+background:
+radial-gradient(circle at 100% 0%, rgba(79,191,159,0.14), transparent 34%),
+linear-gradient(180deg, #f8fbfd 0%, var(--sand) 100%);
+}
+
+.topbar{
+padding:10px 12px 10px 64px;
+gap:8px;
+}
+
+.topbar-message{
+font-size:0.78rem;
+line-height:1.35;
+}
+
+.topbar-tools{
+display:grid;
+grid-template-columns:1fr;
+width:100%;
+}
+
+.topbar-user{
+justify-content:flex-end;
+}
+
+.notification-center__label span{
+display:none;
+}
+
+.notification-center__panel{
+position:fixed;
+top:64px;
+left:10px;
+right:10px;
+width:auto;
+max-height:calc(100vh - 86px);
+overflow:auto;
+}
+
+.notification-center__panel::before{
+display:none;
+}
+
+.mobile-nav-toggle{
+top:10px;
+left:10px;
+width:42px;
+height:42px;
+border-radius:13px;
+}
+
+.sidebar{
+width:min(300px, 90vw);
+padding:68px 12px 22px;
+}
+
+.sidebar-brand{
+font-size:1rem;
+margin-bottom:16px;
+padding:2px 0 8px;
+}
+
+.sidebar-brand__mark{
+width:32px;
+height:32px;
+min-width:32px;
+}
+
+.sidebar-brand__name{
+font-size:0.95rem;
+}
+
+.sidebar-brand__suite{
+font-size:0.74rem;
+}
+
+.sidebar a,
+.sidebar-section__toggle{
+padding:10px 11px;
+border-radius:13px;
+}
+
+.sidebar-section{
+border-radius:15px;
+}
+
+.sidebar-section__panel{
+margin-left:4px;
+padding-left:8px;
+}
+
+.sidebar-menu-icon{
+width:25px;
+height:25px;
+min-width:25px;
+border-radius:9px;
+}
+
+.content{
+padding:18px 12px 16px;
+}
+
+.content::before{
+height:2px;
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel,.modal-dialog,.subtabs,.search-form){
+border-radius:15px;
+}
+
+:is(.card,.form-shell,.report-card,.kpi-card,.summary-panel){
+padding:14px !important;
+}
+
+.content > h1:first-child,
+.content > .section-title:first-child,
+.report-head h1,
+.dashboard-hero h1,
+.form-shell h1{
+font-size:clamp(1.35rem, 7vw, 1.9rem);
+line-height:1.15;
+}
+
+.content > h1:first-child::after,
+.content > .section-title:first-child::after,
+.report-head h1::after,
+.dashboard-hero h1::after,
+.form-shell h1::after{
+width:44px;
+height:3px;
+margin-top:8px;
+}
+
+.subtabs{
+display:grid;
+grid-template-columns:1fr;
+gap:8px;
+padding:7px;
+border-radius:16px;
+}
+
+.subtab{
+width:100%;
+box-sizing:border-box;
+}
+
+.theme-choice-grid{
+grid-template-columns:1fr;
+}
+
+.profile-drawer{
+width:100vw;
+max-width:none;
+}
+
+.profile-drawer__hero{
+padding:48px 20px 24px;
+}
+
+.profile-drawer__body{
+padding:18px;
+}
+
+.profile-info-grid{
+grid-template-columns:1fr;
+}
+
+.modal-dialog{
+margin:10px;
+padding:18px;
+max-height:calc(100vh - 20px);
+overflow:auto;
+}
+
+.table,
+.report-table,
+.sidebar-table{
+min-width:660px;
+font-size:0.84rem;
+}
+}
+
 </style>
 
 </head>
 
-<body>
+<body class="{% if '/dashboard/' in request.path %}app-module-dashboard{% elif '/commandes/rapport-global/' in request.path or '/clients/rapports/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path %}app-module-reports{% elif '/clients/encaissements/' in request.path or '/operations/comptable/' in request.path or '/operations/comptable-client/' in request.path or '/operations/facturation/' in request.path %}app-module-comptabilite{% elif '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path %}app-module-commercial{% elif '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path %}app-module-logistique{% elif '/maintenance/' in request.path or '/depenses/' in request.path %}app-module-maintenance{% endif %}">
 
 <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Ouvrir le menu">...</button>
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
 <div class="sidebar">
 
-<h2>MSTrans</h2>
+<div class="sidebar-brand" aria-label="ZOBOKO Business Suite">
+<span class="sidebar-brand__mark" aria-hidden="true">
+<svg viewBox="0 0 100 100" role="img" focusable="false">
+<g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<path d="M50 8 86 29 86 71 50 92 14 71 14 29 50 8Z"/>
+<path d="M50 8 50 92"/>
+<path d="M14 29 50 50 86 29"/>
+<path d="M14 71 50 50 86 71"/>
+<path d="M30 38 50 26 70 38"/>
+<path d="M30 62 50 74 70 62"/>
+<path d="M30 38 30 62"/>
+<path d="M70 38 70 62"/>
+<path d="M30 38 70 62"/>
+<path d="M70 38 30 62"/>
+</g>
+<g fill="currentColor">
+<circle cx="50" cy="8" r="8"/>
+<circle cx="86" cy="29" r="8"/>
+<circle cx="86" cy="71" r="8"/>
+<circle cx="50" cy="92" r="8"/>
+<circle cx="14" cy="71" r="8"/>
+<circle cx="14" cy="29" r="8"/>
+<circle cx="50" cy="26" r="8"/>
+<circle cx="70" cy="38" r="8"/>
+<circle cx="70" cy="62" r="8"/>
+<circle cx="50" cy="74" r="8"/>
+<circle cx="30" cy="62" r="8"/>
+<circle cx="30" cy="38" r="8"/>
+<circle cx="50" cy="50" r="8"/>
+</g>
+</svg>
+</span>
+<span class="sidebar-brand__text">
+<span class="sidebar-brand__name">ZOBOKO</span>
+<span class="sidebar-brand__suite">Business Suite</span>
+</span>
+</div>
 
 {% if can_access_dashboard %}<a href="/dashboard/" class="sidebar-standalone {% if '/dashboard/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Tableau de Bord</span></a>{% endif %}
 
@@ -1475,15 +3427,16 @@ min-width:0;
 </div>
 {% elif not is_admin_user and user_role == 'commercial' or not is_admin_user and user_role == 'responsable_commercial' %}
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Rapport global</span></a>{% endif %}
+{% if can_access_client_invoice_reports %}<a href="/clients/rapports/factures-clients/" class="sidebar-standalone {% if '/clients/rapports/factures-clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Factures clients</span></a>{% endif %}
 {% if can_access_prospects or can_access_clients or can_access_commandes %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9688;</span>Commercial</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_prospects %}<a href="/prospects/" class="{% if '/prospects/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9676;</span>Prospects</span></a>{% endif %}
-    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
+    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
     {% if can_access_commandes %}<a href="/commandes/" class="{% if '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Commandes</span></a>{% endif %}
 </div>
 </div>
@@ -1492,16 +3445,16 @@ min-width:0;
 {% if can_access_rapport_global %}<a href="/commandes/rapport-global/" class="sidebar-standalone {% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Rapport global</span></a>{% endif %}
 {% if can_access_operations_comptable or can_access_operations_secretaire or can_access_operations_sommiers or can_access_operations_facturation or can_access_clients %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Comptabilite</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="{% if '/operations/comptable/' in request.path and '/operations/comptable/sommiers/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Operation comptable</span></a>{% endif %}
     {% if can_access_operations_secretaire %}<a href="/operations/secretaire/" class="{% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire BL</span></a>{% endif %}
     {% if can_access_operations_sommiers %}<a href="/operations/comptable/sommiers/" class="{% if '/operations/comptable/sommiers/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Sommiers</span></a>{% endif %}
     {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="{% if '/operations/facturation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Facturation</span></a>{% endif %}
-    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
+    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path and '/clients/rapports/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
     {% if user_role == 'comptable' or user_role == 'comptable_sogefi' %}<a href="/clients/encaissements/" class="{% if '/clients/encaissements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Encaissements clients</span></a>{% endif %}
 </div>
 </div>
@@ -1517,6 +3470,18 @@ min-width:0;
     <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport caisse</span></a>
     <a href="/maintenance/caisse/situation/" class="{% if '/maintenance/caisse/situation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Situation caisse</span></a>
     <a href="/maintenance/caisse/dg/" class="{% if '/maintenance/caisse/dg/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Compte DG</span></a>
+</div>
+</div>
+{% elif not is_admin_user and user_role == 'comptable_client_soni' %}
+<div class="sidebar-section" data-sidebar-section>
+<button type="button" class="sidebar-section__toggle {% if '/operations/comptable-client/' in request.path %}active{% endif %}" data-sidebar-toggle>
+    <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Comptable client</span>
+    <span class="sidebar-section__icon">&#9662;</span>
+</button>
+<div class="sidebar-section__panel {% if '/operations/comptable-client/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/operations/comptable-client/" class="{% if request.path == '/operations/comptable-client/' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>BL a confirmer</span></a>
+    <a href="/operations/comptable-client/perequation/" class="{% if '/operations/comptable-client/perequation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Perequation SGP</span></a>
+    <a href="/operations/comptable-client/rapport-perequation/" class="{% if '/operations/comptable-client/rapport-perequation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapport perequation</span></a>
 </div>
 </div>
 {% elif not is_admin_user and user_role == 'dga_sogefi' %}
@@ -1560,12 +3525,15 @@ min-width:0;
 </div>
 {% elif not is_admin_user and user_role == 'logistique' %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Rapports</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
     <a href="/commandes/rapport-global/" class="{% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>
+    {% if can_access_financial_reports %}<a href="/clients/rapports/encaissements-commerciaux/" class="{% if '/clients/rapports/encaissements-commerciaux/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Encaissements commerciaux</span></a>{% endif %}
+    {% if can_access_client_invoice_reports %}<a href="/clients/rapports/factures-clients/" class="{% if '/clients/rapports/factures-clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Factures clients</span></a>{% endif %}
+    {% if can_access_rapport_perequation %}<a href="/operations/comptable-client/rapport-perequation/" class="{% if '/operations/comptable-client/rapport-perequation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Perequation SGP</span></a>{% endif %}
     <a href="/camions/rapports/" class="{% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>
     <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Rapports maintenance</span></a>
     <a href="/maintenance/stock/rapports/" class="{% if '/maintenance/stock/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapports stock</span></a>
@@ -1626,12 +3594,15 @@ min-width:0;
     <a href="/maintenance/fournisseurs/" class="{% if '/maintenance/fournisseurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Fournisseurs</span></a>
     {% elif sidebar_entity_is_soni %}
     <div class="sidebar-section sidebar-subsection" data-sidebar-section>
-        <button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
+        <button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
             <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Rapports</span>
             <span class="sidebar-section__icon">&#9662;</span>
         </button>
-        <div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+        <div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
             <a href="/commandes/rapport-global/" class="{% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>
+            {% if can_access_financial_reports %}<a href="/clients/rapports/encaissements-commerciaux/" class="{% if '/clients/rapports/encaissements-commerciaux/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Encaissements commerciaux</span></a>{% endif %}
+            {% if can_access_client_invoice_reports %}<a href="/clients/rapports/factures-clients/" class="{% if '/clients/rapports/factures-clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Factures clients</span></a>{% endif %}
+            {% if can_access_rapport_perequation %}<a href="/operations/comptable-client/rapport-perequation/" class="{% if '/operations/comptable-client/rapport-perequation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Perequation SGP</span></a>{% endif %}
             <a href="/camions/rapports/" class="{% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>
             <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Rapports maintenance</span></a>
             <a href="/maintenance/stock/rapports/" class="{% if '/maintenance/stock/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapports stock</span></a>
@@ -1639,11 +3610,11 @@ min-width:0;
         </div>
     </div>
     <div class="sidebar-section sidebar-subsection" data-sidebar-section>
-        <button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
+        <button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path and '/clients/rapports/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
             <span class="sidebar-label"><span class="sidebar-menu-icon">&#9688;</span>Commercial</span>
             <span class="sidebar-section__icon">&#9662;</span>
         </button>
-        <div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
+        <div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/encaissements/' not in request.path and '/clients/rapports/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
             <a href="/prospects/" class="{% if '/prospects/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9676;</span>Prospects</span></a>
             <a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>
             <a href="/commandes/" class="{% if '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Commandes</span></a>
@@ -1706,12 +3677,15 @@ min-width:0;
 {% else %}
 {% if can_access_reports_center %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Rapports</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/commandes/rapport-global/' in request.path or '/clients/rapports/encaissements-commerciaux/' in request.path or '/clients/rapports/factures-clients/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path or '/maintenance/rapports/pannes/' in request.path %}is-open{% endif %}" data-sidebar-panel>
     <a href="/commandes/rapport-global/" class="{% if '/commandes/rapport-global/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Rapport global</span></a>
+    {% if can_access_financial_reports %}<a href="/clients/rapports/encaissements-commerciaux/" class="{% if '/clients/rapports/encaissements-commerciaux/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Encaissements commerciaux</span></a>{% endif %}
+    {% if can_access_client_invoice_reports %}<a href="/clients/rapports/factures-clients/" class="{% if '/clients/rapports/factures-clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Factures clients</span></a>{% endif %}
+    {% if can_access_rapport_perequation %}<a href="/operations/comptable-client/rapport-perequation/" class="{% if '/operations/comptable-client/rapport-perequation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Perequation SGP</span></a>{% endif %}
     <a href="/camions/rapports/" class="{% if '/camions/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapport camions</span></a>
     <a href="/maintenance/rapports/" class="{% if '/maintenance/rapports/' in request.path and '/maintenance/rapports/pannes/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Rapports maintenance</span></a>
     <a href="/maintenance/stock/rapports/" class="{% if '/maintenance/stock/rapports/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Rapports stock</span></a>
@@ -1722,30 +3696,31 @@ min-width:0;
 
 {% if can_access_prospects or can_access_clients or can_access_commandes %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9688;</span>Commercial</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/prospects/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_prospects %}<a href="/prospects/" class="{% if '/prospects/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9676;</span>Prospects</span></a>{% endif %}
-    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
+    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/rapports/' not in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
     {% if can_access_commandes %}<a href="/commandes/" class="{% if '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Commandes</span></a>{% endif %}
 </div>
 </div>
 {% endif %}
 
-{% if can_access_operations_comptable or can_access_operations_secretaire or can_access_operations_sommiers or can_access_operations_facturation %}
+{% if can_access_operations_comptable or can_access_operations_secretaire or can_access_operations_sommiers or can_access_operations_facturation or can_access_comptable_client %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/operations/comptable/' in request.path or '/operations/comptable-client/' in request.path and '/operations/comptable-client/rapport-perequation/' not in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9671;</span>Comptabilite</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/operations/comptable/' in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/operations/comptable/' in request.path or '/operations/comptable-client/' in request.path and '/operations/comptable-client/rapport-perequation/' not in request.path or '/operations/secretaire/' in request.path or '/operations/facturation/' in request.path or '/clients/' in request.path and '/clients/rapports/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_operations_comptable %}<a href="/operations/comptable/" class="{% if '/operations/comptable/' in request.path and '/operations/comptable/sommiers/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Operation comptable</span></a>{% endif %}
     {% if can_access_operations_secretaire %}<a href="/operations/secretaire/" class="{% if '/operations/secretaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9993;</span>Secretaire BL</span></a>{% endif %}
     {% if can_access_operations_sommiers %}<a href="/operations/comptable/sommiers/" class="{% if '/operations/comptable/sommiers/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9638;</span>Sommiers</span></a>{% endif %}
     {% if can_access_operations_facturation %}<a href="/operations/facturation/" class="{% if '/operations/facturation/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Facturation</span></a>{% endif %}
-    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
+    {% if can_access_comptable_client %}<a href="/operations/comptable-client/" class="{% if '/operations/comptable-client/' in request.path and '/operations/comptable-client/rapport-perequation/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9671;</span>Comptable client</span></a>{% endif %}
+    {% if can_access_clients %}<a href="/clients/" class="{% if '/clients/' in request.path and '/clients/encaissements/' not in request.path and '/clients/rapports/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Clients</span></a>{% endif %}
     {% if can_access_clients %}<a href="/clients/encaissements/" class="{% if '/clients/encaissements/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Encaissements clients</span></a>{% endif %}
 </div>
 </div>
@@ -1753,11 +3728,11 @@ min-width:0;
 
 {% if can_access_operations_logistique or can_access_operations_logisticien or can_access_operations_chef_chauffeur or can_access_operations_transitaire or can_access_camions or can_access_chauffeurs or can_access_documents or can_access_depenses %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path or '/depenses/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path and user_role == 'logistique' %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path and '/camions/rapports/' not in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path or '/depenses/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path and user_role == 'logistique' %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9702;</span>Logistique</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path or '/depenses/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path and user_role == 'logistique' %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path and '/camions/rapports/' not in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path or '/depenses/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path and user_role == 'logistique' %}is-open{% endif %}" data-sidebar-panel>
     {% if can_access_operations_logistique %}
     <a href="{% if user_role == 'logistique' %}/commandes/{% else %}/operations/logistique/{% endif %}" class="{% if '/operations/logistique/' in request.path or '/commandes/' in request.path and '/commandes/rapport-global/' not in request.path and user_role == 'logistique' %}active{% endif %}">
     <span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9634;</span>{% if user_role == 'logistique' %}Commandes a affecter{% else %}Operation logistique{% endif %}</span>
@@ -1766,7 +3741,7 @@ min-width:0;
     {% if can_access_operations_logisticien %}<a href="/operations/logisticien/" class="{% if '/operations/logisticien/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8646;</span>Chargement / Livraison</span></a>{% endif %}
     {% if can_access_operations_chef_chauffeur %}<a href="/operations/chef-chauffeur/" class="{% if '/operations/chef-chauffeur/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9673;</span>Chef chauffeur</span></a>{% endif %}
     {% if can_access_operations_transitaire %}<a href="/operations/transitaire/" class="{% if '/operations/transitaire/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8644;</span>Transitaire</span></a>{% endif %}
-    {% if can_access_camions %}<a href="/camions/" class="{% if '/camions/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Parc automobile</span></a>{% endif %}
+    {% if can_access_camions %}<a href="/camions/" class="{% if '/camions/' in request.path and '/camions/rapports/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Parc automobile</span></a>{% endif %}
     {% if can_access_chauffeurs %}<a href="/chauffeurs/" class="{% if '/chauffeurs/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9675;</span>Chauffeurs</span></a>{% endif %}
     {% if can_access_documents %}<a href="/documents/" class="{% if '/documents/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9636;</span>Documents</span></a>{% endif %}
     {% if can_access_depenses %}<a href="/depenses/" class="{% if '/depenses/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9672;</span>Depenses</span></a>{% endif %}
@@ -1776,11 +3751,11 @@ min-width:0;
 
 {% if can_access_maintenance %}
 <div class="sidebar-section" data-sidebar-section>
-<button type="button" class="sidebar-section__toggle {% if '/maintenance/' in request.path %}active{% endif %}" data-sidebar-toggle>
+<button type="button" class="sidebar-section__toggle {% if '/maintenance/' in request.path and '/maintenance/rapports/' not in request.path and '/maintenance/stock/rapports/' not in request.path %}active{% endif %}" data-sidebar-toggle>
     <span class="sidebar-label"><span class="sidebar-menu-icon">&#9689;</span>Maintenance</span>
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
-<div class="sidebar-section__panel {% if '/maintenance/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+<div class="sidebar-section__panel {% if '/maintenance/' in request.path and '/maintenance/rapports/' not in request.path and '/maintenance/stock/rapports/' not in request.path %}is-open{% endif %}" data-sidebar-panel>
     <a href="{% if user_role == 'comptable' or user_role == 'caissiere' %}/maintenance/paiements/{% else %}/maintenance/{% endif %}" class="{% if '/maintenance/' in request.path and '/maintenance/rapports/' not in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9643;</span>Maintenance</span></a>
 </div>
 </div>
@@ -1826,12 +3801,34 @@ min-width:0;
 {% endif %}
 {% if topbar_notifications %}
 <div class="topbar-notifications" aria-label="Notifications">
+<details class="notification-center">
+<summary class="notification-center__toggle" aria-label="{{ topbar_notifications_total }} notification(s) a traiter">
+<span class="notification-center__icon" aria-hidden="true"></span>
+<span class="notification-center__label">
+<strong>Notifications</strong>
+<span>Actions a traiter</span>
+</span>
+<span class="notification-center__total">{{ topbar_notifications_total }}</span>
+</summary>
+<div class="notification-center__panel">
+<div class="notification-center__header">
+<strong>Notifications recentes</strong>
+<span>{{ topbar_notifications_total }} en attente</span>
+</div>
+<div class="notification-list">
 {% for notification in topbar_notifications %}
-<a href="{{ notification.url }}" class="topbar-notification topbar-notification--{{ notification.tone }}" title="{{ notification.label }} : {{ notification.count }}">
-<span>{{ notification.label }}</span>
+<a href="{{ notification.url }}" class="topbar-notification topbar-notification--{{ notification.tone }}" style="--notification-index:{{ forloop.counter0 }};" title="{{ notification.label }} : {{ notification.count }}" aria-label="{{ notification.label }} : {{ notification.count }} element(s) en attente">
+<span class="topbar-notification__dot" aria-hidden="true"></span>
+<span class="topbar-notification__body">
+<strong>{{ notification.label }}</strong>
+<span>{% if notification.tone == 'danger' %}Priorite haute{% elif notification.tone == 'warning' %}A surveiller{% else %}Suivi en cours{% endif %}</span>
+</span>
 <span class="topbar-notification__count">{{ notification.count }}</span>
 </a>
 {% endfor %}
+</div>
+</div>
+</details>
 </div>
 {% endif %}
 <div class="topbar-user">
@@ -1855,9 +3852,9 @@ min-width:0;
 {% if request.user.is_authenticated %}
 <div class="profile-drawer-backdrop" id="profile-drawer-backdrop"></div>
 <aside class="profile-drawer" id="profile-drawer" aria-hidden="true" aria-labelledby="profile-drawer-title">
-<button type="button" class="profile-drawer__close" id="profile-drawer-close" aria-label="Fermer le profil">x</button>
-<div class="profile-drawer__hero">
-<div class="profile-drawer__avatar-wrap">
+<button type="button" class="profile-drawer__close profile-drawer__animated" id="profile-drawer-close" aria-label="Fermer le profil">x</button>
+<div class="profile-drawer__hero profile-drawer__animated">
+<div class="profile-drawer__avatar-wrap profile-drawer__animated">
 <span class="profile-avatar profile-drawer__avatar" aria-hidden="true">
 {% if current_user_profile.photo %}
 <img src="{{ current_user_profile.photo.url }}" alt="">
@@ -1867,40 +3864,59 @@ min-width:0;
 </span>
 {% if request.user.is_active %}<span class="profile-drawer__status-dot" title="Compte actif"></span>{% endif %}
 </div>
-<h2 class="profile-drawer__name" id="profile-drawer-title">{{ request.user.get_full_name|default:request.user.username }}</h2>
-<p class="profile-drawer__email">{{ request.user.email|default:"Aucun email renseigne" }}</p>
+<h2 class="profile-drawer__name profile-drawer__animated" id="profile-drawer-title">{{ request.user.get_full_name|default:request.user.username }}</h2>
+<p class="profile-drawer__email profile-drawer__animated">{{ request.user.email|default:"Aucun email renseigne" }}</p>
 </div>
 <div class="profile-drawer__body">
-<div class="profile-drawer__status">
+<div class="profile-drawer__status profile-drawer__animated">
 <span>Etat du compte</span>
 <span class="profile-drawer__status-pill">{% if request.user.is_active %}Actif{% else %}Inactif{% endif %}</span>
 </div>
 <div class="profile-info-grid">
-<div class="profile-info-row">
+<div class="profile-info-row profile-drawer__animated">
 <span>Nom complet</span>
 <strong>{{ request.user.get_full_name|default:"Non renseigne" }}</strong>
 </div>
-<div class="profile-info-row">
+<div class="profile-info-row profile-drawer__animated">
 <span>Login</span>
 <strong>{{ request.user.username }}</strong>
 </div>
-<div class="profile-info-row">
+<div class="profile-info-row profile-drawer__animated">
 <span>Email</span>
 <strong>{{ request.user.email|default:"Non renseigne" }}</strong>
 </div>
-<div class="profile-info-row">
+<div class="profile-info-row profile-drawer__animated">
 <span>Poste</span>
 <strong>{{ user_role_label|default:"Aucun role" }}</strong>
 </div>
 </div>
-<div class="profile-drawer__theme">
-<label for="theme-select">Theme</label>
-<select id="theme-select" aria-label="Choisir le theme">
-<option value="light">Mode clair</option>
-<option value="dark">Mode sombre</option>
-</select>
+<div class="profile-drawer__theme profile-drawer__animated">
+<button type="button" class="profile-drawer__theme-toggle" id="profile-theme-toggle" aria-expanded="false" aria-controls="profile-theme-panel">
+<span class="profile-drawer__theme-title">Apparence</span>
+</button>
+<div class="profile-drawer__theme-panel" id="profile-theme-panel">
+<div class="theme-choice-grid" role="group" aria-label="Choisir le theme">
+<button type="button" class="theme-choice theme-choice--light" data-theme-option="light" aria-pressed="false">
+<span class="theme-choice__swatches" aria-hidden="true"><span></span><span></span><span></span></span>
+<span class="theme-choice__label">Clair</span>
+</button>
+<button type="button" class="theme-choice theme-choice--aurora" data-theme-option="aurora" aria-pressed="false">
+<span class="theme-choice__swatches" aria-hidden="true"><span></span><span></span><span></span></span>
+<span class="theme-choice__label">Noir rouge</span>
+</button>
+<button type="button" class="theme-choice theme-choice--tricolore" data-theme-option="tricolore" aria-pressed="false">
+<span class="theme-choice__swatches" aria-hidden="true"><span></span><span></span><span></span></span>
+<span class="theme-choice__label">Bleu blanc rouge</span>
+</button>
+<button type="button" class="theme-choice theme-choice--dark" data-theme-option="dark" aria-pressed="false">
+<span class="theme-choice__swatches" aria-hidden="true"><span></span><span></span><span></span></span>
+<span class="theme-choice__label">Sombre</span>
+</button>
 </div>
-<div class="profile-drawer__actions">
+<button type="button" class="theme-reset-button" id="theme-reset-button">Restaurer le theme clair</button>
+</div>
+</div>
+<div class="profile-drawer__actions profile-drawer__animated">
 <a href="/comptes/profil/" class="profile-drawer__edit">Modifier</a>
 <a href="/comptes/deconnexion/" class="profile-drawer__logout">Se deconnecter</a>
 </div>
@@ -1932,11 +3948,80 @@ min-width:0;
 const mobileNavToggle = document.getElementById("mobile-nav-toggle");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
 const themeSelect = document.getElementById("theme-select");
+const themeOptionButtons = document.querySelectorAll("[data-theme-option]");
+const themeResetButton = document.getElementById("theme-reset-button");
+const profileThemeToggle = document.getElementById("profile-theme-toggle");
+const profileThemePanel = document.getElementById("profile-theme-panel");
 const entitySwitcherSelect = document.getElementById("entity-switcher-select");
 const profileDrawer = document.getElementById("profile-drawer");
 const profileDrawerOpen = document.getElementById("profile-drawer-open");
 const profileDrawerClose = document.getElementById("profile-drawer-close");
 const profileDrawerBackdrop = document.getElementById("profile-drawer-backdrop");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+const notificationCenter = document.querySelector(".notification-center");
+let notificationHoverTimer;
+let profileHoverTimer;
+let profileCloseTimer;
+let pageLeaveFallbackTimer;
+
+function prepareContentMotion() {
+    const content = document.querySelector(".content");
+    if (!content || reduceMotion) {
+        return;
+    }
+    content.classList.add("content-motion-ready");
+    const revealItems = content.querySelectorAll(
+        ".page-header, .card, .form-shell, .table, .subtabs, .search-form, .operation-shell, .summary-panel, .dashboard-page"
+    );
+    revealItems.forEach((item, index) => {
+        item.classList.add("content-reveal");
+        item.style.setProperty("--content-reveal-delay", `${Math.min(index * 30, 210)}ms`);
+    });
+
+    if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                entry.target.classList.toggle("is-visible", entry.isIntersecting);
+            });
+        }, { threshold: 0.08, rootMargin: "0px 0px -28px 0px" });
+        revealItems.forEach((item) => observer.observe(item));
+    } else {
+        revealItems.forEach((item) => item.classList.add("is-visible"));
+    }
+}
+
+function shouldAnimateNavigation(link) {
+    if (reduceMotion || !link || link.target || link.hasAttribute("download")) {
+        return false;
+    }
+    if (link.dataset.noPageTransition === "true") {
+        return false;
+    }
+    const href = link.getAttribute("href") || "";
+    if (!href || href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return false;
+    }
+    if (href.includes("/export/")) {
+        return false;
+    }
+    const nextUrl = new URL(link.href, window.location.href);
+    return nextUrl.origin === window.location.origin && nextUrl.href !== window.location.href;
+}
+
+function animatePageLeave(nextUrl) {
+    if (document.body.classList.contains("page-leaving")) {
+        return;
+    }
+    document.body.classList.add("page-leaving");
+    window.clearTimeout(pageLeaveFallbackTimer);
+    pageLeaveFallbackTimer = window.setTimeout(() => {
+        document.body.classList.remove("page-leaving");
+    }, 1400);
+    window.setTimeout(() => {
+        window.location.href = nextUrl;
+    }, 190);
+}
 
 function toggleSidebar(forceOpen) {
     const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !document.body.classList.contains("sidebar-open");
@@ -1944,37 +4029,137 @@ function toggleSidebar(forceOpen) {
 }
 
 function applyTheme(theme) {
-    const selectedTheme = theme === "dark" ? "dark" : "light";
+    const allowedThemes = ["light", "aurora", "tricolore", "dark"];
+    const selectedTheme = allowedThemes.includes(theme) ? theme : "light";
     document.body.classList.toggle("theme-dark", selectedTheme === "dark");
+    document.body.classList.toggle("theme-aurora", selectedTheme === "aurora");
+    document.body.classList.toggle("theme-tricolore", selectedTheme === "tricolore");
     if (themeSelect) {
         themeSelect.value = selectedTheme;
     }
+    themeOptionButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", button.dataset.themeOption === selectedTheme ? "true" : "false");
+    });
     localStorage.setItem("mst-theme", selectedTheme);
 }
 
 mobileNavToggle?.addEventListener("click", () => toggleSidebar());
 sidebarOverlay?.addEventListener("click", () => toggleSidebar(false));
 themeSelect?.addEventListener("change", (event) => applyTheme(event.target.value));
+themeOptionButtons.forEach((button) => {
+    button.addEventListener("click", () => applyTheme(button.dataset.themeOption));
+});
+themeResetButton?.addEventListener("click", () => applyTheme("light"));
+profileThemeToggle?.addEventListener("click", () => {
+    const themeBox = profileThemeToggle.closest(".profile-drawer__theme");
+    const shouldOpen = !themeBox?.classList.contains("is-open");
+    themeBox?.classList.toggle("is-open", shouldOpen);
+    profileThemeToggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    profileThemePanel?.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+});
 entitySwitcherSelect?.addEventListener("change", () => document.getElementById("entity-switcher-form")?.submit());
 
 applyTheme(localStorage.getItem("mst-theme") || "light");
+prepareContentMotion();
+
+document.addEventListener("click", (event) => {
+    if (event.defaultPrevented) {
+        return;
+    }
+    const link = event.target.closest("a");
+    if (!shouldAnimateNavigation(link)) {
+        return;
+    }
+    event.preventDefault();
+    animatePageLeave(link.href);
+});
+
+document.addEventListener("submit", (event) => {
+    if (reduceMotion) {
+        return;
+    }
+    const form = event.target;
+    window.setTimeout(() => {
+        if (event.defaultPrevented || form?.dataset.noPageTransition === "true") {
+            return;
+        }
+        document.body.classList.add("page-leaving");
+        window.clearTimeout(pageLeaveFallbackTimer);
+        pageLeaveFallbackTimer = window.setTimeout(() => {
+            document.body.classList.remove("page-leaving");
+        }, 1400);
+    }, 0);
+});
+
+window.addEventListener("pageshow", () => {
+    window.clearTimeout(pageLeaveFallbackTimer);
+    document.body.classList.remove("page-leaving");
+});
 
 function toggleProfileDrawer(forceOpen) {
     if (!profileDrawer || !profileDrawerOpen) {
         return;
     }
     const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !document.body.classList.contains("profile-drawer-open");
-    document.body.classList.toggle("profile-drawer-open", shouldOpen);
-    profileDrawer.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
-    profileDrawerOpen.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    window.clearTimeout(profileCloseTimer);
+    if (shouldOpen) {
+        document.body.classList.remove("profile-drawer-closing");
+        document.body.classList.add("profile-drawer-open");
+        profileDrawer.classList.remove("is-animating");
+        profileDrawer.querySelectorAll(".profile-drawer__animated").forEach((item, index) => {
+            item.style.setProperty("--profile-delay", `${Math.min(index * 58, 460)}ms`);
+        });
+        requestAnimationFrame(() => {
+            profileDrawer.classList.add("is-animating");
+        });
+        profileDrawer.setAttribute("aria-hidden", "false");
+        profileDrawerOpen.setAttribute("aria-expanded", "true");
+        return;
+    } else if (document.body.classList.contains("profile-drawer-open")) {
+        profileDrawer.classList.remove("is-animating");
+        document.body.classList.add("profile-drawer-closing");
+        profileCloseTimer = window.setTimeout(() => {
+            document.body.classList.remove("profile-drawer-open");
+            document.body.classList.remove("profile-drawer-closing");
+            profileDrawer.setAttribute("aria-hidden", "true");
+            profileDrawerOpen.setAttribute("aria-expanded", "false");
+        }, 620);
+        return;
+    }
+}
+
+function queueProfileDrawer(forceOpen, delay = 120) {
+    if (!canHover) {
+        return;
+    }
+    window.clearTimeout(profileHoverTimer);
+    profileHoverTimer = window.setTimeout(() => toggleProfileDrawer(forceOpen), delay);
+}
+
+function queueNotificationCenter(forceOpen, delay = 100) {
+    if (!notificationCenter || !canHover) {
+        return;
+    }
+    window.clearTimeout(notificationHoverTimer);
+    notificationHoverTimer = window.setTimeout(() => {
+        notificationCenter.open = forceOpen;
+    }, delay);
 }
 
 profileDrawerOpen?.addEventListener("click", () => toggleProfileDrawer());
 profileDrawerClose?.addEventListener("click", () => toggleProfileDrawer(false));
 profileDrawerBackdrop?.addEventListener("click", () => toggleProfileDrawer(false));
+profileDrawerOpen?.addEventListener("mouseenter", () => queueProfileDrawer(true, 90));
+profileDrawerOpen?.addEventListener("mouseleave", () => queueProfileDrawer(false, 240));
+profileDrawer?.addEventListener("mouseenter", () => queueProfileDrawer(true, 0));
+profileDrawer?.addEventListener("mouseleave", () => queueProfileDrawer(false, 180));
+notificationCenter?.addEventListener("mouseenter", () => queueNotificationCenter(true, 80));
+notificationCenter?.addEventListener("mouseleave", () => queueNotificationCenter(false, 180));
+notificationCenter?.querySelector("summary")?.addEventListener("focus", () => queueNotificationCenter(true, 0));
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
         toggleProfileDrawer(false);
+        queueNotificationCenter(false, 0);
     }
 });
 
@@ -1993,14 +4178,62 @@ document.querySelectorAll("[data-modal-close]").forEach((button) => {
 });
 
 const sidebarSections = document.querySelectorAll("[data-sidebar-section]");
+const canHoverSidebar = canHover;
+const sidebarHoverTimers = new WeakMap();
 
-function closeOtherSidebarSections(currentSection) {
+function setSidebarSectionOpen(section, shouldOpen) {
+    const toggle = section.querySelector("[data-sidebar-toggle]");
+    const panel = section.querySelector("[data-sidebar-panel]");
+    if (!toggle || !panel) {
+        return;
+    }
+    panel.style.setProperty("--sidebar-panel-height", `${panel.scrollHeight}px`);
+    toggle.classList.remove("active");
+    toggle.classList.toggle("is-open-toggle", shouldOpen);
+    panel.classList.toggle("is-open", shouldOpen);
+    toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+}
+
+function queueSidebarHover(section, shouldOpen) {
+    const currentTimer = sidebarHoverTimers.get(section);
+    if (currentTimer) {
+        window.clearTimeout(currentTimer);
+    }
+    const delay = shouldOpen ? 110 : 170;
+    const timer = window.setTimeout(() => {
+        if (shouldOpen) {
+            closeOtherSidebarSections(section);
+            setSidebarSectionOpen(section, true);
+            return;
+        }
+        if (section.dataset.sidebarPinned === "true") {
+            setSidebarSectionOpen(section, true);
+        } else {
+            setSidebarSectionOpen(section, false);
+        }
+        restorePinnedSidebarSections();
+    }, delay);
+    sidebarHoverTimers.set(section, timer);
+}
+
+function restorePinnedSidebarSections() {
+    sidebarSections.forEach((section) => {
+        if (section.dataset.sidebarPinned === "true") {
+            setSidebarSectionOpen(section, true);
+        }
+    });
+}
+
+function closeOtherSidebarSections(currentSection, restorePinned = false) {
     sidebarSections.forEach((section) => {
         if (section === currentSection || section.contains(currentSection) || currentSection.contains(section)) {
             return;
         }
-        section.querySelector("[data-sidebar-toggle]")?.classList.remove("active");
-        section.querySelector("[data-sidebar-panel]")?.classList.remove("is-open");
+        if (restorePinned && section.dataset.sidebarPinned === "true") {
+            setSidebarSectionOpen(section, true);
+            return;
+        }
+        setSidebarSectionOpen(section, false);
     });
 }
 
@@ -2010,11 +4243,37 @@ sidebarSections.forEach((section) => {
     if (!toggle || !panel) {
         return;
     }
+    const initiallyOpen = toggle.classList.contains("active") || panel.classList.contains("is-open");
+    section.dataset.sidebarPinned = initiallyOpen ? "true" : "false";
+    toggle.classList.remove("active");
+    toggle.classList.toggle("is-open-toggle", initiallyOpen);
+    panel.style.setProperty("--sidebar-panel-height", `${panel.scrollHeight}px`);
+    toggle.setAttribute("aria-expanded", panel.classList.contains("is-open") ? "true" : "false");
     toggle.addEventListener("click", () => {
         const isOpen = panel.classList.contains("is-open");
         closeOtherSidebarSections(section);
-        toggle.classList.toggle("active", !isOpen);
-        panel.classList.toggle("is-open", !isOpen);
+        setSidebarSectionOpen(section, !isOpen);
+    });
+    if (canHoverSidebar) {
+        section.addEventListener("mouseenter", () => {
+            queueSidebarHover(section, true);
+        });
+        section.addEventListener("mouseleave", () => {
+            queueSidebarHover(section, false);
+        });
+        toggle.addEventListener("focus", () => {
+            closeOtherSidebarSections(section, true);
+            setSidebarSectionOpen(section, true);
+        });
+    }
+});
+
+window.addEventListener("resize", () => {
+    sidebarSections.forEach((section) => {
+        const panel = section.querySelector("[data-sidebar-panel]");
+        if (panel) {
+            panel.style.setProperty("--sidebar-panel-height", `${panel.scrollHeight}px`);
+        }
     });
 });
 

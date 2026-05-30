@@ -1,221 +1,360 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 {% include "operations/_tabs.html" %}
 
-<div class="page-header">
-<div>
-<p class="eyebrow">Comptabilite</p>
-<h1>Gestion des sommiers</h1>
-</div>
-<form method="get" class="search-form">
-    <input type="text" name="q" value="{{ query }}" placeholder="Recherche par N° SM, navire ou produit">
-    <select name="produit">
-        <option value="">Tous les produits</option>
-        {% for item in produits %}
-        <option value="{{ item.id }}" {% if produit_filter == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nom }}</option>
+<style>
+.sommier-shell{display:grid;gap:18px}
+.sommier-card{
+    background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(242,249,255,.96));
+    border:1px solid #d7e8f2;
+    border-radius:22px;
+    box-shadow:0 16px 40px rgba(18,48,71,.08);
+    padding:20px;
+}
+.sommier-top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:18px;align-items:start}
+.sommier-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.sommier-head h1,.sommier-card h2{margin:4px 0 8px;color:#123047}
+.sommier-note{margin:0;color:#5b7487;line-height:1.5}
+.sommier-filter{
+    display:grid;
+    grid-template-columns:minmax(360px,1fr) 210px 180px 104px 134px;
+    column-gap:16px;
+    row-gap:10px;
+    align-items:center;
+    min-width:0;
+    flex:1 1 auto;
+}
+.sommier-filter input,.sommier-filter select{
+    width:100%;
+    box-sizing:border-box;
+    min-height:46px;
+    padding:0 14px;
+    border:1px solid #c9ddeb;
+    border-radius:14px;
+    background:#fff;
+    color:#123047;
+    font:inherit;
+    font-weight:700;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+}
+.sommier-filter input::placeholder{color:#6c8497;font-weight:500}
+.sommier-filter input:focus,.sommier-filter select:focus{
+    outline:none;
+    border-color:#2f7ed8;
+    box-shadow:0 0 0 4px rgba(47,126,216,.12);
+}
+.sommier-filter .btn,.sommier-filter .btn.secondary{min-height:46px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.sommier-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sommier-kpi{padding:14px;border:1px solid #d7e8f2;border-radius:18px;background:#fff}
+.sommier-kpi strong{display:block;margin-top:4px;font-size:1.35rem;color:#082c49}
+.sommier-kpi small{color:#60798c}
+.compact-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.compact-form .field-full{grid-column:1/-1}
+.sommier-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.stock-list{display:grid;gap:10px}
+.stock-row{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:16px;background:#f7fbfd;border:1px solid #e1edf5}
+.stock-bar{height:10px;border-radius:999px;background:#e8f0f5;overflow:hidden}
+.stock-fill{height:100%;border-radius:999px}
+.sommier-table-wrap{overflow:auto}
+.sommier-table{width:100%;min-width:1160px;border-collapse:separate;border-spacing:0}
+.sommier-table th{background:#123047;color:#fff;text-align:left;padding:12px 14px;font-weight:800;white-space:nowrap}
+.sommier-table th:first-child{border-top-left-radius:14px}
+.sommier-table th:last-child{border-top-right-radius:14px}
+.sommier-table td{padding:12px 14px;border-bottom:1px solid #dce8f1;background:#fff;vertical-align:top}
+.sommier-table tbody tr:nth-child(even) td{background:#f8fbfd}
+.amount{font-weight:900;color:#082c49;white-space:nowrap}
+.progress-wrap{display:grid;gap:6px;min-width:120px}
+.progress-track{height:8px;background:#e6eef5;border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;background:#2fa37d;border-radius:999px}
+.bl-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eaf4ff;color:#1f5f92;font-weight:800;font-size:.85rem}
+.bl-details{margin-top:8px}
+.bl-details summary{cursor:pointer;font-weight:800;color:#123047}
+.bl-list{display:grid;gap:8px;margin-top:8px;min-width:420px}
+.bl-item{display:grid;grid-template-columns:90px 90px minmax(0,1fr) 90px 120px;gap:10px;padding:9px 10px;border-radius:12px;background:#eef7fb}
+.bl-item strong{color:#082c49}
+.bl-item span{color:#60798c;font-size:.85rem}
+.history-link{display:inline-flex;margin-left:8px;padding:6px 10px;border-radius:999px;background:#fff3d8;color:#9b6700;font-size:.82rem;font-weight:900;text-decoration:none}
+.sommier-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.sommier-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:#f4f8fb;color:#123047;text-decoration:none;font-weight:900;border:1px solid #d8e7f1}
+.sommier-tab.active{background:#2f7ed8;color:#fff;border-color:#2f7ed8;box-shadow:0 10px 22px rgba(47,126,216,.22)}
+.sommier-tab span{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:999px;background:rgba(255,255,255,.75);color:#123047;font-size:.78rem}
+.sommier-tab.active span{background:#fff;color:#2f7ed8}
+.table-control-bar{display:flex;gap:18px;align-items:center;margin:16px 0 14px;width:100%}
+.table-control-bar .sommier-actions{flex:0 0 auto;gap:12px}
+@media (max-width:1500px){
+    .sommier-head{align-items:stretch}
+    .sommier-filter{grid-template-columns:minmax(300px,1fr) 190px 170px}
+    .sommier-filter .btn,.sommier-filter .btn.secondary{width:100%}
+    .table-control-bar{align-items:flex-start}
+    .table-control-bar .sommier-actions{justify-content:flex-start}
+}
+@media (max-width:1200px){
+    .sommier-top,.sommier-filter{grid-template-columns:1fr}
+    .sommier-kpis,.compact-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:720px){
+    .sommier-kpis,.compact-form{grid-template-columns:1fr}
+    .sommier-head{display:block}
+}
+</style>
+
+<div class="sommier-shell">
+    <section class="sommier-card">
+        <div class="sommier-head">
+            <div>
+                <p class="eyebrow">Comptabilite</p>
+                <h1>Gestion des sommiers</h1>
+                <p class="sommier-note">Stock navire, disponibilite et BL rattaches en une seule lecture.</p>
+            </div>
+        </div>
+        <div class="sommier-tabs">
+            <a href="/operations/comptable/sommiers/" class="sommier-tab {% if not historique_mode %}active{% endif %}">
+                Sommiers actifs <span>{{ actifs_count }}</span>
+            </a>
+            <a href="/operations/comptable/sommiers/?vue=historique" class="sommier-tab {% if historique_mode %}active{% endif %}">
+                Historique <span>{{ historique_count }}</span>
+            </a>
+        </div>
+    </section>
+
+    {% if not historique_mode %}
+    <section class="sommier-kpis">
+        {% for total in totals_by_product %}
+        <article class="sommier-kpi">
+            <p class="eyebrow">Stock total</p>
+            <strong>{{ total.total_stock|floatformat:0 }}</strong>
+            <small>{{ total.produit__nom }}</small>
+        </article>
+        {% empty %}
+        <article class="sommier-kpi">
+            <p class="eyebrow">Stock total</p>
+            <strong>0</strong>
+            <small>Aucun produit</small>
+        </article>
         {% endfor %}
-    </select>
-    <button type="submit" class="btn-secondary">Filtrer</button>
-</form>
-</div>
+        <article class="sommier-kpi">
+            <p class="eyebrow">Navires</p>
+            <strong>{{ sommier_rows|length }}</strong>
+            <small>{% if historique_mode %}Navires consommes a 100%{% else %}Navires encore disponibles{% endif %}</small>
+        </article>
+    </section>
 
-<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:18px; margin-bottom:24px;">
-    {% for total in totals_by_product %}
-    <article class="stat-card" style="padding:20px 22px;">
-        <p class="eyebrow" style="margin-bottom:10px;">Stock total</p>
-        <h2 style="margin:0 0 6px; font-size:2rem;">{{ total.total_stock|default:"0" }}</h2>
-        <p style="margin:0; color:#123047; font-weight:700;">{{ total.produit__nom }}</p>
-    </article>
-    {% empty %}
-    <article class="stat-card" style="padding:20px 22px;">
-        <p class="eyebrow" style="margin-bottom:10px;">Stock total</p>
-        <h2 style="margin:0;">0</h2>
-    </article>
-    {% endfor %}
-</div>
-
-<div style="display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(320px, 0.9fr); gap:24px; align-items:start; margin-bottom:24px;">
-    <div class="form-shell" style="margin-bottom:0;">
-        <div style="display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap;">
-            <div>
-                <p class="eyebrow">Ajout</p>
-                <h2 style="margin:0;">Nouveau sommier</h2>
-            </div>
-            <div style="padding:10px 14px; border-radius:16px; background:#edf6f3; color:#1f8f6a; font-weight:700;">
-                Positionnement des stocks navires pour la comptabilite
-            </div>
-        </div>
-        <form method="post" class="app-form">
-            {% csrf_token %}
-            <div class="form-grid">
-                <div class="field">
-                    <label for="{{ form.numero_sm.id_for_label }}">N° SM</label>
-                    {{ form.numero_sm }}
-                    {% for error in form.numero_sm.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field">
-                    <label for="{{ form.date_sommier.id_for_label }}">Date</label>
-                    {{ form.date_sommier }}
-                    {% for error in form.date_sommier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field">
-                    <label for="{{ form.reference_navire.id_for_label }}">Ref navire</label>
-                    {{ form.reference_navire }}
-                    {% for error in form.reference_navire.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field">
-                    <label for="{{ form.produit.id_for_label }}">Produit</label>
-                    {{ form.produit }}
-                    {% for error in form.produit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field">
-                    <label for="{{ form.quantite_initiale.id_for_label }}">Quantite initiale</label>
-                    {{ form.quantite_initiale }}
-                    {% for error in form.quantite_initiale.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field">
-                    <label for="{{ form.quantite_disponible.id_for_label }}">Quantite disponible</label>
-                    {{ form.quantite_disponible }}
-                    {% for error in form.quantite_disponible.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-                <div class="field field-full">
-                    <label for="{{ form.observation.id_for_label }}">Observation</label>
-                    {{ form.observation }}
-                    {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-                </div>
-            </div>
-            {% if form.non_field_errors %}
-            <div class="form-alert">
-                {% for error in form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-            </div>
-            {% endif %}
-            <div class="form-actions">
-                <button type="submit" class="btn">Ajouter le sommier</button>
-            </div>
-        </form>
-    </div>
-
-    <aside class="form-shell" style="margin-bottom:0;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <div>
-                <p class="eyebrow">Statistiques</p>
-                <h2 style="margin:0;">Stock par produit</h2>
-            </div>
-        </div>
-        <div style="display:grid; gap:18px;">
-            {% for item in chart_totals %}
-            <div style="display:grid; grid-template-columns:86px minmax(0, 1fr); gap:16px; align-items:center; padding:14px 12px; border-radius:18px; background:#f8fbfd;">
-                <div style="display:flex; justify-content:center;">
-                    <div style="position:relative; width:54px; height:124px; border:3px solid #123047; border-radius:18px 18px 14px 14px; background:linear-gradient(180deg,#f2f6fa 0%, #e4edf3 100%); overflow:hidden; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.7);">
-                        <div style="position:absolute; left:0; right:0; bottom:0; height:{{ item.width_percent }}%; background:linear-gradient(180deg, {{ item.color }}cc 0%, {{ item.color }} 100%);"></div>
-                        <div style="position:absolute; left:6px; right:6px; top:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                        <div style="position:absolute; left:6px; right:6px; top:58px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                        <div style="position:absolute; left:6px; right:6px; bottom:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                    </div>
-                </div>
+    <section class="sommier-top">
+        <article class="sommier-card">
+            <div class="sommier-head" style="margin-bottom:14px;">
                 <div>
-                    <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-weight:700; color:#123047;">
-                        <span>{{ item.label }}</span>
-                        <span>{{ item.total_stock }}</span>
-                    </div>
-                    <div style="height:12px; background:#edf3f7; border-radius:999px; overflow:hidden; margin-bottom:8px;">
-                        <div style="height:100%; width:{{ item.width_percent }}%; background:{{ item.color }}; border-radius:999px;"></div>
-                    </div>
-                    <p style="margin:0; color:#607487; font-size:0.92rem;">
-                        {{ item.width_percent }}% du niveau max actuel
-                    </p>
+                    <p class="eyebrow">Ajout</p>
+                    <h2>Nouveau sommier</h2>
                 </div>
+                <span class="bl-badge">Stock navire</span>
             </div>
-            {% empty %}
-            <p style="margin:0; color:#607487;">Aucune statistique disponible pour le moment.</p>
-            {% endfor %}
-        </div>
+            <form method="post" class="app-form">
+                {% csrf_token %}
+                <div class="compact-form">
+                    <div class="field">
+                        <label for="{{ form.numero_sm.id_for_label }}">N SM</label>
+                        {{ form.numero_sm }}
+                        {% for error in form.numero_sm.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.date_sommier.id_for_label }}">Date</label>
+                        {{ form.date_sommier }}
+                        {% for error in form.date_sommier.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.produit.id_for_label }}">Produit</label>
+                        {{ form.produit }}
+                        {% for error in form.produit.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.reference_navire.id_for_label }}">Ref navire</label>
+                        {{ form.reference_navire }}
+                        {% for error in form.reference_navire.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.quantite_initiale.id_for_label }}">Quantite initiale</label>
+                        {{ form.quantite_initiale }}
+                        {% for error in form.quantite_initiale.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.quantite_disponible.id_for_label }}">Quantite disponible</label>
+                        {{ form.quantite_disponible }}
+                        {% for error in form.quantite_disponible.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field field-full">
+                        <label for="{{ form.observation.id_for_label }}">Observation</label>
+                        {{ form.observation }}
+                        {% for error in form.observation.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                {% if form.non_field_errors %}
+                <div class="form-alert">
+                    {% for error in form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                </div>
+                {% endif %}
+                <div class="sommier-actions" style="margin-top:12px;">
+                    <button type="submit" class="btn">Ajouter</button>
+                </div>
+            </form>
+        </article>
 
-        <div style="margin-top:24px; padding-top:20px; border-top:1px solid #dce7ef;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+        <aside class="sommier-card">
+            <div class="sommier-head" style="margin-bottom:14px;">
                 <div>
-                    <p class="eyebrow">Sorties</p>
-                    <h2 style="margin:0;">Quantites liquidees</h2>
+                    <p class="eyebrow">Statistiques</p>
+                    <h2>Stock par produit</h2>
                 </div>
-                <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <input type="hidden" name="q" value="{{ query }}">
-                    <input type="hidden" name="produit" value="{{ produit_filter }}">
-                    <input type="date" name="stats_date" value="{{ stats_date }}" style="min-width:170px;">
-                    <button type="submit" class="btn-secondary">Voir</button>
-                </form>
+                <span class="bl-badge">{{ stats_date }}</span>
             </div>
-            <div style="display:grid; gap:18px;">
-                {% for item in chart_sorties %}
-                <div style="display:grid; grid-template-columns:86px minmax(0, 1fr); gap:16px; align-items:center; padding:14px 12px; border-radius:18px; background:#f8fbfd;">
-                    <div style="display:flex; justify-content:center;">
-                        <div style="position:relative; width:54px; height:124px; border:3px solid #123047; border-radius:18px 18px 14px 14px; background:linear-gradient(180deg,#f2f6fa 0%, #e4edf3 100%); overflow:hidden; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.7);">
-                            <div style="position:absolute; left:0; right:0; bottom:0; height:{{ item.width_percent }}%; background:linear-gradient(180deg, {{ item.color }}cc 0%, {{ item.color }} 100%);"></div>
-                            <div style="position:absolute; left:6px; right:6px; top:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                            <div style="position:absolute; left:6px; right:6px; top:58px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                            <div style="position:absolute; left:6px; right:6px; bottom:10px; height:3px; border-radius:999px; background:rgba(18,48,71,0.18);"></div>
-                        </div>
-                    </div>
+            <div class="stock-list">
+                {% for item in chart_totals %}
+                <div class="stock-row">
+                    <strong>{{ item.label }}</strong>
                     <div>
-                        <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-weight:700; color:#123047;">
-                            <span>{{ item.label }}</span>
-                            <span>{{ item.total_sortie }}</span>
+                        <div class="stock-bar">
+                            <div class="stock-fill" style="width:{{ item.width_percent }}%;background:{{ item.color }};"></div>
                         </div>
-                        <div style="height:12px; background:#edf3f7; border-radius:999px; overflow:hidden; margin-bottom:8px;">
-                            <div style="height:100%; width:{{ item.width_percent }}%; background:{{ item.color }}; border-radius:999px;"></div>
-                        </div>
-                        <p style="margin:0; color:#607487; font-size:0.92rem;">
-                            Sortie totale du {{ stats_date }}
-                        </p>
+                        <small>{{ item.width_percent }}% du niveau max actuel</small>
                     </div>
+                    <span class="amount">{{ item.total_stock|floatformat:0 }}</span>
                 </div>
                 {% empty %}
-                <p style="margin:0; color:#607487;">Aucune quantite liquidee pour cette date.</p>
+                <p class="sommier-note">Aucune statistique disponible.</p>
                 {% endfor %}
             </div>
+            <div style="margin-top:18px;padding-top:16px;border-top:1px solid #dce8f1;">
+                <p class="eyebrow">Sorties liquidees</p>
+                <div class="stock-list" style="margin-top:10px;">
+                    {% for item in chart_sorties %}
+                    <div class="stock-row">
+                        <strong>{{ item.label }}</strong>
+                        <div>
+                            <div class="stock-bar">
+                                <div class="stock-fill" style="width:{{ item.width_percent }}%;background:{{ item.color }};"></div>
+                            </div>
+                            <small>Sortie totale du {{ stats_date }}</small>
+                        </div>
+                        <span class="amount">{{ item.total_sortie|floatformat:0 }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="sommier-note">Aucune quantite liquidee pour cette date.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+    </section>
+    {% else %}
+    <section class="sommier-kpis">
+        <article class="sommier-kpi">
+            <p class="eyebrow">Historique</p>
+            <strong>{{ historique_count }}</strong>
+            <small>Navires consommes a 100%</small>
+        </article>
+        <article class="sommier-kpi">
+            <p class="eyebrow">Selection</p>
+            <strong>{{ sommier_rows|length }}</strong>
+            <small>Navires affiches avec les filtres courants</small>
+        </article>
+    </section>
+    {% endif %}
+
+    <section class="sommier-card">
+        <div class="sommier-head" style="margin-bottom:14px;">
+            <div>
+                <p class="eyebrow">Historique</p>
+                <h2>{% if historique_mode %}Historique des sommiers termines{% else %}Tableau des sommiers actifs{% endif %}</h2>
+                <p class="sommier-note">
+                    {% if historique_mode %}
+                    Tous les navires consommes a 100% sont ranges ici automatiquement.
+                    {% else %}
+                    Clique sur "Voir les BL" pour afficher les bons lies au navire.
+                    {% endif %}
+                </p>
+            </div>
         </div>
-    </aside>
+        <div class="table-control-bar">
+            <form method="get" class="sommier-filter">
+                <input type="hidden" name="vue" value="{{ vue }}">
+                <input type="text" name="q" value="{{ query }}" placeholder="Recherche N SM, navire, produit, BL ou client">
+                <select name="produit">
+                    <option value="">Tous les produits</option>
+                    {% for item in produits %}
+                    <option value="{{ item.id }}" {% if produit_filter == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nom }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="stats_date" value="{{ stats_date }}">
+                <button type="submit" class="btn">Filtrer</button>
+                <a href="{% if historique_mode %}/operations/comptable/sommiers/?vue=historique{% else %}/operations/comptable/sommiers/{% endif %}" class="btn secondary">Reinitialiser</a>
+            </form>
+            <div class="sommier-actions">
+                <a href="/operations/comptable/sommiers/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter Excel</a>
+                <a href="/operations/comptable/sommiers/export/pdf/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter PDF</a>
+            </div>
+        </div>
+        <div class="sommier-table-wrap">
+            <table class="sommier-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>N SM</th>
+                        <th>Date</th>
+                        <th>Navire</th>
+                        <th>Produit</th>
+                        <th>Initial</th>
+                        <th>Disponible</th>
+                        <th>Utilise</th>
+                        <th>BL lies</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sommier_rows %}
+                    <tr>
+                        <td><span class="row-number">{{ forloop.counter }}</span></td>
+                        <td><a href="/operations/comptable/sommiers/{{ row.sommier.id }}/bl/" class="history-link" style="margin-left:0;">{{ row.sommier.numero_sm }}</a></td>
+                        <td>{{ row.sommier.date_sommier|date:"d/m/Y" }}</td>
+                        <td><a href="/operations/comptable/sommiers/{{ row.sommier.id }}/bl/" style="font-weight:900;color:#123047;text-decoration:none;">{{ row.sommier.reference_navire }}</a></td>
+                        <td>{{ row.sommier.produit.nom }}</td>
+                        <td class="amount">{{ row.sommier.quantite_initiale|floatformat:0 }}</td>
+                        <td class="amount">{{ row.sommier.quantite_disponible|floatformat:0 }}</td>
+                        <td>
+                            <div class="progress-wrap">
+                                <div class="progress-track">
+                                    <div class="progress-fill" style="width:{{ row.taux_utilise }}%;"></div>
+                                </div>
+                                <small>{{ row.taux_utilise }}%</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="bl-badge">{{ row.bl_count }} BL</span>
+                            <details class="bl-details">
+                                <summary>Voir les BL</summary>
+                                <div class="bl-list">
+                                    {% for operation in row.bl_lies %}
+                                    <div class="bl-item">
+                                        <strong>{{ operation.numero_bl }}</strong>
+                                        <span>{{ operation.date_bl|date:"d/m/Y"|default:"-" }}</span>
+                                        <span>{{ operation.client.entreprise }}</span>
+                                        <span>{{ operation.quantite|floatformat:0 }}</span>
+                                        <span>{{ operation.get_etat_bon_display }}</span>
+                                    </div>
+                                    {% empty %}
+                                    <div class="bl-item">
+                                        <span>Aucun BL lie</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">Aucun sommier enregistre pour le moment.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
-
-<div class="form-shell" style="padding-top:20px;">
-<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:16px; flex-wrap:wrap;">
-    <div>
-        <p class="eyebrow">Historique</p>
-        <h2 style="margin:0;">Liste des sommiers</h2>
-    </div>
-    <div style="padding:10px 14px; border-radius:16px; background:#f5f8fb; color:#123047;">
-        Suivi des navires et des quantites disponibles par produit
-    </div>
-</div>
-<table class="table">
-    <thead>
-        <tr>
-            <th>N° SM</th>
-            <th>Date</th>
-            <th>Navire</th>
-            <th>Produit</th>
-            <th>Stock initial</th>
-            <th>Stock disponible</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for sommier in sommiers %}
-        <tr>
-            <td>{{ sommier.numero_sm }}</td>
-            <td>{{ sommier.date_sommier|date:"Y-m-d" }}</td>
-            <td>{{ sommier.reference_navire }}</td>
-            <td>{{ sommier.produit.nom }}</td>
-            <td>{{ sommier.quantite_initiale }}</td>
-            <td>{{ sommier.quantite_disponible }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6">Aucun sommier enregistre pour le moment.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-</div>
-
 {% endblock %}

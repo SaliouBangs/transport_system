@@ -398,9 +398,7 @@ class LogisticienOperationForm(forms.ModelForm):
             )
 
         if etat_bon == "livre":
-            if quantite_livree in {None, ""}:
-                self.add_error("quantite_livree", "Renseigne la quantite livree.")
-            elif self.instance.quantite is not None and quantite_livree > self.instance.quantite:
+            if quantite_livree not in {None, ""} and self.instance.quantite is not None and quantite_livree > self.instance.quantite:
                 self.add_error(
                     "quantite_livree",
                     f"La quantite livree ne peut pas depasser la quantite commandee ({self.instance.quantite}).",

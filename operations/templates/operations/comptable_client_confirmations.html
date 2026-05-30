@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Comptable client SONI{% endblock %}
+{% block content %}
+{% include "operations/_comptable_client_tabs.html" %}
+
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Comptable client</p>
+            <h1>BL livres a confirmer</h1>
+            <p>Confirmez la quantite reellement livree apres la livraison du chef chauffeur.</p>
+        </div>
+        <div class="metric-card compact">
+            <span>En attente</span>
+            <strong>{{ total_a_confirmer }}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="page-section">
+    <p class="eyebrow">Filtres</p>
+    <form method="get" class="filters-bar">
+        <input type="search" name="q" value="{{ filters.q }}" placeholder="BL, client, destination, camion ou chauffeur">
+        <select name="client">
+            <option value="">Tous les clients</option>
+            {% for client in clients %}
+            <option value="{{ client.id }}" {% if filters.client == client.id|stringformat:"s" %}selected{% endif %}>{{ client.nom }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="date_debut" value="{{ filters.date_debut }}">
+        <input type="date" name="date_fin" value="{{ filters.date_fin }}">
+        <button type="submit" class="btn">Filtrer</button>
+        <a href="/operations/comptable-client/" class="btn secondary">Reinitialiser</a>
+    </form>
+</section>
+
+<section class="page-section">
+    <p class="eyebrow">Livraisons</p>
+    <h2>File de confirmation</h2>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>BL</th>
+                    <th>Date livraison</th>
+                    <th>Client</th>
+                    <th>Destination</th>
+                    <th>Produit</th>
+                    <th>Qte BL</th>
+                    <th>Qte livree</th>
+                    <th>Manquant</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><span class="row-index">{{ forloop.counter }}</span></td>
+                    <td><strong>{{ row.operation.numero_bl }}</strong></td>
+                    <td>{{ row.operation.date_bons_livres|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ row.operation.client.nom }}</td>
+                    <td>{{ row.operation.destination }}</td>
+                    <td>{{ row.operation.produit.nom|default:"-" }}</td>
+                    <td><strong>{{ row.operation.quantite|floatformat:0 }}</strong></td>
+                    <td>{{ row.quantite_livree|floatformat:0 }}</td>
+                    <td>{{ row.operation.quantite_manquante|default:0|floatformat:0 }}</td>
+                    <td><a class="btn secondary" href="/operations/comptable-client/{{ row.operation.id }}/confirmer/">Confirmer</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10">Aucun BL a confirmer pour le moment.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

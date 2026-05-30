@@ -85,12 +85,11 @@ class CommandeForm(forms.ModelForm):
             )
             if not destination:
                 self.add_error("ville_arrivee", "Choisissez une destination deja enregistree pour ce client.")
-            elif not destination.ville_perequation_id:
-                self.add_error("ville_arrivee", "Cette destination n'a pas encore de ville de perequation.")
             else:
                 cleaned_data["ville_arrivee"] = destination.adresse
-                self.instance.ville_perequation = destination.ville_perequation
-                self.instance.tarif_perequation_gnf_litre = destination.ville_perequation.tarif_gnf_litre
+                if destination.ville_perequation_id:
+                    self.instance.ville_perequation = destination.ville_perequation
+                    self.instance.tarif_perequation_gnf_litre = destination.ville_perequation.tarif_gnf_litre
 
         if cleaned_data.get("produit") is None:
             self.add_error("produit", "Le produit est obligatoire.")

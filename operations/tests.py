@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -86,3 +87,68 @@ class DemandeNouveauBLTests(TestCase):
                 nouveau_camion=self.nouveau_camion,
             ).exists()
         )
+
+
+class ChefChauffeurActionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="AdminPass123!",
+        )
+        self.client.login(username="admin", password="AdminPass123!")
+        self.produit = Produit.objects.create(nom="ESSENCE")
+        self.client_obj = Client.objects.create(
+            nom="Client",
+            telephone="620000000",
+            entreprise="Client Test",
+            ville="Conakry",
+        )
+        self.camion = Camion.objects.create(numero_tracteur="AN 6514 02", capacite=25000)
+        self.chauffeur = Chauffeur.objects.create(nom="Cellou Diallo", telephone="620000001", camion=self.camion)
+        self.commande = Commande.objects.create(
+            reference="CMD-CHEF-001",
+            client=self.client_obj,
+            ville_depart="Conakry",
+            ville_arrivee="Kindia",
+            date_livraison_prevue="2026-05-30",
+            statut="planifiee",
+            produit=self.produit,
+            camion=self.camion,
+            chauffeur=self.chauffeur,
+            quantite=Decimal("25000.00"),
+            prix_negocie=Decimal("12000.00"),
+        )
+        self.operation = Operation.objects.create(
+            numero_bl="BL-CHEF-001",
+            etat_bon="charge",
+            commande=self.commande,
+            client=self.client_obj,
+            destination="Kindia",
+            camion=self.camion,
+            chauffeur=self.chauffeur,
+            produit=self.produit,
+            quantite=Decimal("25000.00"),
+            date_transmission_depot=date(2026, 5, 28),
+            date_reception_transitaire=date(2026, 5, 28),
+            date_bons_declares=date(2026, 5, 29),
+            date_bons_liquides=date(2026, 5, 29),
+            date_bons_charges=date(2026, 5, 30),
+        )
+
+    def test_chef_chauffeur_livre_sans_quantite_livree(self):
+        response = self.client.post(
+            reverse("action_chef_chauffeur", args=[self.operation.id, "livre"]),
+            {"date_action": "2026-05-30"},
+        )
+
+        self.assertRedirects(response, reverse("chef_chauffeur_operations"))
+        self.operation.refresh_from_db()
+        self.assertEqual(self.operation.etat_bon, "livre")
+        self.assertIsNone(self.operation.quantite_livree)
+
+    def test_page_livraison_avertit_si_depenses_non_payees(self):
+        response = self.client.get(reverse("chef_chauffeur_operations"))
+
+        self.assertContains(response, "data-expense-warning")
+        self.assertNotContains(response, "Quantite livree")
