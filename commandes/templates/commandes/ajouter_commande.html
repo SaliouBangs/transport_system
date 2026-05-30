@@ -42,19 +42,20 @@
                 <div class="field">
                     <label for="{{ form.client.id_for_label }}">Client</label>
                     <div class="field-inline">
-                        <div style="flex:1;">
+                        <div class="client-search-field" style="flex:1;">
                             <input
                                 type="text"
                                 id="client-search-input"
-                                list="clients-list"
                                 placeholder="Rechercher un client"
+                                autocomplete="off"
                                 value="{% if form.client.value %}{% for client in clients %}{% if client.id|stringformat:'s' == form.client.value|stringformat:'s' %}{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}{% endif %}{% endfor %}{% endif %}">
                             {{ form.client.as_hidden }}
-                            <datalist id="clients-list">
+                            <div class="client-search-menu" id="client-search-menu"></div>
+                            <div id="clients-list" hidden>
                                 {% for client in clients %}
-                                <option value="{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}" data-id="{{ client.id }}"></option>
+                                <span data-label="{{ client.entreprise }}{% if client.nom %} - {{ client.nom }}{% endif %}" data-id="{{ client.id }}"></span>
                                 {% endfor %}
-                            </datalist>
+                            </div>
                         </div>
                         <button
                             type="button"
@@ -390,7 +391,12 @@
 <script>
 const clientSelect = document.getElementById("id_client");
 const clientSearchInput = document.getElementById("client-search-input");
-const clientOptions = Array.from(document.querySelectorAll("#clients-list option"));
+const clientSearchMenu = document.getElementById("client-search-menu");
+const clientOptions = Array.from(document.querySelectorAll("#clients-list [data-id]")).map((option) => ({
+    id: option.dataset.id,
+    label: option.dataset.label,
+    search: (option.dataset.label || "").toLowerCase(),
+}));
 const clientModalForm = document.getElementById("client-modal-form");
 const clientModalErrors = document.getElementById("client-modal-errors");
 const csrfInput = clientModalForm?.querySelector("input[name='csrfmiddlewaretoken']");
@@ -712,15 +718,69 @@ async function fetchClientInfo(clientId) {
 }
 
 function syncClientSelectionFromSearch() {
-    const match = clientOptions.find((option) => option.value === clientSearchInput?.value);
-    clientSelect.value = match?.dataset.id || "";
+    const match = clientOptions.find((option) => option.label === clientSearchInput?.value);
+    clientSelect.value = match?.id || "";
     if (clientSelect.value) {
         fetchClientInfo(clientSelect.value);
     }
 }
 
+function closeClientSearchMenu() {
+    clientSearchMenu?.classList.remove("is-open");
+}
+
+function selectClientOption(option) {
+    if (!clientSearchInput || !clientSelect) return;
+    clientSearchInput.value = option.label;
+    clientSelect.value = option.id;
+    closeClientSearchMenu();
+    fetchClientInfo(option.id);
+}
+
+function renderClientSearchMenu() {
+    if (!clientSearchInput || !clientSearchMenu) return;
+    const query = clientSearchInput.value.trim().toLowerCase();
+    const matches = clientOptions
+        .filter((option) => !query || option.search.includes(query))
+        .slice(0, 12);
+
+    clientSearchMenu.innerHTML = "";
+    if (!matches.length) {
+        const empty = document.createElement("div");
+        empty.className = "client-search-empty";
+        empty.textContent = "Aucun client trouve";
+        clientSearchMenu.appendChild(empty);
+    } else {
+        matches.forEach((option) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "client-search-choice";
+            button.textContent = option.label;
+            button.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                selectClientOption(option);
+            });
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                selectClientOption(option);
+            });
+            clientSearchMenu.appendChild(button);
+        });
+    }
+    clientSearchMenu.classList.add("is-open");
+}
+
+clientSearchInput?.addEventListener("focus", renderClientSearchMenu);
+clientSearchInput?.addEventListener("input", () => {
+    syncClientSelectionFromSearch();
+    renderClientSearchMenu();
+});
 clientSearchInput?.addEventListener("change", syncClientSelectionFromSearch);
-clientSearchInput?.addEventListener("input", syncClientSelectionFromSearch);
+document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest(".client-search-field")) {
+        closeClientSearchMenu();
+    }
+});
 destinationInput?.addEventListener("input", updatePerequationFields);
 destinationInput?.addEventListener("change", updatePerequationFields);
 quantiteInput?.addEventListener("input", refreshCommandeIndicators);
@@ -769,11 +829,15 @@ clientModalForm?.addEventListener("submit", async (event) => {
         return;
     }
 
-    const datalistOption = document.createElement("option");
-    datalistOption.value = data.client.label;
-    datalistOption.dataset.id = data.client.id;
-    document.getElementById("clients-list")?.appendChild(datalistOption);
-    clientOptions.push(datalistOption);
+    const clientOption = document.createElement("span");
+    clientOption.dataset.label = data.client.label;
+    clientOption.dataset.id = data.client.id;
+    document.getElementById("clients-list")?.appendChild(clientOption);
+    clientOptions.push({
+        id: String(data.client.id),
+        label: data.client.label,
+        search: data.client.label.toLowerCase(),
+    });
     clientSelect.value = data.client.id;
     clientSearchInput.value = data.client.label;
     clientModalForm.reset();
@@ -820,6 +884,56 @@ if (clientSelect?.value) {
 .form-alert--danger {
     background: linear-gradient(180deg, rgba(255, 242, 240, 0.98), rgba(255, 248, 247, 0.96));
     color: #b14132;
+}
+
+.client-search-field {
+    position: relative;
+}
+
+.client-search-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 80;
+    max-height: 260px;
+    overflow: auto;
+    border-radius: 14px;
+    border: 1px solid rgba(43, 130, 212, .22);
+    background: #fff;
+    box-shadow: 0 18px 38px rgba(13, 47, 79, .18);
+    padding: 6px;
+}
+
+.client-search-menu.is-open {
+    display: grid;
+    gap: 4px;
+}
+
+.client-search-choice {
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #0d2f4f;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 12px;
+    text-align: left;
+}
+
+.client-search-choice:hover,
+.client-search-choice:focus {
+    background: #eef7ff;
+    outline: none;
+}
+
+.client-search-empty {
+    color: #6b7f93;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 12px;
 }
 
 .commande-layout {
