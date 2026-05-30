@@ -151,8 +151,8 @@ class ClientDestinationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["ville_perequation"].queryset = VillePerequation.objects.filter(actif=True).order_by("nom")
-        self.fields["ville_perequation"].required = True
-        self.fields["ville_perequation"].empty_label = "Choisir une ville de perequation"
+        self.fields["ville_perequation"].required = False
+        self.fields["ville_perequation"].empty_label = "A definir plus tard"
 
 
 class VillePerequationForm(forms.ModelForm):
