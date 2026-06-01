@@ -107,8 +107,20 @@ class MessageInterne(models.Model):
     def __str__(self):
         return f"{self.titre} -> {self.destinataire.username}"
 
+    @property
+    def lien_normalise(self):
+        lien = (self.lien or "").strip()
+        if not lien:
+            return "/comptes/messages/"
+        if lien.startswith(("http://", "https://", "/")):
+            return lien
+        return f"/{lien}"
+
 
 def envoyer_message_interne(expediteur, destinataires, titre, contenu, lien=""):
+    lien = (lien or "").strip()
+    if lien and not lien.startswith(("http://", "https://", "/")):
+        lien = f"/{lien}"
     messages = []
     for destinataire in destinataires:
         if not destinataire or not getattr(destinataire, "is_active", False):

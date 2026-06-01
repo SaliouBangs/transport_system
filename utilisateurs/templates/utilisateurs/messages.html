@@ -60,7 +60,7 @@ body.theme-dark .message-card p{color:#b8c7ce}
                     {% if not item.lu %}<span class="status-badge status-danger">Nouveau</span>{% endif %}
                 </div>
                 <p>{{ item.contenu|linebreaksbr }}</p>
-                {% if item.lien %}<a class="btn-secondary message-link" href="{{ item.lien }}">Ouvrir la tache</a>{% endif %}
+                <a class="btn-secondary message-link" href="{{ item.lien_normalise }}">Ouvrir la tache</a>
             </article>
             {% empty %}
             <div class="empty-state">Aucun message interne pour le moment.</div>

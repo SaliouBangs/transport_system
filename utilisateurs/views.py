@@ -99,12 +99,19 @@ def changer_entite_supervision(request):
 @login_required(login_url="/comptes/connexion/")
 def notifications_status(request):
     notifications = _topbar_notifications(request.user, get_active_supervision_entity(request))
-    latest_message = (
+    latest_message_obj = (
         MessageInterne.objects.filter(destinataire=request.user, lu=False)
         .order_by("-created_at")
-        .values("id", "titre", "contenu", "lien")
         .first()
     )
+    latest_message = None
+    if latest_message_obj:
+        latest_message = {
+            "id": latest_message_obj.id,
+            "titre": latest_message_obj.titre,
+            "contenu": latest_message_obj.contenu,
+            "lien": latest_message_obj.lien_normalise,
+        }
     return JsonResponse(
         {
             "total": sum(item["count"] for item in notifications),

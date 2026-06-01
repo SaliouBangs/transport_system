@@ -138,6 +138,25 @@ class ProfilUtilisateurTests(TestCase):
         self.assertEqual(message.titre, "Commande a valider")
         self.assertEqual(message.lien, "/commandes/")
 
+    def test_internal_message_link_is_normalized(self):
+        sender = User.objects.create_user(username="admin_link", password="AdminPass123!", is_staff=True)
+        self.client.login(username="admin_link", password="AdminPass123!")
+
+        self.client.post(
+            reverse("messages_internes"),
+            {
+                "action": "send",
+                "destinataire": str(self.user.id),
+                "titre": "Voir commandes",
+                "contenu": "Ouvre la page commandes.",
+                "lien": "commandes/",
+            },
+        )
+
+        message = MessageInterne.objects.get(destinataire=self.user)
+        self.assertEqual(message.lien, "/commandes/")
+        self.assertEqual(message.lien_normalise, "/commandes/")
+
     def test_user_can_mark_internal_messages_as_read(self):
         MessageInterne.objects.create(destinataire=self.user, titre="Rappel", contenu="A traiter")
         self.client.login(username="amina", password="AncienPass123!")
