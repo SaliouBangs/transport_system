@@ -4821,7 +4821,7 @@ function updateNotificationEnableButton() {
         return;
     }
     if (Notification.permission === "granted" && localStorage.getItem("zoboko-notification-alerts") === "enabled") {
-        notificationEnableButton.textContent = "Desactiver alertes sonores";
+        notificationEnableButton.textContent = "Alertes actives - desactiver";
         notificationEnableButton.classList.add("is-enabled");
         return;
     }
@@ -4842,17 +4842,24 @@ function playNotificationSound() {
         const context = notificationAudioContext;
         if (context.state === "suspended") context.resume();
         const oscillator = context.createOscillator();
+        const secondOscillator = context.createOscillator();
         const gain = context.createGain();
         oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(740, context.currentTime);
-        oscillator.frequency.setValueAtTime(980, context.currentTime + 0.11);
+        secondOscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(760, context.currentTime);
+        oscillator.frequency.setValueAtTime(1040, context.currentTime + 0.12);
+        secondOscillator.frequency.setValueAtTime(520, context.currentTime + 0.18);
+        secondOscillator.frequency.setValueAtTime(880, context.currentTime + 0.30);
         gain.gain.setValueAtTime(0.0001, context.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.32);
+        gain.gain.exponentialRampToValueAtTime(0.11, context.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.48);
         oscillator.connect(gain);
+        secondOscillator.connect(gain);
         gain.connect(context.destination);
         oscillator.start();
-        oscillator.stop(context.currentTime + 0.34);
+        secondOscillator.start(context.currentTime + 0.18);
+        oscillator.stop(context.currentTime + 0.48);
+        secondOscillator.stop(context.currentTime + 0.48);
     } catch (error) {
         // Les navigateurs mobiles peuvent bloquer l'audio sans geste utilisateur.
     }
@@ -4876,8 +4883,9 @@ function showMessageNotification(message) {
     if (localStorage.getItem("zoboko-notification-alerts") !== "enabled") return;
     if (!message || !("Notification" in window) || Notification.permission !== "granted") return;
     const systemNotification = new Notification(message.titre || "Nouveau message ZOBOKO", {
-        body: message.contenu || "Vous avez un nouveau message interne.",
+        body: `${message.expediteur ? `De ${message.expediteur} - ` : ""}${message.contenu || "Vous avez un nouveau message interne."}`,
         tag: `zoboko-message-${message.id || "latest"}`,
+        renotify: true,
     });
     systemNotification.onclick = () => {
         window.focus();
@@ -4886,7 +4894,7 @@ function showMessageNotification(message) {
 }
 
 async function pollNotificationStatus() {
-    if (!topbarNotifications?.dataset.notificationPollUrl || document.hidden) return;
+    if (!topbarNotifications?.dataset.notificationPollUrl) return;
     try {
         const previousTotal = getNotificationTotal();
         const response = await fetch(topbarNotifications.dataset.notificationPollUrl, {
@@ -4946,7 +4954,7 @@ notificationCenter?.addEventListener("mouseenter", () => queueNotificationCenter
 notificationCenter?.addEventListener("mouseleave", () => queueNotificationCenter(false, 180));
 notificationCenter?.querySelector("summary")?.addEventListener("focus", () => queueNotificationCenter(true, 0));
 updateNotificationEnableButton();
-window.setInterval(pollNotificationStatus, 45000);
+window.setInterval(pollNotificationStatus, 15000);
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
         pollNotificationStatus();

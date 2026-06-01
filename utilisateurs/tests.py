@@ -101,7 +101,9 @@ class ProfilUtilisateurTests(TestCase):
 
     def test_notifications_status_returns_json(self):
         self.client.login(username="amina", password="AncienPass123!")
+        expediteur = User.objects.create_user(username="dg_msg", first_name="DG", last_name="Test")
         MessageInterne.objects.create(
+            expediteur=expediteur,
             destinataire=self.user,
             titre="Validation",
             contenu="Merci de verifier ce dossier.",
@@ -114,6 +116,7 @@ class ProfilUtilisateurTests(TestCase):
         self.assertIn("total", payload)
         self.assertIn("notifications", payload)
         self.assertEqual(payload["messages_unread"], 1)
+        self.assertEqual(payload["latest_message"]["expediteur"], "DG Test")
 
     def test_user_can_send_internal_message_to_multiple_users(self):
         sender = User.objects.create_user(username="admin_msg", password="AdminPass123!", is_staff=True)
@@ -167,3 +170,21 @@ class ProfilUtilisateurTests(TestCase):
         self.assertContains(response, "Message envoye")
         self.assertNotContains(response, "Choisir un role")
         self.assertNotContains(response, "Lien vers la tache")
+
+    def test_messages_page_shows_reply_button_with_sender(self):
+        sender = User.objects.create_user(username="dg_reply", password="Pass12345!", first_name="DG")
+        MessageInterne.objects.create(
+            expediteur=sender,
+            destinataire=self.user,
+            titre="Confirmation validation",
+            contenu="J'ai valide deja.",
+        )
+        self.client.login(username="amina", password="AncienPass123!")
+
+        response = self.client.get(reverse("messages_internes"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Repondre")
+        self.assertContains(response, f'data-reply-user-id="{sender.id}"')
+        self.assertContains(response, 'id="message-title"')
+        self.assertContains(response, 'id="message-content"')

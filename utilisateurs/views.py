@@ -104,11 +104,13 @@ def notifications_status(request):
     )
     latest_message = None
     if latest_message_obj:
+        expediteur = latest_message_obj.expediteur
         latest_message = {
             "id": latest_message_obj.id,
             "titre": latest_message_obj.titre,
             "contenu": latest_message_obj.contenu,
             "lien": latest_message_obj.lien_normalise,
+            "expediteur": expediteur.get_full_name() or expediteur.username if expediteur else "Systeme",
         }
     recent_messages = []
     for message in (

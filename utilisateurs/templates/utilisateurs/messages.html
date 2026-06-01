@@ -15,6 +15,9 @@
 .message-card h3{margin:0;color:#0d2f4f}
 .message-card p{margin:8px 0;color:#456074}
 .message-meta{font-size:12px;font-weight:800;color:#6b7f93}
+.message-card__actions{display:flex;justify-content:flex-end;margin-top:10px}
+.message-reply{border:1px solid #b9d7ee;border-radius:999px;background:#f4fbff;color:#0d4f88;font-weight:950;padding:8px 13px;cursor:pointer;box-shadow:0 8px 18px rgba(13,47,79,.08);transition:background .18s ease,transform .18s ease,box-shadow .18s ease}
+.message-reply:hover,.message-reply:focus{background:#eaf6ff;transform:translateY(-1px);box-shadow:0 12px 22px rgba(13,47,79,.13);outline:none}
 .message-compose{display:grid;gap:12px}
 .message-compose label{display:grid;gap:6px;font-weight:900;color:#0d2f4f}
 .message-compose :is(input,textarea){border:1px solid #bad5ec;border-radius:12px;padding:11px 12px;font:inherit;color:#0d2f4f;background:#fff}
@@ -35,6 +38,7 @@
 body.theme-dark .message-card,body.theme-dark .message-compose :is(input,textarea),body.theme-dark .recipient-menu{background:#071013;color:#f7fafc;border-color:#263b43}
 body.theme-dark .message-card h3,body.theme-dark .message-compose label{color:#f7fafc}
 body.theme-dark .message-card p{color:#b8c7ce}
+body.theme-dark .message-reply{background:#102231;border-color:#2d5066;color:#d9f0ff}
 </style>
 
 <div class="page-header">
@@ -84,6 +88,17 @@ body.theme-dark .message-card p{color:#b8c7ce}
                     {% if not item.lu %}<span class="status-badge status-danger">Nouveau</span>{% endif %}
                 </div>
                 <p>{{ item.contenu|linebreaksbr }}</p>
+                {% if item.expediteur %}
+                <div class="message-card__actions">
+                    <button type="button"
+                            class="message-reply"
+                            data-reply-user-id="{{ item.expediteur.id }}"
+                            data-reply-title="{{ item.titre }}"
+                            data-reply-name="{{ item.expediteur.get_full_name|default:item.expediteur.username }}">
+                        Repondre
+                    </button>
+                </div>
+                {% endif %}
             </article>
             {% empty %}
             <div class="empty-state">Aucun message interne pour le moment.</div>
@@ -130,7 +145,7 @@ body.theme-dark .message-card p{color:#b8c7ce}
     <aside class="page-section">
         <p class="eyebrow">Nouveau message</p>
         <h2>Informer un acteur</h2>
-        <form method="post" class="message-compose">
+        <form method="post" class="message-compose" id="message-compose-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="send">
             <label>Utilisateurs</label>
@@ -150,10 +165,10 @@ body.theme-dark .message-card p{color:#b8c7ce}
                 </div>
             </div>
             <label>Titre
-                <input type="text" name="titre" placeholder="Ex : Validation en attente">
+                <input type="text" name="titre" id="message-title" placeholder="Ex : Validation en attente">
             </label>
             <label>Message
-                <textarea name="contenu" placeholder="Expliquez la tache ou le rappel."></textarea>
+                <textarea name="contenu" id="message-content" placeholder="Expliquez la tache ou le rappel."></textarea>
             </label>
             <div class="message-actions">
                 <button type="submit" class="btn">Envoyer</button>
@@ -167,6 +182,9 @@ const recipientPicker = document.getElementById("recipient-picker");
 const recipientSearch = document.getElementById("recipient-search");
 const recipientMenu = document.getElementById("recipient-menu");
 const recipientSelected = document.getElementById("recipient-selected");
+const messageComposeForm = document.getElementById("message-compose-form");
+const messageTitleInput = document.getElementById("message-title");
+const messageContentInput = document.getElementById("message-content");
 const recipientOptions = Array.from(document.querySelectorAll("#recipient-data [data-id]")).map((item) => ({
     id: item.dataset.id,
     label: item.dataset.label,
@@ -175,6 +193,15 @@ const recipientOptions = Array.from(document.querySelectorAll("#recipient-data [
     search: (item.dataset.label || "").toLowerCase(),
 }));
 const selectedRecipients = new Map();
+
+function selectRecipientById(userId) {
+    const option = recipientOptions.find((item) => item.id === String(userId));
+    if (!option) return false;
+    selectedRecipients.set(option.id, option);
+    renderSelectedRecipients();
+    renderRecipientMenu();
+    return true;
+}
 
 function recipientAvatar(option) {
     return option.photo
@@ -230,6 +257,22 @@ document.addEventListener("pointerdown", (event) => {
     if (!event.target.closest("#recipient-picker")) {
         recipientPicker?.classList.remove("is-open");
     }
+});
+
+document.querySelectorAll("[data-reply-user-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const selected = selectRecipientById(button.dataset.replyUserId);
+        if (!selected) return;
+        const sourceTitle = (button.dataset.replyTitle || "").trim();
+        if (messageTitleInput && !messageTitleInput.value.trim()) {
+            messageTitleInput.value = sourceTitle.toLowerCase().startsWith("re:") ? sourceTitle : `Re: ${sourceTitle || "Message"}`;
+        }
+        if (messageContentInput && !messageContentInput.value.trim()) {
+            messageContentInput.value = `Bonjour ${button.dataset.replyName || ""},\n\n`;
+        }
+        messageComposeForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => messageContentInput?.focus({ preventScroll: true }), 260);
+    });
 });
 </script>
 {% endblock %}
