@@ -182,12 +182,18 @@ def messages_internes_view(request):
                 return redirect("messages_internes")
 
     inbox = MessageInterne.objects.select_related("expediteur", "expediteur__profil_utilisateur").filter(destinataire=request.user).order_by("-created_at")[:80]
+    sent_messages = (
+        MessageInterne.objects.select_related("destinataire", "destinataire__profil_utilisateur")
+        .filter(expediteur=request.user)
+        .order_by("-created_at")[:80]
+    )
     users = User.objects.select_related("profil_utilisateur").filter(is_active=True).order_by("first_name", "last_name", "username")
     return render(
         request,
         "utilisateurs/messages.html",
         {
             "messages_internes": inbox,
+            "messages_envoyes": sent_messages,
             "unread_total": MessageInterne.objects.filter(destinataire=request.user, lu=False).count(),
             "users": users,
             "can_send_messages": can_send_messages,

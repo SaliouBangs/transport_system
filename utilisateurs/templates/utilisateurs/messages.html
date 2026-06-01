@@ -89,6 +89,41 @@ body.theme-dark .message-card p{color:#b8c7ce}
             <div class="empty-state">Aucun message interne pour le moment.</div>
             {% endfor %}
         </div>
+
+        <div class="section-header" style="margin-top:18px;">
+            <div>
+                <p class="eyebrow">Envois</p>
+                <h2>Messages envoyes</h2>
+            </div>
+        </div>
+        <div class="message-list">
+            {% for item in messages_envoyes %}
+            <article class="message-card">
+                <div class="message-card__top">
+                    <div class="message-author">
+                        <span class="message-avatar">
+                            {% if item.destinataire.profil_utilisateur.photo %}
+                            <img src="{{ item.destinataire.profil_utilisateur.photo.url }}" alt="">
+                            {% else %}
+                            {{ item.destinataire.profil_utilisateur.initiales|default:item.destinataire.username|slice:":2"|upper }}
+                            {% endif %}
+                        </span>
+                        <div>
+                            <h3>{{ item.titre }}</h3>
+                            <span class="message-meta">
+                                A {{ item.destinataire.get_full_name|default:item.destinataire.username }}
+                                - {{ item.created_at|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+                    </div>
+                    <span class="status-badge {% if item.lu %}status-ok{% else %}status-danger{% endif %}">{% if item.lu %}Lu{% else %}Non lu{% endif %}</span>
+                </div>
+                <p>{{ item.contenu|linebreaksbr }}</p>
+            </article>
+            {% empty %}
+            <div class="empty-state">Aucun message envoye pour le moment.</div>
+            {% endfor %}
+        </div>
     </section>
 
     {% if can_send_messages %}

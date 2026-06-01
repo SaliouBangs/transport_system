@@ -151,11 +151,19 @@ class ProfilUtilisateurTests(TestCase):
         self.assertFalse(MessageInterne.objects.filter(destinataire=self.user, lu=False).exists())
 
     def test_messages_page_shows_mobile_recipient_search(self):
+        MessageInterne.objects.create(
+            expediteur=self.user,
+            destinataire=User.objects.create_user(username="dest_msg", password="Pass12345!"),
+            titre="Message envoye",
+            contenu="Suivi",
+        )
         self.client.login(username="amina", password="AncienPass123!")
 
         response = self.client.get(reverse("messages_internes"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "recipient-search")
+        self.assertContains(response, "Messages envoyes")
+        self.assertContains(response, "Message envoye")
         self.assertNotContains(response, "Choisir un role")
         self.assertNotContains(response, "Lien vers la tache")
