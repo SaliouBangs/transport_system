@@ -373,20 +373,22 @@ class Depense(models.Model):
     def _generate_reference(self):
         if self.reference:
             return
-        last = (
-            Depense.objects.exclude(reference="")
-            .order_by("-id")
-            .values_list("reference", flat=True)
-            .first()
-        )
-        if not last or not last.startswith("DEP"):
-            self.reference = "DEP001"
-            return
-        try:
-            next_number = int(last.replace("DEP", "")) + 1
-        except ValueError:
-            next_number = (self.pk or Depense.objects.count()) + 1
-        self.reference = f"DEP{next_number:03d}"
+        prefix = self._reference_prefix()
+        last_number = 0
+        for reference in Depense.objects.filter(reference__startswith=prefix).values_list("reference", flat=True):
+            suffix = reference[len(prefix):]
+            if suffix.isdigit():
+                last_number = max(last_number, int(suffix))
+        self.reference = f"{prefix}{last_number + 1:03d}"
+
+    def _reference_prefix(self):
+        if self.source_depense == self.SOURCE_CHARGEMENT:
+            return "DEPSOGMAI"
+        if self.entite_depense == self.ENTITE_AVENA:
+            return "DEPAVIN"
+        if self.entite_depense == self.ENTITE_SONI:
+            return "DEPSONIN"
+        return "DEPSOGIN"
 
     def clean(self):
         self.titre = (self.titre or "").strip()

@@ -14,6 +14,43 @@ from maintenance.models import Fournisseur
 TEST_MEDIA_ROOT = Path(__file__).resolve().parents[1] / "test_media"
 
 
+class DepenseReferenceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="ref_user", password="testpass123")
+
+    def _create_depense(self, **overrides):
+        data = {
+            "demandeur": self.user,
+            "titre": "Depense test",
+            "description": "Controle reference.",
+            "source_depense": Depense.SOURCE_GENERALE,
+            "entite_depense": Depense.ENTITE_SOGEFI,
+            "statut": Depense.STATUT_ATTENTE_ENGAGEMENT,
+        }
+        data.update(overrides)
+        return Depense.objects.create(**data)
+
+    def test_references_sont_incrementees_par_famille(self):
+        self._create_depense(reference="DEP999")
+        avena_1 = self._create_depense(entite_depense=Depense.ENTITE_AVENA)
+        avena_2 = self._create_depense(entite_depense=Depense.ENTITE_AVENA)
+        soni = self._create_depense(entite_depense=Depense.ENTITE_SONI)
+        sogefi = self._create_depense(entite_depense=Depense.ENTITE_SOGEFI)
+        chargement = Depense(
+            demandeur=self.user,
+            titre="Depense chargement",
+            description="Controle reference chargement.",
+            source_depense=Depense.SOURCE_CHARGEMENT,
+        )
+        chargement._generate_reference()
+
+        self.assertEqual(avena_1.reference, "DEPAVIN001")
+        self.assertEqual(avena_2.reference, "DEPAVIN002")
+        self.assertEqual(soni.reference, "DEPSONIN001")
+        self.assertEqual(sogefi.reference, "DEPSOGIN001")
+        self.assertEqual(chargement.reference, "DEPSOGMAI001")
+
+
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
 class DepenseDgaAccessTests(TestCase):
     def setUp(self):
