@@ -228,6 +228,34 @@ class DepenseDgaAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, depense_avena.reference)
 
+    def test_comptable_avena_peut_creer_une_depense_avena(self):
+        self.client.force_login(self.comptable_avena_user)
+
+        response = self.client.post(
+            reverse("ajouter_depense"),
+            {
+                "titre": "Nouvelle depense Avena",
+                "date_expression": "2026-06-01",
+                "description": "Besoin interne Avena.",
+                "ligne_designation[]": ["Fournitures bureau"],
+                "ligne_quantite[]": ["3"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        depense = Depense.objects.get(titre="Nouvelle depense Avena")
+        self.assertEqual(depense.entite_depense, Depense.ENTITE_AVENA)
+        self.assertEqual(depense.source_depense, Depense.SOURCE_GENERALE)
+        self.assertEqual(depense.statut, Depense.STATUT_ATTENTE_ENGAGEMENT)
+
+    def test_comptable_avena_voit_le_bouton_nouvelle_depense(self):
+        self.client.force_login(self.comptable_avena_user)
+
+        response = self.client.get(reverse("liste_depenses"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nouvelle depense interne")
+
     def test_dga_avena_valide_les_depenses_avena(self):
         depense_avena = Depense.objects.create(
             demandeur=self.dga_avena_user,

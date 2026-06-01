@@ -124,6 +124,54 @@ class PaiementsAvenaIsolationTests(TestCase):
         self.assertContains(response, "Caissiere Avena")
         self.assertNotContains(response, "Comptable SOGEFI")
 
+    def test_comptable_avena_ne_voit_pas_les_approvisionnements_sogefi(self):
+        caissiere_sogefi_group, _ = Group.objects.get_or_create(name="caissiere")
+        caissiere_sogefi = User.objects.create_user(username="moligo", password="testpass123")
+        caissiere_sogefi.groups.add(caissiere_sogefi_group)
+        appro_sogefi = ApprovisionnementCaisse.objects.create(
+            caissiere=caissiere_sogefi,
+            saisi_par=caissiere_sogefi,
+            date_approvisionnement="2026-05-26",
+            nature_approvisionnement=ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            montant=Decimal("5000000"),
+        )
+        appro_avena = ApprovisionnementCaisse.objects.create(
+            caissiere=self.caissiere_avena,
+            saisi_par=self.comptable_avena,
+            date_approvisionnement="2026-05-26",
+            nature_approvisionnement=ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            montant=Decimal("2000000"),
+        )
+
+        self.client.force_login(self.comptable_avena)
+        response = self.client.get(reverse("appro_caisse"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, appro_avena.reference)
+        self.assertNotContains(response, appro_sogefi.reference)
+        self.assertContains(response, "oumou")
+        self.assertNotContains(response, "moligo")
+
+    def test_comptable_avena_sans_caissiere_avena_ne_voit_aucun_approvisionnement(self):
+        self.caissiere_avena.delete()
+        caissiere_sogefi_group, _ = Group.objects.get_or_create(name="caissiere")
+        caissiere_sogefi = User.objects.create_user(username="sogefi-caisse", password="testpass123")
+        caissiere_sogefi.groups.add(caissiere_sogefi_group)
+        appro_sogefi = ApprovisionnementCaisse.objects.create(
+            caissiere=caissiere_sogefi,
+            saisi_par=caissiere_sogefi,
+            date_approvisionnement="2026-05-26",
+            nature_approvisionnement=ApprovisionnementCaisse.NATURE_URGENCE_DG,
+            montant=Decimal("5000000"),
+        )
+
+        self.client.force_login(self.comptable_avena)
+        response = self.client.get(reverse("appro_caisse"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, appro_sogefi.reference)
+        self.assertEqual(list(response.context["approvisionnements"]), [])
+
 
 class CaisseDgMouvementsTests(TestCase):
     def setUp(self):

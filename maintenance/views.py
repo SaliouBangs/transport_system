@@ -1804,7 +1804,9 @@ def appro_caisse(request):
             instance=metrics["solde_initial_obj"],
             initial={"caissiere": selected_caissiere},
         )
-    approvisionnements = ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par")
+    approvisionnements = ApprovisionnementCaisse.objects.select_related("caissiere", "saisi_par").filter(
+        **_caissiere_scope_filter_for_user(request.user)
+    )
     if selected_caissiere:
         approvisionnements = approvisionnements.filter(caissiere=selected_caissiere)
     if date_from:
@@ -1845,6 +1847,7 @@ def appro_caisse(request):
 
 
 def situation_caisse(request):
+    caissieres = _caissiere_users_queryset_for_user(request.user)
     selected_caissiere = _resolve_caissiere_for_request(request)
     date_from = (request.GET.get("date_from") or "").strip()
     date_to = (request.GET.get("date_to") or "").strip()
@@ -1855,7 +1858,7 @@ def situation_caisse(request):
         request,
         "maintenance/situation_caisse.html",
         {
-            "caissieres": _caissiere_users_queryset(),
+            "caissieres": caissieres,
             "selected_caissiere": selected_caissiere,
             "filter_values": {
                 "caissiere": str(selected_caissiere.id) if selected_caissiere else "",

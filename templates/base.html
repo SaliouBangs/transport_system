@@ -3805,6 +3805,7 @@ font-size:0.84rem;
     <span class="sidebar-section__icon">&#9662;</span>
 </button>
 <div class="sidebar-section__panel {% if '/depenses/' in request.path or '/maintenance/fournisseurs/' in request.path %}is-open{% endif %}" data-sidebar-panel>
+    <a href="/depenses/ajouter/" class="{% if '/depenses/ajouter/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9998;</span>Nouvelle depense</span></a>
     <a href="/depenses/" class="{% if request.path == '/depenses/' and not request.GET.statut %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9679;</span>Suivi des dossiers</span></a>
     <a href="/depenses/?statut=attente_engagement_achat" class="{% if '/depenses/' in request.path and request.GET.statut == 'attente_engagement_achat' %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9642;</span>Saisie achat / prix</span></a>
     <a href="/depenses/rapport/" class="{% if '/depenses/rapport/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#9635;</span>Rapports</span></a>

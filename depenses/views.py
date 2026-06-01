@@ -393,7 +393,14 @@ def _engagement_allowed(user):
 
 
 def _internal_expression_creation_allowed(user):
-    return is_admin_user(user) or get_user_role(user) in {"dga_sogefi", "responsable_achat", "logistique", "dga_avena", "directeur"}
+    return is_admin_user(user) or get_user_role(user) in {
+        "dga_sogefi",
+        "responsable_achat",
+        "logistique",
+        "dga_avena",
+        "comptable_avena",
+        "directeur",
+    }
 
 
 def _type_depense_management_allowed(user):
