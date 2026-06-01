@@ -804,6 +804,7 @@ def _build_rapport_encaissements_commerciaux_context(request):
     totals = {
         "essence": Decimal("0.00"),
         "gasoil": Decimal("0.00"),
+        "other": Decimal("0.00"),
         "global": Decimal("0.00"),
     }
 
@@ -815,27 +816,35 @@ def _build_rapport_encaissements_commerciaux_context(request):
                 "commercial_name": _commercial_display_name(commercial),
                 "essence": Decimal("0.00"),
                 "gasoil": Decimal("0.00"),
+                "other": Decimal("0.00"),
                 "total": Decimal("0.00"),
                 "encaissement_ids": set(),
             }
         return summary_map[key]
 
-    def add_amount(encaissement, commande, amount):
+    def add_amount(encaissement, commande, amount, label=""):
         family = _commande_product_family(commande)
         if family not in {"essence", "gasoil"}:
-            return
-        commercial = getattr(getattr(commande, "client", None), "commercial", None)
+            family = "other"
+        commercial = getattr(getattr(commande, "client", None), "commercial", None) if commande else None
         if not commercial:
             commercial = getattr(getattr(encaissement, "client", None), "commercial", None)
         row = ensure_row(commercial)
         amount = amount or Decimal("0.00")
         essence_amount = amount if family == "essence" else Decimal("0.00")
         gasoil_amount = amount if family == "gasoil" else Decimal("0.00")
+        other_amount = amount if family == "other" else Decimal("0.00")
         row[family] += amount
         row["total"] += amount
         row["encaissement_ids"].add(encaissement.pk)
         totals[family] += amount
         totals["global"] += amount
+        if label:
+            product_label = label
+        elif commande:
+            product_label = getattr(getattr(commande, "produit", None), "nom", "")
+        else:
+            product_label = encaissement.get_type_encaissement_display()
         detail_rows.append(
             {
                 "date": encaissement.date_encaissement,
@@ -844,29 +853,41 @@ def _build_rapport_encaissements_commerciaux_context(request):
                 "client": encaissement.client,
                 "client_name": getattr(encaissement.client, "entreprise", ""),
                 "commande": commande,
-                "commande_reference": getattr(commande, "reference_affichee", ""),
-                "produit": getattr(getattr(commande, "produit", None), "nom", ""),
+                "commande_reference": getattr(commande, "reference_affichee", "") if commande else "-",
+                "produit": product_label,
                 "mode_paiement": encaissement.get_mode_paiement_display(),
                 "banque": encaissement.banque or "-",
                 "reference": encaissement.reference or "-",
                 "deposant": encaissement.nom_deposant or "-",
                 "essence": essence_amount,
                 "gasoil": gasoil_amount,
+                "other": other_amount,
                 "total": amount,
             }
         )
 
     for encaissement in encaissements.distinct():
+        amount_accounted = Decimal("0.00")
         allocations = [
             allocation
             for allocation in encaissement.allocations.all()
-            if allocation.cible_type == "commande" and allocation.commande_id
         ]
         if allocations:
             for allocation in allocations:
-                add_amount(encaissement, allocation.commande, allocation.montant_affecte)
+                amount_accounted += allocation.montant_affecte or Decimal("0.00")
+                if allocation.cible_type == "commande" and allocation.commande_id:
+                    add_amount(encaissement, allocation.commande, allocation.montant_affecte)
+                elif allocation.cible_type == "solde_initial":
+                    add_amount(encaissement, None, allocation.montant_affecte, "Solde initial")
+                elif allocation.cible_type == "avance_client":
+                    add_amount(encaissement, None, allocation.montant_affecte, "Avance client")
+            remaining_amount = (encaissement.montant or Decimal("0.00")) - amount_accounted
+            if remaining_amount > 0:
+                add_amount(encaissement, None, remaining_amount, f"{encaissement.get_type_encaissement_display()} non affecte")
         elif encaissement.commande_id:
             add_amount(encaissement, encaissement.commande, encaissement.montant)
+        else:
+            add_amount(encaissement, None, encaissement.montant, encaissement.get_type_encaissement_display())
 
     summary_rows = sorted(summary_map.values(), key=lambda item: item["commercial_name"].lower())
     for row in summary_rows:
@@ -915,7 +936,7 @@ def export_rapport_encaissements_commerciaux_xls(request):
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Encaissements commerciaux"
-    headers = ["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Reference", "Deposant", "ESS", "GAS", "Total"]
+    headers = ["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Reference", "Deposant", "ESS", "GAS", "Autres", "Total"]
     worksheet.append(headers)
     for cell in worksheet[1]:
         cell.font = Font(bold=True, color="FFFFFF")
@@ -934,11 +955,12 @@ def export_rapport_encaissements_commerciaux_xls(request):
                 row["deposant"],
                 float(row["essence"]),
                 float(row["gasoil"]),
+                float(row["other"]),
                 float(row["total"]),
             ]
         )
     worksheet.append([])
-    worksheet.append(["Totaux", "", "", "", "", "", "", "", "", float(context["totals"]["essence"]), float(context["totals"]["gasoil"]), float(context["totals"]["global"])])
+    worksheet.append(["Totaux", "", "", "", "", "", "", "", "", float(context["totals"]["essence"]), float(context["totals"]["gasoil"]), float(context["totals"]["other"]), float(context["totals"]["global"])])
     for column in worksheet.columns:
         column_letter = column[0].column_letter
         worksheet.column_dimensions[column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 32)
@@ -967,10 +989,10 @@ def export_rapport_encaissements_commerciaux_pdf(request):
     styles = getSampleStyleSheet()
     elements = [
         Paragraph("Rapport encaissements par commercial", styles["Title"]),
-        Paragraph(f"ESS: {context['totals']['essence']} GNF | GAS: {context['totals']['gasoil']} GNF | Total: {context['totals']['global']} GNF", styles["Normal"]),
+        Paragraph(f"ESS: {context['totals']['essence']} GNF | GAS: {context['totals']['gasoil']} GNF | Autres: {context['totals']['other']} GNF | Total: {context['totals']['global']} GNF", styles["Normal"]),
         Spacer(1, 12),
     ]
-    data = [["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Ref.", "Deposant", "ESS", "GAS", "Total"]]
+    data = [["Date", "Commercial", "Client", "Commande", "Produit", "Mode", "Banque", "Ref.", "Deposant", "ESS", "GAS", "Autres", "Total"]]
     for row in context["payment_rows"]:
         data.append(
             [
@@ -985,11 +1007,12 @@ def export_rapport_encaissements_commerciaux_pdf(request):
                 row["deposant"],
                 f"{row['essence']:.0f}",
                 f"{row['gasoil']:.0f}",
+                f"{row['other']:.0f}",
                 f"{row['total']:.0f}",
             ]
         )
     if len(data) == 1:
-        data.append(["Aucun encaissement", "", "", "", "", "", "", "", "", "", "", ""])
+        data.append(["Aucun encaissement", "", "", "", "", "", "", "", "", "", "", "", ""])
     table = Table(data, repeatRows=1)
     table.setStyle(
         TableStyle(

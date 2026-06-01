@@ -19,7 +19,7 @@
 .filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(220px,1fr) minmax(360px,1.2fr) auto auto;gap:12px;align-items:end}
 .filter-card{padding:12px 14px;border:1px solid #deebf5;border-radius:18px;background:#fff}
 .period-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .kpi-card{padding:18px}
 .kpi-card strong{display:block;margin-top:6px;font-size:1.65rem;color:#082c49}
 .kpi-card small{display:block;margin-top:6px;color:#60798c}
@@ -56,7 +56,7 @@
             <p class="eyebrow">Lot de rapports</p>
             <h1>Rapport encaissements par commercial</h1>
             <p>
-                Ventilation des encaissements affectes aux commandes par commercial, separee en Essence, Gasoil et total.
+                Ventilation des encaissements par commercial : commandes Essence/Gasoil, avances client, solde initial et paiements non encore affectes.
             </p>
         </div>
         <div class="hero-actions">
@@ -69,7 +69,7 @@
             <p class="eyebrow">Filtres</p>
             <h2>Preparer le rapport</h2>
             <p class="section-note">
-                Les avances client non encore affectees a une commande ne sont pas ventilees, car leur produit ESS/GAS n'est pas encore connu.
+                Les avances client non encore affectees et les soldes initiaux sont classes dans Autres, car leur produit ESS/GAS n'est pas encore connu.
             </p>
         </div>
         <form method="get" class="app-form">
@@ -99,7 +99,7 @@
                 <div class="filter-card">
                     <div class="field">
                         <label>Lecture</label>
-                        <input type="text" value="Encaissements affectes aux commandes ESS/GAS" disabled>
+                        <input type="text" value="Commandes ESS/GAS + avances et autres paiements" disabled>
                     </div>
                 </div>
                 <button type="submit" class="btn">Afficher</button>
@@ -122,7 +122,12 @@
         <div class="kpi-card is-dark">
             <p class="eyebrow">Total</p>
             <strong>{{ totals.global|gnf }}</strong>
-            <small>Essence + Gasoil</small>
+            <small>Essence + Gasoil + autres</small>
+        </div>
+        <div class="kpi-card">
+            <p class="eyebrow">Autres</p>
+            <strong>{{ totals.other|gnf }}</strong>
+            <small>Avances, soldes initiaux, non affectes</small>
         </div>
         <div class="kpi-card">
             <p class="eyebrow">Commerciaux</p>
@@ -136,7 +141,7 @@
             <div>
                 <p class="eyebrow">Details paiements</p>
                 <h2>Tableau des encaissements</h2>
-                <p class="section-note">Chaque ligne reprend les informations bancaires du paiement et sa ventilation ESS/GAS.</p>
+                <p class="section-note">Chaque ligne reprend les informations bancaires du paiement et sa ventilation ESS/GAS/Autres.</p>
             </div>
             <div class="export-actions">
                 <a href="/clients/rapports/encaissements-commerciaux/export/xls/{% if current_filters %}?{{ current_filters }}{% endif %}" class="btn secondary">Exporter Excel</a>
@@ -159,6 +164,7 @@
                         <th>Deposant</th>
                         <th>ESS</th>
                         <th>GAS</th>
+                        <th>Autres</th>
                         <th>Total</th>
                     </tr>
                 </thead>
@@ -182,11 +188,12 @@
                         <td>{{ row.deposant }}</td>
                         <td class="amount-cell">{{ row.essence|gnf }}</td>
                         <td class="amount-cell">{{ row.gasoil|gnf }}</td>
+                        <td class="amount-cell">{{ row.other|gnf }}</td>
                         <td class="amount-cell">{{ row.total|gnf }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="13">Aucun encaissement affecte a une commande ESS/GAS pour cette selection.</td>
+                        <td colspan="14">Aucun encaissement pour cette selection.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -208,6 +215,7 @@
                         <th>Encaissements</th>
                         <th>ESS</th>
                         <th>GAS</th>
+                        <th>Autres</th>
                         <th>Total</th>
                     </tr>
                 </thead>
@@ -224,11 +232,12 @@
                         <td><span class="count-pill">{{ row.encaissements_count }}</span></td>
                         <td class="amount-cell">{{ row.essence|gnf }}</td>
                         <td class="amount-cell">{{ row.gasoil|gnf }}</td>
+                        <td class="amount-cell">{{ row.other|gnf }}</td>
                         <td class="amount-cell">{{ row.total|gnf }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6">Aucune synthese disponible pour cette selection.</td>
+                        <td colspan="7">Aucune synthese disponible pour cette selection.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
