@@ -8,6 +8,7 @@
 
 <style>
 :root{
+--sidebar-outer-width:260px;
 --navy:#123047;
 --navy-soft:#1d4968;
 --sand:#f7f2e8;
@@ -173,6 +174,7 @@ flex:1;
 display:flex;
 flex-direction:column;
 min-height:100vh;
+min-width:0;
 }
 
 .topbar{
@@ -1379,6 +1381,7 @@ top:0;
 z-index:30;
 animation:sidebar-in 0.34s ease-out both;
 overflow:hidden;
+transition:margin-left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .sidebar::before{
@@ -1403,6 +1406,14 @@ padding:4px 2px 10px;
 border-radius:0;
 background:transparent;
 box-shadow:none;
+}
+
+.sidebar-brand__content{
+display:flex;
+align-items:center;
+gap:10px;
+min-width:0;
+flex:1;
 }
 
 .sidebar-brand__mark{
@@ -1601,6 +1612,9 @@ padding:36px;
 background:transparent;
 animation:page-in 0.34s ease-out both;
 transition:opacity 0.24s ease, transform 0.28s ease;
+min-width:0;
+max-width:100%;
+box-sizing:border-box;
 }
 
 body.page-leaving .content{
@@ -1639,6 +1653,72 @@ font-size:1.2rem;
 font-weight:700;
 box-shadow:var(--shadow);
 cursor:pointer;
+}
+
+.sidebar-control-button,
+.sidebar-collapse-button,
+.sidebar-edge-toggle{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+border:1px solid rgba(255,255,255,0.16);
+background:rgba(255,255,255,0.10);
+color:white;
+cursor:pointer;
+box-shadow:0 12px 28px rgba(0,0,0,0.16);
+transition:background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, left 0.28s ease;
+}
+
+.sidebar-control-button:hover,
+.sidebar-collapse-button:hover,
+.sidebar-edge-toggle:hover{
+background:rgba(255,255,255,0.18);
+border-color:rgba(255,255,255,0.28);
+transform:translateY(-1px);
+box-shadow:0 16px 32px rgba(0,0,0,0.22);
+}
+
+.sidebar-control-button{
+width:40px;
+height:40px;
+border-radius:13px;
+font-size:1.05rem;
+font-weight:900;
+flex:0 0 auto;
+}
+
+.sidebar-collapse-button{
+width:34px;
+height:34px;
+border-radius:12px;
+font-size:1.25rem;
+font-weight:900;
+background:rgba(255,255,255,0.08);
+}
+
+.sidebar-edge-toggle{
+position:fixed;
+left:244px;
+top:50%;
+width:34px;
+height:78px;
+border-radius:0 999px 999px 0;
+z-index:46;
+background:linear-gradient(180deg, rgba(215,55,69,0.72), rgba(15,58,115,0.72));
+border-left:0;
+font-size:1rem;
+font-weight:950;
+backdrop-filter:blur(8px);
+}
+
+body.sidebar-collapsed .sidebar{
+margin-left:calc(-1 * var(--sidebar-outer-width));
+transform:translateX(-6px);
+pointer-events:none;
+}
+
+body.sidebar-collapsed .sidebar-edge-toggle{
+left:0;
 }
 
 .sidebar-overlay{
@@ -3026,6 +3106,10 @@ position:sticky;
 top:0;
 }
 
+.sidebar-control-button{
+display:none;
+}
+
 .topbar-message{
 width:100%;
 font-size:0.86rem;
@@ -3131,6 +3215,14 @@ width:44px;
 height:44px;
 }
 
+.sidebar-edge-toggle{
+left:0;
+top:50%;
+width:30px;
+height:72px;
+z-index:66;
+}
+
 .sidebar-overlay{
 display:block;
 opacity:0;
@@ -3150,6 +3242,12 @@ transition:opacity 0.2s ease;
  padding:76px 16px 24px;
  overflow-y:auto;
  box-sizing:border-box;
+}
+
+body.sidebar-collapsed .sidebar{
+ margin-left:0;
+ transform:translateX(-100%);
+ pointer-events:auto;
 }
 
 body.sidebar-open .sidebar{
@@ -3440,12 +3538,14 @@ font-size:0.84rem;
 
 <body class="{% if '/dashboard/' in request.path %}app-module-dashboard{% elif '/commandes/rapport-global/' in request.path or '/clients/rapports/' in request.path or '/operations/comptable-client/rapport-perequation/' in request.path or '/camions/rapports/' in request.path or '/maintenance/rapports/' in request.path or '/maintenance/stock/rapports/' in request.path %}app-module-reports{% elif '/clients/encaissements/' in request.path or '/operations/comptable/' in request.path or '/operations/comptable-client/' in request.path or '/operations/facturation/' in request.path %}app-module-comptabilite{% elif '/prospects/' in request.path or '/clients/' in request.path or '/commandes/' in request.path %}app-module-commercial{% elif '/operations/logistique/' in request.path or '/operations/logisticien/' in request.path or '/operations/chef-chauffeur/' in request.path or '/operations/transitaire/' in request.path or '/camions/' in request.path or '/chauffeurs/' in request.path or '/documents/' in request.path %}app-module-logistique{% elif '/maintenance/' in request.path or '/depenses/' in request.path %}app-module-maintenance{% endif %}">
 
-<button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Ouvrir le menu">...</button>
+<button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false">&#9776;</button>
+<button type="button" class="sidebar-edge-toggle" id="sidebar-edge-toggle" aria-label="Afficher ou masquer le menu" aria-expanded="true">&#8249;</button>
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
 <div class="sidebar">
 
 <div class="sidebar-brand" aria-label="ZOBOKO Business Suite">
+<span class="sidebar-brand__content">
 <span class="sidebar-brand__mark" aria-hidden="true">
 <svg viewBox="0 0 100 100" role="img" focusable="false">
 <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
@@ -3481,6 +3581,8 @@ font-size:0.84rem;
 <span class="sidebar-brand__name">ZOBOKO</span>
 <span class="sidebar-brand__suite">Business Suite</span>
 </span>
+</span>
+<button type="button" class="sidebar-collapse-button" id="sidebar-collapse-button" aria-label="Masquer le menu" aria-expanded="true">&#8249;</button>
 </div>
 
 {% if can_access_dashboard %}<a href="/dashboard/" class="sidebar-standalone {% if '/dashboard/' in request.path %}active{% endif %}"><span class="sidebar-link-label"><span class="sidebar-menu-icon">&#8962;</span>Tableau de Bord</span></a>{% endif %}
@@ -3909,6 +4011,7 @@ font-size:0.84rem;
 <div class="app-shell">
 
 <div class="topbar">
+<button type="button" class="sidebar-control-button" id="sidebar-toggle-topbar" aria-label="Afficher ou masquer le menu" aria-expanded="true">&#9776;</button>
 <div class="topbar-message">Utiliser l'application en version demo pour vos tests et validations.</div>
 <div class="topbar-tools">
 {% if can_use_global_entity_selector %}
@@ -4118,6 +4221,10 @@ SY
 <script>
 const mobileNavToggle = document.getElementById("mobile-nav-toggle");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
+const sidebarToggleTopbar = document.getElementById("sidebar-toggle-topbar");
+const sidebarCollapseButton = document.getElementById("sidebar-collapse-button");
+const sidebarEdgeToggle = document.getElementById("sidebar-edge-toggle");
+const sidebarDesktopQuery = window.matchMedia("(min-width: 901px)");
 const themeSelect = document.getElementById("theme-select");
 const themeOptionButtons = document.querySelectorAll("[data-theme-option]");
 const themeResetButton = document.getElementById("theme-reset-button");
@@ -4200,8 +4307,40 @@ function animatePageLeave(nextUrl) {
 }
 
 function toggleSidebar(forceOpen) {
+    if (sidebarDesktopQuery.matches) {
+        const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : document.body.classList.contains("sidebar-collapsed");
+        document.body.classList.toggle("sidebar-collapsed", !shouldOpen);
+        document.body.classList.remove("sidebar-open");
+        localStorage.setItem("zoboko-sidebar-collapsed", shouldOpen ? "0" : "1");
+        updateSidebarControls(shouldOpen);
+        return;
+    }
     const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !document.body.classList.contains("sidebar-open");
+    document.body.classList.remove("sidebar-collapsed");
     document.body.classList.toggle("sidebar-open", shouldOpen);
+    updateSidebarControls(shouldOpen);
+}
+
+function updateSidebarControls(isOpen) {
+    [mobileNavToggle, sidebarToggleTopbar, sidebarCollapseButton, sidebarEdgeToggle].forEach((button) => {
+        button?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+    if (sidebarEdgeToggle) {
+        sidebarEdgeToggle.textContent = isOpen ? "\u2039" : "\u203a";
+        sidebarEdgeToggle.setAttribute("aria-label", isOpen ? "Masquer le menu" : "Afficher le menu");
+    }
+}
+
+function restoreSidebarState() {
+    if (sidebarDesktopQuery.matches) {
+        const shouldCollapse = localStorage.getItem("zoboko-sidebar-collapsed") === "1";
+        document.body.classList.toggle("sidebar-collapsed", shouldCollapse);
+        document.body.classList.remove("sidebar-open");
+        updateSidebarControls(!shouldCollapse);
+        return;
+    }
+    document.body.classList.remove("sidebar-collapsed");
+    updateSidebarControls(document.body.classList.contains("sidebar-open"));
 }
 
 function applyTheme(theme) {
@@ -4220,7 +4359,11 @@ function applyTheme(theme) {
 }
 
 mobileNavToggle?.addEventListener("click", () => toggleSidebar());
+sidebarToggleTopbar?.addEventListener("click", () => toggleSidebar());
+sidebarCollapseButton?.addEventListener("click", () => toggleSidebar(false));
+sidebarEdgeToggle?.addEventListener("click", () => toggleSidebar());
 sidebarOverlay?.addEventListener("click", () => toggleSidebar(false));
+sidebarDesktopQuery.addEventListener?.("change", restoreSidebarState);
 themeSelect?.addEventListener("change", (event) => applyTheme(event.target.value));
 themeOptionButtons.forEach((button) => {
     button.addEventListener("click", () => applyTheme(button.dataset.themeOption));
@@ -4236,6 +4379,7 @@ profileThemeToggle?.addEventListener("click", () => {
 entitySwitcherSelect?.addEventListener("change", () => document.getElementById("entity-switcher-form")?.submit());
 
 applyTheme(localStorage.getItem("mst-theme") || "light");
+restoreSidebarState();
 prepareContentMotion();
 
 document.addEventListener("click", (event) => {
