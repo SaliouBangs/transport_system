@@ -117,7 +117,7 @@ def notifications_status(request):
 
 @login_required(login_url="/comptes/connexion/")
 def messages_internes_view(request):
-    can_send_messages = request.user.is_staff or is_admin_user(request.user)
+    can_send_messages = True
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
         if action == "mark_read":
