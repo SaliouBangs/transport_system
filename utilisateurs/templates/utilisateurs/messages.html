@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Messages internes{% endblock %}
+
+{% block content %}
+<style>
+.message-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.45fr);gap:14px;align-items:start}
+.message-list{display:grid;gap:10px}
+.message-card{border:1px solid #d6e6f3;border-radius:16px;background:#fff;padding:14px;box-shadow:0 12px 26px rgba(13,47,79,.08)}
+.message-card.is-unread{border-color:#ef4444;background:#fff7f7}
+.message-card__top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.message-card h3{margin:0;color:#0d2f4f}
+.message-card p{margin:8px 0;color:#456074}
+.message-meta{font-size:12px;font-weight:800;color:#6b7f93}
+.message-link{display:inline-flex;margin-top:8px}
+.message-compose{display:grid;gap:12px}
+.message-compose label{display:grid;gap:6px;font-weight:900;color:#0d2f4f}
+.message-compose :is(input,select,textarea){border:1px solid #bad5ec;border-radius:12px;padding:11px 12px;font:inherit;color:#0d2f4f;background:#fff}
+.message-compose textarea{min-height:130px;resize:vertical}
+.message-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:900px){.message-layout{grid-template-columns:1fr}}
+body.theme-dark .message-card,body.theme-dark .message-compose :is(input,select,textarea){background:#071013;color:#f7fafc;border-color:#263b43}
+body.theme-dark .message-card h3,body.theme-dark .message-compose label{color:#f7fafc}
+body.theme-dark .message-card p{color:#b8c7ce}
+</style>
+
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Messagerie</p>
+        <h1>Messages internes</h1>
+        <p class="muted">Rappels, validations et consignes envoyes aux acteurs de la plateforme.</p>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_read">
+        <button type="submit" class="btn-secondary">Tout marquer comme lu</button>
+    </form>
+</div>
+
+<div class="message-layout">
+    <section class="page-section">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Reception</p>
+                <h2>Boite de reception</h2>
+            </div>
+            <span class="status-badge {% if unread_total %}status-danger{% else %}status-ok{% endif %}">{{ unread_total }} non lu(s)</span>
+        </div>
+        <div class="message-list">
+            {% for item in messages_internes %}
+            <article class="message-card {% if not item.lu %}is-unread{% endif %}">
+                <div class="message-card__top">
+                    <div>
+                        <h3>{{ item.titre }}</h3>
+                        <span class="message-meta">
+                            {% if item.expediteur %}{{ item.expediteur.get_full_name|default:item.expediteur.username }}{% else %}Systeme{% endif %}
+                            - {{ item.created_at|date:"d/m/Y H:i" }}
+                        </span>
+                    </div>
+                    {% if not item.lu %}<span class="status-badge status-danger">Nouveau</span>{% endif %}
+                </div>
+                <p>{{ item.contenu|linebreaksbr }}</p>
+                {% if item.lien %}<a class="btn-secondary message-link" href="{{ item.lien }}">Ouvrir la tache</a>{% endif %}
+            </article>
+            {% empty %}
+            <div class="empty-state">Aucun message interne pour le moment.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if can_send_messages %}
+    <aside class="page-section">
+        <p class="eyebrow">Nouveau message</p>
+        <h2>Informer un acteur</h2>
+        <form method="post" class="message-compose">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="send">
+            <label>Utilisateur
+                <select name="destinataire">
+                    <option value="">Choisir un utilisateur</option>
+                    {% for user_item in users %}
+                    <option value="{{ user_item.id }}">{{ user_item.get_full_name|default:user_item.username }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Ou role
+                <select name="role">
+                    <option value="">Choisir un role</option>
+                    {% for role_value, role_label in roles %}
+                    <option value="{{ role_value }}">{{ role_label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Titre
+                <input type="text" name="titre" placeholder="Ex : Validation en attente">
+            </label>
+            <label>Message
+                <textarea name="contenu" placeholder="Expliquez la tache ou le rappel."></textarea>
+            </label>
+            <label>Lien vers la tache
+                <input type="text" name="lien" placeholder="/commandes/">
+            </label>
+            <div class="message-actions">
+                <button type="submit" class="btn">Envoyer</button>
+            </div>
+        </form>
+    </aside>
+    {% endif %}
+</div>
+{% endblock %}

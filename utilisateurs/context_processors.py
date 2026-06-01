@@ -1,6 +1,6 @@
 from django.db.models import Q
 
-from .models import ProfilUtilisateur
+from .models import MessageInterne, ProfilUtilisateur
 from .permissions import (
     build_user_permissions,
     can_use_global_entity_selector,
@@ -367,6 +367,7 @@ def user_access(request):
         notifications = _topbar_notifications(request.user, active_entity)
         context["topbar_notifications"] = notifications
         context["topbar_notifications_total"] = sum(item["count"] for item in notifications)
+        context["topbar_messages_unread_total"] = MessageInterne.objects.filter(destinataire=request.user, lu=False).count()
     else:
         context["current_user_profile"] = None
         context["current_user_initials"] = ""
@@ -380,4 +381,5 @@ def user_access(request):
         context["sidebar_entity_is_avena"] = False
         context["topbar_notifications"] = []
         context["topbar_notifications_total"] = 0
+        context["topbar_messages_unread_total"] = 0
     return context

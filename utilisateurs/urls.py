@@ -9,6 +9,7 @@ urlpatterns = [
     path("deconnexion/", views.deconnexion_view, name="deconnexion"),
     path("entite-supervision/", views.changer_entite_supervision, name="changer_entite_supervision"),
     path("notifications/statut/", views.notifications_status, name="notifications_status"),
+    path("messages/", views.messages_internes_view, name="messages_internes"),
     path("profil/", views.profil_view, name="profil"),
     path("parametres/", views.parametres_view, name="parametres"),
     path("actions/", views.historique_actions_view, name="historique_actions"),

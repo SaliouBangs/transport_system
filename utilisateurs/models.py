@@ -79,4 +79,47 @@ def journaliser_action(utilisateur, module, action, cible="", description=""):
         description=description or "",
     )
 
-# Create your models here.
+
+class MessageInterne(models.Model):
+    expediteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="messages_envoyes",
+    )
+    destinataire = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="messages_recus",
+    )
+    titre = models.CharField(max_length=160)
+    contenu = models.TextField()
+    lien = models.CharField(max_length=255, blank=True)
+    lu = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Message interne"
+        verbose_name_plural = "Messages internes"
+
+    def __str__(self):
+        return f"{self.titre} -> {self.destinataire.username}"
+
+
+def envoyer_message_interne(expediteur, destinataires, titre, contenu, lien=""):
+    messages = []
+    for destinataire in destinataires:
+        if not destinataire or not getattr(destinataire, "is_active", False):
+            continue
+        messages.append(
+            MessageInterne(
+                expediteur=expediteur if getattr(expediteur, "is_authenticated", False) else None,
+                destinataire=destinataire,
+                titre=titre,
+                contenu=contenu,
+                lien=lien or "",
+            )
+        )
+    return MessageInterne.objects.bulk_create(messages)

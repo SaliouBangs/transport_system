@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth.models import Group
 from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,7 +14,8 @@ from .forms import (
     UtilisateurCreationForm,
     UtilisateurModificationForm,
 )
-from .models import HistoriqueAction, journaliser_action
+from .constants import ROLE_CHOICES
+from .models import HistoriqueAction, MessageInterne, envoyer_message_interne, journaliser_action
 from .context_processors import _topbar_notifications
 from .permissions import (
     ENTITY_SESSION_KEY,
@@ -97,11 +99,82 @@ def changer_entite_supervision(request):
 @login_required(login_url="/comptes/connexion/")
 def notifications_status(request):
     notifications = _topbar_notifications(request.user, get_active_supervision_entity(request))
+    latest_message = (
+        MessageInterne.objects.filter(destinataire=request.user, lu=False)
+        .order_by("-created_at")
+        .values("id", "titre", "contenu", "lien")
+        .first()
+    )
     return JsonResponse(
         {
             "total": sum(item["count"] for item in notifications),
             "notifications": notifications,
+            "messages_unread": MessageInterne.objects.filter(destinataire=request.user, lu=False).count(),
+            "latest_message": latest_message,
         }
+    )
+
+
+@login_required(login_url="/comptes/connexion/")
+def messages_internes_view(request):
+    can_send_messages = request.user.is_staff or is_admin_user(request.user)
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "mark_read":
+            MessageInterne.objects.filter(destinataire=request.user, lu=False).update(lu=True)
+            messages.success(request, "Messages marques comme lus.")
+            return redirect("messages_internes")
+
+        if action == "send":
+            if not can_send_messages:
+                messages.error(request, "Vous n'avez pas le droit d'envoyer des messages internes.")
+                return redirect("messages_internes")
+
+            titre = (request.POST.get("titre") or "").strip()
+            contenu = (request.POST.get("contenu") or "").strip()
+            lien = (request.POST.get("lien") or "").strip()
+            destinataire_id = (request.POST.get("destinataire") or "").strip()
+            role = (request.POST.get("role") or "").strip()
+            destinataires = User.objects.none()
+
+            if destinataire_id.isdigit():
+                destinataires = User.objects.filter(id=int(destinataire_id), is_active=True)
+            elif role:
+                destinataires = User.objects.filter(groups__name=role, is_active=True).distinct()
+
+            if not titre or not contenu:
+                messages.error(request, "Le titre et le message sont obligatoires.")
+            elif not destinataires.exists():
+                messages.error(request, "Choisissez un destinataire ou un role avec au moins un utilisateur actif.")
+            else:
+                created = envoyer_message_interne(request.user, destinataires, titre, contenu, lien)
+                journaliser_action(
+                    request.user,
+                    "Messagerie",
+                    "Envoi de message interne",
+                    titre,
+                    f"{len(created)} destinataire(s) informe(s).",
+                )
+                messages.success(request, f"{len(created)} message(s) envoye(s).")
+                return redirect("messages_internes")
+
+    inbox = MessageInterne.objects.select_related("expediteur").filter(destinataire=request.user).order_by("-created_at")[:80]
+    users = User.objects.filter(is_active=True).order_by("first_name", "last_name", "username")
+    available_roles = [
+        (value, label)
+        for value, label in ROLE_CHOICES
+        if Group.objects.filter(name=value, user__is_active=True).exists()
+    ]
+    return render(
+        request,
+        "utilisateurs/messages.html",
+        {
+            "messages_internes": inbox,
+            "unread_total": MessageInterne.objects.filter(destinataire=request.user, lu=False).count(),
+            "users": users,
+            "roles": available_roles,
+            "can_send_messages": can_send_messages,
+        },
     )
 
 

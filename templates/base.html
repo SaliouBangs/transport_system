@@ -667,6 +667,48 @@ justify-content:flex-end;
 position:relative;
 }
 
+.topbar-message-link{
+position:relative;
+display:inline-grid;
+place-items:center;
+width:42px;
+height:42px;
+border-radius:16px;
+border:1px solid rgba(255,255,255,.18);
+background:rgba(255,255,255,.08);
+color:#fff;
+text-decoration:none;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+transition:transform .18s ease, background .18s ease;
+}
+
+.topbar-message-link:hover{
+background:rgba(255,255,255,.14);
+transform:translateY(-1px);
+}
+
+.topbar-message-link__icon{
+font-size:20px;
+line-height:1;
+}
+
+.topbar-message-link__badge{
+position:absolute;
+top:-6px;
+right:-5px;
+min-width:21px;
+height:21px;
+display:inline-grid;
+place-items:center;
+padding:0 6px;
+border-radius:999px;
+background:#ef4444;
+color:#fff;
+font-size:11px;
+font-weight:950;
+box-shadow:0 8px 18px rgba(239,68,68,.35);
+}
+
 .notification-center{
 position:relative;
 }
@@ -3830,6 +3872,12 @@ font-size:0.84rem;
 <span class="entity-switcher" aria-label="Entite active"><label>Entite</label><strong>{{ active_supervision_entity_label }}</strong></span>
 {% endif %}
 {% if request.user.is_authenticated %}
+<a href="/comptes/messages/" class="topbar-message-link" id="topbar-message-link" data-message-total="{{ topbar_messages_unread_total }}" aria-label="{{ topbar_messages_unread_total }} message(s) non lu(s)">
+<span class="topbar-message-link__icon" aria-hidden="true">&#9993;</span>
+<span class="topbar-message-link__badge" {% if not topbar_messages_unread_total %}hidden{% endif %}>{{ topbar_messages_unread_total }}</span>
+</a>
+{% endif %}
+{% if request.user.is_authenticated %}
 <div class="topbar-notifications" aria-label="Notifications" data-notification-total="{{ topbar_notifications_total }}" data-notification-poll-url="/comptes/notifications/statut/">
 <details class="notification-center">
 <summary class="notification-center__toggle" aria-label="{{ topbar_notifications_total }} notification(s) a traiter">
@@ -4002,11 +4050,13 @@ const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches
 const notificationCenter = document.querySelector(".notification-center");
 const topbarNotifications = document.querySelector(".topbar-notifications");
 const notificationEnableButton = document.getElementById("notification-enable-button");
+const topbarMessageLink = document.getElementById("topbar-message-link");
 let notificationHoverTimer;
 let profileHoverTimer;
 let profileCloseTimer;
 let pageLeaveFallbackTimer;
 let notificationAudioContext = null;
+let lastUnreadMessageTotal = Number(topbarMessageLink?.dataset.messageTotal || "0") || 0;
 
 function prepareContentMotion() {
     const content = document.querySelector(".content");
@@ -4205,6 +4255,18 @@ function setNotificationTotal(total) {
     summary?.setAttribute("aria-label", `${safeTotal} notification(s) a traiter`);
 }
 
+function setMessageTotal(total) {
+    if (!topbarMessageLink) return;
+    const safeTotal = Math.max(0, Number(total || 0));
+    topbarMessageLink.dataset.messageTotal = String(safeTotal);
+    topbarMessageLink.setAttribute("aria-label", `${safeTotal} message(s) non lu(s)`);
+    const badge = topbarMessageLink.querySelector(".topbar-message-link__badge");
+    if (badge) {
+        badge.textContent = String(safeTotal);
+        badge.hidden = safeTotal === 0;
+    }
+}
+
 function renderNotificationList(notifications = []) {
     const list = topbarNotifications?.querySelector(".notification-list");
     if (!list) return;
@@ -4308,6 +4370,19 @@ function showSystemNotification(total, notifications = []) {
     };
 }
 
+function showMessageNotification(message) {
+    if (localStorage.getItem("zoboko-notification-alerts") !== "enabled") return;
+    if (!message || !("Notification" in window) || Notification.permission !== "granted") return;
+    const systemNotification = new Notification(message.titre || "Nouveau message ZOBOKO", {
+        body: message.contenu || "Vous avez un nouveau message interne.",
+        tag: `zoboko-message-${message.id || "latest"}`,
+    });
+    systemNotification.onclick = () => {
+        window.focus();
+        window.location.href = message.lien || "/comptes/messages/";
+    };
+}
+
 async function pollNotificationStatus() {
     if (!topbarNotifications?.dataset.notificationPollUrl || document.hidden) return;
     try {
@@ -4319,12 +4394,19 @@ async function pollNotificationStatus() {
         if (!response.ok) return;
         const data = await response.json();
         const nextTotal = Number(data.total || 0);
+        const nextMessagesTotal = Number(data.messages_unread || 0);
         setNotificationTotal(nextTotal);
+        setMessageTotal(nextMessagesTotal);
         renderNotificationList(data.notifications || []);
         if (nextTotal > previousTotal) {
             playNotificationSound();
             showSystemNotification(nextTotal, data.notifications || []);
         }
+        if (nextMessagesTotal > lastUnreadMessageTotal) {
+            playNotificationSound();
+            showMessageNotification(data.latest_message);
+        }
+        lastUnreadMessageTotal = nextMessagesTotal;
     } catch (error) {
         // Silence volontaire si la connexion coupe.
     }

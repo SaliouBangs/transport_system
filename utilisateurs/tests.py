@@ -1,10 +1,13 @@
 import shutil
 from pathlib import Path
 
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
+from utilisateurs.models import MessageInterne
 
 
 TEST_MEDIA_ROOT = Path(__file__).resolve().parents[1] / "test_media" / "utilisateurs"
@@ -99,6 +102,11 @@ class ProfilUtilisateurTests(TestCase):
 
     def test_notifications_status_returns_json(self):
         self.client.login(username="amina", password="AncienPass123!")
+        MessageInterne.objects.create(
+            destinataire=self.user,
+            titre="Validation",
+            contenu="Merci de verifier ce dossier.",
+        )
 
         response = self.client.get(reverse("notifications_status"))
 
@@ -106,3 +114,35 @@ class ProfilUtilisateurTests(TestCase):
         payload = response.json()
         self.assertIn("total", payload)
         self.assertIn("notifications", payload)
+        self.assertEqual(payload["messages_unread"], 1)
+
+    def test_staff_can_send_internal_message_to_role(self):
+        sender = User.objects.create_user(username="admin_msg", password="AdminPass123!", is_staff=True)
+        group = Group.objects.create(name="commercial")
+        self.user.groups.add(group)
+        self.client.login(username="admin_msg", password="AdminPass123!")
+
+        response = self.client.post(
+            reverse("messages_internes"),
+            {
+                "action": "send",
+                "role": "commercial",
+                "titre": "Commande a valider",
+                "contenu": "Merci de traiter la commande.",
+                "lien": "/commandes/",
+            },
+        )
+
+        self.assertRedirects(response, reverse("messages_internes"))
+        message = MessageInterne.objects.get(destinataire=self.user)
+        self.assertEqual(message.titre, "Commande a valider")
+        self.assertEqual(message.lien, "/commandes/")
+
+    def test_user_can_mark_internal_messages_as_read(self):
+        MessageInterne.objects.create(destinataire=self.user, titre="Rappel", contenu="A traiter")
+        self.client.login(username="amina", password="AncienPass123!")
+
+        response = self.client.post(reverse("messages_internes"), {"action": "mark_read"})
+
+        self.assertRedirects(response, reverse("messages_internes"))
+        self.assertFalse(MessageInterne.objects.filter(destinataire=self.user, lu=False).exists())
