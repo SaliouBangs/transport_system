@@ -96,3 +96,13 @@ class ProfilUtilisateurTests(TestCase):
         self.assertRedirects(response, reverse("profil"))
         self.user.refresh_from_db()
         self.assertTrue(self.user.profil_utilisateur.photo.name.startswith("profils/"))
+
+    def test_notifications_status_returns_json(self):
+        self.client.login(username="amina", password="AncienPass123!")
+
+        response = self.client.get(reverse("notifications_status"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("total", payload)
+        self.assertIn("notifications", payload)

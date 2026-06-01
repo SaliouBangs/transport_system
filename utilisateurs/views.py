@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -13,6 +14,7 @@ from .forms import (
     UtilisateurModificationForm,
 )
 from .models import HistoriqueAction, journaliser_action
+from .context_processors import _topbar_notifications
 from .permissions import (
     ENTITY_SESSION_KEY,
     PERMISSION_KEYS,
@@ -24,6 +26,7 @@ from .permissions import (
     get_allowed_supervision_entities,
     get_user_role_label,
     is_admin_user,
+    get_active_supervision_entity,
 )
 
 
@@ -89,6 +92,17 @@ def changer_entite_supervision(request):
 
     request.session[ENTITY_SESSION_KEY] = selected_entity
     return redirect(request.POST.get("next") or get_default_landing_url(request.user))
+
+
+@login_required(login_url="/comptes/connexion/")
+def notifications_status(request):
+    notifications = _topbar_notifications(request.user, get_active_supervision_entity(request))
+    return JsonResponse(
+        {
+            "total": sum(item["count"] for item in notifications),
+            "notifications": notifications,
+        }
+    )
 
 
 @login_required(login_url="/comptes/connexion/")

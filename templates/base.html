@@ -830,6 +830,36 @@ color:var(--muted);
 white-space:nowrap;
 }
 
+.notification-enable-button{
+width:100%;
+border:1px solid rgba(43,130,212,.22);
+border-radius:12px;
+background:linear-gradient(180deg,#f6fbff,#edf7ff);
+color:#0d4f88;
+font-size:.78rem;
+font-weight:900;
+padding:10px 12px;
+cursor:pointer;
+margin-bottom:10px;
+box-shadow:0 8px 20px rgba(30,117,201,.12);
+}
+
+.notification-enable-button:hover{
+background:#e9f5ff;
+}
+
+.notification-enable-button.is-enabled{
+border-color:rgba(28,166,106,.28);
+background:#edfdf5;
+color:#12734c;
+}
+
+.notification-enable-button.is-denied{
+border-color:rgba(220,53,69,.25);
+background:#fff1f2;
+color:#b42318;
+}
+
 .notification-list{
 display:grid;
 gap:8px;
@@ -3799,8 +3829,8 @@ font-size:0.84rem;
 {% elif active_supervision_entity_label %}
 <span class="entity-switcher" aria-label="Entite active"><label>Entite</label><strong>{{ active_supervision_entity_label }}</strong></span>
 {% endif %}
-{% if topbar_notifications %}
-<div class="topbar-notifications" aria-label="Notifications">
+{% if request.user.is_authenticated %}
+<div class="topbar-notifications" aria-label="Notifications" data-notification-total="{{ topbar_notifications_total }}" data-notification-poll-url="/comptes/notifications/statut/">
 <details class="notification-center">
 <summary class="notification-center__toggle" aria-label="{{ topbar_notifications_total }} notification(s) a traiter">
 <span class="notification-center__icon" aria-hidden="true"></span>
@@ -3815,6 +3845,7 @@ font-size:0.84rem;
 <strong>Notifications recentes</strong>
 <span>{{ topbar_notifications_total }} en attente</span>
 </div>
+<button type="button" class="notification-enable-button" id="notification-enable-button">Activer alertes sonores</button>
 <div class="notification-list">
 {% for notification in topbar_notifications %}
 <a href="{{ notification.url }}" class="topbar-notification topbar-notification--{{ notification.tone }}" style="--notification-index:{{ forloop.counter0 }};" title="{{ notification.label }} : {{ notification.count }}" aria-label="{{ notification.label }} : {{ notification.count }} element(s) en attente">
@@ -3825,6 +3856,15 @@ font-size:0.84rem;
 </span>
 <span class="topbar-notification__count">{{ notification.count }}</span>
 </a>
+{% empty %}
+<div class="topbar-notification topbar-notification--info" style="--notification-index:0;">
+<span class="topbar-notification__dot" aria-hidden="true"></span>
+<span class="topbar-notification__body">
+<strong>Aucune action</strong>
+<span>Tout est a jour</span>
+</span>
+<span class="topbar-notification__count">0</span>
+</div>
 {% endfor %}
 </div>
 </div>
@@ -3960,10 +4000,13 @@ const profileDrawerBackdrop = document.getElementById("profile-drawer-backdrop")
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const notificationCenter = document.querySelector(".notification-center");
+const topbarNotifications = document.querySelector(".topbar-notifications");
+const notificationEnableButton = document.getElementById("notification-enable-button");
 let notificationHoverTimer;
 let profileHoverTimer;
 let profileCloseTimer;
 let pageLeaveFallbackTimer;
+let notificationAudioContext = null;
 
 function prepareContentMotion() {
     const content = document.querySelector(".content");
@@ -4146,6 +4189,162 @@ function queueNotificationCenter(forceOpen, delay = 100) {
     }, delay);
 }
 
+function getNotificationTotal() {
+    return Number(topbarNotifications?.dataset.notificationTotal || "0") || 0;
+}
+
+function setNotificationTotal(total) {
+    if (!topbarNotifications) return;
+    const safeTotal = Math.max(0, Number(total || 0));
+    topbarNotifications.dataset.notificationTotal = String(safeTotal);
+    const totalBadge = topbarNotifications.querySelector(".notification-center__total");
+    const headerCount = topbarNotifications.querySelector(".notification-center__header span");
+    const summary = topbarNotifications.querySelector(".notification-center__toggle");
+    if (totalBadge) totalBadge.textContent = String(safeTotal);
+    if (headerCount) headerCount.textContent = `${safeTotal} en attente`;
+    summary?.setAttribute("aria-label", `${safeTotal} notification(s) a traiter`);
+}
+
+function renderNotificationList(notifications = []) {
+    const list = topbarNotifications?.querySelector(".notification-list");
+    if (!list) return;
+    list.innerHTML = "";
+    const items = notifications.filter((item) => Number(item.count || 0) > 0);
+    if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "topbar-notification topbar-notification--info";
+        empty.innerHTML = `
+            <span class="topbar-notification__dot" aria-hidden="true"></span>
+            <span class="topbar-notification__body">
+                <strong>Aucune action</strong>
+                <span>Tout est a jour</span>
+            </span>
+            <span class="topbar-notification__count">0</span>
+        `;
+        list.appendChild(empty);
+        return;
+    }
+    items.forEach((item, index) => {
+        const link = document.createElement("a");
+        const tone = ["info", "warning", "danger", "default"].includes(item.tone) ? item.tone : "default";
+        link.href = item.url || "#";
+        link.className = `topbar-notification topbar-notification--${tone}`;
+        link.style.setProperty("--notification-index", String(index));
+        link.title = `${item.label} : ${item.count}`;
+        link.setAttribute("aria-label", `${item.label} : ${item.count} element(s) en attente`);
+        const helper = tone === "danger" ? "Priorite haute" : tone === "warning" ? "A surveiller" : "Suivi en cours";
+        link.innerHTML = `
+            <span class="topbar-notification__dot" aria-hidden="true"></span>
+            <span class="topbar-notification__body">
+                <strong></strong>
+                <span></span>
+            </span>
+            <span class="topbar-notification__count"></span>
+        `;
+        link.querySelector("strong").textContent = item.label || "Notification";
+        link.querySelector(".topbar-notification__body span").textContent = helper;
+        link.querySelector(".topbar-notification__count").textContent = String(item.count || 0);
+        list.appendChild(link);
+    });
+}
+
+function updateNotificationEnableButton() {
+    if (!notificationEnableButton) return;
+    notificationEnableButton.classList.remove("is-enabled", "is-denied");
+    if (!("Notification" in window)) {
+        notificationEnableButton.textContent = "Alertes navigateur non supportees";
+        notificationEnableButton.disabled = true;
+        return;
+    }
+    if (Notification.permission === "granted" && localStorage.getItem("zoboko-notification-alerts") === "enabled") {
+        notificationEnableButton.textContent = "Alertes sonores activees";
+        notificationEnableButton.classList.add("is-enabled");
+        return;
+    }
+    if (Notification.permission === "denied") {
+        notificationEnableButton.textContent = "Alertes bloquees par le navigateur";
+        notificationEnableButton.classList.add("is-denied");
+        return;
+    }
+    notificationEnableButton.textContent = "Activer alertes sonores";
+}
+
+function playNotificationSound() {
+    if (localStorage.getItem("zoboko-notification-alerts") !== "enabled") return;
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        notificationAudioContext = notificationAudioContext || new AudioContextClass();
+        const context = notificationAudioContext;
+        if (context.state === "suspended") context.resume();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(740, context.currentTime);
+        oscillator.frequency.setValueAtTime(980, context.currentTime + 0.11);
+        gain.gain.setValueAtTime(0.0001, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.32);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.34);
+    } catch (error) {
+        // Les navigateurs mobiles peuvent bloquer l'audio sans geste utilisateur.
+    }
+}
+
+function showSystemNotification(total, notifications = []) {
+    if (localStorage.getItem("zoboko-notification-alerts") !== "enabled") return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const first = notifications.find((item) => Number(item.count || 0) > 0);
+    const systemNotification = new Notification(first ? `${first.label} : ${first.count}` : `${total} action(s) a traiter`, {
+        body: "Nouvelle action a traiter dans ZOBOKO.",
+        tag: "zoboko-actions",
+    });
+    systemNotification.onclick = () => {
+        window.focus();
+        if (first?.url) window.location.href = first.url;
+    };
+}
+
+async function pollNotificationStatus() {
+    if (!topbarNotifications?.dataset.notificationPollUrl || document.hidden) return;
+    try {
+        const previousTotal = getNotificationTotal();
+        const response = await fetch(topbarNotifications.dataset.notificationPollUrl, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const nextTotal = Number(data.total || 0);
+        setNotificationTotal(nextTotal);
+        renderNotificationList(data.notifications || []);
+        if (nextTotal > previousTotal) {
+            playNotificationSound();
+            showSystemNotification(nextTotal, data.notifications || []);
+        }
+    } catch (error) {
+        // Silence volontaire si la connexion coupe.
+    }
+}
+
+notificationEnableButton?.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+        updateNotificationEnableButton();
+        return;
+    }
+    if (Notification.permission === "default") {
+        await Notification.requestPermission();
+    }
+    if (Notification.permission === "granted") {
+        localStorage.setItem("zoboko-notification-alerts", "enabled");
+        playNotificationSound();
+    }
+    updateNotificationEnableButton();
+});
+
 profileDrawerOpen?.addEventListener("click", () => toggleProfileDrawer());
 profileDrawerClose?.addEventListener("click", () => toggleProfileDrawer(false));
 profileDrawerBackdrop?.addEventListener("click", () => toggleProfileDrawer(false));
@@ -4156,6 +4355,13 @@ profileDrawer?.addEventListener("mouseleave", () => queueProfileDrawer(false, 18
 notificationCenter?.addEventListener("mouseenter", () => queueNotificationCenter(true, 80));
 notificationCenter?.addEventListener("mouseleave", () => queueNotificationCenter(false, 180));
 notificationCenter?.querySelector("summary")?.addEventListener("focus", () => queueNotificationCenter(true, 0));
+updateNotificationEnableButton();
+window.setInterval(pollNotificationStatus, 45000);
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        pollNotificationStatus();
+    }
+});
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
         toggleProfileDrawer(false);
