@@ -4257,7 +4257,7 @@ function updateNotificationEnableButton() {
         return;
     }
     if (Notification.permission === "granted" && localStorage.getItem("zoboko-notification-alerts") === "enabled") {
-        notificationEnableButton.textContent = "Alertes sonores activees";
+        notificationEnableButton.textContent = "Desactiver alertes sonores";
         notificationEnableButton.classList.add("is-enabled");
         return;
     }
@@ -4332,6 +4332,11 @@ async function pollNotificationStatus() {
 
 notificationEnableButton?.addEventListener("click", async () => {
     if (!("Notification" in window)) {
+        updateNotificationEnableButton();
+        return;
+    }
+    if (localStorage.getItem("zoboko-notification-alerts") === "enabled") {
+        localStorage.removeItem("zoboko-notification-alerts");
         updateNotificationEnableButton();
         return;
     }
