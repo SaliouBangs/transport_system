@@ -201,6 +201,100 @@ font-size:0.95rem;
 font-weight:600;
 }
 
+.topbar-clock{
+position:relative;
+display:inline-flex;
+align-items:center;
+gap:8px;
+padding:6px;
+border-radius:999px;
+background:rgba(255,255,255,0.12);
+box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);
+color:white;
+white-space:nowrap;
+}
+
+.topbar-clock__button,
+.topbar-clock__time{
+display:inline-flex;
+align-items:center;
+gap:7px;
+min-height:34px;
+border-radius:999px;
+font:inherit;
+font-size:0.82rem;
+font-weight:850;
+}
+
+.topbar-clock__button{
+border:0;
+padding:0 12px;
+background:rgba(255,255,255,0.16);
+color:white;
+cursor:pointer;
+transition:background 0.18s ease, transform 0.18s ease;
+}
+
+.topbar-clock__button:hover,
+.topbar-clock__button:focus-visible{
+background:rgba(255,255,255,0.24);
+transform:translateY(-1px);
+outline:none;
+}
+
+.topbar-clock__time{
+padding:0 11px;
+background:rgba(8,21,32,0.18);
+font-variant-numeric:tabular-nums;
+letter-spacing:0.02em;
+}
+
+.topbar-clock__calendar{
+position:absolute;
+right:0;
+top:calc(100% + 10px);
+width:220px;
+padding:12px;
+border-radius:16px;
+border:1px solid rgba(198,217,232,0.85);
+background:var(--paper);
+box-shadow:0 22px 54px rgba(8,21,32,0.22);
+z-index:170;
+opacity:0;
+transform:translateY(-6px);
+pointer-events:none;
+transition:opacity 0.18s ease, transform 0.18s ease;
+}
+
+.topbar-clock.is-open .topbar-clock__calendar,
+.topbar-clock:focus-within .topbar-clock__calendar{
+opacity:1;
+transform:translateY(0);
+pointer-events:auto;
+}
+
+.topbar-clock__calendar label{
+display:block;
+margin:0 0 8px;
+font-size:0.72rem;
+font-weight:950;
+letter-spacing:0.08em;
+text-transform:uppercase;
+color:var(--muted);
+}
+
+.topbar-clock__calendar input{
+width:100%;
+box-sizing:border-box;
+border:1px solid var(--border);
+border-radius:12px;
+padding:10px 11px;
+background:var(--paper);
+color:var(--text);
+font:inherit;
+font-weight:800;
+}
+
 .topbar-user{
 display:inline-flex;
 align-items:center;
@@ -3026,6 +3120,19 @@ background:#193140;
 color:#e5f0f7;
 }
 
+body.theme-dark .topbar-clock__calendar,
+body.theme-aurora .topbar-clock__calendar{
+background:#101820;
+border-color:#273743;
+}
+
+body.theme-dark .topbar-clock__calendar input,
+body.theme-aurora .topbar-clock__calendar input{
+background:#071016;
+border-color:#2a3944;
+color:#e5f0f7;
+}
+
 body.theme-dark .flash-message{
 background:#12222d;
 border-color:#28414f;
@@ -3114,6 +3221,11 @@ display:none;
 width:100%;
 font-size:0.86rem;
 order:2;
+}
+
+.topbar-clock{
+order:1;
+margin-left:auto;
 }
 
 .topbar-user{
@@ -3363,6 +3475,24 @@ gap:8px;
 .topbar-message{
 font-size:0.78rem;
 line-height:1.35;
+}
+
+.topbar-clock{
+width:100%;
+justify-content:space-between;
+box-sizing:border-box;
+order:2;
+}
+
+.topbar-clock__button,
+.topbar-clock__time{
+font-size:0.78rem;
+}
+
+.topbar-clock__calendar{
+left:0;
+right:0;
+width:auto;
 }
 
 .topbar-tools{
@@ -4013,6 +4143,17 @@ font-size:0.84rem;
 <div class="topbar">
 <button type="button" class="sidebar-control-button" id="sidebar-toggle-topbar" aria-label="Afficher ou masquer le menu" aria-expanded="true">&#9776;</button>
 <div class="topbar-message">Utiliser l'application en version demo pour vos tests et validations.</div>
+<div class="topbar-clock" id="topbar-clock">
+<button type="button" class="topbar-clock__button" id="topbar-clock-date-button" aria-expanded="false" aria-controls="topbar-calendar-panel">
+<span aria-hidden="true">&#128197;</span>
+<span id="topbar-current-date">--/--/----</span>
+</button>
+<span class="topbar-clock__time" id="topbar-current-time">--:--:--</span>
+<div class="topbar-clock__calendar" id="topbar-calendar-panel">
+<label for="topbar-calendar-input">Calendrier</label>
+<input type="date" id="topbar-calendar-input" aria-label="Choisir une date">
+</div>
+</div>
 <div class="topbar-tools">
 {% if can_use_global_entity_selector %}
 <form method="post" action="/comptes/entite-supervision/" class="entity-switcher" id="entity-switcher-form">
@@ -4225,6 +4366,11 @@ const sidebarToggleTopbar = document.getElementById("sidebar-toggle-topbar");
 const sidebarCollapseButton = document.getElementById("sidebar-collapse-button");
 const sidebarEdgeToggle = document.getElementById("sidebar-edge-toggle");
 const sidebarDesktopQuery = window.matchMedia("(min-width: 901px)");
+const topbarClock = document.getElementById("topbar-clock");
+const topbarClockDateButton = document.getElementById("topbar-clock-date-button");
+const topbarCurrentDate = document.getElementById("topbar-current-date");
+const topbarCurrentTime = document.getElementById("topbar-current-time");
+const topbarCalendarInput = document.getElementById("topbar-calendar-input");
 const themeSelect = document.getElementById("theme-select");
 const themeOptionButtons = document.querySelectorAll("[data-theme-option]");
 const themeResetButton = document.getElementById("theme-reset-button");
@@ -4247,6 +4393,55 @@ let profileCloseTimer;
 let pageLeaveFallbackTimer;
 let notificationAudioContext = null;
 let lastUnreadMessageTotal = Number(topbarMessageLink?.dataset.messageTotal || "0") || 0;
+let topbarClockTimer;
+
+function formatDateInputValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function updateTopbarClock() {
+    const now = new Date();
+    if (topbarCurrentDate) {
+        topbarCurrentDate.textContent = new Intl.DateTimeFormat("fr-FR", {
+            weekday: "short",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        }).format(now);
+    }
+    if (topbarCurrentTime) {
+        topbarCurrentTime.textContent = new Intl.DateTimeFormat("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        }).format(now);
+    }
+    if (topbarCalendarInput && !topbarCalendarInput.value) {
+        topbarCalendarInput.value = formatDateInputValue(now);
+    }
+}
+
+function toggleTopbarCalendar(forceOpen) {
+    if (!topbarClock || !topbarClockDateButton) {
+        return;
+    }
+    const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !topbarClock.classList.contains("is-open");
+    topbarClock.classList.toggle("is-open", shouldOpen);
+    topbarClockDateButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    if (shouldOpen) {
+        topbarCalendarInput?.focus({ preventScroll: true });
+        if (typeof topbarCalendarInput?.showPicker === "function") {
+            try {
+                topbarCalendarInput.showPicker();
+            } catch (error) {
+                // Some mobile browsers block showPicker outside a direct tap.
+            }
+        }
+    }
+}
 
 function prepareContentMotion() {
     const content = document.querySelector(".content");
@@ -4364,6 +4559,13 @@ sidebarCollapseButton?.addEventListener("click", () => toggleSidebar(false));
 sidebarEdgeToggle?.addEventListener("click", () => toggleSidebar());
 sidebarOverlay?.addEventListener("click", () => toggleSidebar(false));
 sidebarDesktopQuery.addEventListener?.("change", restoreSidebarState);
+topbarClockDateButton?.addEventListener("click", () => toggleTopbarCalendar());
+topbarCalendarInput?.addEventListener("change", () => toggleTopbarCalendar(false));
+document.addEventListener("click", (event) => {
+    if (topbarClock && !topbarClock.contains(event.target)) {
+        toggleTopbarCalendar(false);
+    }
+});
 themeSelect?.addEventListener("change", (event) => applyTheme(event.target.value));
 themeOptionButtons.forEach((button) => {
     button.addEventListener("click", () => applyTheme(button.dataset.themeOption));
@@ -4380,6 +4582,8 @@ entitySwitcherSelect?.addEventListener("change", () => document.getElementById("
 
 applyTheme(localStorage.getItem("mst-theme") || "light");
 restoreSidebarState();
+updateTopbarClock();
+topbarClockTimer = window.setInterval(updateTopbarClock, 1000);
 prepareContentMotion();
 
 document.addEventListener("click", (event) => {
