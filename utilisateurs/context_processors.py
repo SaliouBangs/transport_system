@@ -368,6 +368,11 @@ def user_access(request):
         context["topbar_notifications"] = notifications
         context["topbar_notifications_total"] = sum(item["count"] for item in notifications)
         context["topbar_messages_unread_total"] = MessageInterne.objects.filter(destinataire=request.user, lu=False).count()
+        context["topbar_recent_messages"] = (
+            MessageInterne.objects.select_related("expediteur", "expediteur__profil_utilisateur")
+            .filter(destinataire=request.user)
+            .order_by("-created_at")[:5]
+        )
     else:
         context["current_user_profile"] = None
         context["current_user_initials"] = ""
@@ -382,4 +387,5 @@ def user_access(request):
         context["topbar_notifications"] = []
         context["topbar_notifications_total"] = 0
         context["topbar_messages_unread_total"] = 0
+        context["topbar_recent_messages"] = []
     return context

@@ -9,17 +9,30 @@
 .message-card{border:1px solid #d6e6f3;border-radius:16px;background:#fff;padding:14px;box-shadow:0 12px 26px rgba(13,47,79,.08)}
 .message-card.is-unread{border-color:#ef4444;background:#fff7f7}
 .message-card__top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.message-author{display:flex;gap:10px;align-items:flex-start}
+.message-avatar{width:42px;height:42px;border-radius:14px;display:inline-grid;place-items:center;overflow:hidden;background:#e7f1fb;color:#0d4f88;font-weight:950;flex:0 0 auto}
+.message-avatar img{width:100%;height:100%;object-fit:cover}
 .message-card h3{margin:0;color:#0d2f4f}
 .message-card p{margin:8px 0;color:#456074}
 .message-meta{font-size:12px;font-weight:800;color:#6b7f93}
-.message-link{display:inline-flex;margin-top:8px}
 .message-compose{display:grid;gap:12px}
 .message-compose label{display:grid;gap:6px;font-weight:900;color:#0d2f4f}
-.message-compose :is(input,select,textarea){border:1px solid #bad5ec;border-radius:12px;padding:11px 12px;font:inherit;color:#0d2f4f;background:#fff}
+.message-compose :is(input,textarea){border:1px solid #bad5ec;border-radius:12px;padding:11px 12px;font:inherit;color:#0d2f4f;background:#fff}
 .message-compose textarea{min-height:130px;resize:vertical}
 .message-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.recipient-picker{display:grid;gap:8px;position:relative}
+.recipient-search{width:100%}
+.recipient-menu{display:none;max-height:260px;overflow:auto;border:1px solid #c8ddf1;border-radius:14px;background:#fff;box-shadow:0 16px 34px rgba(13,47,79,.14);padding:6px;z-index:10}
+.recipient-picker.is-open .recipient-menu{display:grid;gap:4px}
+.recipient-choice{border:0;border-radius:10px;background:transparent;color:#0d2f4f;cursor:pointer;font-weight:850;padding:10px;text-align:left;display:flex;gap:10px;align-items:center}
+.recipient-choice:hover,.recipient-choice:focus{background:#eef7ff;outline:none}
+.recipient-choice.is-selected{background:#edfdf5;color:#12734c}
+.recipient-selected{display:flex;gap:8px;flex-wrap:wrap}
+.recipient-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #bfe4d2;border-radius:999px;background:#effaf4;color:#126b49;font-weight:900;padding:6px 10px}
+.recipient-chip button{border:0;background:transparent;color:inherit;font-weight:950;cursor:pointer}
+.recipient-empty{padding:10px;color:#6b7f93;font-weight:800;font-size:12px}
 @media(max-width:900px){.message-layout{grid-template-columns:1fr}}
-body.theme-dark .message-card,body.theme-dark .message-compose :is(input,select,textarea){background:#071013;color:#f7fafc;border-color:#263b43}
+body.theme-dark .message-card,body.theme-dark .message-compose :is(input,textarea),body.theme-dark .recipient-menu{background:#071013;color:#f7fafc;border-color:#263b43}
 body.theme-dark .message-card h3,body.theme-dark .message-compose label{color:#f7fafc}
 body.theme-dark .message-card p{color:#b8c7ce}
 </style>
@@ -50,17 +63,27 @@ body.theme-dark .message-card p{color:#b8c7ce}
             {% for item in messages_internes %}
             <article class="message-card {% if not item.lu %}is-unread{% endif %}">
                 <div class="message-card__top">
-                    <div>
-                        <h3>{{ item.titre }}</h3>
-                        <span class="message-meta">
-                            {% if item.expediteur %}{{ item.expediteur.get_full_name|default:item.expediteur.username }}{% else %}Systeme{% endif %}
-                            - {{ item.created_at|date:"d/m/Y H:i" }}
+                    <div class="message-author">
+                        <span class="message-avatar">
+                            {% if item.expediteur and item.expediteur.profil_utilisateur.photo %}
+                            <img src="{{ item.expediteur.profil_utilisateur.photo.url }}" alt="">
+                            {% elif item.expediteur %}
+                            {{ item.expediteur.profil_utilisateur.initiales|default:item.expediteur.username|slice:":2"|upper }}
+                            {% else %}
+                            SY
+                            {% endif %}
                         </span>
+                        <div>
+                            <h3>{{ item.titre }}</h3>
+                            <span class="message-meta">
+                                {% if item.expediteur %}{{ item.expediteur.get_full_name|default:item.expediteur.username }}{% else %}Systeme{% endif %}
+                                - {{ item.created_at|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
                     </div>
                     {% if not item.lu %}<span class="status-badge status-danger">Nouveau</span>{% endif %}
                 </div>
                 <p>{{ item.contenu|linebreaksbr }}</p>
-                <a class="btn-secondary message-link" href="{{ item.lien_normalise }}">Ouvrir la tache</a>
             </article>
             {% empty %}
             <div class="empty-state">Aucun message interne pour le moment.</div>
@@ -75,30 +98,27 @@ body.theme-dark .message-card p{color:#b8c7ce}
         <form method="post" class="message-compose">
             {% csrf_token %}
             <input type="hidden" name="action" value="send">
-            <label>Utilisateur
-                <select name="destinataire">
-                    <option value="">Choisir un utilisateur</option>
+            <label>Utilisateurs</label>
+            <div class="recipient-picker" id="recipient-picker">
+                <input type="search" class="recipient-search" id="recipient-search" placeholder="Rechercher un utilisateur" autocomplete="off">
+                <div class="recipient-selected" id="recipient-selected"></div>
+                <div class="recipient-menu" id="recipient-menu"></div>
+                <div id="recipient-data" hidden>
                     {% for user_item in users %}
-                    <option value="{{ user_item.id }}">{{ user_item.get_full_name|default:user_item.username }}</option>
+                    <span
+                        data-id="{{ user_item.id }}"
+                        data-label="{{ user_item.get_full_name|default:user_item.username }}"
+                        data-initials="{{ user_item.profil_utilisateur.initiales|default:user_item.username|slice:':2'|upper }}"
+                        data-photo="{% if user_item.profil_utilisateur.photo %}{{ user_item.profil_utilisateur.photo.url }}{% endif %}">
+                    </span>
                     {% endfor %}
-                </select>
-            </label>
-            <label>Ou role
-                <select name="role">
-                    <option value="">Choisir un role</option>
-                    {% for role_value, role_label in roles %}
-                    <option value="{{ role_value }}">{{ role_label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
+                </div>
+            </div>
             <label>Titre
                 <input type="text" name="titre" placeholder="Ex : Validation en attente">
             </label>
             <label>Message
                 <textarea name="contenu" placeholder="Expliquez la tache ou le rappel."></textarea>
-            </label>
-            <label>Lien vers la tache
-                <input type="text" name="lien" placeholder="/commandes/">
             </label>
             <div class="message-actions">
                 <button type="submit" class="btn">Envoyer</button>
@@ -107,4 +127,74 @@ body.theme-dark .message-card p{color:#b8c7ce}
     </aside>
     {% endif %}
 </div>
+<script>
+const recipientPicker = document.getElementById("recipient-picker");
+const recipientSearch = document.getElementById("recipient-search");
+const recipientMenu = document.getElementById("recipient-menu");
+const recipientSelected = document.getElementById("recipient-selected");
+const recipientOptions = Array.from(document.querySelectorAll("#recipient-data [data-id]")).map((item) => ({
+    id: item.dataset.id,
+    label: item.dataset.label,
+    initials: item.dataset.initials,
+    photo: item.dataset.photo,
+    search: (item.dataset.label || "").toLowerCase(),
+}));
+const selectedRecipients = new Map();
+
+function recipientAvatar(option) {
+    return option.photo
+        ? `<span class="message-avatar"><img src="${option.photo}" alt=""></span>`
+        : `<span class="message-avatar">${option.initials || "U"}</span>`;
+}
+
+function renderSelectedRecipients() {
+    if (!recipientSelected) return;
+    recipientSelected.innerHTML = "";
+    selectedRecipients.forEach((option) => {
+        const chip = document.createElement("span");
+        chip.className = "recipient-chip";
+        chip.innerHTML = `<input type="hidden" name="destinataires" value="${option.id}"><span>${option.label}</span><button type="button" aria-label="Retirer">x</button>`;
+        chip.querySelector("button").addEventListener("click", () => {
+            selectedRecipients.delete(option.id);
+            renderSelectedRecipients();
+            renderRecipientMenu();
+        });
+        recipientSelected.appendChild(chip);
+    });
+}
+
+function renderRecipientMenu() {
+    if (!recipientMenu || !recipientSearch || !recipientPicker) return;
+    const query = recipientSearch.value.trim().toLowerCase();
+    const matches = recipientOptions.filter((option) => !query || option.search.includes(query)).slice(0, 12);
+    recipientMenu.innerHTML = "";
+    if (!matches.length) {
+        recipientMenu.innerHTML = '<div class="recipient-empty">Aucun utilisateur trouve</div>';
+    } else {
+        matches.forEach((option) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `recipient-choice ${selectedRecipients.has(option.id) ? "is-selected" : ""}`;
+            button.innerHTML = `${recipientAvatar(option)}<span>${option.label}</span>`;
+            button.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                selectedRecipients.set(option.id, option);
+                recipientSearch.value = "";
+                renderSelectedRecipients();
+                renderRecipientMenu();
+            });
+            recipientMenu.appendChild(button);
+        });
+    }
+    recipientPicker.classList.add("is-open");
+}
+
+recipientSearch?.addEventListener("focus", renderRecipientMenu);
+recipientSearch?.addEventListener("input", renderRecipientMenu);
+document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest("#recipient-picker")) {
+        recipientPicker?.classList.remove("is-open");
+    }
+});
+</script>
 {% endblock %}

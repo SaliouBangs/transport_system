@@ -1,7 +1,6 @@
 import shutil
 from pathlib import Path
 
-from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -116,43 +115,28 @@ class ProfilUtilisateurTests(TestCase):
         self.assertIn("notifications", payload)
         self.assertEqual(payload["messages_unread"], 1)
 
-    def test_staff_can_send_internal_message_to_role(self):
+    def test_user_can_send_internal_message_to_multiple_users(self):
         sender = User.objects.create_user(username="admin_msg", password="AdminPass123!", is_staff=True)
-        group = Group.objects.create(name="commercial")
-        self.user.groups.add(group)
+        other_user = User.objects.create_user(username="ousmane", password="Pass12345!")
         self.client.login(username="admin_msg", password="AdminPass123!")
 
         response = self.client.post(
             reverse("messages_internes"),
             {
                 "action": "send",
-                "role": "commercial",
+                "destinataires": [str(self.user.id), str(other_user.id)],
                 "titre": "Commande a valider",
                 "contenu": "Merci de traiter la commande.",
-                "lien": "/commandes/",
             },
         )
 
         self.assertRedirects(response, reverse("messages_internes"))
-        message = MessageInterne.objects.get(destinataire=self.user)
-        self.assertEqual(message.titre, "Commande a valider")
-        self.assertEqual(message.lien, "/commandes/")
+        self.assertEqual(MessageInterne.objects.filter(titre="Commande a valider").count(), 2)
 
     def test_internal_message_link_is_normalized(self):
-        sender = User.objects.create_user(username="admin_link", password="AdminPass123!", is_staff=True)
-        self.client.login(username="admin_link", password="AdminPass123!")
+        from utilisateurs.models import envoyer_message_interne
 
-        self.client.post(
-            reverse("messages_internes"),
-            {
-                "action": "send",
-                "destinataire": str(self.user.id),
-                "titre": "Voir commandes",
-                "contenu": "Ouvre la page commandes.",
-                "lien": "commandes/",
-            },
-        )
-
+        envoyer_message_interne(self.user, [self.user], "Voir commandes", "Ouvre la page commandes.", "commandes/")
         message = MessageInterne.objects.get(destinataire=self.user)
         self.assertEqual(message.lien, "/commandes/")
         self.assertEqual(message.lien_normalise, "/commandes/")
@@ -165,3 +149,13 @@ class ProfilUtilisateurTests(TestCase):
 
         self.assertRedirects(response, reverse("messages_internes"))
         self.assertFalse(MessageInterne.objects.filter(destinataire=self.user, lu=False).exists())
+
+    def test_messages_page_shows_mobile_recipient_search(self):
+        self.client.login(username="amina", password="AncienPass123!")
+
+        response = self.client.get(reverse("messages_internes"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "recipient-search")
+        self.assertNotContains(response, "Choisir un role")
+        self.assertNotContains(response, "Lien vers la tache")

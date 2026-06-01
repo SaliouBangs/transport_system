@@ -667,6 +667,10 @@ justify-content:flex-end;
 position:relative;
 }
 
+.topbar-message-center{
+position:relative;
+}
+
 .topbar-message-link{
 position:relative;
 display:inline-grid;
@@ -708,6 +712,56 @@ font-size:11px;
 font-weight:950;
 box-shadow:0 8px 18px rgba(239,68,68,.35);
 }
+
+.topbar-message-panel{
+position:absolute;
+top:calc(100% + 12px);
+right:0;
+width:min(360px, calc(100vw - 26px));
+border-radius:18px;
+border:1px solid rgba(198,217,232,.9);
+background:#fff;
+box-shadow:0 26px 60px rgba(8,21,32,.22);
+padding:12px;
+z-index:160;
+display:none;
+}
+
+.topbar-message-center:hover .topbar-message-panel,
+.topbar-message-center:focus-within .topbar-message-panel{
+display:block;
+}
+
+.topbar-message-panel__header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+padding:4px 4px 10px;
+border-bottom:1px solid #e3edf5;
+}
+
+.topbar-message-panel__header strong{color:#0d2f4f}
+.topbar-message-panel__header a{font-size:12px;font-weight:900;color:#1d74bd;text-decoration:none}
+.topbar-message-preview-list{display:grid;gap:8px;padding-top:10px}
+.topbar-message-preview{
+display:grid;
+grid-template-columns:38px minmax(0,1fr);
+gap:10px;
+padding:10px;
+border-radius:14px;
+text-decoration:none;
+color:#0d2f4f;
+border:1px solid #e1edf6;
+background:#fbfdff;
+}
+.topbar-message-preview:hover{background:#eef7ff}
+.topbar-message-preview.is-unread{border-color:#fecdd3;background:#fff7f7}
+.topbar-message-preview__avatar{width:38px;height:38px;border-radius:13px;display:inline-grid;place-items:center;overflow:hidden;background:#e7f1fb;color:#0d4f88;font-weight:950}
+.topbar-message-preview__avatar img{width:100%;height:100%;object-fit:cover}
+.topbar-message-preview strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-message-preview span{display:block;font-size:12px;color:#5d7286;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.topbar-message-empty{padding:16px 10px;color:#6b7f93;font-weight:800}
 
 .notification-center{
 position:relative;
@@ -3872,10 +3926,39 @@ font-size:0.84rem;
 <span class="entity-switcher" aria-label="Entite active"><label>Entite</label><strong>{{ active_supervision_entity_label }}</strong></span>
 {% endif %}
 {% if request.user.is_authenticated %}
+<div class="topbar-message-center" id="topbar-message-center">
 <a href="/comptes/messages/" class="topbar-message-link" id="topbar-message-link" data-message-total="{{ topbar_messages_unread_total }}" aria-label="{{ topbar_messages_unread_total }} message(s) non lu(s)">
 <span class="topbar-message-link__icon" aria-hidden="true">&#9993;</span>
 <span class="topbar-message-link__badge" {% if not topbar_messages_unread_total %}hidden{% endif %}>{{ topbar_messages_unread_total }}</span>
 </a>
+<div class="topbar-message-panel" aria-label="Messages recents">
+<div class="topbar-message-panel__header">
+<strong>Messages</strong>
+<a href="/comptes/messages/">Tout ouvrir</a>
+</div>
+<div class="topbar-message-preview-list" id="topbar-message-preview-list">
+{% for message in topbar_recent_messages %}
+<a href="/comptes/messages/" class="topbar-message-preview {% if not message.lu %}is-unread{% endif %}">
+<span class="topbar-message-preview__avatar">
+{% if message.expediteur and message.expediteur.profil_utilisateur.photo %}
+<img src="{{ message.expediteur.profil_utilisateur.photo.url }}" alt="">
+{% elif message.expediteur %}
+{{ message.expediteur.profil_utilisateur.initiales|default:message.expediteur.username|slice:":2"|upper }}
+{% else %}
+SY
+{% endif %}
+</span>
+<span>
+<strong>{{ message.titre }}</strong>
+<span>{{ message.contenu }}</span>
+</span>
+</a>
+{% empty %}
+<div class="topbar-message-empty">Aucun message interne.</div>
+{% endfor %}
+</div>
+</div>
+</div>
 {% endif %}
 {% if request.user.is_authenticated %}
 <div class="topbar-notifications" aria-label="Notifications" data-notification-total="{{ topbar_notifications_total }}" data-notification-poll-url="/comptes/notifications/statut/">
@@ -4267,6 +4350,37 @@ function setMessageTotal(total) {
     }
 }
 
+function renderMessagePreviews(messages = []) {
+    const list = document.getElementById("topbar-message-preview-list");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!messages.length) {
+        const empty = document.createElement("div");
+        empty.className = "topbar-message-empty";
+        empty.textContent = "Aucun message interne.";
+        list.appendChild(empty);
+        return;
+    }
+    messages.forEach((message) => {
+        const link = document.createElement("a");
+        link.href = "/comptes/messages/";
+        link.className = `topbar-message-preview ${message.lu ? "" : "is-unread"}`;
+        const avatar = message.photo_url
+            ? `<img src="${message.photo_url}" alt="">`
+            : `${message.initiales || "U"}`;
+        link.innerHTML = `
+            <span class="topbar-message-preview__avatar">${avatar}</span>
+            <span>
+                <strong></strong>
+                <span></span>
+            </span>
+        `;
+        link.querySelector("strong").textContent = message.titre || "Message";
+        link.querySelector(".topbar-message-preview span span").textContent = message.contenu || "";
+        list.appendChild(link);
+    });
+}
+
 function renderNotificationList(notifications = []) {
     const list = topbarNotifications?.querySelector(".notification-list");
     if (!list) return;
@@ -4398,6 +4512,7 @@ async function pollNotificationStatus() {
         setNotificationTotal(nextTotal);
         setMessageTotal(nextMessagesTotal);
         renderNotificationList(data.notifications || []);
+        renderMessagePreviews(data.recent_messages || []);
         if (nextTotal > previousTotal) {
             playNotificationSound();
             showSystemNotification(nextTotal, data.notifications || []);
