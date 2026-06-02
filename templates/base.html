@@ -4268,7 +4268,7 @@ SY
 <span class="topbar-notification__dot" aria-hidden="true"></span>
 <span class="topbar-notification__body">
 <strong>{{ notification.label }}</strong>
-<span>{% if notification.tone == 'danger' %}Priorite haute{% elif notification.tone == 'warning' %}A surveiller{% else %}Suivi en cours{% endif %}</span>
+<span>{% if notification.detail %}{{ notification.detail }}{% elif notification.tone == 'danger' %}Priorite haute{% elif notification.tone == 'warning' %}A surveiller{% else %}Suivi en cours{% endif %}</span>
 </span>
 <span class="topbar-notification__count">{{ notification.count }}</span>
 </a>
@@ -4797,7 +4797,7 @@ function renderNotificationList(notifications = []) {
         link.style.setProperty("--notification-index", String(index));
         link.title = `${item.label} : ${item.count}`;
         link.setAttribute("aria-label", `${item.label} : ${item.count} element(s) en attente`);
-        const helper = tone === "danger" ? "Priorite haute" : tone === "warning" ? "A surveiller" : "Suivi en cours";
+        const helper = item.detail || (tone === "danger" ? "Priorite haute" : tone === "warning" ? "A surveiller" : "Suivi en cours");
         link.innerHTML = `
             <span class="topbar-notification__dot" aria-hidden="true"></span>
             <span class="topbar-notification__body">

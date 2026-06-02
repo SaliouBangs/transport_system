@@ -12,11 +12,12 @@ from .permissions import (
 )
 
 
-def _add_notification(items, label, count, url, tone="default"):
+def _add_notification(items, label, count, url, tone="default", detail=""):
     if count:
         items.append(
             {
                 "label": label,
+                "detail": detail,
                 "count": count,
                 "url": url,
                 "tone": tone,
@@ -39,6 +40,58 @@ def _cash_depenses_queryset_for_role(Depense, role):
             | Q(source_depense=Depense.SOURCE_GENERALE, entite_depense=Depense.ENTITE_SOGEFI)
         )
     return queryset
+
+
+def _depenses_dg_validation_breakdown(Depense):
+    internal_statuses = [
+        Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION_DG,
+        Depense.STATUT_ATTENTE_VALIDATION_DG,
+    ]
+    return [
+        {
+            "label": "Dep. interne SOGEFI",
+            "detail": "Validation DG depenses internes SOGEFI",
+            "count": Depense.objects.filter(
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SOGEFI,
+                statut__in=internal_statuses,
+            ).count(),
+            "url": "/depenses/?statut=attente_validation_dg_engagement&entite=sogefi",
+            "tone": "danger",
+        },
+        {
+            "label": "Dep. interne SONI",
+            "detail": "Validation DG depenses internes SONI",
+            "count": Depense.objects.filter(
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_SONI,
+                statut__in=internal_statuses,
+            ).count(),
+            "url": "/depenses/?statut=attente_validation_dg_engagement&entite=soni",
+            "tone": "danger",
+        },
+        {
+            "label": "Dep. interne Avena",
+            "detail": "Validation DG depenses internes Avena",
+            "count": Depense.objects.filter(
+                source_depense=Depense.SOURCE_GENERALE,
+                entite_depense=Depense.ENTITE_AVENA,
+                statut__in=internal_statuses,
+            ).count(),
+            "url": "/depenses/?statut=attente_validation_dg_engagement&entite=avena",
+            "tone": "danger",
+        },
+        {
+            "label": "Dep. maint/charg. SOGEFI",
+            "detail": "Depenses BL et chargement issues du circuit logistique",
+            "count": Depense.objects.filter(
+                source_depense=Depense.SOURCE_CHARGEMENT,
+                statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG,
+            ).count(),
+            "url": "/depenses/?statut=attente_validation_chargement_dg",
+            "tone": "warning",
+        },
+    ]
 
 
 def _depenses_chargement_queryset_for_operation(Depense, operation):
@@ -306,19 +359,36 @@ def _topbar_notifications(user, active_entity=""):
 
     if role == "dga" or is_admin:
         _add_notification(items, "Cmd DGA", Commande.objects.filter(statut="attente_validation_dga").count(), "/commandes/?statut=attente_validation_dga", "warning")
-        _add_notification(items, "Dep DGA", Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA).count(), "/depenses/?statut=attente_validation_chargement_dga", "warning")
+        _add_notification(
+            items,
+            "Dep. maint/charg. SOGEFI",
+            Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DGA).count(),
+            "/depenses/?statut=attente_validation_chargement_dga",
+            "warning",
+            "Depenses BL et chargement issues du circuit logistique",
+        )
         _add_notification(items, "Maint DGA", Maintenance.objects.filter(statut="attente_dga").count(), "/maintenance/garage/", "info")
 
     if role in {"dga_sogefi", "dga_avena"} or is_admin:
         entite = Depense.ENTITE_AVENA if role == "dga_avena" else Depense.ENTITE_SOGEFI
+        label = "Dep. interne Avena" if role == "dga_avena" else "Dep. interne SOGEFI"
+        detail = "Validation DGA depenses internes Avena" if role == "dga_avena" else "Validation DGA depenses internes SOGEFI"
         queryset = Depense.objects.filter(statut=Depense.STATUT_ATTENTE_VALIDATION_DGA, source_depense=Depense.SOURCE_GENERALE)
         if not is_admin:
             queryset = queryset.filter(entite_depense=entite)
-        _add_notification(items, "Validation", queryset.count(), "/depenses/?statut=attente_validation_dga_engagement", "warning")
+        _add_notification(items, label, queryset.count(), "/depenses/?statut=attente_validation_dga_engagement", "warning", detail)
 
     if role == "directeur" or is_admin:
         _add_notification(items, "Cmd DG", Commande.objects.filter(statut="attente_validation_dg").count(), "/commandes/?statut=validee_dga", "danger")
-        _add_notification(items, "Dep DG", Depense.objects.filter(statut__in=[Depense.STATUT_ATTENTE_VALIDATION_EXPRESSION_DG, Depense.STATUT_ATTENTE_VALIDATION_DG, Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG]).count(), "/depenses/?statut=attente_dg_global", "danger")
+        for notification in _depenses_dg_validation_breakdown(Depense):
+            _add_notification(
+                items,
+                notification["label"],
+                notification["count"],
+                notification["url"],
+                notification["tone"],
+                notification["detail"],
+            )
         _add_notification(items, "Maint DG", Maintenance.objects.filter(statut="attente_dg").count(), "/maintenance/garage/", "warning")
 
     if role == "responsable_achat" or is_admin:

@@ -1,15 +1,62 @@
 import shutil
 from pathlib import Path
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from depenses.models import Depense
+from utilisateurs.context_processors import _topbar_notifications
 from utilisateurs.models import MessageInterne
 
 
 TEST_MEDIA_ROOT = Path(__file__).resolve().parents[1] / "test_media" / "utilisateurs"
+
+
+class TopbarNotificationTests(TestCase):
+    def test_directeur_voit_les_depenses_detaillees_par_famille(self):
+        directeur_group, _ = Group.objects.get_or_create(name="directeur")
+        directeur = User.objects.create_user(username="dg_topbar", password="Pass12345!")
+        directeur.groups.add(directeur_group)
+        demandeur = User.objects.create_user(username="demandeur_topbar", password="Pass12345!")
+        Depense.objects.bulk_create(
+            [
+                Depense(
+                    reference="DEPAVIN901",
+                    demandeur=demandeur,
+                    titre="Interne Avena",
+                    description="Validation Avena.",
+                    source_depense=Depense.SOURCE_GENERALE,
+                    entite_depense=Depense.ENTITE_AVENA,
+                    statut=Depense.STATUT_ATTENTE_VALIDATION_DG,
+                ),
+                Depense(
+                    reference="DEPSONIN901",
+                    demandeur=demandeur,
+                    titre="Interne SONI",
+                    description="Validation SONI.",
+                    source_depense=Depense.SOURCE_GENERALE,
+                    entite_depense=Depense.ENTITE_SONI,
+                    statut=Depense.STATUT_ATTENTE_VALIDATION_DG,
+                ),
+                Depense(
+                    reference="DEPSOGMAI901",
+                    demandeur=demandeur,
+                    titre="Chargement",
+                    description="Validation chargement.",
+                    source_depense=Depense.SOURCE_CHARGEMENT,
+                    statut=Depense.STATUT_ATTENTE_VALIDATION_CHARGEMENT_DG,
+                ),
+            ]
+        )
+
+        labels = {item["label"]: item for item in _topbar_notifications(directeur)}
+
+        self.assertEqual(labels["Dep. interne Avena"]["count"], 1)
+        self.assertEqual(labels["Dep. interne SONI"]["count"], 1)
+        self.assertEqual(labels["Dep. maint/charg. SOGEFI"]["count"], 1)
+        self.assertIn("circuit logistique", labels["Dep. maint/charg. SOGEFI"]["detail"])
 
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
