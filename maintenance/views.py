@@ -3276,6 +3276,45 @@ def _panne_price_columns(panne):
     return columns
 
 
+def _panne_usage_rows(panne):
+    rows = []
+    usages = (
+        MaintenanceSousLigne.objects.select_related(
+            "maintenance_ligne__maintenance",
+            "maintenance_ligne__maintenance__camion",
+        )
+        .prefetch_related("maintenance_ligne__maintenance__factures_achat__fournisseur")
+        .filter(panne_catalogue=panne)
+        .order_by("-maintenance_ligne__maintenance__date_debut", "-id")
+    )
+    for index, usage in enumerate(usages, start=1):
+        maintenance = usage.maintenance_ligne.maintenance
+        camion = maintenance.camion
+        factures = list(maintenance.factures_achat.all())
+        facture = factures[0] if factures else None
+        fournisseur = facture.fournisseur if facture else maintenance.fournisseur
+        rows.append(
+            {
+                "index": index,
+                "date": _format_step_date(maintenance.date_debut),
+                "camion": camion.numero_tracteur if camion else "-",
+                "citerne": camion.numero_citerne if camion and camion.numero_citerne else "-",
+                "chauffeur": _chauffeur_for_camion(camion),
+                "prix": _format_amount(usage.prix_unitaire),
+                "fournisseur": str(fournisseur) if fournisseur else "-",
+                "reference": maintenance.reference,
+            }
+        )
+    return rows
+
+
+def _chauffeur_for_camion(camion):
+    if not camion:
+        return "-"
+    chauffeur = Chauffeur.objects.filter(camion=camion).order_by("nom").first()
+    return chauffeur.nom if chauffeur else "-"
+
+
 def gerer_pannes(request):
     query = (request.GET.get("q") or "").strip()
     type_filter = (request.GET.get("type") or "").strip()
@@ -3296,6 +3335,7 @@ def gerer_pannes(request):
     pannes = list(pannes_qs.order_by("type_maintenance__libelle", "libelle"))
     for panne in pannes:
         panne.price_columns = _panne_price_columns(panne)
+        panne.usage_rows = _panne_usage_rows(panne)
 
     return render(
         request,

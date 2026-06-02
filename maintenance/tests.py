@@ -1,11 +1,25 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from camions.models import Camion
+from chauffeurs.models import Chauffeur
 from depenses.models import Depense, TypeDepense
-from maintenance.models import ApprovisionnementCaisse, Fournisseur, PanneCatalogue, PanneFournisseurPrix, TypeMaintenance
+from maintenance.models import (
+    ApprovisionnementCaisse,
+    Fournisseur,
+    Maintenance,
+    MaintenanceFacture,
+    MaintenanceLigne,
+    MaintenanceSousLigne,
+    PanneCatalogue,
+    PanneFournisseurPrix,
+    TypeMaintenance,
+)
 from maintenance.views import _get_caisse_metrics, _get_dg_metrics
 
 
@@ -296,11 +310,55 @@ class PanneManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Gerer les pannes")
+        self.assertContains(response, "Panne - Piece")
+        self.assertContains(response, "Utilisation")
         self.assertContains(response, "Fournisseur 1")
         self.assertContains(response, "Fournisseur 2")
         self.assertContains(response, "Fournisseur 3")
         self.assertContains(response, "Plaquettes")
         self.assertContains(response, "100.000 GNF")
+        self.assertContains(response, "Modifier")
+        self.assertContains(response, "Supprimer")
+
+    def test_page_gestion_pannes_affiche_utilisations_horizontales(self):
+        camion = Camion.objects.create(
+            numero_tracteur="AN 6514",
+            numero_citerne="AN 2014",
+            capacite=25000,
+        )
+        Chauffeur.objects.create(nom="Alpha Ousmane", telephone="620000000", camion=camion)
+        maintenance = Maintenance.objects.create(
+            camion=camion,
+            date_debut=timezone.make_aware(timezone.datetime(2026, 5, 10, 8, 0)),
+        )
+        ligne = MaintenanceLigne.objects.create(
+            maintenance=maintenance,
+            type_maintenance=self.type_maintenance,
+            libelle="Freinage",
+        )
+        MaintenanceSousLigne.objects.create(
+            maintenance_ligne=ligne,
+            panne_catalogue=self.panne,
+            libelle="Plaquettes",
+            quantite=1,
+            prix_unitaire=Decimal("500000"),
+        )
+        MaintenanceFacture.objects.create(
+            maintenance=maintenance,
+            fournisseur=self.fournisseurs[0],
+            numero_facture="FAC001",
+            facture_fichier=SimpleUploadedFile("facture.pdf", b"pdf", content_type="application/pdf"),
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("gerer_pannes"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-panne-toggle="usage-')
+        self.assertContains(
+            response,
+            "1 - 10/05/2026 08:00 - AN 6514 - AN 2014 - Alpha Ousmane - 500.000 GNF - Fournisseur 1 - Garage 1 - MAIN001",
+        )
 
     def test_ajouter_prix_panne_memorise_le_fournisseur(self):
         nouveau = Fournisseur.objects.create(

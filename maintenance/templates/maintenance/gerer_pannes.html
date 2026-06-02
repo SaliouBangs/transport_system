@@ -8,30 +8,20 @@
 <div>
 <p class="eyebrow">Catalogue maintenance</p>
 <h1>Gerer les pannes</h1>
-<p style="margin:6px 0 0; color:#6d8090;">Catalogue des pannes et comparaison rapide des prix fournisseurs memorises.</p>
+<p style="margin:6px 0 0; color:#6d8090;">Lecture simple des pannes, prix fournisseurs et historiques d'utilisation.</p>
 </div>
 <div class="table-actions">
 <a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
 </div>
 </div>
 
-<div class="card" style="padding:22px; margin-bottom:18px;">
-<h2 style="margin-top:0;">Nouvelle panne</h2>
-<form method="post" action="/maintenance/pannes/ajouter/" class="app-form">
+<div class="card panne-create-card">
+<h2>Nouvelle panne</h2>
+<form method="post" action="/maintenance/pannes/ajouter/" class="panne-create-form">
     {% csrf_token %}
-    <div class="form-grid form-grid-2">
-        <div>
-            <label for="{{ panne_form.type_maintenance.id_for_label }}">Type de maintenance</label>
-            {{ panne_form.type_maintenance }}
-        </div>
-        <div>
-            <label for="{{ panne_form.libelle.id_for_label }}">Libelle panne / piece</label>
-            {{ panne_form.libelle }}
-        </div>
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn">Ajouter la panne</button>
-    </div>
+    {{ panne_form.type_maintenance }}
+    {{ panne_form.libelle }}
+    <button type="submit" class="btn">Ajouter</button>
 </form>
 </div>
 
@@ -47,68 +37,101 @@
 <a href="/maintenance/pannes/" class="btn-secondary">Reinitialiser</a>
 </form>
 
-<table class="table panne-management-table">
+<table class="table panne-simple-table">
 <thead>
 <tr>
+<th>N°</th>
+<th>Panne - Piece</th>
 <th>Type</th>
-<th>Panne / piece</th>
+<th>Utilisation</th>
 <th>Fournisseur 1</th>
 <th>Fournisseur 2</th>
 <th>Fournisseur 3</th>
-<th>Utilisations</th>
-<th>Prix fournisseur</th>
-<th>Actions</th>
+<th>Action</th>
 </tr>
 </thead>
 <tbody>
 {% for panne in pannes %}
 <tr>
+<td>{{ forloop.counter }}</td>
+<td><strong>{{ panne.libelle }}</strong></td>
 <td>{{ panne.type_maintenance.libelle }}</td>
 <td>
-    <form method="post" action="/maintenance/pannes/{{ panne.id }}/modifier/" class="inline-edit-form">
-        {% csrf_token %}
-        <select name="type_maintenance" aria-label="Type de maintenance">
-            {% for type_maintenance in type_choices %}
-            <option value="{{ type_maintenance.id }}" {% if panne.type_maintenance_id == type_maintenance.id %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
-            {% endfor %}
-        </select>
-        <input type="text" name="libelle" value="{{ panne.libelle }}" aria-label="Libelle panne">
-        <button type="submit" class="btn-edit">Modifier</button>
-    </form>
+    {% if panne.utilisations %}
+    <button type="button" class="usage-count-btn" data-panne-toggle="usage-{{ panne.id }}">{{ panne.utilisations }}</button>
+    {% else %}
+    <span class="muted">0</span>
+    {% endif %}
 </td>
 {% for price in panne.price_columns %}
 <td>
     {% if price %}
-    <div class="supplier-price-cell">
+    <div class="supplier-price-simple">
         <strong>{{ price.fournisseur }}</strong>
         <span>{{ price.montant }} GNF</span>
-        <small>{{ price.date|date:"d/m/Y" }}</small>
-        <form method="post" action="/maintenance/pannes/prix/{{ price.id }}/supprimer/" onsubmit="return confirm('Supprimer ce prix fournisseur ?');">
-            {% csrf_token %}
-            <button type="submit" class="link-danger">Supprimer</button>
-        </form>
     </div>
     {% else %}
     <span class="muted">-</span>
     {% endif %}
 </td>
 {% endfor %}
-<td>{{ panne.utilisations }}</td>
 <td>
-    <form method="post" action="/maintenance/pannes/{{ panne.id }}/prix/" class="price-inline-form">
+    <button type="button" class="link-action" data-panne-toggle="edit-{{ panne.id }}">Modifier</button>
+    <form method="post" action="/maintenance/pannes/{{ panne.id }}/supprimer/" onsubmit="return confirm('Supprimer cette panne ?');" class="inline-delete-form">
         {% csrf_token %}
-        {{ prix_form.fournisseur }}
-        {{ prix_form.montant }}
-        {{ prix_form.date_reference }}
-        {{ prix_form.observation }}
-        <button type="submit" class="btn-secondary">Memoriser</button>
+        <button type="submit" class="link-danger">Supprimer</button>
     </form>
 </td>
-<td>
-    <form method="post" action="/maintenance/pannes/{{ panne.id }}/supprimer/" onsubmit="return confirm('Supprimer cette panne ?');">
-        {% csrf_token %}
-        <button type="submit" class="btn-delete" {% if panne.utilisations %}title="Impossible si deja utilisee dans une maintenance"{% endif %}>Supprimer</button>
-    </form>
+</tr>
+<tr class="panne-detail-row" id="usage-{{ panne.id }}">
+<td colspan="8">
+    <div class="usage-lines">
+        {% for usage in panne.usage_rows %}
+        <div class="usage-line">
+            {{ usage.index }} - {{ usage.date }} - {{ usage.camion }} - {{ usage.citerne }} - {{ usage.chauffeur }} - {{ usage.prix }} GNF - {{ usage.fournisseur }} - {{ usage.reference }}
+        </div>
+        {% empty %}
+        <span class="muted">Aucune utilisation enregistree.</span>
+        {% endfor %}
+    </div>
+</td>
+</tr>
+<tr class="panne-detail-row" id="edit-{{ panne.id }}">
+<td colspan="8">
+    <div class="edit-panel">
+        <form method="post" action="/maintenance/pannes/{{ panne.id }}/modifier/" class="edit-panel-form">
+            {% csrf_token %}
+            <strong>Modifier la panne</strong>
+            <select name="type_maintenance" aria-label="Type de maintenance">
+                {% for type_maintenance in type_choices %}
+                <option value="{{ type_maintenance.id }}" {% if panne.type_maintenance_id == type_maintenance.id %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="libelle" value="{{ panne.libelle }}" aria-label="Libelle panne">
+            <button type="submit" class="btn-edit">Enregistrer</button>
+        </form>
+        <form method="post" action="/maintenance/pannes/{{ panne.id }}/prix/" class="edit-panel-form">
+            {% csrf_token %}
+            <strong>Ajouter / mettre a jour un prix</strong>
+            {{ prix_form.fournisseur }}
+            {{ prix_form.montant }}
+            {{ prix_form.date_reference }}
+            {{ prix_form.observation }}
+            <button type="submit" class="btn-secondary">Memoriser le prix</button>
+        </form>
+        <div class="price-delete-panel">
+            <strong>Prix memorises</strong>
+            {% for price in panne.price_columns %}
+                {% if price %}
+                <form method="post" action="/maintenance/pannes/prix/{{ price.id }}/supprimer/" onsubmit="return confirm('Supprimer ce prix fournisseur ?');">
+                    {% csrf_token %}
+                    <span>{{ price.fournisseur }} - {{ price.montant }} GNF</span>
+                    <button type="submit" class="link-danger">Supprimer</button>
+                </form>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
 </td>
 </tr>
 {% empty %}
@@ -120,53 +143,136 @@
 </table>
 
 <style>
-.panne-management-table th,
-.panne-management-table td{
-    vertical-align:top;
+.panne-create-card{
+    padding:18px 20px;
+    margin-bottom:18px;
 }
-.inline-edit-form,
-.price-inline-form{
+.panne-create-card h2{
+    margin:0 0 12px;
+    font-size:1.1rem;
+}
+.panne-create-form{
     display:grid;
-    gap:8px;
+    grid-template-columns:minmax(180px, 260px) minmax(220px, 1fr) auto;
+    gap:10px;
+    align-items:end;
 }
-.inline-edit-form select,
-.inline-edit-form input,
-.price-inline-form select,
-.price-inline-form input{
-    width:100%;
-    min-height:38px;
+.panne-simple-table th,
+.panne-simple-table td{
+    vertical-align:middle;
 }
-.supplier-price-cell{
+.panne-simple-table th:first-child,
+.panne-simple-table td:first-child{
+    width:56px;
+    text-align:center;
+}
+.supplier-price-simple{
     display:grid;
     gap:4px;
-    min-width:150px;
+    min-width:145px;
 }
-.supplier-price-cell strong{
+.supplier-price-simple strong{
     color:#123047;
     font-size:0.9rem;
 }
-.supplier-price-cell span{
+.supplier-price-simple span{
     color:#0b5e4b;
     font-weight:800;
 }
-.supplier-price-cell small,
-.muted{
-    color:#6d8090;
-}
+.usage-count-btn,
+.link-action,
 .link-danger{
     border:none;
     background:transparent;
-    color:#c0392b;
-    font-weight:700;
+    font:inherit;
+    font-weight:800;
     cursor:pointer;
     padding:0;
-    text-align:left;
+}
+.usage-count-btn{
+    color:#0b63b6;
+    text-decoration:underline;
+}
+.link-action{
+    display:block;
+    color:#0b63b6;
+    margin-bottom:4px;
+}
+.link-danger{
+    color:#c0392b;
+}
+.inline-delete-form{
+    margin:0;
+}
+.panne-detail-row{
+    display:none;
+}
+.panne-detail-row.is-open{
+    display:table-row;
+}
+.panne-detail-row td{
+    background:#f8fbfd;
+    border-top:0;
+}
+.usage-lines{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    overflow-x:auto;
+    padding:12px;
+}
+.usage-line{
+    white-space:nowrap;
+    color:#123047;
+    font-weight:700;
+}
+.edit-panel{
+    display:grid;
+    grid-template-columns:1fr 1.2fr 1fr;
+    gap:16px;
+    padding:14px 12px;
+}
+.edit-panel-form,
+.price-delete-panel{
+    display:grid;
+    gap:8px;
+}
+.edit-panel-form select,
+.edit-panel-form input{
+    width:100%;
+    min-height:38px;
+}
+.price-delete-panel form{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    padding:6px 0;
+    border-bottom:1px solid #d9e2e8;
+}
+.muted{
+    color:#6d8090;
 }
 @media (max-width: 1100px){
-    .panne-management-table{
-        min-width:1100px;
+    .panne-simple-table{
+        min-width:1080px;
+    }
+    .panne-create-form,
+    .edit-panel{
+        grid-template-columns:1fr;
     }
 }
 </style>
+
+<script>
+document.querySelectorAll("[data-panne-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-panne-toggle");
+        const row = document.getElementById(targetId);
+        if (!row) return;
+        row.classList.toggle("is-open");
+    });
+});
+</script>
 
 {% endblock %}
