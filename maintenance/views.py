@@ -636,7 +636,12 @@ def _build_pannes_catalog():
         "type_maintenance__libelle", "libelle"
     ):
         catalog.setdefault(str(panne.type_maintenance_id), []).append(
-            {"id": panne.id, "label": panne.libelle}
+            {
+                "id": panne.id,
+                "label": panne.libelle,
+                "type_id": panne.type_maintenance_id,
+                "type_label": panne.type_maintenance.libelle,
+            }
         )
     return catalog
 

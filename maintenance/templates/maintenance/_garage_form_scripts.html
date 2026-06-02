@@ -11,6 +11,46 @@ const nextServicePreview = document.getElementById("next-service-preview");
 const pannesByType = {{ pannes_catalog_json|default:"{}" }};
 let activePanneContext = null;
 
+function escapeHtml(value) {
+    return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+}
+
+function getAllPannes() {
+    return Object.values(pannesByType)
+        .flat()
+        .sort((first, second) => {
+            const firstType = first.type_label || "";
+            const secondType = second.type_label || "";
+            if (firstType !== secondType) {
+                return firstType.localeCompare(secondType);
+            }
+            return (first.label || "").localeCompare(second.label || "");
+        });
+}
+
+function findPanneByLabel(label) {
+    const normalizedLabel = String(label || "").trim().toLowerCase();
+    if (!normalizedLabel) {
+        return null;
+    }
+    return getAllPannes().find((panne) => String(panne.label || "").trim().toLowerCase() === normalizedLabel) || null;
+}
+
+function applyPanneSelection(input) {
+    const row = input.closest(".maintenance-line-row");
+    const typeSelect = row?.querySelector(`select[name$="-type_maintenance"]`);
+    const panne = findPanneByLabel(input.value);
+    if (!row || !typeSelect || !panne?.type_id) {
+        return;
+    }
+    typeSelect.value = String(panne.type_id);
+    updateRowPanneOptions(row);
+}
+
 function bindRow(row) {
     const deleteCheckbox = row.querySelector(`input[name$="-DELETE"]`);
     if (deleteCheckbox) {
@@ -122,17 +162,19 @@ function bindSublineEvents(row) {
         input.addEventListener("focus", () => {
             activePanneContext = { row, input };
         });
+        input.addEventListener("change", () => applyPanneSelection(input));
+        input.addEventListener("input", () => applyPanneSelection(input));
     });
 
     updateRowPanneOptions(row);
 }
 
 function updateRowPanneOptions(row) {
-    const typeSelect = row.querySelector(`select[name$="-type_maintenance"]`);
-    const typeId = typeSelect?.value || "";
-    const pannes = pannesByType[typeId] || [];
+    const pannes = getAllPannes();
     row.querySelectorAll(".panne-datalist").forEach((datalist) => {
-        datalist.innerHTML = pannes.map((item) => `<option value="${item.label}"></option>`).join("");
+        datalist.innerHTML = pannes
+            .map((item) => `<option value="${escapeHtml(item.label)}" label="${escapeHtml(item.type_label)}"></option>`)
+            .join("");
     });
 }
 
@@ -239,11 +281,18 @@ panneForm?.addEventListener("submit", async (event) => {
     if (!pannesByType[typeId]) {
         pannesByType[typeId] = [];
     }
-    pannesByType[typeId].push({ id: payload.panne.id, label: payload.panne.label });
+    const typeLabel = panneTypeField?.options[panneTypeField.selectedIndex]?.text || "";
+    pannesByType[typeId].push({
+        id: payload.panne.id,
+        label: payload.panne.label,
+        type_id: payload.panne.type_maintenance_id,
+        type_label: typeLabel,
+    });
     syncAllPanneLists();
 
     if (activePanneContext?.input) {
         activePanneContext.input.value = payload.panne.label;
+        applyPanneSelection(activePanneContext.input);
     }
 
     panneForm.reset();

@@ -320,6 +320,16 @@ class PanneManagementTests(TestCase):
         self.assertContains(response, "Modifier")
         self.assertContains(response, "Supprimer")
 
+    def test_fiche_garage_propose_toutes_les_pannes_et_leur_type(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("ajouter_maintenance_garage"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"type_label": "Freinage"')
+        self.assertContains(response, '"label": "Plaquettes"')
+        self.assertContains(response, "function applyPanneSelection")
+
     def test_page_gestion_pannes_affiche_utilisations_horizontales(self):
         camion = Camion.objects.create(
             numero_tracteur="AN 6514",
