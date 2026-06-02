@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-labelledby="title desc">
+  <title id="title">Barika Group</title>
+  <desc id="desc">Logo Barika Group bleu et rouge</desc>
+  <rect width="320" height="220" fill="none"/>
+  <g transform="translate(0 0)">
+    <path d="M0 154 C35 118 72 124 86 80 L140 28 L140 123 C139 152 132 166 110 176 C78 190 36 183 0 183 Z" fill="#0a2ee8"/>
+    <path d="M122 183 C158 168 163 137 162 91 L213 38 C228 102 228 152 212 174 C194 199 158 201 122 183 Z" fill="#8e1425"/>
+    <path d="M205 184 C248 173 252 141 251 86 L320 0 L320 132 C320 184 295 207 238 213 C223 215 212 210 205 184 Z" fill="#0a2ee8"/>
+    <path d="M1 184 C96 184 191 184 286 184" stroke="#f4f6fb" stroke-width="4"/>
+  </g>
+  <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
+    <text x="8" y="210" font-size="58" letter-spacing="10" fill="#0a2ee8">Barika</text>
+    <text x="246" y="217" font-size="24" letter-spacing="7" fill="#8e1425">Group</text>
+  </g>
+</svg>
