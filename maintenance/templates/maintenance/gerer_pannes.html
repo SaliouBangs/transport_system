@@ -4,43 +4,61 @@
 
 {% include "maintenance/_tabs.html" %}
 
-<div class="page-header">
+<div class="page-header panne-page-header">
 <div>
 <p class="eyebrow">Catalogue maintenance</p>
 <h1>Gerer les pannes</h1>
-<p style="margin:6px 0 0; color:#6d8090;">Lecture simple des pannes, prix fournisseurs et historiques d'utilisation.</p>
+<p class="page-subtitle">Lecture simple des pannes, prix fournisseurs et historiques d'utilisation.</p>
 </div>
-<div class="table-actions">
+<div class="panne-header-actions">
+<a href="{% url 'export_pannes_catalogue_xls' %}?q={{ query|urlencode }}&type={{ type_filter|urlencode }}" class="btn">Exporter les pannes</a>
+<a href="{% url 'export_pannes_utilisations_xls' %}?q={{ query|urlencode }}&type={{ type_filter|urlencode }}" class="btn-secondary">Exporter les utilisations</a>
 <a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
 </div>
 </div>
 
 <div class="card panne-create-card">
-<h2>Nouvelle panne</h2>
+<div>
+<p class="eyebrow">Nouvelle reference</p>
+<h2>Ajouter une panne ou une piece</h2>
+</div>
 <form method="post" action="/maintenance/pannes/ajouter/" class="panne-create-form">
     {% csrf_token %}
-    {{ panne_form.type_maintenance }}
-    {{ panne_form.libelle }}
+    <label>
+        <span>Type</span>
+        {{ panne_form.type_maintenance }}
+    </label>
+    <label>
+        <span>Panne - piece</span>
+        {{ panne_form.libelle }}
+    </label>
     <button type="submit" class="btn">Ajouter</button>
 </form>
 </div>
 
-<form method="get" class="search-form" style="margin-bottom:18px;">
-<input type="text" name="q" value="{{ query }}" placeholder="Rechercher panne, type ou fournisseur" autocomplete="off" spellcheck="false">
-<select name="type">
-    <option value="">Tous les types</option>
-    {% for type_maintenance in type_choices %}
-    <option value="{{ type_maintenance.id }}" {% if type_filter == type_maintenance.id|stringformat:"s" %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
-    {% endfor %}
-</select>
+<form method="get" class="search-form panne-filter-form">
+<label>
+    <span>Recherche</span>
+    <input type="text" name="q" value="{{ query }}" placeholder="Panne, type ou fournisseur" autocomplete="off" spellcheck="false">
+</label>
+<label>
+    <span>Type</span>
+    <select name="type">
+        <option value="">Tous les types</option>
+        {% for type_maintenance in type_choices %}
+        <option value="{{ type_maintenance.id }}" {% if type_filter == type_maintenance.id|stringformat:"s" %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
+        {% endfor %}
+    </select>
+</label>
 <button type="submit" class="btn">Rechercher</button>
 <a href="/maintenance/pannes/" class="btn-secondary">Reinitialiser</a>
 </form>
 
+<div class="panne-table-wrap">
 <table class="table panne-simple-table">
 <thead>
 <tr>
-<th>N°</th>
+<th>No</th>
 <th>Panne - Piece</th>
 <th>Type</th>
 <th>Utilisation</th>
@@ -53,14 +71,19 @@
 <tbody>
 {% for panne in pannes %}
 <tr>
-<td>{{ forloop.counter }}</td>
-<td><strong>{{ panne.libelle }}</strong></td>
-<td>{{ panne.type_maintenance.libelle }}</td>
+<td><span class="row-index">{{ forloop.counter }}</span></td>
+<td>
+    <strong class="panne-name">{{ panne.libelle }}</strong>
+</td>
+<td><span class="type-pill">{{ panne.type_maintenance.libelle }}</span></td>
 <td>
     {% if panne.utilisations %}
-    <button type="button" class="usage-count-btn" data-panne-toggle="usage-{{ panne.id }}">{{ panne.utilisations }}</button>
+    <button type="button" class="usage-count-btn" data-panne-toggle="usage-{{ panne.id }}" aria-expanded="false">
+        <span>{{ panne.utilisations }}</span>
+        <small>voir camions</small>
+    </button>
     {% else %}
-    <span class="muted">0</span>
+    <span class="usage-empty">0</span>
     {% endif %}
 </td>
 {% for price in panne.price_columns %}
@@ -76,23 +99,46 @@
 </td>
 {% endfor %}
 <td>
-    <button type="button" class="link-action" data-panne-toggle="edit-{{ panne.id }}">Modifier</button>
+    <button type="button" class="table-action-link" data-panne-toggle="edit-{{ panne.id }}" aria-expanded="false">Modifier</button>
     <form method="post" action="/maintenance/pannes/{{ panne.id }}/supprimer/" onsubmit="return confirm('Supprimer cette panne ?');" class="inline-delete-form">
         {% csrf_token %}
-        <button type="submit" class="link-danger">Supprimer</button>
+        <button type="submit" class="table-action-link table-action-link--danger">Supprimer</button>
     </form>
 </td>
 </tr>
 <tr class="panne-detail-row" id="usage-{{ panne.id }}">
 <td colspan="8">
-    <div class="usage-lines">
-        {% for usage in panne.usage_rows %}
-        <div class="usage-line">
-            {{ usage.index }} - {{ usage.date }} - {{ usage.camion }} - {{ usage.citerne }} - {{ usage.chauffeur }} - {{ usage.prix }} GNF - {{ usage.fournisseur }} - {{ usage.reference }}
+    <div class="usage-panel">
+        <div class="usage-panel__title">
+            <strong>Camions ayant utilise : {{ panne.libelle }}</strong>
+            <span>{{ panne.utilisations }} utilisation(s)</span>
         </div>
-        {% empty %}
-        <span class="muted">Aucune utilisation enregistree.</span>
-        {% endfor %}
+        <div class="usage-mini-table">
+            <div class="usage-mini-table__head">
+                <span>No</span>
+                <span>Date</span>
+                <span>Camion</span>
+                <span>Citerne</span>
+                <span>Chauffeur</span>
+                <span>Prix</span>
+                <span>Fournisseur</span>
+                <span>Reference</span>
+            </div>
+            {% for usage in panne.usage_rows %}
+            <div class="usage-mini-table__row">
+                <span>{{ usage.index }}</span>
+                <span>{{ usage.date }}</span>
+                <span>{{ usage.camion }}</span>
+                <span>{{ usage.citerne }}</span>
+                <span>{{ usage.chauffeur }}</span>
+                <span>{{ usage.prix }} GNF</span>
+                <span>{{ usage.fournisseur }}</span>
+                <span>{{ usage.reference }}</span>
+            </div>
+            {% empty %}
+            <div class="usage-mini-table__empty">Aucune utilisation enregistree.</div>
+            {% endfor %}
+        </div>
     </div>
 </td>
 </tr>
@@ -102,21 +148,27 @@
         <form method="post" action="/maintenance/pannes/{{ panne.id }}/modifier/" class="edit-panel-form">
             {% csrf_token %}
             <strong>Modifier la panne</strong>
-            <select name="type_maintenance" aria-label="Type de maintenance">
-                {% for type_maintenance in type_choices %}
-                <option value="{{ type_maintenance.id }}" {% if panne.type_maintenance_id == type_maintenance.id %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
-                {% endfor %}
-            </select>
-            <input type="text" name="libelle" value="{{ panne.libelle }}" aria-label="Libelle panne">
+            <label>
+                <span>Type</span>
+                <select name="type_maintenance" aria-label="Type de maintenance">
+                    {% for type_maintenance in type_choices %}
+                    <option value="{{ type_maintenance.id }}" {% if panne.type_maintenance_id == type_maintenance.id %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>Panne - piece</span>
+                <input type="text" name="libelle" value="{{ panne.libelle }}" aria-label="Libelle panne">
+            </label>
             <button type="submit" class="btn-edit">Enregistrer</button>
         </form>
         <form method="post" action="/maintenance/pannes/{{ panne.id }}/prix/" class="edit-panel-form">
             {% csrf_token %}
             <strong>Ajouter / mettre a jour un prix</strong>
-            {{ prix_form.fournisseur }}
-            {{ prix_form.montant }}
-            {{ prix_form.date_reference }}
-            {{ prix_form.observation }}
+            <label><span>Fournisseur</span>{{ prix_form.fournisseur }}</label>
+            <label><span>Montant</span>{{ prix_form.montant }}</label>
+            <label><span>Date</span>{{ prix_form.date_reference }}</label>
+            <label><span>Observation</span>{{ prix_form.observation }}</label>
             <button type="submit" class="btn-secondary">Memoriser le prix</button>
         </form>
         <div class="price-delete-panel">
@@ -126,7 +178,7 @@
                 <form method="post" action="/maintenance/pannes/prix/{{ price.id }}/supprimer/" onsubmit="return confirm('Supprimer ce prix fournisseur ?');">
                     {% csrf_token %}
                     <span>{{ price.fournisseur }} - {{ price.montant }} GNF</span>
-                    <button type="submit" class="link-danger">Supprimer</button>
+                    <button type="submit" class="table-action-link table-action-link--danger">Supprimer</button>
                 </form>
                 {% endif %}
             {% endfor %}
@@ -141,21 +193,88 @@
 {% endfor %}
 </tbody>
 </table>
+</div>
 
 <style>
+.panne-page-header{
+    gap:18px;
+}
+.page-subtitle{
+    margin:6px 0 0;
+    color:#6d8090;
+}
+.panne-header-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+}
 .panne-create-card{
-    padding:18px 20px;
+    display:grid;
+    grid-template-columns:minmax(220px, 280px) 1fr;
+    gap:20px;
+    align-items:end;
+    padding:20px 22px;
     margin-bottom:18px;
+    border-top:3px solid #4fbf9f;
 }
 .panne-create-card h2{
-    margin:0 0 12px;
-    font-size:1.1rem;
+    margin:4px 0 0;
+    font-size:1.15rem;
+}
+.panne-create-form,
+.panne-filter-form{
+    display:grid;
+    gap:12px;
+    align-items:end;
 }
 .panne-create-form{
+    grid-template-columns:minmax(190px, 260px) minmax(260px, 1fr) auto;
+}
+.panne-filter-form{
+    grid-template-columns:minmax(260px, 1.2fr) minmax(190px, 280px) auto auto;
+    margin-bottom:18px;
+}
+.panne-create-form label,
+.panne-filter-form label,
+.edit-panel-form label{
     display:grid;
-    grid-template-columns:minmax(180px, 260px) minmax(220px, 1fr) auto;
-    gap:10px;
-    align-items:end;
+    gap:6px;
+}
+.panne-create-form label span,
+.panne-filter-form label span,
+.edit-panel-form label span{
+    color:#6d8090;
+    font-size:0.72rem;
+    font-weight:900;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+}
+.panne-create-form select,
+.panne-create-form input,
+.panne-filter-form select,
+.panne-filter-form input,
+.edit-panel-form select,
+.edit-panel-form input,
+.edit-panel-form textarea{
+    width:100%;
+    min-height:44px;
+    box-sizing:border-box;
+    border:1px solid #c7d9ea;
+    border-radius:12px;
+    background:#fff;
+    color:#123047;
+    padding:0 12px;
+    font:inherit;
+    font-weight:700;
+}
+.panne-table-wrap{
+    overflow-x:auto;
+    border-radius:16px;
+    box-shadow:0 16px 36px rgba(18,48,71,0.10);
+}
+.panne-simple-table{
+    margin:0;
 }
 .panne-simple-table th,
 .panne-simple-table td{
@@ -163,46 +282,98 @@
 }
 .panne-simple-table th:first-child,
 .panne-simple-table td:first-child{
-    width:56px;
+    width:58px;
     text-align:center;
+}
+.row-index{
+    display:inline-grid;
+    place-items:center;
+    width:24px;
+    height:24px;
+    border-radius:999px;
+    background:#eaf5ff;
+    color:#0b63b6;
+    font-weight:900;
+    font-size:0.78rem;
+}
+.panne-name{
+    color:#123047;
+    letter-spacing:0.01em;
+}
+.type-pill{
+    display:inline-flex;
+    align-items:center;
+    min-height:28px;
+    padding:0 10px;
+    border-radius:999px;
+    background:#edf6fb;
+    color:#174869;
+    font-size:0.82rem;
+    font-weight:850;
 }
 .supplier-price-simple{
     display:grid;
-    gap:4px;
-    min-width:145px;
+    gap:5px;
+    min-width:150px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:linear-gradient(135deg, #f8fcff, #eef8f5);
+    border:1px solid #d7e6ef;
 }
 .supplier-price-simple strong{
     color:#123047;
-    font-size:0.9rem;
+    font-size:0.86rem;
 }
 .supplier-price-simple span{
-    color:#0b5e4b;
-    font-weight:800;
+    color:#0b6d55;
+    font-weight:900;
 }
-.usage-count-btn,
-.link-action,
-.link-danger{
-    border:none;
-    background:transparent;
+.usage-empty{
+    color:#8ea0ad;
+    font-weight:900;
+}
+.usage-count-btn{
+    border:0;
+    border-radius:12px;
+    background:#e9f5ff;
+    color:#0b63b6;
+    cursor:pointer;
+    display:grid;
+    gap:2px;
+    min-width:78px;
+    padding:8px 10px;
     font:inherit;
-    font-weight:800;
+    text-align:center;
+    transition:transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.usage-count-btn:hover{
+    background:#dff0ff;
+    transform:translateY(-1px);
+    box-shadow:0 10px 20px rgba(11,99,182,0.14);
+}
+.usage-count-btn span{
+    font-size:1rem;
+    font-weight:950;
+}
+.usage-count-btn small{
+    font-size:0.68rem;
+    font-weight:850;
+}
+.table-action-link{
+    border:0;
+    background:transparent;
+    color:#0b63b6;
+    font:inherit;
+    font-size:0.86rem;
+    font-weight:900;
     cursor:pointer;
     padding:0;
 }
-.usage-count-btn{
-    color:#0b63b6;
-    text-decoration:underline;
-}
-.link-action{
-    display:block;
-    color:#0b63b6;
-    margin-bottom:4px;
-}
-.link-danger{
+.table-action-link--danger{
     color:#c0392b;
 }
 .inline-delete-form{
-    margin:0;
+    margin:4px 0 0;
 }
 .panne-detail-row{
     display:none;
@@ -211,20 +382,66 @@
     display:table-row;
 }
 .panne-detail-row td{
-    background:#f8fbfd;
+    background:#f5f9fc;
     border-top:0;
 }
-.usage-lines{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    overflow-x:auto;
-    padding:12px;
+.usage-panel{
+    display:grid;
+    gap:12px;
+    padding:14px;
+    border:1px solid #d8e7ef;
+    border-radius:14px;
+    background:#fff;
 }
-.usage-line{
-    white-space:nowrap;
+.usage-panel__title{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
     color:#123047;
-    font-weight:700;
+}
+.usage-panel__title span{
+    color:#0b6d55;
+    font-weight:900;
+}
+.usage-mini-table{
+    display:grid;
+    min-width:980px;
+    overflow:hidden;
+    border:1px solid #d9e2e8;
+    border-radius:12px;
+}
+.usage-mini-table__head,
+.usage-mini-table__row{
+    display:grid;
+    grid-template-columns:50px 150px 130px 130px minmax(170px, 1fr) 130px minmax(160px, 1fr) 120px;
+    align-items:center;
+}
+.usage-mini-table__head{
+    background:#123047;
+    color:#fff;
+    font-size:0.75rem;
+    font-weight:900;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+}
+.usage-mini-table__head span,
+.usage-mini-table__row span{
+    padding:10px 12px;
+}
+.usage-mini-table__row{
+    background:#fff;
+    color:#123047;
+    font-weight:750;
+    border-top:1px solid #d9e2e8;
+}
+.usage-mini-table__row:nth-child(odd){
+    background:#f8fbfd;
+}
+.usage-mini-table__empty{
+    padding:16px;
+    color:#6d8090;
+    font-weight:800;
 }
 .edit-panel{
     display:grid;
@@ -235,31 +452,91 @@
 .edit-panel-form,
 .price-delete-panel{
     display:grid;
-    gap:8px;
-}
-.edit-panel-form select,
-.edit-panel-form input{
-    width:100%;
-    min-height:38px;
+    gap:10px;
+    padding:14px;
+    border:1px solid #d9e2e8;
+    border-radius:14px;
+    background:#fff;
 }
 .price-delete-panel form{
     display:flex;
     justify-content:space-between;
     gap:12px;
     align-items:center;
-    padding:6px 0;
+    padding:7px 0;
     border-bottom:1px solid #d9e2e8;
 }
 .muted{
     color:#6d8090;
 }
-@media (max-width: 1100px){
+body.theme-dark .panne-create-form select,
+body.theme-dark .panne-create-form input,
+body.theme-dark .panne-filter-form select,
+body.theme-dark .panne-filter-form input,
+body.theme-dark .edit-panel-form select,
+body.theme-dark .edit-panel-form input,
+body.theme-dark .edit-panel-form textarea,
+body.theme-aurora .panne-create-form select,
+body.theme-aurora .panne-create-form input,
+body.theme-aurora .panne-filter-form select,
+body.theme-aurora .panne-filter-form input,
+body.theme-aurora .edit-panel-form select,
+body.theme-aurora .edit-panel-form input,
+body.theme-aurora .edit-panel-form textarea{
+    background:#091218;
+    color:#f4f7f8;
+    border-color:#263743;
+}
+body.theme-dark .usage-panel,
+body.theme-dark .edit-panel-form,
+body.theme-dark .price-delete-panel,
+body.theme-aurora .usage-panel,
+body.theme-aurora .edit-panel-form,
+body.theme-aurora .price-delete-panel{
+    background:#101a20;
+    border-color:#263743;
+}
+body.theme-dark .panne-detail-row td,
+body.theme-aurora .panne-detail-row td{
+    background:#0b1318;
+}
+body.theme-dark .supplier-price-simple,
+body.theme-aurora .supplier-price-simple{
+    background:#0f1b22;
+    border-color:#263743;
+}
+body.theme-dark .supplier-price-simple strong,
+body.theme-dark .panne-name,
+body.theme-dark .usage-panel__title,
+body.theme-dark .usage-mini-table__row,
+body.theme-aurora .supplier-price-simple strong,
+body.theme-aurora .panne-name,
+body.theme-aurora .usage-panel__title,
+body.theme-aurora .usage-mini-table__row{
+    color:#f4f7f8;
+}
+body.theme-dark .type-pill,
+body.theme-aurora .type-pill{
+    background:#142431;
+    color:#cfe4f2;
+}
+body.theme-dark .usage-mini-table__row,
+body.theme-aurora .usage-mini-table__row{
+    background:#101a20;
+    border-color:#263743;
+}
+@media (max-width: 1200px){
     .panne-simple-table{
-        min-width:1080px;
+        min-width:1120px;
     }
+    .panne-create-card,
     .panne-create-form,
+    .panne-filter-form,
     .edit-panel{
         grid-template-columns:1fr;
+    }
+    .panne-header-actions{
+        justify-content:flex-start;
     }
 }
 </style>
@@ -270,7 +547,8 @@ document.querySelectorAll("[data-panne-toggle]").forEach((button) => {
         const targetId = button.getAttribute("data-panne-toggle");
         const row = document.getElementById(targetId);
         if (!row) return;
-        row.classList.toggle("is-open");
+        const isOpen = row.classList.toggle("is-open");
+        button.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
 });
 </script>

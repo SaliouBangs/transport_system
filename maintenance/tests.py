@@ -355,9 +355,49 @@ class PanneManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-panne-toggle="usage-')
-        self.assertContains(
-            response,
-            "1 - 10/05/2026 08:00 - AN 6514 - AN 2014 - Alpha Ousmane - 500.000 GNF - Fournisseur 1 - Garage 1 - MAIN001",
+        self.assertContains(response, "Camions ayant utilise : Plaquettes")
+        self.assertContains(response, "10/05/2026 08:00")
+        self.assertContains(response, "AN 6514")
+        self.assertContains(response, "AN 2014")
+        self.assertContains(response, "Alpha Ousmane")
+        self.assertContains(response, "500.000 GNF")
+        self.assertContains(response, "Fournisseur 1 - Garage 1")
+        self.assertContains(response, "MAIN001")
+
+    def test_exports_pannes_et_utilisations_sont_disponibles(self):
+        camion = Camion.objects.create(
+            numero_tracteur="AN 6514",
+            numero_citerne="AN 2014",
+            capacite=25000,
+        )
+        MaintenanceSousLigne.objects.create(
+            maintenance_ligne=MaintenanceLigne.objects.create(
+                maintenance=Maintenance.objects.create(
+                    camion=camion,
+                    date_debut=timezone.make_aware(timezone.datetime(2026, 5, 10, 8, 0)),
+                ),
+                type_maintenance=self.type_maintenance,
+                libelle="Freinage",
+            ),
+            panne_catalogue=self.panne,
+            libelle="Plaquettes",
+            quantite=1,
+            prix_unitaire=Decimal("500000"),
+        )
+        self.client.force_login(self.user)
+
+        pannes_response = self.client.get(reverse("export_pannes_catalogue_xls"))
+        usages_response = self.client.get(reverse("export_pannes_utilisations_xls"))
+
+        self.assertEqual(pannes_response.status_code, 200)
+        self.assertEqual(usages_response.status_code, 200)
+        self.assertEqual(
+            pannes_response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertEqual(
+            usages_response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
     def test_ajouter_prix_panne_memorise_le_fournisseur(self):

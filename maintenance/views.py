@@ -3315,7 +3315,7 @@ def _chauffeur_for_camion(camion):
     return chauffeur.nom if chauffeur else "-"
 
 
-def gerer_pannes(request):
+def _pannes_catalogue_queryset(request):
     query = (request.GET.get("q") or "").strip()
     type_filter = (request.GET.get("type") or "").strip()
     pannes_qs = (
@@ -3332,6 +3332,11 @@ def gerer_pannes(request):
         ).distinct()
     if type_filter:
         pannes_qs = pannes_qs.filter(type_maintenance_id=type_filter)
+    return pannes_qs, query, type_filter
+
+
+def gerer_pannes(request):
+    pannes_qs, query, type_filter = _pannes_catalogue_queryset(request)
     pannes = list(pannes_qs.order_by("type_maintenance__libelle", "libelle"))
     for panne in pannes:
         panne.price_columns = _panne_price_columns(panne)
@@ -3351,6 +3356,124 @@ def gerer_pannes(request):
             **_maintenance_tabs_context("garage"),
         },
     )
+
+
+def _style_worksheet(sheet):
+    try:
+        from openpyxl.styles import Font, PatternFill
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return
+
+    header_fill = PatternFill("solid", fgColor="123047")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+
+    for column_cells in sheet.columns:
+        max_length = max(len(str(cell.value or "")) for cell in column_cells)
+        sheet.column_dimensions[get_column_letter(column_cells[0].column)].width = min(max(max_length + 3, 12), 42)
+    sheet.freeze_panes = "A2"
+
+
+def _xlsx_response(workbook, filename):
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+    workbook.save(response)
+    return response
+
+
+def export_pannes_catalogue_xls(request):
+    try:
+        from openpyxl import Workbook
+    except ImportError:
+        return HttpResponse(
+            "Le module openpyxl n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    pannes_qs, _, _ = _pannes_catalogue_queryset(request)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Pannes"
+    sheet.append(
+        [
+            "No",
+            "Panne - Piece",
+            "Type",
+            "Utilisations",
+            "Fournisseur 1",
+            "Montant 1",
+            "Fournisseur 2",
+            "Montant 2",
+            "Fournisseur 3",
+            "Montant 3",
+        ]
+    )
+    for index, panne in enumerate(pannes_qs.order_by("type_maintenance__libelle", "libelle"), start=1):
+        prices = _panne_price_columns(panne)
+        row = [index, panne.libelle, panne.type_maintenance.libelle, panne.utilisations]
+        for price in prices:
+            row.extend([price["fournisseur"], f'{price["montant"]} GNF'] if price else ["", ""])
+        sheet.append(row)
+
+    _style_worksheet(sheet)
+    return _xlsx_response(workbook, "liste_pannes_maintenance")
+
+
+def export_pannes_utilisations_xls(request):
+    try:
+        from openpyxl import Workbook
+    except ImportError:
+        return HttpResponse(
+            "Le module openpyxl n'est pas installe sur cet environnement Python.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    pannes_qs, _, _ = _pannes_catalogue_queryset(request)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Utilisations"
+    sheet.append(
+        [
+            "No",
+            "Panne - Piece",
+            "Type",
+            "Date",
+            "Camion",
+            "Citerne",
+            "Chauffeur",
+            "Prix",
+            "Fournisseur",
+            "Reference maintenance",
+        ]
+    )
+    row_index = 1
+    for panne in pannes_qs.order_by("type_maintenance__libelle", "libelle"):
+        for usage in _panne_usage_rows(panne):
+            sheet.append(
+                [
+                    row_index,
+                    panne.libelle,
+                    panne.type_maintenance.libelle,
+                    usage["date"],
+                    usage["camion"],
+                    usage["citerne"],
+                    usage["chauffeur"],
+                    f'{usage["prix"]} GNF',
+                    usage["fournisseur"],
+                    usage["reference"],
+                ]
+            )
+            row_index += 1
+
+    _style_worksheet(sheet)
+    return _xlsx_response(workbook, "utilisations_pannes_maintenance")
 
 
 @require_POST
@@ -4432,6 +4555,8 @@ ajouter_type_maintenance = role_required("logistique", "maintenancier", "directe
 modifier_type_maintenance = role_required("logistique", "maintenancier", "directeur")(modifier_type_maintenance)
 supprimer_type_maintenance = role_required("logistique", "maintenancier", "directeur")(supprimer_type_maintenance)
 gerer_pannes = role_required("logistique", "maintenancier", "directeur")(gerer_pannes)
+export_pannes_catalogue_xls = role_required("logistique", "maintenancier", "directeur")(export_pannes_catalogue_xls)
+export_pannes_utilisations_xls = role_required("logistique", "maintenancier", "directeur")(export_pannes_utilisations_xls)
 ajouter_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_catalogue)
 modifier_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(modifier_panne_catalogue)
 supprimer_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(supprimer_panne_catalogue)
