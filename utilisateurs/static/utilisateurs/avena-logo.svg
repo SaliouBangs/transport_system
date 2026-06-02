@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-labelledby="title desc">
+  <title id="title">AVENA</title>
+  <desc id="desc">Logo AVENA bleu avec accents rouges</desc>
+  <rect width="320" height="160" fill="none"/>
+  <g transform="translate(80 22)">
+    <path d="M42 4c22 15 25 34 3 58" fill="none" stroke="#d31f35" stroke-width="10" stroke-linecap="round"/>
+    <path d="M65 10c22 16 24 36 2 62" fill="none" stroke="#074ddf" stroke-width="10" stroke-linecap="round"/>
+    <path d="M88 16c22 17 24 39 1 67" fill="none" stroke="#1231c5" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="800">
+    <text x="50" y="118" font-size="62" fill="#073fd3">AVENA</text>
+    <path d="M48 108L155 92" stroke="#d31f35" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

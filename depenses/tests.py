@@ -315,6 +315,30 @@ class DepenseDgaAccessTests(TestCase):
         self.assertEqual(depense_avena.statut, Depense.STATUT_ATTENTE_VALIDATION_DG)
         self.assertEqual(depense_avena.validation_dga_par, self.dga_avena_user)
 
+    def test_etat_depense_avena_affiche_le_logo_avena(self):
+        depense_avena = Depense.objects.create(
+            demandeur=self.dga_avena_user,
+            titre="Etat Avena",
+            description="Apercu logo Avena.",
+            source_depense=Depense.SOURCE_GENERALE,
+            entite_depense=Depense.ENTITE_AVENA,
+            statut=Depense.STATUT_ATTENTE_VALIDATION_DGA,
+            type_depense=self.type_depense_avena,
+            lieu_ou_projet="Bureau Avena",
+            montant_engage="120000",
+            fournisseur=self.fournisseur_avena,
+        )
+
+        self.client.force_login(self.dga_avena_user)
+        apercu_response = self.client.get(reverse("apercu_depense", args=[depense_avena.id]))
+        print_response = self.client.get(reverse("imprimer_depense", args=[depense_avena.id]))
+
+        self.assertEqual(apercu_response.status_code, 200)
+        self.assertContains(apercu_response, "utilisateurs/avena-logo.svg")
+        self.assertNotContains(apercu_response, "maintenance/sogefi-logo.png")
+        self.assertEqual(print_response.status_code, 200)
+        self.assertContains(print_response, "utilisateurs/avena-logo.svg")
+
     def test_caissiere_avena_ne_voit_que_les_depenses_especes_avena(self):
         depense_avena = Depense.objects.create(
             demandeur=self.dga_avena_user,
