@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% include "maintenance/_tabs.html" %}
+
+<div class="page-header">
+<div>
+<p class="eyebrow">Catalogue maintenance</p>
+<h1>Gerer les pannes</h1>
+<p style="margin:6px 0 0; color:#6d8090;">Catalogue des pannes et comparaison rapide des prix fournisseurs memorises.</p>
+</div>
+<div class="table-actions">
+<a href="/maintenance/garage/" class="btn-secondary">Retour garage</a>
+</div>
+</div>
+
+<div class="card" style="padding:22px; margin-bottom:18px;">
+<h2 style="margin-top:0;">Nouvelle panne</h2>
+<form method="post" action="/maintenance/pannes/ajouter/" class="app-form">
+    {% csrf_token %}
+    <div class="form-grid form-grid-2">
+        <div>
+            <label for="{{ panne_form.type_maintenance.id_for_label }}">Type de maintenance</label>
+            {{ panne_form.type_maintenance }}
+        </div>
+        <div>
+            <label for="{{ panne_form.libelle.id_for_label }}">Libelle panne / piece</label>
+            {{ panne_form.libelle }}
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Ajouter la panne</button>
+    </div>
+</form>
+</div>
+
+<form method="get" class="search-form" style="margin-bottom:18px;">
+<input type="text" name="q" value="{{ query }}" placeholder="Rechercher panne, type ou fournisseur" autocomplete="off" spellcheck="false">
+<select name="type">
+    <option value="">Tous les types</option>
+    {% for type_maintenance in type_choices %}
+    <option value="{{ type_maintenance.id }}" {% if type_filter == type_maintenance.id|stringformat:"s" %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
+    {% endfor %}
+</select>
+<button type="submit" class="btn">Rechercher</button>
+<a href="/maintenance/pannes/" class="btn-secondary">Reinitialiser</a>
+</form>
+
+<table class="table panne-management-table">
+<thead>
+<tr>
+<th>Type</th>
+<th>Panne / piece</th>
+<th>Fournisseur 1</th>
+<th>Fournisseur 2</th>
+<th>Fournisseur 3</th>
+<th>Utilisations</th>
+<th>Prix fournisseur</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for panne in pannes %}
+<tr>
+<td>{{ panne.type_maintenance.libelle }}</td>
+<td>
+    <form method="post" action="/maintenance/pannes/{{ panne.id }}/modifier/" class="inline-edit-form">
+        {% csrf_token %}
+        <select name="type_maintenance" aria-label="Type de maintenance">
+            {% for type_maintenance in type_choices %}
+            <option value="{{ type_maintenance.id }}" {% if panne.type_maintenance_id == type_maintenance.id %}selected{% endif %}>{{ type_maintenance.libelle }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="libelle" value="{{ panne.libelle }}" aria-label="Libelle panne">
+        <button type="submit" class="btn-edit">Modifier</button>
+    </form>
+</td>
+{% for price in panne.price_columns %}
+<td>
+    {% if price %}
+    <div class="supplier-price-cell">
+        <strong>{{ price.fournisseur }}</strong>
+        <span>{{ price.montant }} GNF</span>
+        <small>{{ price.date|date:"d/m/Y" }}</small>
+        <form method="post" action="/maintenance/pannes/prix/{{ price.id }}/supprimer/" onsubmit="return confirm('Supprimer ce prix fournisseur ?');">
+            {% csrf_token %}
+            <button type="submit" class="link-danger">Supprimer</button>
+        </form>
+    </div>
+    {% else %}
+    <span class="muted">-</span>
+    {% endif %}
+</td>
+{% endfor %}
+<td>{{ panne.utilisations }}</td>
+<td>
+    <form method="post" action="/maintenance/pannes/{{ panne.id }}/prix/" class="price-inline-form">
+        {% csrf_token %}
+        {{ prix_form.fournisseur }}
+        {{ prix_form.montant }}
+        {{ prix_form.date_reference }}
+        {{ prix_form.observation }}
+        <button type="submit" class="btn-secondary">Memoriser</button>
+    </form>
+</td>
+<td>
+    <form method="post" action="/maintenance/pannes/{{ panne.id }}/supprimer/" onsubmit="return confirm('Supprimer cette panne ?');">
+        {% csrf_token %}
+        <button type="submit" class="btn-delete" {% if panne.utilisations %}title="Impossible si deja utilisee dans une maintenance"{% endif %}>Supprimer</button>
+    </form>
+</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="8">Aucune panne trouvee.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<style>
+.panne-management-table th,
+.panne-management-table td{
+    vertical-align:top;
+}
+.inline-edit-form,
+.price-inline-form{
+    display:grid;
+    gap:8px;
+}
+.inline-edit-form select,
+.inline-edit-form input,
+.price-inline-form select,
+.price-inline-form input{
+    width:100%;
+    min-height:38px;
+}
+.supplier-price-cell{
+    display:grid;
+    gap:4px;
+    min-width:150px;
+}
+.supplier-price-cell strong{
+    color:#123047;
+    font-size:0.9rem;
+}
+.supplier-price-cell span{
+    color:#0b5e4b;
+    font-weight:800;
+}
+.supplier-price-cell small,
+.muted{
+    color:#6d8090;
+}
+.link-danger{
+    border:none;
+    background:transparent;
+    color:#c0392b;
+    font-weight:700;
+    cursor:pointer;
+    padding:0;
+    text-align:left;
+}
+@media (max-width: 1100px){
+    .panne-management-table{
+        min-width:1100px;
+    }
+}
+</style>
+
+{% endblock %}

@@ -18,6 +18,7 @@ from .models import (
     MaintenanceLigne,
     MouvementStock,
     PanneCatalogue,
+    PanneFournisseurPrix,
     Prestataire,
     SoldeInitialCaisse,
     TypeMaintenance,
@@ -384,6 +385,28 @@ class PanneCatalogueForm(forms.ModelForm):
     class Meta:
         model = PanneCatalogue
         fields = ["type_maintenance", "libelle"]
+
+
+class PanneFournisseurPrixForm(forms.ModelForm):
+    montant = forms.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+    )
+    date_reference = forms.DateField(
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fournisseur"].queryset = _fournisseurs_queryset(Fournisseur.PORTEFEUILLE_LOGISTIQUE)
+        if not self.instance.pk or not self.instance.date_reference:
+            self.initial["date_reference"] = timezone.localdate().isoformat()
+
+    class Meta:
+        model = PanneFournisseurPrix
+        fields = ["fournisseur", "montant", "date_reference", "observation"]
 
 
 class MaintenanceFactureForm(forms.ModelForm):

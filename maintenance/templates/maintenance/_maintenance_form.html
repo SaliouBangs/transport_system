@@ -221,6 +221,7 @@
             {% if not read_only and allow_structure_changes|default:True %}
             <div class="table-actions">
                 <a href="/maintenance/types-maintenance/?next={{ request.path|urlencode }}" class="btn-secondary">Gerer les types</a>
+                <a href="/maintenance/pannes/" class="btn-secondary">Gerer les pannes</a>
                 <button type="button" class="btn-secondary" data-modal-target="type-maintenance-modal">Nouveau type</button>
                 <button type="button" class="btn-secondary" data-modal-target="panne-maintenance-modal" id="open-panne-modal-btn">Nouvelle panne</button>
                 <button type="button" class="btn" id="add-line-btn">Ajouter une ligne</button>

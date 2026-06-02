@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from depenses.models import Depense, TypeDepense
-from maintenance.models import ApprovisionnementCaisse, Fournisseur
+from maintenance.models import ApprovisionnementCaisse, Fournisseur, PanneCatalogue, PanneFournisseurPrix, TypeMaintenance
 from maintenance.views import _get_caisse_metrics, _get_dg_metrics
 
 
@@ -264,3 +264,61 @@ class CaisseDgMouvementsTests(TestCase):
                     rapport_export["Content-Type"],
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
+
+
+class PanneManagementTests(TestCase):
+    def setUp(self):
+        self.logistique_group, _ = Group.objects.get_or_create(name="logistique")
+        self.user = User.objects.create_user(username="log_pannes", password="testpass123")
+        self.user.groups.add(self.logistique_group)
+        self.type_maintenance = TypeMaintenance.objects.create(libelle="Freinage")
+        self.panne = PanneCatalogue.objects.create(type_maintenance=self.type_maintenance, libelle="Plaquettes")
+        self.fournisseurs = [
+            Fournisseur.objects.create(
+                nom_fournisseur=f"Fournisseur {index}",
+                entreprise=f"Garage {index}",
+                portefeuille=Fournisseur.PORTEFEUILLE_LOGISTIQUE,
+            )
+            for index in range(1, 4)
+        ]
+        for index, fournisseur in enumerate(self.fournisseurs, start=1):
+            PanneFournisseurPrix.objects.create(
+                panne=self.panne,
+                fournisseur=fournisseur,
+                montant=Decimal(index * 100000),
+                date_reference="2026-06-01",
+            )
+
+    def test_page_gestion_pannes_affiche_trois_colonnes_fournisseurs(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("gerer_pannes"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Gerer les pannes")
+        self.assertContains(response, "Fournisseur 1")
+        self.assertContains(response, "Fournisseur 2")
+        self.assertContains(response, "Fournisseur 3")
+        self.assertContains(response, "Plaquettes")
+        self.assertContains(response, "100.000 GNF")
+
+    def test_ajouter_prix_panne_memorise_le_fournisseur(self):
+        nouveau = Fournisseur.objects.create(
+            nom_fournisseur="Nouveau",
+            entreprise="Pieces Auto",
+            portefeuille=Fournisseur.PORTEFEUILLE_LOGISTIQUE,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("ajouter_prix_panne", args=[self.panne.id]),
+            {
+                "fournisseur": str(nouveau.id),
+                "montant": "450000",
+                "date_reference": "2026-06-02",
+                "observation": "Controle prix",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(PanneFournisseurPrix.objects.filter(panne=self.panne, fournisseur=nouveau, montant=Decimal("450000")).exists())

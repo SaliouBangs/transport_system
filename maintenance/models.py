@@ -50,6 +50,45 @@ class PanneCatalogue(models.Model):
         return f"{self.type_maintenance.libelle} - {self.libelle}"
 
 
+class PanneFournisseurPrix(models.Model):
+    panne = models.ForeignKey(
+        PanneCatalogue,
+        on_delete=models.CASCADE,
+        related_name="prix_fournisseurs",
+    )
+    fournisseur = models.ForeignKey(
+        "Fournisseur",
+        on_delete=models.CASCADE,
+        related_name="prix_pannes",
+    )
+    montant = models.DecimalField(max_digits=20, decimal_places=2)
+    observation = models.CharField(max_length=180, blank=True)
+    date_reference = models.DateField(default=timezone.localdate)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date_reference", "fournisseur__nom_fournisseur"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["panne", "fournisseur"],
+                name="unique_prix_panne_fournisseur",
+            )
+        ]
+
+    def clean(self):
+        self.observation = (self.observation or "").strip()
+        if self.montant is None or self.montant < 0:
+            raise ValidationError({"montant": "Le montant doit etre positif ou nul."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.panne} - {self.fournisseur} : {self.montant} GNF"
+
+
 class Fournisseur(models.Model):
     PORTEFEUILLE_LOGISTIQUE = "logistique"
     PORTEFEUILLE_INTERNE = "interne"

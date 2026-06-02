@@ -39,6 +39,7 @@ from .forms import (
     MaintenancePaiementForm,
     MouvementStockForm,
     PanneCatalogueForm,
+    PanneFournisseurPrixForm,
     PrestataireForm,
     SoldeInitialCaisseForm,
     TypeMaintenanceForm,
@@ -50,6 +51,7 @@ from .models import (
     Maintenance,
     MaintenanceFacture,
     PanneCatalogue,
+    PanneFournisseurPrix,
     MaintenanceSousLigne,
     MouvementStock,
     Prestataire,
@@ -703,6 +705,29 @@ def _save_achat_piece_prices(request, maintenance):
         else:
             ligne.prix_unitaire = _parse_price(request.POST.get(f"ligne-price-{ligne.id}") or "0")
             ligne.save()
+
+
+def _memoize_panne_prices_from_maintenance(maintenance):
+    fournisseur = maintenance.factures_achat.select_related("fournisseur").order_by("id").first()
+    if not fournisseur:
+        return
+    fournisseur = fournisseur.fournisseur
+    pieces = MaintenanceSousLigne.objects.select_related("panne_catalogue").filter(
+        maintenance_ligne__maintenance=maintenance,
+        article_stock__isnull=True,
+        panne_catalogue__isnull=False,
+        prix_unitaire__gt=0,
+    )
+    for piece in pieces:
+        PanneFournisseurPrix.objects.update_or_create(
+            panne=piece.panne_catalogue,
+            fournisseur=fournisseur,
+            defaults={
+                "montant": piece.prix_unitaire,
+                "date_reference": timezone.localdate(),
+                "observation": f"Memo auto {maintenance.reference}",
+            },
+        )
 
 
 def _maintenance_tabs_context(active_tab):
@@ -3233,6 +3258,161 @@ def types_maintenance(request):
     )
 
 
+def _panne_price_columns(panne):
+    prices = list(panne.prix_fournisseurs.all()[:3])
+    columns = []
+    for price in prices:
+        columns.append(
+            {
+                "id": price.id,
+                "fournisseur": str(price.fournisseur),
+                "montant": _format_amount(price.montant),
+                "date": price.date_reference,
+                "observation": price.observation,
+            }
+        )
+    while len(columns) < 3:
+        columns.append(None)
+    return columns
+
+
+def gerer_pannes(request):
+    query = (request.GET.get("q") or "").strip()
+    type_filter = (request.GET.get("type") or "").strip()
+    pannes_qs = (
+        PanneCatalogue.objects.select_related("type_maintenance")
+        .prefetch_related("prix_fournisseurs__fournisseur")
+        .annotate(utilisations=Count("sous_lignes_maintenance", distinct=True))
+    )
+    if query:
+        pannes_qs = pannes_qs.filter(
+            Q(libelle__icontains=query)
+            | Q(type_maintenance__libelle__icontains=query)
+            | Q(prix_fournisseurs__fournisseur__nom_fournisseur__icontains=query)
+            | Q(prix_fournisseurs__fournisseur__entreprise__icontains=query)
+        ).distinct()
+    if type_filter:
+        pannes_qs = pannes_qs.filter(type_maintenance_id=type_filter)
+    pannes = list(pannes_qs.order_by("type_maintenance__libelle", "libelle"))
+    for panne in pannes:
+        panne.price_columns = _panne_price_columns(panne)
+
+    return render(
+        request,
+        "maintenance/gerer_pannes.html",
+        {
+            "pannes": pannes,
+            "query": query,
+            "type_filter": type_filter,
+            "type_choices": TypeMaintenance.objects.order_by("libelle"),
+            "panne_form": PanneCatalogueForm(),
+            "prix_form": PanneFournisseurPrixForm(),
+            "is_admin_maintenance": is_admin_user(request.user),
+            **_maintenance_tabs_context("garage"),
+        },
+    )
+
+
+@require_POST
+def ajouter_panne_catalogue(request):
+    form = PanneCatalogueForm(request.POST)
+    if form.is_valid():
+        panne = form.save()
+        journaliser_action(
+            request.user,
+            "Maintenance",
+            "Creation panne",
+            str(panne),
+            f"{request.user.username} a cree la panne {panne}.",
+        )
+        messages.success(request, "La panne a ete ajoutee au catalogue.")
+    else:
+        messages.error(request, "Impossible d'ajouter cette panne. Verifiez le type et le libelle.")
+    return redirect("gerer_pannes")
+
+
+@require_POST
+def modifier_panne_catalogue(request, id):
+    panne = get_object_or_404(PanneCatalogue, pk=id)
+    form = PanneCatalogueForm(request.POST, instance=panne)
+    if form.is_valid():
+        panne = form.save()
+        journaliser_action(
+            request.user,
+            "Maintenance",
+            "Modification panne",
+            str(panne),
+            f"{request.user.username} a modifie la panne {panne}.",
+        )
+        messages.success(request, "La panne a ete mise a jour.")
+    else:
+        messages.error(request, "Impossible de modifier cette panne.")
+    return redirect("gerer_pannes")
+
+
+@require_POST
+def supprimer_panne_catalogue(request, id):
+    panne = get_object_or_404(PanneCatalogue, pk=id)
+    label = str(panne)
+    if panne.sous_lignes_maintenance.exists():
+        messages.error(request, "Cette panne est deja utilisee dans une maintenance. Elle ne peut pas etre supprimee sans perdre l'historique.")
+        return redirect("gerer_pannes")
+    panne.delete()
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Suppression panne",
+        label,
+        f"{request.user.username} a supprime la panne {label}.",
+    )
+    messages.success(request, "La panne a ete supprimee.")
+    return redirect("gerer_pannes")
+
+
+@require_POST
+def ajouter_prix_panne(request, id):
+    panne = get_object_or_404(PanneCatalogue, pk=id)
+    form = PanneFournisseurPrixForm(request.POST)
+    if form.is_valid():
+        price = form.save(commit=False)
+        PanneFournisseurPrix.objects.update_or_create(
+            panne=panne,
+            fournisseur=price.fournisseur,
+            defaults={
+                "montant": price.montant,
+                "date_reference": price.date_reference,
+                "observation": price.observation,
+            },
+        )
+        journaliser_action(
+            request.user,
+            "Maintenance",
+            "Prix fournisseur panne",
+            str(panne),
+            f"{request.user.username} a enregistre un prix fournisseur pour {panne}.",
+        )
+        messages.success(request, "Le prix fournisseur a ete memorise.")
+    else:
+        messages.error(request, "Impossible d'enregistrer ce prix fournisseur.")
+    return redirect("gerer_pannes")
+
+
+@require_POST
+def supprimer_prix_panne(request, id):
+    price = get_object_or_404(PanneFournisseurPrix.objects.select_related("panne", "fournisseur"), pk=id)
+    label = str(price)
+    price.delete()
+    journaliser_action(
+        request.user,
+        "Maintenance",
+        "Suppression prix fournisseur panne",
+        label,
+        f"{request.user.username} a supprime le prix {label}.",
+    )
+    messages.success(request, "Le prix fournisseur a ete supprime.")
+    return redirect("gerer_pannes")
+
+
 def ajouter_type_maintenance(request):
     if request.method != "POST":
         return redirect("types_maintenance")
@@ -3677,6 +3857,7 @@ def modifier_maintenance_achat(request, id):
                 invoice_formset.save()
                 _sync_maintenance_invoice_snapshot(maintenance)
                 _save_achat_piece_prices(request, maintenance)
+                _memoize_panne_prices_from_maintenance(maintenance)
                 maintenance.refresh_total_facture()
                 maintenance.validation_logistique_at = timezone.now()
                 maintenance.validation_logistique_by = request.user
@@ -4210,6 +4391,12 @@ types_maintenance = role_required("logistique", "maintenancier", "directeur")(ty
 ajouter_type_maintenance = role_required("logistique", "maintenancier", "directeur")(ajouter_type_maintenance)
 modifier_type_maintenance = role_required("logistique", "maintenancier", "directeur")(modifier_type_maintenance)
 supprimer_type_maintenance = role_required("logistique", "maintenancier", "directeur")(supprimer_type_maintenance)
+gerer_pannes = role_required("logistique", "maintenancier", "directeur")(gerer_pannes)
+ajouter_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_catalogue)
+modifier_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(modifier_panne_catalogue)
+supprimer_panne_catalogue = role_required("logistique", "maintenancier", "directeur")(supprimer_panne_catalogue)
+ajouter_prix_panne = role_required("logistique", "maintenancier", "directeur")(ajouter_prix_panne)
+supprimer_prix_panne = role_required("logistique", "maintenancier", "directeur")(supprimer_prix_panne)
 ajouter_panne_modal = role_required("logistique", "maintenancier", "directeur")(ajouter_panne_modal)
 ajouter_fournisseur_modal = role_required("logistique", "directeur", "responsable_achat", "dga_sogefi", "dga_avena", "comptable_avena")(ajouter_fournisseur_modal)
 ajouter_prestataire_modal = role_required("logistique", "directeur")(ajouter_prestataire_modal)

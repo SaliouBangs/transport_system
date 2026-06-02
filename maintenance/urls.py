@@ -47,6 +47,12 @@ urlpatterns = [
     path("types-maintenance/ajouter/", views.ajouter_type_maintenance, name="ajouter_type_maintenance"),
     path("types-maintenance/modifier/<int:id>/", views.modifier_type_maintenance, name="modifier_type_maintenance"),
     path("types-maintenance/supprimer/<int:id>/", views.supprimer_type_maintenance, name="supprimer_type_maintenance"),
+    path("pannes/", views.gerer_pannes, name="gerer_pannes"),
+    path("pannes/ajouter/", views.ajouter_panne_catalogue, name="ajouter_panne_catalogue"),
+    path("pannes/<int:id>/modifier/", views.modifier_panne_catalogue, name="modifier_panne_catalogue"),
+    path("pannes/<int:id>/supprimer/", views.supprimer_panne_catalogue, name="supprimer_panne_catalogue"),
+    path("pannes/<int:id>/prix/", views.ajouter_prix_panne, name="ajouter_prix_panne"),
+    path("pannes/prix/<int:id>/supprimer/", views.supprimer_prix_panne, name="supprimer_prix_panne"),
     path("supprimer/<int:id>/", views.supprimer_maintenance, name="supprimer_maintenance"),
     path(
         "types/ajouter-modal/",
