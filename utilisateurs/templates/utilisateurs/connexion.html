@@ -2,257 +2,787 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<title>Connexion</title>
+<meta charset="utf-8">
+<title>Connexion | Barika Group</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/jpeg" href="{% static 'utilisateurs/barika-group-logo.jpeg' %}">
 <style>
 :root{
---brand-navy:#123047;
---brand-blue:#1d4968;
---brand-green:#249274;
---brand-green-soft:#4fbf9f;
---surface:rgba(255,255,255,0.95);
---text-soft:#5e7484;
+--navy:#071d34;
+--navy-2:#10395f;
+--blue:#133fe2;
+--blue-soft:#dbe8ff;
+--wine:#8b1428;
+--wine-soft:#fff0f2;
+--mint:#35b38e;
+--mint-dark:#16856d;
+--ink:#10263a;
+--muted:#63768a;
+--paper:#ffffff;
+--line:rgba(181,201,218,0.52);
+--glass:rgba(255,255,255,0.12);
+--glass-strong:rgba(255,255,255,0.19);
+--shadow:0 30px 80px rgba(2,16,31,0.34);
+--radius-xl:34px;
+--radius-lg:24px;
+--radius-md:18px;
 }
 
 *{
 box-sizing:border-box;
 }
 
+html{
+min-height:100%;
+background:#061728;
+}
+
 body{
 margin:0;
 min-height:100vh;
 font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+color:#ffffff;
 background:
-linear-gradient(135deg, rgba(7,28,43,0.84), rgba(29,73,104,0.56)),
-url("{% static 'utilisateurs/login-hero.png' %}") center/cover no-repeat;
-color:white;
+radial-gradient(circle at 78% 18%, rgba(64,138,185,0.28), transparent 30%),
+radial-gradient(circle at 14% 76%, rgba(19,63,226,0.16), transparent 28%),
+linear-gradient(115deg, rgba(4,16,29,0.78) 0%, rgba(8,34,56,0.66) 43%, rgba(13,49,77,0.44) 67%, rgba(5,18,31,0.70) 100%),
+url("{% static 'utilisateurs/login-hero.png' %}") center/cover fixed no-repeat;
+overflow-x:hidden;
+overscroll-behavior:none;
+}
+
+body::before{
+content:"";
+position:fixed;
+inset:0;
+background:
+linear-gradient(90deg, rgba(255,255,255,0.042) 1px, transparent 1px),
+linear-gradient(180deg, rgba(255,255,255,0.032) 1px, transparent 1px);
+background-size:112px 112px;
+pointer-events:none;
+z-index:0;
+}
+
+body::after{
+content:"";
+position:fixed;
+inset:0;
+background:
+linear-gradient(105deg, transparent 0 36%, rgba(255,255,255,0.12) 36.2% 37.1%, transparent 37.4% 100%),
+linear-gradient(100deg, transparent 0 68%, rgba(19,63,226,0.26) 68.1% 72.5%, rgba(139,20,40,0.18) 72.8% 76.5%, transparent 76.7% 100%);
+pointer-events:none;
+z-index:0;
+}
+
+.aurora-line{
+position:fixed;
+inset:0;
+background:linear-gradient(112deg, transparent 0 20%, rgba(127,220,255,0.22) 43%, rgba(255,255,255,0.34) 44%, rgba(127,220,255,0.16) 45%, transparent 66% 100%);
+mix-blend-mode:screen;
+opacity:0.58;
+transform:translateX(-18%);
+animation:light-sweep 8s ease-in-out infinite alternate;
+pointer-events:none;
+z-index:0;
+}
+
+.cursor-light{
+position:fixed;
+left:var(--cursor-x, 72%);
+top:var(--cursor-y, 22%);
+width:360px;
+height:360px;
+border-radius:999px;
+background:radial-gradient(circle, rgba(255,255,255,0.18), rgba(53,179,142,0.10) 38%, transparent 66%);
+transform:translate(-50%, -50%);
+filter:blur(14px);
+pointer-events:none;
+opacity:0.72;
+transition:opacity 0.25s ease;
+z-index:0;
 }
 
 .login-layout{
-min-height:100vh;
+position:relative;
+z-index:1;
+min-height:100dvh;
 display:grid;
-grid-template-columns:minmax(0, 1.2fr) minmax(380px, 460px);
-align-items:stretch;
+grid-template-columns:minmax(0, 1fr) minmax(410px, 500px);
+gap:clamp(24px, 4vw, 54px);
+align-items:center;
+padding:clamp(22px, 3.2vw, 54px);
 }
 
 .login-showcase{
-padding:42px 48px;
-display:flex;
-flex-direction:column;
-justify-content:space-between;
-background:linear-gradient(180deg, rgba(8,24,36,0.2), rgba(8,24,36,0.48));
+min-height:calc(100vh - clamp(44px, 6.4vw, 108px));
+display:grid;
+grid-template-rows:auto 1fr auto;
+gap:clamp(20px, 4vh, 42px);
 }
 
-.brand-block{
+.brand-ribbon,
+.entity-card,
+.login-shell{
+border:1px solid var(--line);
+backdrop-filter:blur(20px);
+box-shadow:0 20px 54px rgba(0,0,0,0.20);
+}
+
+.brand-ribbon{
+width:min(100%, 590px);
 display:flex;
 align-items:center;
-gap:18px;
+gap:16px;
+padding:14px 16px;
+border-radius:var(--radius-lg);
+background:linear-gradient(135deg, rgba(255,255,255,0.20), rgba(255,255,255,0.08));
+animation:rise-in 0.72s ease both;
 }
 
-.brand-block img{
-width:92px;
-height:auto;
-filter:drop-shadow(0 10px 18px rgba(0,0,0,0.18));
+.logo-tile{
+width:76px;
+height:76px;
+display:grid;
+place-items:center;
+border-radius:20px;
+background:linear-gradient(180deg, #ffffff, #f4f7fb);
+box-shadow:inset 0 0 0 1px rgba(13,44,72,0.08);
+overflow:hidden;
+flex:none;
 }
 
-.brand-copy h2{
-margin:0;
-font-size:2rem;
-letter-spacing:0.03em;
+.logo-tile img{
+width:88%;
+height:88%;
+object-fit:contain;
 }
 
-.brand-copy p{
-margin:6px 0 0;
-max-width:520px;
-color:rgba(255,255,255,0.86);
-font-size:1rem;
-line-height:1.6;
-}
-
-.showcase-card{
-max-width:620px;
-padding:30px 34px;
-border:1px solid rgba(255,255,255,0.18);
-border-radius:28px;
-background:rgba(255,255,255,0.1);
-backdrop-filter:blur(8px);
-box-shadow:0 24px 50px rgba(0,0,0,0.18);
-}
-
-.eyebrow{
-margin:0 0 10px 0;
+.brand-ribbon strong,
+.entity-card strong{
+display:block;
+letter-spacing:0.14em;
 text-transform:uppercase;
-letter-spacing:0.22em;
-font-size:0.78rem;
-font-weight:700;
-color:#7fe2c7;
 }
 
-.showcase-card h1{
-margin:0 0 14px 0;
-font-size:3rem;
-line-height:1.05;
+.brand-ribbon strong{
+font-size:1rem;
 }
 
-.showcase-card p{
+.brand-ribbon span{
+display:block;
+margin-top:5px;
+max-width:460px;
+color:rgba(255,255,255,0.82);
+font-size:0.91rem;
+line-height:1.55;
+}
+
+.hero-zone{
+align-self:center;
+max-width:860px;
+padding:12px 0;
+animation:rise-in 0.78s ease 0.08s both;
+}
+
+.hero-kicker{
+display:flex;
+align-items:center;
+gap:12px;
+margin:0 0 18px;
+font-size:0.82rem;
+font-weight:950;
+letter-spacing:0.24em;
+text-transform:uppercase;
+color:rgba(255,255,255,0.78);
+}
+
+.hero-kicker::before{
+content:"";
+width:56px;
+height:4px;
+border-radius:999px;
+background:linear-gradient(90deg, var(--blue), #ffffff 52%, var(--wine));
+box-shadow:0 0 22px rgba(95,175,255,0.5);
+}
+
+.hero-zone h1{
 margin:0;
-color:rgba(255,255,255,0.9);
+font-size:clamp(3.4rem, 7vw, 7.6rem);
+line-height:0.9;
+letter-spacing:0;
+text-wrap:balance;
+text-shadow:0 20px 46px rgba(0,0,0,0.30);
+}
+
+.hero-word{
+display:block;
+overflow:hidden;
+}
+
+.hero-word span{
+display:block;
+animation:word-reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+animation-delay:var(--delay, 0ms);
+}
+
+.hero-zone p{
+margin:24px 0 0;
+max-width:710px;
+color:rgba(255,255,255,0.86);
 font-size:1.05rem;
-line-height:1.7;
+line-height:1.8;
+}
+
+.entity-strip{
+display:grid;
+grid-template-columns:repeat(3, minmax(0, 1fr));
+gap:14px;
+max-width:860px;
+}
+
+.entity-card{
+position:relative;
+min-height:116px;
+display:grid;
+grid-template-columns:76px minmax(0, 1fr);
+align-items:center;
+gap:14px;
+padding:14px;
+border-radius:var(--radius-lg);
+background:linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+overflow:hidden;
+transform:translateY(18px);
+opacity:0;
+animation:rise-in 0.72s ease both;
+animation-delay:var(--delay, 0.2s);
+transition:transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.entity-card::after{
+content:"";
+position:absolute;
+left:0;
+right:0;
+bottom:0;
+height:3px;
+background:linear-gradient(90deg, var(--entity-a), var(--entity-b));
+}
+
+.entity-card:hover{
+transform:translateY(-4px);
+border-color:rgba(255,255,255,0.38);
+background:linear-gradient(145deg, rgba(255,255,255,0.24), rgba(255,255,255,0.11));
+}
+
+.entity-logo{
+width:76px;
+height:76px;
+display:grid;
+place-items:center;
+border-radius:20px;
+background:#ffffff;
+overflow:hidden;
+box-shadow:0 10px 24px rgba(0,0,0,0.12);
+}
+
+.entity-logo img{
+width:88%;
+height:88%;
+object-fit:contain;
+}
+
+.entity-card strong{
+font-size:0.9rem;
+}
+
+.entity-card span{
+display:block;
+margin-top:6px;
+color:rgba(255,255,255,0.74);
+font-size:0.78rem;
+line-height:1.45;
 }
 
 .login-panel{
-padding:28px;
 display:flex;
-align-items:center;
 justify-content:center;
+align-items:center;
 }
 
 .login-shell{
+position:relative;
 width:min(100%, 460px);
-background:var(--surface);
-border-radius:28px;
 padding:30px;
-box-shadow:0 24px 48px rgba(8,20,30,0.28);
-color:var(--brand-navy);
+border-radius:var(--radius-xl);
+background:linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,247,252,0.92));
+color:var(--ink);
+box-shadow:var(--shadow);
+overflow:hidden;
+animation:card-enter 0.86s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both;
 }
 
-.login-header{
+.login-shell::before{
+content:"";
+position:absolute;
+inset:0 0 auto 0;
+height:6px;
+background:linear-gradient(90deg, var(--blue), #ffffff, var(--wine), var(--mint));
+}
+
+.login-shell::after{
+content:"";
+position:absolute;
+right:-80px;
+top:-120px;
+width:220px;
+height:360px;
+background:linear-gradient(180deg, rgba(19,63,226,0.12), rgba(139,20,40,0.10));
+transform:rotate(14deg);
+pointer-events:none;
+}
+
+.login-brand{
+position:relative;
+z-index:1;
 display:flex;
 align-items:center;
-gap:14px;
-margin-bottom:18px;
+gap:15px;
+padding-bottom:18px;
+border-bottom:1px solid rgba(185,203,218,0.62);
 }
 
-.login-header img{
-width:62px;
-height:auto;
+.login-brand .logo-tile{
+width:72px;
+height:72px;
+border-radius:18px;
+box-shadow:0 12px 28px rgba(12,38,62,0.10), inset 0 0 0 1px rgba(13,44,72,0.08);
 }
 
-.login-header h3{
-margin:0;
-font-size:1.55rem;
+.login-brand strong{
+display:block;
+font-size:1.35rem;
+line-height:1.1;
+color:#11345a;
 }
 
-.login-header p{
-margin:4px 0 0;
-color:var(--text-soft);
-font-size:0.96rem;
+.login-brand span{
+display:block;
+margin-top:6px;
+color:var(--muted);
+font-size:0.88rem;
 line-height:1.5;
 }
 
+.login-title{
+position:relative;
+z-index:1;
+margin:22px 0 18px;
+}
+
+.login-title h2{
+margin:0;
+font-size:2rem;
+line-height:1.1;
+letter-spacing:0;
+}
+
+.login-title p{
+margin:8px 0 0;
+color:var(--muted);
+font-size:0.94rem;
+line-height:1.6;
+}
+
+.flash{
+position:relative;
+z-index:1;
+margin-bottom:16px;
+padding:12px 14px;
+border-radius:16px;
+background:var(--wine-soft);
+color:#98241f;
+border:1px solid #f0beb9;
+font-weight:800;
+}
+
+form{
+position:relative;
+z-index:1;
+display:grid;
+gap:13px;
+}
+
+.field{
+display:grid;
+gap:8px;
+}
+
 label{
-display:block;
-margin:0 0 8px 0;
-font-weight:700;
-color:var(--brand-navy);
+font-size:0.88rem;
+font-weight:900;
+color:#123047;
 }
 
 input{
 width:100%;
-padding:14px 15px;
-border-radius:15px;
-border:1px solid #d9e2e8;
-margin-bottom:16px;
+min-height:50px;
+border:1px solid #cfdae4;
+border-radius:17px;
+padding:12px 14px;
+font:inherit;
 font-size:1rem;
-background:#fbfdff;
+background:rgba(255,255,255,0.92);
+color:var(--ink);
+transition:border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 input:focus{
 outline:none;
-border-color:#4fbf9f;
-box-shadow:0 0 0 3px rgba(79,191,159,0.18);
+background:#ffffff;
+border-color:var(--blue);
+box-shadow:0 0 0 4px rgba(19,63,226,0.13);
 }
 
-button{
-width:100%;
-border:none;
-border-radius:15px;
-padding:14px 16px;
-font-weight:700;
-font-size:1rem;
-color:white;
-background:linear-gradient(135deg, var(--brand-green-soft) 0%, var(--brand-green) 100%);
+.password-wrap{
+position:relative;
+}
+
+.password-wrap input{
+padding-right:52px;
+}
+
+.password-toggle{
+position:absolute;
+right:8px;
+top:50%;
+width:38px;
+height:38px;
+border:0;
+border-radius:13px;
+background:#e8f0f8;
+color:#193752;
+transform:translateY(-50%);
 cursor:pointer;
-box-shadow:0 14px 28px rgba(36,146,116,0.26);
+box-shadow:none;
+padding:0;
 }
 
-button:hover{
-filter:brightness(1.03);
+.password-toggle::before{
+content:"";
+position:absolute;
+left:9px;
+top:13px;
+width:18px;
+height:11px;
+border:2px solid currentColor;
+border-radius:999px 999px 999px 999px / 760px 760px 760px 760px;
 }
 
-.flash{
-margin-bottom:16px;
-padding:12px 14px;
-border-radius:14px;
-background:#fdebea;
-color:#9f2d21;
-border:1px solid #f3c8c2;
-font-weight:600;
+.password-toggle::after{
+content:"";
+position:absolute;
+left:16px;
+top:17px;
+width:5px;
+height:5px;
+border-radius:999px;
+background:currentColor;
+}
+
+.password-toggle.is-visible::before{
+transform:rotate(-18deg);
+}
+
+.password-toggle.is-visible::after{
+left:10px;
+top:18px;
+width:19px;
+height:2px;
+border-radius:999px;
+background:currentColor;
+transform:rotate(-34deg);
+}
+
+.submit-button{
+width:100%;
+min-height:52px;
+margin-top:4px;
+border:0;
+border-radius:18px;
+padding:13px 16px;
+font:inherit;
+font-weight:950;
+color:#ffffff;
+background:linear-gradient(135deg, #4fc3a2 0%, var(--mint-dark) 100%);
+cursor:pointer;
+box-shadow:0 18px 34px rgba(22,133,109,0.26);
+transition:transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.submit-button:hover{
+transform:translateY(-2px);
+box-shadow:0 22px 42px rgba(22,133,109,0.32);
+filter:brightness(1.02);
 }
 
 .login-footer{
+position:relative;
+z-index:1;
 margin-top:18px;
 padding-top:16px;
-border-top:1px solid #e6eef3;
-color:var(--text-soft);
-font-size:0.92rem;
-line-height:1.55;
+border-top:1px solid rgba(185,203,218,0.62);
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+color:var(--muted);
+font-size:0.84rem;
+line-height:1.45;
 }
 
-@media (max-width: 980px){
+.secure-pill{
+display:inline-flex;
+align-items:center;
+gap:7px;
+height:32px;
+padding:0 11px;
+border-radius:999px;
+background:#edf4fb;
+color:#123047;
+font-size:0.76rem;
+font-weight:950;
+white-space:nowrap;
+}
+
+.secure-pill::before{
+content:"";
+width:8px;
+height:8px;
+border-radius:999px;
+background:#28bf83;
+box-shadow:0 0 0 4px rgba(40,191,131,0.14);
+}
+
+@media (prefers-reduced-motion: reduce){
+*, *::before, *::after{
+animation:none !important;
+transition:none !important;
+}
+}
+
+@media (max-width: 1120px){
 .login-layout{
 grid-template-columns:1fr;
+align-items:stretch;
 }
 
 .login-showcase{
-padding:28px 22px 12px;
-}
-
-.showcase-card{
-max-width:none;
-padding:24px;
-}
-
-.showcase-card h1{
-font-size:2.2rem;
+min-height:auto;
 }
 
 .login-panel{
-padding:18px 14px 28px;
+align-items:start;
+}
+}
+
+@media (max-width: 900px){
+.login-layout{
+padding:16px;
+gap:18px;
+}
+
+.brand-ribbon{
+align-items:flex-start;
+border-radius:24px;
+}
+
+.logo-tile{
+width:64px;
+height:64px;
+border-radius:17px;
+}
+
+.hero-zone h1{
+font-size:clamp(2.7rem, 12vw, 4.3rem);
+}
+
+.hero-zone p{
+font-size:0.98rem;
+line-height:1.68;
+}
+
+.entity-strip{
+grid-template-columns:1fr;
+}
+
+.entity-card{
+min-height:96px;
+grid-template-columns:70px minmax(0, 1fr);
+}
+
+.entity-logo{
+width:70px;
+height:70px;
+}
+
+.login-shell{
+padding:24px;
+border-radius:28px;
+}
+}
+
+@media (max-width: 520px){
+.login-layout{
+padding:12px;
+}
+
+.brand-ribbon{
+padding:12px;
+}
+
+.brand-ribbon span{
+font-size:0.84rem;
+}
+
+.hero-kicker{
+font-size:0.72rem;
+letter-spacing:0.16em;
+}
+
+.login-brand{
+align-items:flex-start;
+}
+
+.login-title h2{
+font-size:1.72rem;
+}
+
+.login-footer{
+align-items:flex-start;
+flex-direction:column;
+}
+}
+
+@keyframes rise-in{
+from{
+opacity:0;
+transform:translateY(18px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes card-enter{
+from{
+opacity:0;
+transform:translateX(28px) scale(0.98);
+}
+to{
+opacity:1;
+transform:translateX(0) scale(1);
+}
+}
+
+@keyframes word-reveal{
+from{
+opacity:0;
+transform:translateY(100%);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+@keyframes light-sweep{
+from{
+transform:translateX(-22%);
+opacity:0.42;
+}
+to{
+transform:translateX(8%);
+opacity:0.70;
 }
 }
 </style>
 </head>
 <body>
-<div class="login-layout">
-    <section class="login-showcase">
-        <div class="brand-block">
-            <img src="{% static 'utilisateurs/soni-logo.png' %}" alt="Logo SONI Energy">
-            <div class="brand-copy">
-                <h2>SONI ENERGY</h2>
-                <p>Plateforme de gestion des commandes, des bons, des camions, de la maintenance et du suivi logistique.</p>
+<span class="aurora-line" aria-hidden="true"></span>
+<span class="cursor-light" aria-hidden="true"></span>
+
+<main class="login-layout">
+    <section class="login-showcase" aria-label="Presentation Barika Group">
+        <div class="brand-ribbon" data-tilt>
+            <div class="logo-tile">
+                <img src="{% static 'utilisateurs/barika-group-logo.jpeg' %}" alt="Logo Barika Group">
+            </div>
+            <div>
+                <strong>Barika Group</strong>
+                <span>Une interface centrale pour orchestrer les flux, les equipes et les decisions du groupe.</span>
             </div>
         </div>
 
-        <div class="showcase-card">
-            <p class="eyebrow">Transport & distribution</p>
-            <h1>Bienvenue sur la plateforme de gestion commerciale et logistique de SONI ENERGY.</h1>
+        <div class="hero-zone">
+            <p class="hero-kicker">Portail de pilotage groupe</p>
+            <h1>
+                <span class="hero-word"><span style="--delay:0ms">Piloter.</span></span>
+                <span class="hero-word"><span style="--delay:120ms">Distribuer.</span></span>
+                <span class="hero-word"><span style="--delay:240ms">Connecter.</span></span>
+            </h1>
             <p>
-                Suivez les commandes, pilotez les affectations camions, gerez les bons de livraison
-                et maitrisez les flux d'exploitation avec une interface adaptee a chaque metier.
+                Barika Group rassemble SONI Energy, AVENA et SOGEFI dans une meme experience
+                de suivi commercial, logistique, financier et operationnel.
             </p>
+        </div>
+
+        <div class="entity-strip" aria-label="Entites du groupe">
+            <div class="entity-card" data-tilt style="--entity-a:#ef3340;--entity-b:#123fe2;--delay:260ms">
+                <div class="entity-logo">
+                    <img src="{% static 'utilisateurs/soni-logo.png' %}" alt="Logo SONI Energy">
+                </div>
+                <div>
+                    <strong>SONI</strong>
+                    <span>Energie, transport et distribution.</span>
+                </div>
+            </div>
+            <div class="entity-card" data-tilt style="--entity-a:#ef3340;--entity-b:#123fe2;--delay:360ms">
+                <div class="entity-logo">
+                    <img src="{% static 'utilisateurs/avena-logo-real.png' %}" alt="Logo AVENA">
+                </div>
+                <div>
+                    <strong>AVENA</strong>
+                    <span>Approvisionnement et operations commerciales.</span>
+                </div>
+            </div>
+            <div class="entity-card" data-tilt style="--entity-a:#123047;--entity-b:#35b38e;--delay:460ms">
+                <div class="entity-logo">
+                    <img src="{% static 'utilisateurs/sogefi-logo.png' %}" alt="Logo SOGEFI">
+                </div>
+                <div>
+                    <strong>SOGEFI</strong>
+                    <span>Gestion, finance et suivi interne.</span>
+                </div>
+            </div>
         </div>
     </section>
 
-    <aside class="login-panel">
-        <div class="login-shell">
-            <div class="login-header">
-                <img src="{% static 'utilisateurs/soni-logo.png' %}" alt="Logo SONI Energy">
-                <div>
-                    <h3>Connexion</h3>
-                    <p>Connectez-vous avec le compte correspondant a votre profil metier.</p>
+    <aside class="login-panel" aria-label="Connexion">
+        <div class="login-shell" data-tilt>
+            <div class="login-brand">
+                <div class="logo-tile">
+                    <img src="{% static 'utilisateurs/barika-group-logo.jpeg' %}" alt="Logo Barika Group">
                 </div>
+                <div>
+                    <strong>Barika Group</strong>
+                    <span>Portail interne securise</span>
+                </div>
+            </div>
+
+            <div class="login-title">
+                <h2>Connexion</h2>
+                <p>Accedez a votre espace selon votre profil metier et votre entite de rattachement.</p>
             </div>
 
             {% if messages %}
@@ -263,20 +793,69 @@ padding:18px 14px 28px;
 
             <form method="post">
                 {% csrf_token %}
-                <label for="id_username">Nom d'utilisateur</label>
-                <input type="text" name="username" id="id_username" required autofocus>
+                <div class="field">
+                    <label for="id_username">Nom d'utilisateur</label>
+                    <input type="text" name="username" id="id_username" required autofocus autocomplete="username">
+                </div>
 
-                <label for="id_password">Mot de passe</label>
-                <input type="password" name="password" id="id_password" required>
+                <div class="field">
+                    <label for="id_password">Mot de passe</label>
+                    <div class="password-wrap">
+                        <input type="password" name="password" id="id_password" required autocomplete="current-password">
+                        <button class="password-toggle" type="button" aria-label="Afficher le mot de passe" data-password-toggle></button>
+                    </div>
+                </div>
 
-                <button type="submit">Se connecter</button>
+                <button class="submit-button" type="submit">Se connecter</button>
             </form>
 
             <div class="login-footer">
-                Acces securise a la plateforme interne SONI Energy.
+                <span>Acces securise a l'ecosysteme interne Barika Group.</span>
+                <span class="secure-pill">Actif</span>
             </div>
         </div>
     </aside>
-</div>
+</main>
+
+<script>
+(function () {
+    const root = document.documentElement;
+    const cursorLight = document.querySelector(".cursor-light");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const passwordToggle = document.querySelector("[data-password-toggle]");
+    const passwordInput = document.getElementById("id_password");
+
+    if (!reduceMotion) {
+        window.addEventListener("pointermove", function (event) {
+            root.style.setProperty("--cursor-x", event.clientX + "px");
+            root.style.setProperty("--cursor-y", event.clientY + "px");
+        }, { passive: true });
+
+        document.querySelectorAll("[data-tilt]").forEach(function (card) {
+            card.addEventListener("pointermove", function (event) {
+                const rect = card.getBoundingClientRect();
+                const x = ((event.clientX - rect.left) / rect.width - 0.5) * 6;
+                const y = ((event.clientY - rect.top) / rect.height - 0.5) * -6;
+                card.style.transform = "perspective(900px) rotateX(" + y.toFixed(2) + "deg) rotateY(" + x.toFixed(2) + "deg) translateY(-2px)";
+            });
+            card.addEventListener("pointerleave", function () {
+                card.style.transform = "";
+            });
+        });
+    } else if (cursorLight) {
+        cursorLight.style.display = "none";
+    }
+
+    if (passwordToggle && passwordInput) {
+        passwordToggle.addEventListener("click", function () {
+            const shouldShow = passwordInput.type === "password";
+            passwordInput.type = shouldShow ? "text" : "password";
+            passwordToggle.classList.toggle("is-visible", shouldShow);
+            passwordToggle.setAttribute("aria-label", shouldShow ? "Masquer le mot de passe" : "Afficher le mot de passe");
+            passwordInput.focus();
+        });
+    }
+})();
+</script>
 </body>
 </html>
